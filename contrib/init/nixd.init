@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+#  nixd The nix core server.
+#
+#
+# chkconfig: 345 80 20
+# description: nixd
+# processname: nixd
+#
+
+# Source function library.
+. /etc/init.d/functions
+
+# you can override defaults in /etc/sysconfig/nixd, see below
+if [ -f /etc/sysconfig/nixd ]; then
+        . /etc/sysconfig/nixd
+fi
+
+RETVAL=0
+
+prog=nixd
+# you can override the lockfile via NIXD_LOCKFILE in /etc/sysconfig/nixd
+lockfile=${NIXD_LOCKFILE-/var/lock/subsys/nixd}
+
+# nixd defaults to /usr/bin/nixd, override with NIXD_BIN
+nixd=${NIXD_BIN-/usr/bin/nixd}
+
+# nixd opts default to -disablewallet, override with NIXD_OPTS
+nixd_opts=${NIXD_OPTS--disablewallet}
+
+start() {
+    echo -n $"Starting $prog: "
+    daemon $DAEMONOPTS $nixd $nixd_opts
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch $lockfile
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && rm -f $lockfile
+    return $RETVAL
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status $prog
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: service $prog {start|stop|status|restart}"
+        exit 1
+        ;;
+esac

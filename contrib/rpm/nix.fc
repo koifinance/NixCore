@@ -1,0 +1,8 @@
+/usr/bin/nix-cli		--	gen_context(system_u:object_r:nix_exec_t,s0)
+/usr/sbin/nixd		--	gen_context(system_u:object_r:nix_exec_t,s0)
+/usr/lib(64)?/nix/nixd		--	gen_context(system_u:object_r:nix_exec_t,s0)
+
+/etc/nix(/.*)?		gen_context(system_u:object_r:nix_conf_t,s0)
+/var/lib/nix(/.*)?		gen_context(system_u:object_r:nix_var_lib_t,s0)
+
+(/var)?/run/nixd(/.*)?   gen_context(system_u:object_r:nix_var_run_t,s0)

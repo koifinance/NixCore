@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Name=NIX Core
+Comment=Connect to the NIX P2P Network
+Comment[de]=Verbinde mit dem NIX peer-to-peer Netzwerk
+Comment[fr]=NIX, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=NIX, eşten eşe kriptografik sanal para birimi
+Exec=nix-qt %u
+Terminal=false
+Type=Application
+Icon=nix128
+MimeType=x-scheme-handler/nix;
+Categories=Office;Finance;
+StartupWMClass=NIX-qt

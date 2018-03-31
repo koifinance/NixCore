@@ -1,0 +1,157 @@
+
+## <summary>policy for nix</summary>
+
+
+########################################
+## <summary>
+##	Transition to nix.
+## </summary>
+## <param name="domain">
+## <summary>
+##	Domain allowed to transition.
+## </summary>
+## </param>
+#
+interface(`nix_domtrans',`
+	gen_require(`
+		type nix_t, nix_exec_t;
+	')
+
+	corecmd_search_bin($1)
+	domtrans_pattern($1, nix_exec_t, nix_t)
+')
+
+
+########################################
+## <summary>
+##	Execute nix server in the nix domain.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`nix_initrc_domtrans',`
+	gen_require(`
+		type nix_initrc_exec_t;
+	')
+
+	init_labeled_script_domtrans($1, nix_initrc_exec_t)
+')
+
+
+########################################
+## <summary>
+##	Search nix lib directories.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`nix_search_lib',`
+	gen_require(`
+		type nix_var_lib_t;
+	')
+
+	allow $1 nix_var_lib_t:dir search_dir_perms;
+	files_search_var_lib($1)
+')
+
+########################################
+## <summary>
+##	Read nix lib files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`nix_read_lib_files',`
+	gen_require(`
+		type nix_var_lib_t;
+	')
+
+	files_search_var_lib($1)
+	read_files_pattern($1, nix_var_lib_t, nix_var_lib_t)
+')
+
+########################################
+## <summary>
+##	Manage nix lib files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`nix_manage_lib_files',`
+	gen_require(`
+		type nix_var_lib_t;
+	')
+
+	files_search_var_lib($1)
+	manage_files_pattern($1, nix_var_lib_t, nix_var_lib_t)
+')
+
+########################################
+## <summary>
+##	Manage nix lib directories.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`nix_manage_lib_dirs',`
+	gen_require(`
+		type nix_var_lib_t;
+	')
+
+	files_search_var_lib($1)
+	manage_dirs_pattern($1, nix_var_lib_t, nix_var_lib_t)
+')
+
+
+########################################
+## <summary>
+##	All of the rules required to administrate
+##	a nix environment
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+## <param name="role">
+##	<summary>
+##	Role allowed access.
+##	</summary>
+## </param>
+## <rolecap/>
+#
+interface(`nix_admin',`
+	gen_require(`
+		type nix_t;
+		type nix_initrc_exec_t;
+		type nix_var_lib_t;
+	')
+
+	allow $1 nix_t:process { ptrace signal_perms };
+	ps_process_pattern($1, nix_t)
+
+	nix_initrc_domtrans($1)
+	domain_system_change_exemption($1)
+	role_transition $2 nix_initrc_exec_t system_r;
+	allow $2 system_r;
+
+	files_search_var_lib($1)
+	admin_pattern($1, nix_var_lib_t)
+
+')
+

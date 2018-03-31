@@ -1,0 +1,81 @@
+policy_module(nix, 1.100.1)
+
+########################################
+#
+# Declarations
+#
+
+type nix_t;
+type nix_exec_t;
+init_daemon_domain(nix_t, nix_exec_t)
+
+permissive nix_t;
+
+type nix_initrc_exec_t;
+init_script_file(nix_initrc_exec_t)
+
+type nix_conf_t;
+files_type(nix_conf_t)
+
+type nix_var_lib_t;
+files_type(nix_var_lib_t)
+
+type nix_var_run_t;
+files_type(nix_var_run_t)
+
+type nix_port_t;
+corenet_port(nix_port_t)
+
+########################################
+#
+# nix local policy
+#
+allow nix_t self:process { fork };
+
+allow nix_t self:fifo_file rw_fifo_file_perms;
+allow nix_t self:unix_stream_socket create_stream_socket_perms;
+
+manage_dirs_pattern(nix_t, nix_conf_t, nix_conf_t)
+manage_files_pattern(nix_t, nix_conf_t, nix_conf_t)
+
+manage_dirs_pattern(nix_t, nix_var_lib_t, nix_var_lib_t)
+manage_files_pattern(nix_t, nix_var_lib_t, nix_var_lib_t)
+files_var_lib_filetrans(nix_t, nix_var_lib_t, { dir file })
+
+manage_dirs_pattern(nix_t, nix_var_run_t, nix_var_run_t)
+manage_files_pattern(nix_t, nix_var_run_t, nix_var_run_t)
+
+sysnet_dns_name_resolve(nix_t)
+corenet_all_recvfrom_unlabeled(nix_t)
+
+allow nix_t self:tcp_socket create_stream_socket_perms;
+corenet_tcp_sendrecv_generic_if(nix_t)
+corenet_tcp_sendrecv_generic_node(nix_t)
+corenet_tcp_sendrecv_all_ports(nix_t)
+corenet_tcp_bind_generic_node(nix_t)
+
+gen_require(`
+    type nix_port_t;
+')
+allow nix_t nix_port_t:tcp_socket name_bind;
+
+gen_require(`
+    type nix_port_t;
+')
+allow nix_t nix_port_t:tcp_socket name_connect;
+
+domain_use_interactive_fds(nix_t)
+
+files_read_etc_files(nix_t)
+
+miscfiles_read_localization(nix_t)
+
+sysnet_dns_name_resolve(nix_t)
+
+allow nix_t nix_exec_t:file execute_no_trans;
+allow nix_t self:process setsched;
+corecmd_exec_ls(nix_t)
+corenet_tcp_connect_http_port(nix_t)
+dev_read_urand(nix_t)
+fs_getattr_xattr_fs(nix_t)
+kernel_read_system_state(nix_t)

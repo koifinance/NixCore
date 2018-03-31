@@ -1,0 +1,33 @@
+# /etc/conf.d/nixd: config file for /etc/init.d/nixd
+
+# Config file location
+#NIXD_CONFIGFILE="/etc/nix/nix.conf"
+
+# What directory to write pidfile to?  (created and owned by $NIXD_USER)
+#NIXD_PIDDIR="/var/run/nixd"
+
+# What filename to give the pidfile
+#NIXD_PIDFILE="${NIXD_PIDDIR}/nixd.pid"
+
+# Where to write nixd data (be mindful that the blockchain is large)
+#NIXD_DATADIR="/var/lib/nixd"
+
+# User and group to own nixd process
+#NIXD_USER="nix"
+#NIXD_GROUP="nix"
+
+# Path to nixd executable
+#NIXD_BIN="/usr/bin/nixd"
+
+# Nice value to run nixd under
+#NIXD_NICE=0
+
+# Additional options (avoid -conf and -datadir, use flags above)
+#NIXD_OPTS=""
+
+# The timeout in seconds OpenRC will wait for nixd to terminate
+# after a SIGTERM has been raised.
+# Note that this will be mapped as argument to start-stop-daemon's
+# '--retry' option, which means you can specify a retry schedule
+# here. For more information see man 8 start-stop-daemon.
+NIXD_SIGTERM_TIMEOUT=60

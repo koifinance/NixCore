@@ -1,0 +1,2 @@
+usr/local/bin/nixd usr/bin
+usr/local/bin/nix-cli usr/bin
