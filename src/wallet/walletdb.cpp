@@ -5,10 +5,10 @@
 
 #include <wallet/walletdb.h>
 
+#include <base58.h>
 #include <consensus/tx_verify.h>
 #include <consensus/validation.h>
 #include <fs.h>
-#include <key_io.h>
 #include <protocol.h>
 #include <serialize.h>
 #include <sync.h>
@@ -265,7 +265,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         {
             uint256 hash;
             ssKey >> hash;
-            CWalletTx wtx(nullptr /* pwallet */, MakeTransactionRef());
+            CWalletTx wtx;
             ssValue >> wtx;
             CValidationState state;
             if (!(CheckTransaction(*wtx.tx, state) && (wtx.GetHash() == hash) && state.IsValid()))
@@ -522,7 +522,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 {
     CWalletScanState wss;
     bool fNoncriticalErrors = false;
-    DBErrors result = DBErrors::LOAD_OK;
+    DBErrors result = DB_LOAD_OK;
 
     LOCK(pwallet->cs_wallet);
     try {
@@ -530,7 +530,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         if (batch.Read((std::string)"minversion", nMinVersion))
         {
             if (nMinVersion > CLIENT_VERSION)
-                return DBErrors::TOO_NEW;
+                return DB_TOO_NEW;
             pwallet->LoadMinVersion(nMinVersion);
         }
 
@@ -539,7 +539,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         if (!pcursor)
         {
             LogPrintf("Error getting wallet database cursor\n");
-            return DBErrors::CORRUPT;
+            return DB_CORRUPT;
         }
 
         while (true)
@@ -553,7 +553,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
             else if (ret != 0)
             {
                 LogPrintf("Error reading next record from wallet database\n");
-                return DBErrors::CORRUPT;
+                return DB_CORRUPT;
             }
 
             // Try to be tolerant of single corrupt records:
@@ -563,7 +563,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
                 // losing keys is considered a catastrophic error, anything else
                 // we assume the user can live with:
                 if (IsKeyType(strType) || strType == "defaultkey")
-                    result = DBErrors::CORRUPT;
+                    result = DB_CORRUPT;
                 else
                 {
                     // Leave other errors alone, if we try to fix them we might make things worse.
@@ -582,15 +582,15 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         throw;
     }
     catch (...) {
-        result = DBErrors::CORRUPT;
+        result = DB_CORRUPT;
     }
 
-    if (fNoncriticalErrors && result == DBErrors::LOAD_OK)
-        result = DBErrors::NONCRITICAL_ERROR;
+    if (fNoncriticalErrors && result == DB_LOAD_OK)
+        result = DB_NONCRITICAL_ERROR;
 
     // Any wallet corruption at all: skip any rewriting or
     // upgrading, we don't want to make it worse.
-    if (result != DBErrors::LOAD_OK)
+    if (result != DB_LOAD_OK)
         return result;
 
     LogPrintf("nFileVersion = %d\n", wss.nFileVersion);
@@ -603,11 +603,11 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         pwallet->UpdateTimeFirstKey(1);
 
     for (uint256 hash : wss.vWalletUpgrade)
-        WriteTx(pwallet->mapWallet.at(hash));
+        WriteTx(pwallet->mapWallet[hash]);
 
     // Rewrite encrypted wallets of versions 0.4.0 and 0.5.0rc:
     if (wss.fIsEncrypted && (wss.nFileVersion == 40000 || wss.nFileVersion == 50000))
-        return DBErrors::NEED_REWRITE;
+        return DB_NEED_REWRITE;
 
     if (wss.nFileVersion < CLIENT_VERSION) // Update
         WriteVersion(CLIENT_VERSION);
@@ -626,14 +626,14 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
 
 DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CWalletTx>& vWtx)
 {
-    DBErrors result = DBErrors::LOAD_OK;
+    DBErrors result = DB_LOAD_OK;
 
     try {
         int nMinVersion = 0;
         if (batch.Read((std::string)"minversion", nMinVersion))
         {
             if (nMinVersion > CLIENT_VERSION)
-                return DBErrors::TOO_NEW;
+                return DB_TOO_NEW;
         }
 
         // Get cursor
@@ -641,7 +641,7 @@ DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CWal
         if (!pcursor)
         {
             LogPrintf("Error getting wallet database cursor\n");
-            return DBErrors::CORRUPT;
+            return DB_CORRUPT;
         }
 
         while (true)
@@ -655,7 +655,7 @@ DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CWal
             else if (ret != 0)
             {
                 LogPrintf("Error reading next record from wallet database\n");
-                return DBErrors::CORRUPT;
+                return DB_CORRUPT;
             }
 
             std::string strType;
@@ -664,7 +664,7 @@ DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CWal
                 uint256 hash;
                 ssKey >> hash;
 
-                CWalletTx wtx(nullptr /* pwallet */, MakeTransactionRef());
+                CWalletTx wtx;
                 ssValue >> wtx;
 
                 vTxHash.push_back(hash);
@@ -677,7 +677,7 @@ DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CWal
         throw;
     }
     catch (...) {
-        result = DBErrors::CORRUPT;
+        result = DB_CORRUPT;
     }
 
     return result;
@@ -689,7 +689,7 @@ DBErrors CWalletDB::ZapSelectTx(std::vector<uint256>& vTxHashIn, std::vector<uin
     std::vector<uint256> vTxHash;
     std::vector<CWalletTx> vWtx;
     DBErrors err = FindWalletTx(vTxHash, vWtx);
-    if (err != DBErrors::LOAD_OK) {
+    if (err != DB_LOAD_OK) {
         return err;
     }
 
@@ -716,9 +716,9 @@ DBErrors CWalletDB::ZapSelectTx(std::vector<uint256>& vTxHashIn, std::vector<uin
     }
 
     if (delerror) {
-        return DBErrors::CORRUPT;
+        return DB_CORRUPT;
     }
-    return DBErrors::LOAD_OK;
+    return DB_LOAD_OK;
 }
 
 DBErrors CWalletDB::ZapWalletTx(std::vector<CWalletTx>& vWtx)
@@ -726,16 +726,16 @@ DBErrors CWalletDB::ZapWalletTx(std::vector<CWalletTx>& vWtx)
     // build list of wallet TXs
     std::vector<uint256> vTxHash;
     DBErrors err = FindWalletTx(vTxHash, vWtx);
-    if (err != DBErrors::LOAD_OK)
+    if (err != DB_LOAD_OK)
         return err;
 
     // erase each wallet TX
     for (uint256& hash : vTxHash) {
         if (!EraseTx(hash))
-            return DBErrors::CORRUPT;
+            return DB_CORRUPT;
     }
 
-    return DBErrors::LOAD_OK;
+    return DB_LOAD_OK;
 }
 
 void MaybeCompactWalletDB()
@@ -771,16 +771,16 @@ void MaybeCompactWalletDB()
 //
 // Try to (very carefully!) recover wallet file if there is a problem.
 //
-bool CWalletDB::Recover(const fs::path& wallet_path, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename)
+bool CWalletDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename)
 {
-    return CDB::Recover(wallet_path, callbackDataIn, recoverKVcallback, out_backup_filename);
+    return CDB::Recover(filename, callbackDataIn, recoverKVcallback, out_backup_filename);
 }
 
-bool CWalletDB::Recover(const fs::path& wallet_path, std::string& out_backup_filename)
+bool CWalletDB::Recover(const std::string& filename, std::string& out_backup_filename)
 {
     // recover without a key filter callback
     // results in recovering all record types
-    return CWalletDB::Recover(wallet_path, nullptr, nullptr, out_backup_filename);
+    return CWalletDB::Recover(filename, nullptr, nullptr, out_backup_filename);
 }
 
 bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue)
@@ -806,14 +806,14 @@ bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDa
     return true;
 }
 
-bool CWalletDB::VerifyEnvironment(const fs::path& wallet_path, std::string& errorStr)
+bool CWalletDB::VerifyEnvironment(const std::string& walletFile, const fs::path& walletDir, std::string& errorStr)
 {
-    return CDB::VerifyEnvironment(wallet_path, errorStr);
+    return CDB::VerifyEnvironment(walletFile, walletDir, errorStr);
 }
 
-bool CWalletDB::VerifyDatabaseFile(const fs::path& wallet_path, std::string& warningStr, std::string& errorStr)
+bool CWalletDB::VerifyDatabaseFile(const std::string& walletFile, const fs::path& walletDir, std::string& warningStr, std::string& errorStr)
 {
-    return CDB::VerifyDatabaseFile(wallet_path, warningStr, errorStr, CWalletDB::Recover);
+    return CDB::VerifyDatabaseFile(walletFile, walletDir, warningStr, errorStr, CWalletDB::Recover);
 }
 
 bool CWalletDB::WriteDestData(const std::string &address, const std::string &key, const std::string &value)
@@ -855,4 +855,110 @@ bool CWalletDB::ReadVersion(int& nVersion)
 bool CWalletDB::WriteVersion(int nVersion)
 {
     return batch.WriteVersion(nVersion);
+}
+
+bool CWalletDB::WriteCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
+    return batch.Write(make_pair(string("zcserial"), zerocoinSpend.coinSerial), zerocoinSpend, true);
+}
+
+bool CWalletDB::EraseCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
+    return batch.Erase(make_pair(string("zcserial"), zerocoinSpend.coinSerial));
+}
+
+bool
+CWalletDB::WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination,
+                                    int pubcoinid) {
+    return batch.Write(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
+}
+
+bool
+CWalletDB::ReadZerocoinAccumulator(libzerocoin::Accumulator &accumulator, libzerocoin::CoinDenomination denomination,
+                                   int pubcoinid) {
+    return batch.Read(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
+}
+
+bool CWalletDB::WriteZerocoinEntry(const CZerocoinEntry &zerocoin) {
+    return batch.Write(make_pair(string("zerocoin"), zerocoin.value), zerocoin, true);
+}
+
+bool CWalletDB::EraseZerocoinEntry(const CZerocoinEntry &zerocoin) {
+    return batch.Erase(make_pair(string("zerocoin"), zerocoin.value));
+}
+
+// Check Calculated Blocked for Zerocoin
+bool CWalletDB::ReadCalculatedZCBlock(int &height) {
+    height = 0;
+    return batch.Read(std::string("calculatedzcblock"), height);
+}
+
+bool CWalletDB::WriteCalculatedZCBlock(int height) {
+    return batch.Write(std::string("calculatedzcblock"), height);
+}
+
+void CWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {
+    Dbc *pcursor = batch.GetCursor();
+    if (!pcursor)
+        throw runtime_error("CWalletDB::ListPubCoin() : cannot create DB cursor");
+    unsigned int fFlags = DB_SET_RANGE;
+    while (true) {
+        // Read next record
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        if (fFlags == DB_SET_RANGE)
+            ssKey << make_pair(string("zerocoin"), CBigNum(0));
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        fFlags = DB_NEXT;
+        if (ret == DB_NOTFOUND)
+            break;
+        else if (ret != 0) {
+            pcursor->close();
+            throw runtime_error("CWalletDB::ListPubCoin() : error scanning DB");
+        }
+        // Unserialize
+        string strType;
+        ssKey >> strType;
+        if (strType != "zerocoin")
+            break;
+        CBigNum value;
+        ssKey >> value;
+        CZerocoinEntry zerocoinItem;
+        ssValue >> zerocoinItem;
+        listPubCoin.push_back(zerocoinItem);
+    }
+    pcursor->close();
+}
+
+void CWalletDB::ListCoinSpendSerial(std::list <CZerocoinSpendEntry> &listCoinSpendSerial) {
+    Dbc *pcursor = batch.GetCursor();
+    if (!pcursor)
+        throw runtime_error("CWalletDB::ListCoinSpendSerial() : cannot create DB cursor");
+    unsigned int fFlags = DB_SET_RANGE;
+    while (true) {
+        // Read next record
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        if (fFlags == DB_SET_RANGE)
+            ssKey << make_pair(string("zcserial"), CBigNum(0));
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        fFlags = DB_NEXT;
+        if (ret == DB_NOTFOUND)
+            break;
+        else if (ret != 0) {
+            pcursor->close();
+            throw runtime_error("CWalletDB::ListCoinSpendSerial() : error scanning DB");
+        }
+
+        // Unserialize
+        string strType;
+        ssKey >> strType;
+        if (strType != "zcserial")
+            break;
+        CBigNum value;
+        ssKey >> value;
+        CZerocoinSpendEntry zerocoinSpendItem;
+        ssValue >> zerocoinSpendItem;
+        listCoinSpendSerial.push_back(zerocoinSpendItem);
+    }
+
+    pcursor->close();
 }

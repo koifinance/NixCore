@@ -12,7 +12,7 @@
 #include <serialize.h>
 #include <uint256.h>
 #include <version.h>
-
+#include <arith_uint256.h>
 #include <vector>
 
 typedef uint256 ChainCode;
@@ -138,6 +138,12 @@ public:
         return result;
     }
 
+    arith_uint256 GetArith256Hash() {
+        uint256 result;
+        ctx.Finalize((unsigned char*)&result);
+        return UintToArith256(result);
+    }
+
     template<typename T>
     CHashWriter& operator<<(const T& obj) {
         // Serialize to this stream
@@ -173,7 +179,7 @@ public:
     }
 
     template<typename T>
-    CHashVerifier<Source>& operator>>(T&& obj)
+    CHashVerifier<Source>& operator>>(T& obj)
     {
         // Unserialize from this stream
         ::Unserialize(*this, obj);

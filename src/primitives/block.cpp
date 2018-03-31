@@ -30,3 +30,11 @@ std::string CBlock::ToString() const
     }
     return s.str();
 }
+
+
+void CBlock::ZerocoinClean() const {
+    /*if (zerocoinTxInfo != NULL)
+        delete zerocoinTxInfo;
+    zerocoinTxInfo = NULL;*/
+}
+

@@ -11,9 +11,11 @@
 #include <pow.h>
 #include <tinyformat.h>
 #include <uint256.h>
+#include "libzerocoin/Zerocoin.h"
 
 #include <vector>
 
+using namespace std;
 /**
  * Maximum amount of time that a block timestamp is allowed to exceed the
  * current network-adjusted time before the block will be accepted.
@@ -91,7 +93,7 @@ struct CDiskBlockPos
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(VARINT(nFile, VarIntMode::NONNEGATIVE_SIGNED));
+        READWRITE(VARINT(nFile));
         READWRITE(VARINT(nPos));
     }
 
@@ -219,6 +221,17 @@ public:
     //! (memory only) Maximum nTime in the chain up to and including this block.
     unsigned int nTimeMax;
 
+    //! zerocoin specific fields
+    //!
+    //! Public coin values of mints in this block, ordered by serialized value of public coin
+    //! Maps <denomination,id> to vector of public coins
+    map<pair<int,int>, vector<CBigNum>> mintedPubCoins;
+    //! Accumulator updates. Contains only changes made by mints in this block
+    //! Maps <denomination, id> to <accumulator value (CBigNum), number of such mints in this block>
+    map<pair<int,int>, pair<CBigNum,int>> accumulatorChanges;
+    //! Values of coin serials spent in this block
+    set<CBigNum> spentSerials;
+
     void SetNull()
     {
         phashBlock = nullptr;
@@ -240,6 +253,11 @@ public:
         nTime          = 0;
         nBits          = 0;
         nNonce         = 0;
+
+        //Zerocoin params
+        mintedPubCoins.clear();
+        accumulatorChanges.clear();
+        spentSerials.clear();
     }
 
     CBlockIndex()
@@ -386,13 +404,13 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         int _nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
-            READWRITE(VARINT(_nVersion, VarIntMode::NONNEGATIVE_SIGNED));
+            READWRITE(VARINT(_nVersion));
 
-        READWRITE(VARINT(nHeight, VarIntMode::NONNEGATIVE_SIGNED));
+        READWRITE(VARINT(nHeight));
         READWRITE(VARINT(nStatus));
         READWRITE(VARINT(nTx));
         if (nStatus & (BLOCK_HAVE_DATA | BLOCK_HAVE_UNDO))
-            READWRITE(VARINT(nFile, VarIntMode::NONNEGATIVE_SIGNED));
+            READWRITE(VARINT(nFile));
         if (nStatus & BLOCK_HAVE_DATA)
             READWRITE(VARINT(nDataPos));
         if (nStatus & BLOCK_HAVE_UNDO)
@@ -405,6 +423,12 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+
+        //Zerocoin params
+        READWRITE(mintedPubCoins);
+        READWRITE(accumulatorChanges);
+        READWRITE(spentSerials);
+
     }
 
     uint256 GetBlockHash() const

@@ -172,6 +172,8 @@ public:
     }
 
     std::string ToString() const;
+
+    uint256 GetHash() const;
 };
 
 struct CMutableTransaction;
@@ -333,6 +335,21 @@ public:
     bool IsCoinBase() const
     {
         return (vin.size() == 1 && vin[0].prevout.IsNull());
+    }
+
+    bool IsZerocoinSpend() const
+    {
+        return (vin.size() == 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] == OP_ZEROCOINSPEND) && (vout.size() == 1) );
+    }
+
+    bool IsZerocoinMint(const CTransaction& tx) const
+    {
+        for (std::vector<CTxOut>::const_iterator it(tx.vout.begin()); it != tx.vout.end(); ++it)
+            {
+                if (it -> scriptPubKey.IsZerocoinMint())
+                    return true;
+            }
+            return false;
     }
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)

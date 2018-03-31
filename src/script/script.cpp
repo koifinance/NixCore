@@ -141,6 +141,11 @@ const char* GetOpName(opcodetype opcode)
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
 
+
+    // zerocoin
+    case OP_ZEROCOINMINT           : return "OP_ZEROCOINMINT";
+    case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
+
     // Note:
     //  The template matching params OP_SMALLINTEGER/etc are defined in opcodetype enum
     //  as kind of implementation hack, they are *NOT* real opcodes.  If found in real
@@ -279,4 +284,17 @@ bool CScript::HasValidOps() const
         }
     }
     return true;
+}
+
+//Zerocoin params
+bool CScript::IsZerocoinMint() const
+{
+    // Extra-fast test for Zerocoin Mint CScripts:
+    return (this->size() > 0 &&
+            (*this)[0] == OP_ZEROCOINMINT);
+}
+
+bool CScript::IsZerocoinSpend() const {
+    return (this->size() > 0 &&
+            (*this)[0] == OP_ZEROCOINSPEND);
 }

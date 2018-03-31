@@ -21,6 +21,7 @@ class CBlockHeader
 {
 public:
     // header
+    static const int CURRENT_VERSION = 2;
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -47,7 +48,7 @@ public:
 
     void SetNull()
     {
-        nVersion = 0;
+        nVersion = CURRENT_VERSION;
         hashPrevBlock.SetNull();
         hashMerkleRoot.SetNull();
         nTime = 0;
@@ -68,6 +69,7 @@ public:
     }
 };
 
+class CZerocoinTxInfo;
 
 class CBlock : public CBlockHeader
 {
@@ -76,31 +78,45 @@ public:
     std::vector<CTransactionRef> vtx;
 
     // memory only
+    mutable CTxOut txoutZnode; // znode payment
+    mutable std::vector<CTxOut> voutSuperblock; // superblock payment
     mutable bool fChecked;
+
+    // memory only, zerocoin tx info
+    mutable CZerocoinTxInfo *zerocoinTxInfo;
 
     CBlock()
     {
+        zerocoinTxInfo = NULL;
         SetNull();
     }
 
     CBlock(const CBlockHeader &header)
     {
+        zerocoinTxInfo = NULL;
         SetNull();
-        *(static_cast<CBlockHeader*>(this)) = header;
+        *((CBlockHeader*)this) = header;
     }
+
+    ~CBlock() {
+         ZerocoinClean();
+     }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*static_cast<CBlockHeader*>(this));
+        READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
     }
 
     void SetNull()
     {
+        ZerocoinClean();
         CBlockHeader::SetNull();
         vtx.clear();
+        txoutZnode = CTxOut();
+        voutSuperblock.clear();
         fChecked = false;
     }
 
@@ -117,6 +133,8 @@ public:
     }
 
     std::string ToString() const;
+
+    void ZerocoinClean() const;
 };
 
 /** Describes a place in the block chain to another node such that if the
@@ -135,11 +153,11 @@ struct CBlockLocator
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        int nVersion = s.GetVersion();
-        if (!(s.GetType() & SER_GETHASH))
-            READWRITE(nVersion);
-        READWRITE(vHave);
-    }
+            int nVersion = s.GetVersion();
+            if (!(s.GetType() & SER_GETHASH))
+                READWRITE(nVersion);
+            READWRITE(vHave);
+        }
 
     void SetNull()
     {

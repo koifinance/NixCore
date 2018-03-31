@@ -45,12 +45,13 @@ struct ChainTxData;
 struct PrecomputedTransactionData;
 struct LockPoints;
 
+static const int TIME_MULTIPLIER = 4;
 /** Default for -whitelistrelay. */
 static const bool DEFAULT_WHITELISTRELAY = true;
 /** Default for -whitelistforcerelay. */
 static const bool DEFAULT_WHITELISTFORCERELAY = true;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
-static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 1000;
+static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100000;
 //! -maxtxfee default
 static const CAmount DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
 //! Discourage users to set fees higher than this amount (in satoshis) per kB
@@ -80,8 +81,8 @@ static const unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
 static const int MAX_SCRIPTCHECK_THREADS = 16;
 /** -par default (number of script-checking threads, 0 = auto) */
 static const int DEFAULT_SCRIPTCHECK_THREADS = 0;
-/** Number of blocks that can be requested at any given time from a single peer. */
-static const int MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
+/** Number of blocks that can be requested at any given time from a single peer (x4 from btc). */
+static const int MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16 * TIME_MULTIPLIER;
 /** Timeout in seconds during which a peer must stall block download progress before being disconnected. */
 static const unsigned int BLOCK_STALLING_TIMEOUT = 2;
 /** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
@@ -96,7 +97,7 @@ static const int MAX_BLOCKTXN_DEPTH = 10;
  *  Larger windows tolerate larger download speed differences between peer, but increase the potential
  *  degree of disordering of blocks on disk (which make reindexing and pruning harder). We'll probably
  *  want to make this a per-peer adaptive value at some point. */
-static const unsigned int BLOCK_DOWNLOAD_WINDOW = 1024;
+static const unsigned int BLOCK_DOWNLOAD_WINDOW = 1024 * TIME_MULTIPLIER;
 /** Time to wait (in seconds) between writing blocks/block index to disk. */
 static const unsigned int DATABASE_WRITE_INTERVAL = 60 * 60;
 /** Time to wait (in seconds) between flushing chainstate to disk. */
@@ -158,7 +159,6 @@ extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CBlockPolicyEstimator feeEstimator;
 extern CTxMemPool mempool;
-extern std::atomic_bool g_is_mempool_loaded;
 typedef std::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap& mapBlockIndex;
 extern uint64_t nLastBlockTx;
@@ -255,7 +255,7 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
 bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& block, CValidationState& state, const CChainParams& chainparams, const CBlockIndex** ppindex=nullptr, CBlockHeader *first_invalid=nullptr);
 
 /** Check whether enough disk space is available for an incoming block */
-bool CheckDiskSpace(uint64_t nAdditionalBytes = 0, bool blocks_dir = false);
+bool CheckDiskSpace(uint64_t nAdditionalBytes = 0);
 /** Open a block file (blk?????.dat) */
 FILE* OpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false);
 /** Translation to a filesystem path */
@@ -412,7 +412,7 @@ bool IsWitnessEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& pa
 /** When there are blocks in the active chain with missing data, rewind the chainstate and remove them from the block index */
 bool RewindBlockIndex(const CChainParams& params);
 
-/** Update uncommitted block structures (currently: only the witness reserved value). This is safe for submitted blocks. */
+/** Update uncommitted block structures (currently: only the witness nonce). This is safe for submitted blocks. */
 void UpdateUncommittedBlockStructures(CBlock& block, const CBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
 
 /** Produce the necessary coinbase commitment for a block (modifies the hash, don't call for mined blocks). */
@@ -428,13 +428,6 @@ public:
 
 /** Replay blocks that aren't fully applied to the database. */
 bool ReplayBlocks(const CChainParams& params, CCoinsView* view);
-
-inline CBlockIndex* LookupBlockIndex(const uint256& hash)
-{
-    AssertLockHeld(cs_main);
-    BlockMap::const_iterator it = mapBlockIndex.find(hash);
-    return it == mapBlockIndex.end() ? nullptr : it->second;
-}
 
 /** Find the last common block between the parameter chain and a locator. */
 CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);

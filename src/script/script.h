@@ -189,6 +189,10 @@ enum opcodetype
     OP_PUBKEY = 0xfe,
 
     OP_INVALIDOPCODE = 0xff,
+
+    // zerocoin params
+    OP_ZEROCOINMINT = 0xc1,
+    OP_ZEROCOINSPEND = 0xc2,
 };
 
 // Maximum value that an opcode can be
@@ -568,7 +572,7 @@ public:
             pc += nSize;
         }
 
-        opcodeRet = static_cast<opcodetype>(opcode);
+        opcodeRet = (opcodetype)opcode;
         return true;
     }
 
@@ -667,6 +671,10 @@ public:
         CScriptBase::clear();
         shrink_to_fit();
     }
+
+    //Zerocoin params
+    bool IsZerocoinMint() const;
+    bool IsZerocoinSpend() const;
 };
 
 struct CScriptWitness

@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 
+/** This is needed because the foreach macro can't get over the comma in pair<t1, t2> */
+#define PAIRTYPE(t1, t2)    std::pair<t1, t2>
+
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))
 #define UBEGIN(a)           ((unsigned char*)&(a))
@@ -151,7 +154,7 @@ bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out);
 
 /** Convert from one power-of-2 number base to another. */
 template<int frombits, int tobits, bool pad, typename O, typename I>
-bool ConvertBits(const O& outfn, I it, I end) {
+bool ConvertBits(O& out, I it, I end) {
     size_t acc = 0;
     size_t bits = 0;
     constexpr size_t maxv = (1 << tobits) - 1;
@@ -161,12 +164,12 @@ bool ConvertBits(const O& outfn, I it, I end) {
         bits += frombits;
         while (bits >= tobits) {
             bits -= tobits;
-            outfn((acc >> bits) & maxv);
+            out.push_back((acc >> bits) & maxv);
         }
         ++it;
     }
     if (pad) {
-        if (bits) outfn((acc << (tobits - bits)) & maxv);
+        if (bits) out.push_back((acc << (tobits - bits)) & maxv);
     } else if (bits >= frombits || ((acc << (tobits - bits)) & maxv)) {
         return false;
     }

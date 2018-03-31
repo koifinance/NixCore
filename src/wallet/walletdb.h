@@ -10,7 +10,7 @@
 #include <primitives/transaction.h>
 #include <wallet/db.h>
 #include <key.h>
-
+#include "libzerocoin/Zerocoin.h"
 #include <list>
 #include <stdint.h>
 #include <string>
@@ -44,16 +44,18 @@ class CWallet;
 class CWalletTx;
 class uint160;
 class uint256;
+class CZerocoinEntry;
+class CZerocoinSpendEntry;
 
 /** Error statuses for the wallet database */
-enum class DBErrors
+enum DBErrors
 {
-    LOAD_OK,
-    CORRUPT,
-    NONCRITICAL_ERROR,
-    TOO_NEW,
-    LOAD_FAIL,
-    NEED_REWRITE
+    DB_LOAD_OK,
+    DB_CORRUPT,
+    DB_NONCRITICAL_ERROR,
+    DB_TOO_NEW,
+    DB_LOAD_FAIL,
+    DB_NEED_REWRITE
 };
 
 /* simple HD chain data model */
@@ -218,17 +220,17 @@ public:
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
     DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
     /* Try to (very carefully!) recover wallet database (with a possible key type filter) */
-    static bool Recover(const fs::path& wallet_path, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename);
+    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename);
     /* Recover convenience-function to bypass the key filter callback, called when verify fails, recovers everything */
-    static bool Recover(const fs::path& wallet_path, std::string& out_backup_filename);
+    static bool Recover(const std::string& filename, std::string& out_backup_filename);
     /* Recover filter (used as callback), will only let keys (cryptographical keys) as KV/key-type pass through */
     static bool RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue);
     /* Function to determine if a certain KV/key-type is a key (cryptographical key) type */
     static bool IsKeyType(const std::string& strType);
     /* verifies the database environment */
-    static bool VerifyEnvironment(const fs::path& wallet_path, std::string& errorStr);
+    static bool VerifyEnvironment(const std::string& walletFile, const fs::path& walletDir, std::string& errorStr);
     /* verifies the database file */
-    static bool VerifyDatabaseFile(const fs::path& wallet_path, std::string& warningStr, std::string& errorStr);
+    static bool VerifyDatabaseFile(const std::string& walletFile, const fs::path& walletDir, std::string& warningStr, std::string& errorStr);
 
     //! write the hdchain model (external chain child index counter)
     bool WriteHDChain(const CHDChain& chain);
@@ -243,6 +245,19 @@ public:
     bool ReadVersion(int& nVersion);
     //! Write wallet version
     bool WriteVersion(int nVersion);
+
+    bool WriteZerocoinEntry(const CZerocoinEntry& zerocoin);
+    bool EraseZerocoinEntry(const CZerocoinEntry& zerocoin);
+    void ListPubCoin(std::list<CZerocoinEntry>& listPubCoin);
+    void ListCoinSpendSerial(std::list<CZerocoinSpendEntry>& listCoinSpendSerial);
+    bool WriteCoinSpendSerialEntry(const CZerocoinSpendEntry& zerocoinSpend);
+    bool EraseCoinSpendSerialEntry(const CZerocoinSpendEntry& zerocoinSpend);
+    bool WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
+    bool ReadZerocoinAccumulator(libzerocoin::Accumulator& accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
+    // bool EraseZerocoinAccumulator(libzerocoin::Accumulator& accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
+
+    bool ReadCalculatedZCBlock(int& height);
+    bool WriteCalculatedZCBlock(int height);
 private:
     CDB batch;
     CWalletDBWrapper& m_dbw;
