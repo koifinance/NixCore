@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Copyright (c) 2015-2017 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying 
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,6 +36,6 @@ if sys.version_info.major >= 3:
 m = hmac.new(bytearray(salt, 'utf-8'), bytearray(password, 'utf-8'), digestmod)
 result = m.hexdigest()
 
-print("String to be appended to bitcoin.conf:")
+print("String to be appended to nix.conf:")
 print("rpcauth="+username+":"+salt+"$"+result)
 print("Your password:\n"+password)

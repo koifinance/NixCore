@@ -1,43 +1,6 @@
 Developer Notes
 ===============
 
-<!-- markdown-toc start -->
-**Table of Contents**
-
-- [Developer Notes](#developer-notes)
-    - [Coding Style](#coding-style)
-    - [Doxygen comments](#doxygen-comments)
-    - [Development tips and tricks](#development-tips-and-tricks)
-        - [Compiling for debugging](#compiling-for-debugging)
-        - [Compiling for gprof profiling](#compiling-for-gprof-profiling)
-        - [debug.log](#debuglog)
-        - [Testnet and Regtest modes](#testnet-and-regtest-modes)
-        - [DEBUG_LOCKORDER](#debug_lockorder)
-        - [Valgrind suppressions file](#valgrind-suppressions-file)
-        - [Compiling for test coverage](#compiling-for-test-coverage)
-    - [Locking/mutex usage notes](#lockingmutex-usage-notes)
-    - [Threads](#threads)
-    - [Ignoring IDE/editor files](#ignoring-ideeditor-files)
-- [Development guidelines](#development-guidelines)
-    - [General Bitcoin Core](#general-bitcoin-core)
-    - [Wallet](#wallet)
-    - [General C++](#general-c)
-    - [C++ data structures](#c-data-structures)
-    - [Strings and formatting](#strings-and-formatting)
-    - [Variable names](#variable-names)
-    - [Threads and synchronization](#threads-and-synchronization)
-    - [Source code organization](#source-code-organization)
-    - [GUI](#gui)
-    - [Subtrees](#subtrees)
-    - [Git and GitHub tips](#git-and-github-tips)
-    - [Scripted diffs](#scripted-diffs)
-    - [RPC interface guidelines](#rpc-interface-guidelines)
-
-<!-- markdown-toc end -->
-
-Coding Style
----------------
-
 Various coding styles have been used during the history of the codebase,
 and the result is not very consistent. However, we're now trying to converge to
 a single style, which is specified below. When writing patches, favor the new
@@ -76,7 +39,6 @@ code.
   - `++i` is preferred over `i++`.
   - `nullptr` is preferred over `NULL` or `(void*)0`.
   - `static_assert` is preferred over `assert` where possible. Generally; compile-time checking is preferred over run-time checking.
-  - `enum class` is preferred over `enum` where possible. Scoped enumerations avoid two potential pitfalls/problems with traditional C++ enumerations: implicit conversions to int, and name clashes due to enumerators being exported to the surrounding scope.
 
 Block style example:
 ```c++
@@ -170,64 +132,57 @@ Not OK (used plenty in the current source, but not picked up):
 A full list of comment syntaxes picked up by doxygen can be found at http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html,
 but if possible use one of the above styles.
 
-Documentation can be generated with `make docs` and cleaned up with `make clean-docs`.
-
 Development tips and tricks
 ---------------------------
 
-### Compiling for debugging
+**compiling for debugging**
 
-Run configure with `--enable-debug` to add additional compiler flags that
-produce better debugging builds.
+Run configure with the --enable-debug option, then make. Or run configure with
+CXXFLAGS="-g -ggdb -O0" or whatever debug flags you need.
 
-### Compiling for gprof profiling
-
-Run configure with the `--enable-gprof` option, then make.
-
-### debug.log
+**debug.log**
 
 If the code is behaving strangely, take a look in the debug.log file in the data directory;
 error and debugging messages are written there.
 
-The `-debug=...` command-line option controls debugging; running with just `-debug` or `-debug=1` will turn
+The -debug=... command-line option controls debugging; running with just -debug or -debug=1 will turn
 on all categories (and give you a very large debug.log file).
 
-The Qt code routes `qDebug()` output to debug.log under category "qt": run with `-debug=qt`
+The Qt code routes qDebug() output to debug.log under category "qt": run with -debug=qt
 to see it.
 
-### Testnet and Regtest modes
+**testnet and regtest modes**
 
-Run with the `-testnet` option to run with "play bitcoins" on the test network, if you
+Run with the -testnet option to run with "play nixs" on the test network, if you
 are testing multi-machine code that needs to operate across the internet.
 
-If you are testing something that can run on one machine, run with the `-regtest` option.
-In regression test mode, blocks can be created on-demand; see [test/functional/](/test/functional) for tests
-that run in `-regtest` mode.
+If you are testing something that can run on one machine, run with the -regtest option.
+In regression test mode, blocks can be created on-demand; see test/functional/ for tests
+that run in -regtest mode.
 
-### DEBUG_LOCKORDER
+**DEBUG_LOCKORDER**
 
-Bitcoin Core is a multi-threaded application, and deadlocks or other
-multi-threading bugs can be very difficult to track down. The `--enable-debug`
-configure option adds `-DDEBUG_LOCKORDER` to the compiler flags. This inserts
-run-time checks to keep track of which locks are held, and adds warnings to the
-debug.log file if inconsistencies are detected.
+NIX Core is a multithreaded application, and deadlocks or other multithreading bugs
+can be very difficult to track down. Compiling with -DDEBUG_LOCKORDER (configure
+CXXFLAGS="-DDEBUG_LOCKORDER -g") inserts run-time checks to keep track of which locks
+are held, and adds warnings to the debug.log file if inconsistencies are detected.
 
-### Valgrind suppressions file
+**Valgrind suppressions file**
 
 Valgrind is a programming tool for memory debugging, memory leak detection, and
 profiling. The repo contains a Valgrind suppressions file
-([`valgrind.supp`](https://github.com/bitcoin/bitcoin/blob/master/contrib/valgrind.supp))
+([`valgrind.supp`](https://github.com/nix/nix/blob/master/contrib/valgrind.supp))
 which includes known Valgrind warnings in our dependencies that cannot be fixed
 in-tree. Example use:
 
 ```shell
-$ valgrind --suppressions=contrib/valgrind.supp src/test/test_bitcoin
+$ valgrind --suppressions=contrib/valgrind.supp src/test/test_nix
 $ valgrind --suppressions=contrib/valgrind.supp --leak-check=full \
-      --show-leak-kinds=all src/test/test_bitcoin --log_level=test_suite
-$ valgrind -v --leak-check=full src/bitcoind -printtoconsole
+      --show-leak-kinds=all src/test/test_nix --log_level=test_suite
+$ valgrind -v --leak-check=full src/nixd -printtoconsole
 ```
 
-### Compiling for test coverage
+**compiling for test coverage**
 
 LCOV can be used to generate a test coverage report based upon `make check`
 execution. LCOV must be installed on your system (e.g. the `lcov` package
@@ -240,76 +195,25 @@ To enable LCOV report generation during test runs:
 make
 make cov
 
-# A coverage report will now be accessible at `./test_bitcoin.coverage/index.html`.
+# A coverage report will now be accessible at `./test_nix.coverage/index.html`.
 ```
-
-**Sanitizers**
-
-Bitcoin can be compiled with various "sanitizers" enabled, which add
-instrumentation for issues regarding things like memory safety, thread race
-conditions, or undefined behavior. This is controlled with the
-`--with-sanitizers` configure flag, which should be a comma separated list of
-sanitizers to enable. The sanitizer list should correspond to supported
-`-fsanitize=` options in your compiler. These sanitizers have runtime overhead,
-so they are most useful when testing changes or producing debugging builds.
-
-Some examples:
-
-```bash
-# Enable both the address sanitizer and the undefined behavior sanitizer
-./configure --with-sanitizers=address,undefined
-
-# Enable the thread sanitizer
-./configure --with-sanitizers=thread
-```
-
-If you are compiling with GCC you will typically need to install corresponding
-"san" libraries to actually compile with these flags, e.g. libasan for the
-address sanitizer, libtsan for the thread sanitizer, and libubsan for the
-undefined sanitizer. If you are missing required libraries, the configure script
-will fail with a linker error when testing the sanitizer flags.
-
-The test suite should pass cleanly with the `thread` and `undefined` sanitizers,
-but there are a number of known problems when using the `address` sanitizer. The
-address sanitizer is known to fail in
-[sha256_sse4::Transform](/src/crypto/sha256_sse4.cpp) which makes it unusable
-unless you also use `--disable-asm` when running configure. We would like to fix
-sanitizer issues, so please send pull requests if you can fix any errors found
-by the address sanitizer (or any other sanitizer).
-
-Not all sanitizer options can be enabled at the same time, e.g. trying to build
-with `--with-sanitizers=address,thread` will fail in the configure script as
-these sanitizers are mutually incompatible. Refer to your compiler manual to
-learn more about these options and which sanitizers are supported by your
-compiler.
-
-Additional resources:
-
- * [AddressSanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
- * [LeakSanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
- * [MemorySanitizer](https://clang.llvm.org/docs/MemorySanitizer.html)
- * [ThreadSanitizer](https://clang.llvm.org/docs/ThreadSanitizer.html)
- * [UndefinedBehaviorSanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html)
- * [GCC Instrumentation Options](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html)
- * [Google Sanitizers Wiki](https://github.com/google/sanitizers/wiki)
- * [Issue #12691: Enable -fsanitize flags in Travis](https://github.com/bitcoin/bitcoin/issues/12691)
 
 Locking/mutex usage notes
 -------------------------
 
 The code is multi-threaded, and uses mutexes and the
-`LOCK` and `TRY_LOCK` macros to protect data structures.
+LOCK/TRY_LOCK macros to protect data structures.
 
-Deadlocks due to inconsistent lock ordering (thread 1 locks `cs_main` and then
-`cs_wallet`, while thread 2 locks them in the opposite order: result, deadlock
-as each waits for the other to release its lock) are a problem. Compile with
-`-DDEBUG_LOCKORDER` (or use `--enable-debug`) to get lock order inconsistencies
-reported in the debug.log file.
+Deadlocks due to inconsistent lock ordering (thread 1 locks cs_main
+and then cs_wallet, while thread 2 locks them in the opposite order:
+result, deadlock as each waits for the other to release its lock) are
+a problem. Compile with -DDEBUG_LOCKORDER to get lock order
+inconsistencies reported in the debug.log file.
 
 Re-architecting the core code so there are better-defined interfaces
 between the various components is a goal, with any necessary locking
-done by the components (e.g. see the self-contained `CBasicKeyStore` class
-and its `cs_KeyStore` lock for example).
+done by the components (e.g. see the self-contained CKeyStore class
+and its cs_KeyStore lock for example).
 
 Threads
 -------
@@ -334,7 +238,11 @@ Threads
 
 - DumpAddresses : Dumps IP addresses of nodes to peers.dat.
 
+- ThreadFlushWalletDB : Close the wallet.dat file if it hasn't been used in 500ms.
+
 - ThreadRPCServer : Remote procedure call handler, listens on port 8332 for connections and services them.
+
+- NIXMiner : Generates nixs (if wallet is enabled).
 
 - Shutdown : Does an orderly shutdown of everything.
 
@@ -344,7 +252,7 @@ Ignoring IDE/editor files
 In closed-source environments in which everyone uses the same IDE it is common
 to add temporary files it produces to the project-wide `.gitignore` file.
 
-However, in open source software such as Bitcoin Core, where everyone uses
+However, in open source software such as NIX Core, where everyone uses
 their own editors/IDE/tools, it is less common. Only you know what files your
 editor produces and this may change from version to version. The canonical way
 to do this is thus to create your local gitignore. Add this to `~/.gitconfig`:
@@ -374,9 +282,9 @@ Development guidelines
 ============================
 
 A few non-style-related recommendations for developers, as well as points to
-pay attention to for reviewers of Bitcoin Core code.
+pay attention to for reviewers of NIX Core code.
 
-General Bitcoin Core
+General NIX Core
 ----------------------
 
 - New features should be exposed on RPC first, then can be made available in the GUI
@@ -472,18 +380,6 @@ C++ data structures
   - *Rationale*: Easier to understand what is happening, thus easier to spot mistakes, even for those
   that are not language lawyers
 
-- Initialize all non-static class members where they are defined
-
-  - *Rationale*: Initializing the members in the declaration makes it easy to spot uninitialized ones,
-  and avoids accidentally reading uninitialized memory
-
-```cpp
-class A
-{
-    uint32_t m_count{0};
-}
-```
-
 Strings and formatting
 ------------------------
 
@@ -504,7 +400,7 @@ Strings and formatting
 
 - For `strprintf`, `LogPrint`, `LogPrintf` formatting characters don't need size specifiers
 
-  - *Rationale*: Bitcoin Core uses tinyformat, which is type safe. Leave them out to avoid confusion
+  - *Rationale*: NIX Core uses tinyformat, which is type safe. Leave them out to avoid confusion
 
 Variable names
 --------------
@@ -519,11 +415,11 @@ member name:
 ```c++
 class AddressBookPage
 {
-    Mode m_mode;
+    Mode mode;
 }
 
 AddressBookPage::AddressBookPage(Mode _mode) :
-      m_mode(_mode)
+      mode(_mode)
 ...
 ```
 
@@ -618,12 +514,12 @@ Subtrees
 
 Several parts of the repository are subtrees of software maintained elsewhere.
 
-Some of these are maintained by active developers of Bitcoin Core, in which case changes should probably go
+Some of these are maintained by active developers of NIX Core, in which case changes should probably go
 directly upstream without being PRed directly against the project.  They will be merged back in the next
 subtree merge.
 
 Others are external projects without a tight relationship with our project.  Changes to these should also
-be sent upstream but bugfixes may also be prudent to PR against Bitcoin Core so that they can be integrated
+be sent upstream but bugfixes may also be prudent to PR against NIX Core so that they can be integrated
 quickly.  Cosmetic changes should be purely taken upstream.
 
 There is a tool in contrib/devtools/git-subtree-check.sh to check a subtree directory for consistency with
@@ -632,66 +528,17 @@ its upstream repository.
 Current subtrees include:
 
 - src/leveldb
-  - Upstream at https://github.com/google/leveldb ; Maintained by Google, but
-    open important PRs to Core to avoid delay.
-  - **Note**: Follow the instructions in [Upgrading LevelDB](#upgrading-leveldb) when
-    merging upstream changes to the leveldb subtree.
+  - Upstream at https://github.com/google/leveldb ; Maintained by Google, but open important PRs to Core to avoid delay
 
 - src/libsecp256k1
-  - Upstream at https://github.com/bitcoin-core/secp256k1/ ; actively maintaned by Core contributors.
+  - Upstream at https://github.com/nix-core/secp256k1/ ; actively maintaned by Core contributors.
 
 - src/crypto/ctaes
-  - Upstream at https://github.com/bitcoin-core/ctaes ; actively maintained by Core contributors.
+  - Upstream at https://github.com/nix-core/ctaes ; actively maintained by Core contributors.
 
 - src/univalue
   - Upstream at https://github.com/jgarzik/univalue ; report important PRs to Core to avoid delay.
 
-Upgrading LevelDB
----------------------
-
-Extra care must be taken when upgrading LevelDB. This section explains issues
-you must be aware of.
-
-### File Descriptor Counts
-
-In most configurations we use the default LevelDB value for `max_open_files`,
-which is 1000 at the time of this writing. If LevelDB actually uses this many
-file descriptors it will cause problems with Bitcoin's `select()` loop, because
-it may cause new sockets to be created where the fd value is >= 1024. For this
-reason, on 64-bit Unix systems we rely on an internal LevelDB optimization that
-uses `mmap()` + `close()` to open table files without actually retaining
-references to the table file descriptors. If you are upgrading LevelDB, you must
-sanity check the changes to make sure that this assumption remains valid.
-
-In addition to reviewing the upstream changes in `env_posix.cc`, you can use `lsof` to
-check this. For example, on Linux this command will show open `.ldb` file counts:
-
-```bash
-$ lsof -p $(pidof bitcoind) |\
-    awk 'BEGIN { fd=0; mem=0; } /ldb$/ { if ($4 == "mem") mem++; else fd++ } END { printf "mem = %s, fd = %s\n", mem, fd}'
-mem = 119, fd = 0
-```
-
-The `mem` value shows how many files are mmap'ed, and the `fd` value shows you
-many file descriptors these files are using. You should check that `fd` is a
-small number (usually 0 on 64-bit hosts).
-
-See the notes in the `SetMaxOpenFiles()` function in `dbwrapper.cc` for more
-details.
-
-### Consensus Compatibility
-
-It is possible for LevelDB changes to inadvertently change consensus
-compatibility between nodes. This happened in Bitcoin 0.8 (when LevelDB was
-first introduced). When upgrading LevelDB you should review the upstream changes
-to check for issues affecting consensus compatibility.
-
-For example, if LevelDB had a bug that accidentally prevented a key from being
-returned in an edge case, and that bug was fixed upstream, the bug "fix" would
-be an incompatible consensus change. In this situation the correct behavior
-would be to revert the upstream fix before applying the updates to Bitcoin's
-copy of LevelDB. In general you should be wary of any upstream changes affecting
-what data is returned from LevelDB queries.
 
 Git and GitHub tips
 ---------------------
@@ -735,7 +582,7 @@ Git and GitHub tips
 
         [remote "upstream-pull"]
                 fetch = +refs/pull/*:refs/remotes/upstream-pull/*
-                url = git@github.com:bitcoin/bitcoin.git
+                url = git@github.com:nix/nix.git
 
   This will add an `upstream-pull` remote to your git repository, which can be fetched using `git fetch --all`
   or `git fetch upstream-pull`. Afterwards, you can use `upstream-pull/NUMBER/head` in arguments to `git show`,
@@ -759,7 +606,7 @@ To create a scripted-diff:
 
 The scripted-diff is verified by the tool `contrib/devtools/commit-script-check.sh`
 
-Commit [`bb81e173`](https://github.com/bitcoin/bitcoin/commit/bb81e173) is an example of a scripted-diff.
+Commit `bb81e173` is an example of a scripted-diff.
 
 RPC interface guidelines
 --------------------------
@@ -801,7 +648,7 @@ A few guidelines for introducing and reviewing new RPC interfaces:
 - Try not to overload methods on argument type. E.g. don't make `getblock(true)` and `getblock("hash")`
   do different things.
 
-  - *Rationale*: This is impossible to use with `bitcoin-cli`, and can be surprising to users.
+  - *Rationale*: This is impossible to use with `nix-cli`, and can be surprising to users.
 
   - *Exception*: Some RPC calls can take both an `int` and `bool`, most notably when a bool was switched
     to a multi-value, or due to other historical reasons. **Always** have false map to 0 and
@@ -820,7 +667,7 @@ A few guidelines for introducing and reviewing new RPC interfaces:
 
 - Add every non-string RPC argument `(method, idx, name)` to the table `vRPCConvertParams` in `rpc/client.cpp`.
 
-  - *Rationale*: `bitcoin-cli` and the GUI debug console use this table to determine how to
+  - *Rationale*: `nix-cli` and the GUI debug console use this table to determine how to
     convert a plaintext command line to JSON. If the types don't match, the method can be unusable
     from there.
 
@@ -842,21 +689,10 @@ A few guidelines for introducing and reviewing new RPC interfaces:
   RPCs whose behavior does *not* depend on the current chainstate may omit this
   call.
 
-  - *Rationale*: In previous versions of Bitcoin Core, the wallet was always
+  - *Rationale*: In previous versions of NIX Core, the wallet was always
     in-sync with the chainstate (by virtue of them all being updated in the
     same cs_main lock). In order to maintain the behavior that wallet RPCs
     return results as of at least the highest best-known block an RPC
     client may be aware of prior to entering a wallet RPC call, we must block
     until the wallet is caught up to the chainstate as of the RPC call's entry.
     This also makes the API much easier for RPC clients to reason about.
-
-- Be aware of RPC method aliases and generally avoid registering the same
-  callback function pointer for different RPCs.
-
-  - *Rationale*: RPC methods registered with the same function pointer will be
-    considered aliases and only the first method name will show up in the
-    `help` rpc command list.
-
-  - *Exception*: Using RPC method aliases may be appropriate in cases where a
-    new RPC is replacing a deprecated RPC, to avoid both RPCs confusingly
-    showing up in the command list.
