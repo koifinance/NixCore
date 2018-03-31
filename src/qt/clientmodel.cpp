@@ -138,9 +138,9 @@ size_t ClientModel::getMempoolDynamicUsage() const
 double ClientModel::getVerificationProgress(const CBlockIndex *tipIn) const
 {
     CBlockIndex *tip = const_cast<CBlockIndex *>(tipIn);
-    LOCK(cs_main);
     if (!tip)
     {
+        LOCK(cs_main);
         tip = chainActive.Tip();
     }
     return GuessVerificationProgress(Params().TxData(), tip);
@@ -177,13 +177,13 @@ bool ClientModel::inInitialBlockDownload() const
 enum BlockSource ClientModel::getBlockSource() const
 {
     if (fReindex)
-        return BlockSource::REINDEX;
+        return BLOCK_SOURCE_REINDEX;
     else if (fImporting)
-        return BlockSource::DISK;
+        return BLOCK_SOURCE_DISK;
     else if (getNumConnections() > 0)
-        return BlockSource::NETWORK;
+        return BLOCK_SOURCE_NETWORK;
 
-    return BlockSource::NONE;
+    return BLOCK_SOURCE_NONE;
 }
 
 void ClientModel::setNetworkActive(bool active)

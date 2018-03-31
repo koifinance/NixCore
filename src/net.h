@@ -37,6 +37,10 @@
 class CScheduler;
 class CNode;
 
+namespace boost {
+    class thread_group;
+} // namespace boost
+
 /** Time between pings automatically sent out for latency probing and keepalive (in seconds). */
 static const int PING_INTERVAL = 2 * 60;
 /** Time after which to disconnect, after waiting for a ping response (or inactivity). */
@@ -437,10 +441,8 @@ private:
     friend struct CConnmanTest;
 };
 extern std::unique_ptr<CConnman> g_connman;
-void Discover();
-void StartMapPort();
-void InterruptMapPort();
-void StopMapPort();
+void Discover(boost::thread_group& threadGroup);
+void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
@@ -469,13 +471,6 @@ public:
     virtual bool SendMessages(CNode* pnode, std::atomic<bool>& interrupt) = 0;
     virtual void InitializeNode(CNode* pnode) = 0;
     virtual void FinalizeNode(NodeId id, bool& update_connection_time) = 0;
-
-protected:
-    /**
-     * Protected destructor so that instances can only be deleted by derived classes.
-     * If that restriction is no longer desired, this should be made public and virtual.
-     */
-    ~NetEventsInterface() = default;
 };
 
 enum
@@ -648,7 +643,6 @@ public:
     bool fOneShot;
     bool m_manual_connection;
     bool fClient;
-    bool m_limited_node; //after BIP159
     const bool fInbound;
     std::atomic_bool fSuccessfullyConnected;
     std::atomic_bool fDisconnect;

@@ -4,7 +4,7 @@
 # Copyright (c) 2010-2017 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Bitcoin test framework primitive and message structures
+"""Bitcoin test framework primitive and message strcutures
 
 CBlock, CTransaction, CBlockHeader, CTxIn, CTxOut, etc....:
     data structures that should map to corresponding structures in
@@ -43,11 +43,6 @@ NODE_WITNESS = (1 << 3)
 NODE_UNSUPPORTED_SERVICE_BIT_5 = (1 << 5)
 NODE_UNSUPPORTED_SERVICE_BIT_7 = (1 << 7)
 NODE_NETWORK_LIMITED = (1 << 10)
-
-MSG_TX = 1
-MSG_BLOCK = 2
-MSG_WITNESS_FLAG = 1 << 30
-MSG_TYPE_MASK = 0xffffffff >> 2
 
 # Serialization/deserialization tools
 def sha256(s):
@@ -186,24 +181,19 @@ def ToHex(obj):
 
 class CAddress():
     def __init__(self):
-        self.time = 0
         self.nServices = 1
         self.pchReserved = b"\x00" * 10 + b"\xff" * 2
         self.ip = "0.0.0.0"
         self.port = 0
 
-    def deserialize(self, f, with_time=True):
-        if with_time:
-            self.time = struct.unpack("<i", f.read(4))[0]
+    def deserialize(self, f):
         self.nServices = struct.unpack("<Q", f.read(8))[0]
         self.pchReserved = f.read(12)
         self.ip = socket.inet_ntoa(f.read(4))
         self.port = struct.unpack(">H", f.read(2))[0]
 
-    def serialize(self, with_time=True):
+    def serialize(self):
         r = b""
-        if with_time:
-            r += struct.pack("<i", self.time)
         r += struct.pack("<Q", self.nServices)
         r += self.pchReserved
         r += socket.inet_aton(self.ip)
@@ -213,6 +203,8 @@ class CAddress():
     def __repr__(self):
         return "CAddress(nServices=%i ip=%s port=%i)" % (self.nServices,
                                                          self.ip, self.port)
+
+MSG_WITNESS_FLAG = 1<<30
 
 class CInv():
     typemap = {
@@ -861,11 +853,11 @@ class msg_version():
         self.nServices = struct.unpack("<Q", f.read(8))[0]
         self.nTime = struct.unpack("<q", f.read(8))[0]
         self.addrTo = CAddress()
-        self.addrTo.deserialize(f, False)
+        self.addrTo.deserialize(f)
 
         if self.nVersion >= 106:
             self.addrFrom = CAddress()
-            self.addrFrom.deserialize(f, False)
+            self.addrFrom.deserialize(f)
             self.nNonce = struct.unpack("<Q", f.read(8))[0]
             self.strSubVer = deser_string(f)
         else:
@@ -893,8 +885,8 @@ class msg_version():
         r += struct.pack("<i", self.nVersion)
         r += struct.pack("<Q", self.nServices)
         r += struct.pack("<q", self.nTime)
-        r += self.addrTo.serialize(False)
-        r += self.addrFrom.serialize(False)
+        r += self.addrTo.serialize()
+        r += self.addrFrom.serialize()
         r += struct.pack("<Q", self.nNonce)
         r += ser_string(self.strSubVer)
         r += struct.pack("<i", self.nStartingHeight)

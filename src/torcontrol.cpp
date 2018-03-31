@@ -133,7 +133,7 @@ TorControlConnection::~TorControlConnection()
 
 void TorControlConnection::readcb(struct bufferevent *bev, void *ctx)
 {
-    TorControlConnection *self = static_cast<TorControlConnection*>(ctx);
+    TorControlConnection *self = (TorControlConnection*)ctx;
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t n_read_out = 0;
     char *line;
@@ -178,7 +178,7 @@ void TorControlConnection::readcb(struct bufferevent *bev, void *ctx)
 
 void TorControlConnection::eventcb(struct bufferevent *bev, short what, void *ctx)
 {
-    TorControlConnection *self = static_cast<TorControlConnection*>(ctx);
+    TorControlConnection *self = (TorControlConnection*)ctx;
     if (what & BEV_EVENT_CONNECTED) {
         LogPrint(BCLog::TOR, "tor: Successfully connected!\n");
         self->connected(*self);
@@ -725,13 +725,13 @@ fs::path TorController::GetPrivateKeyFile()
 
 void TorController::reconnect_cb(evutil_socket_t fd, short what, void *arg)
 {
-    TorController *self = static_cast<TorController*>(arg);
+    TorController *self = (TorController*)arg;
     self->Reconnect();
 }
 
 /****** Thread ********/
 static struct event_base *gBase;
-static std::thread torControlThread;
+static boost::thread torControlThread;
 
 static void TorControlThread()
 {
@@ -740,7 +740,7 @@ static void TorControlThread()
     event_base_dispatch(gBase);
 }
 
-void StartTorControl()
+void StartTorControl(boost::thread_group& threadGroup, CScheduler& scheduler)
 {
     assert(!gBase);
 #ifdef WIN32
@@ -754,7 +754,7 @@ void StartTorControl()
         return;
     }
 
-    torControlThread = std::thread(std::bind(&TraceThread<void (*)()>, "torcontrol", &TorControlThread));
+    torControlThread = boost::thread(boost::bind(&TraceThread<void (*)()>, "torcontrol", &TorControlThread));
 }
 
 void InterruptTorControl()

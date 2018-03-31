@@ -52,9 +52,6 @@ if os.name == 'posix':
 TEST_EXIT_PASSED = 0
 TEST_EXIT_SKIPPED = 77
 
-# 20 minutes represented in seconds
-TRAVIS_TIMEOUT_DURATION = 20 * 60
-
 BASE_SCRIPTS= [
     # Scripts that are run by the travis build process.
     # Longest test should go first, to favor running tests in parallel
@@ -67,7 +64,7 @@ BASE_SCRIPTS= [
     'feature_segwit.py',
     # vv Tests less than 2m vv
     'wallet_basic.py',
-    'wallet_labels.py',
+    'wallet_accounts.py',
     'p2p_segwit.py',
     'wallet_dump.py',
     'rpc_listtransactions.py',
@@ -129,14 +126,12 @@ BASE_SCRIPTS= [
     'feature_cltv.py',
     'rpc_uptime.py',
     'wallet_resendwallettransactions.py',
-    'wallet_fallbackfee.py',
     'feature_minchainwork.py',
     'p2p_fingerprint.py',
     'feature_uacomment.py',
     'p2p_unrequested_blocks.py',
     'feature_logging.py',
     'p2p_node_network_limited.py',
-    'feature_blocksdir.py',
     'feature_config_args.py',
     # Don't append tests at the end to avoid merge conflicts
     # Put them in a random line within the section that fits their approximate run-time
@@ -237,27 +232,29 @@ def main():
         sys.exit(0)
 
     # Build list of tests
-    test_list = []
     if tests:
         # Individual tests have been specified. Run specified tests that exist
         # in the ALL_SCRIPTS list. Accept the name with or without .py extension.
-        tests = [re.sub("\.py$", "", test) + ".py" for test in tests]
-        for test in tests:
-            if test in ALL_SCRIPTS:
-                test_list.append(test)
+        tests = [re.sub("\.py$", "", t) + ".py" for t in tests]
+        test_list = []
+        for t in tests:
+            if t in ALL_SCRIPTS:
+                test_list.append(t)
             else:
-                print("{}WARNING!{} Test '{}' not found in full test list.".format(BOLD[1], BOLD[0], test))
-    elif args.extended:
-        # Include extended tests
-        test_list += ALL_SCRIPTS
+                print("{}WARNING!{} Test '{}' not found in full test list.".format(BOLD[1], BOLD[0], t))
     else:
-        # Run base tests only
-        test_list += BASE_SCRIPTS
+        # No individual tests have been specified.
+        # Run all base tests, and optionally run extended tests.
+        test_list = BASE_SCRIPTS
+        if args.extended:
+            # place the EXTENDED_SCRIPTS first since the three longest ones
+            # are there and the list is shorter
+            test_list = EXTENDED_SCRIPTS + test_list
 
     # Remove the test cases that the user has explicitly asked to exclude.
     if args.exclude:
-        exclude_tests = [re.sub("\.py$", "", test) + ".py" for test in args.exclude.split(',')]
-        for exclude_test in exclude_tests:
+        tests_excl = [re.sub("\.py$", "", t) + ".py" for t in args.exclude.split(',')]
+        for exclude_test in tests_excl:
             if exclude_test in test_list:
                 test_list.remove(exclude_test)
             else:
@@ -271,7 +268,7 @@ def main():
     if args.help:
         # Print help for test_runner.py, then print help of the first script (with args removed) and exit.
         parser.print_help()
-        subprocess.check_call([sys.executable, os.path.join(config["environment"]["SRCDIR"], 'test', 'functional', test_list[0].split()[0]), '-h'])
+        subprocess.check_call([(config["environment"]["SRCDIR"] + '/test/functional/' + test_list[0].split()[0])] + ['-h'])
         sys.exit(0)
 
     check_script_list(config["environment"]["SRCDIR"])
@@ -315,14 +312,14 @@ def run_tests(test_list, src_dir, build_dir, exeext, tmpdir, jobs=1, enable_cove
     if len(test_list) > 1 and jobs > 1:
         # Populate cache
         try:
-            subprocess.check_output([sys.executable, tests_dir + 'create_cache.py'] + flags + ["--tmpdir=%s/cache" % tmpdir])
+            subprocess.check_output([tests_dir + 'create_cache.py'] + flags + ["--tmpdir=%s/cache" % tmpdir])
         except subprocess.CalledProcessError as e:
             sys.stdout.buffer.write(e.output)
             raise
 
     #Run Tests
     job_queue = TestHandler(jobs, tests_dir, tmpdir, test_list, flags)
-    start_time = time.time()
+    time0 = time.time()
     test_results = []
 
     max_len_name = len(max(test_list, key=len))
@@ -345,10 +342,10 @@ def run_tests(test_list, src_dir, build_dir, exeext, tmpdir, jobs=1, enable_cove
                 print('\n============')
                 print('{}Combined log for {}:{}'.format(BOLD[1], testdir, BOLD[0]))
                 print('============\n')
-                combined_logs, _ = subprocess.Popen([sys.executable, os.path.join(tests_dir, 'combine_logs.py'), '-c', testdir], universal_newlines=True, stdout=subprocess.PIPE).communicate()
+                combined_logs, _ = subprocess.Popen([os.path.join(tests_dir, 'combine_logs.py'), '-c', testdir], universal_newlines=True, stdout=subprocess.PIPE).communicate()
                 print("\n".join(deque(combined_logs.splitlines(), combined_logs_len)))
 
-    print_results(test_results, max_len_name, (int(time.time() - start_time)))
+    print_results(test_results, max_len_name, (int(time.time() - time0)))
 
     if coverage:
         coverage.report_rpc_coverage()
@@ -367,7 +364,7 @@ def run_tests(test_list, src_dir, build_dir, exeext, tmpdir, jobs=1, enable_cove
 def print_results(test_results, max_len_name, runtime):
     results = "\n" + BOLD[1] + "%s | %s | %s\n\n" % ("TEST".ljust(max_len_name), "STATUS   ", "DURATION") + BOLD[0]
 
-    test_results.sort(key=TestResult.sort_key)
+    test_results.sort(key=lambda result: result.name.lower())
     all_passed = True
     time_sum = 0
 
@@ -378,11 +375,7 @@ def print_results(test_results, max_len_name, runtime):
         results += str(test_result)
 
     status = TICK + "Passed" if all_passed else CROSS + "Failed"
-    if not all_passed:
-        results += RED[1]
     results += BOLD[1] + "\n%s | %s | %s s (accumulated) \n" % ("ALL".ljust(max_len_name), status.ljust(9), time_sum) + BOLD[0]
-    if not all_passed:
-        results += RED[0]
     results += "Runtime: %s s\n" % (runtime)
     print(results)
 
@@ -409,17 +402,17 @@ class TestHandler:
         while self.num_running < self.num_jobs and self.test_list:
             # Add tests
             self.num_running += 1
-            test = self.test_list.pop(0)
+            t = self.test_list.pop(0)
             portseed = len(self.test_list) + self.portseed_offset
             portseed_arg = ["--portseed={}".format(portseed)]
             log_stdout = tempfile.SpooledTemporaryFile(max_size=2**16)
             log_stderr = tempfile.SpooledTemporaryFile(max_size=2**16)
-            test_argv = test.split()
+            test_argv = t.split()
             testdir = "{}/{}_{}".format(self.tmpdir, re.sub(".py$", "", test_argv[0]), portseed)
             tmpdir_arg = ["--tmpdir={}".format(testdir)]
-            self.jobs.append((test,
+            self.jobs.append((t,
                               time.time(),
-                              subprocess.Popen([sys.executable, self.tests_dir + test_argv[0]] + test_argv[1:] + self.flags + portseed_arg + tmpdir_arg,
+                              subprocess.Popen([self.tests_dir + test_argv[0]] + test_argv[1:] + self.flags + portseed_arg + tmpdir_arg,
                                                universal_newlines=True,
                                                stdout=log_stdout,
                                                stderr=log_stderr),
@@ -431,14 +424,15 @@ class TestHandler:
         while True:
             # Return first proc that finishes
             time.sleep(.5)
-            for job in self.jobs:
-                (name, start_time, proc, testdir, log_out, log_err) = job
-                if os.getenv('TRAVIS') == 'true' and int(time.time() - start_time) > TRAVIS_TIMEOUT_DURATION:
-                    # In travis, timeout individual tests (to stop tests hanging and not providing useful output).
+            for j in self.jobs:
+                (name, time0, proc, testdir, log_out, log_err) = j
+                if os.getenv('TRAVIS') == 'true' and int(time.time() - time0) > 20 * 60:
+                    # In travis, timeout individual tests after 20 minutes (to stop tests hanging and not
+                    # providing useful output.
                     proc.send_signal(signal.SIGINT)
                 if proc.poll() is not None:
                     log_out.seek(0), log_err.seek(0)
-                    [stdout, stderr] = [log_file.read().decode('utf-8') for log_file in (log_out, log_err)]
+                    [stdout, stderr] = [l.read().decode('utf-8') for l in (log_out, log_err)]
                     log_out.close(), log_err.close()
                     if proc.returncode == TEST_EXIT_PASSED and stderr == "":
                         status = "Passed"
@@ -447,9 +441,9 @@ class TestHandler:
                     else:
                         status = "Failed"
                     self.num_running -= 1
-                    self.jobs.remove(job)
+                    self.jobs.remove(j)
 
-                    return TestResult(name, status, int(time.time() - start_time)), testdir, stdout, stderr
+                    return TestResult(name, status, int(time.time() - time0)), testdir, stdout, stderr
             print('.', end='', flush=True)
 
 class TestResult():
@@ -458,14 +452,6 @@ class TestResult():
         self.status = status
         self.time = time
         self.padding = 0
-
-    def sort_key(self):
-        if self.status == "Passed":
-            return 0, self.name.lower()
-        elif self.status == "Failed":
-            return 2, self.name.lower()
-        elif self.status == "Skipped":
-            return 1, self.name.lower()
 
     def __repr__(self):
         if self.status == "Passed":
@@ -486,15 +472,21 @@ class TestResult():
 
 
 def check_script_prefixes():
-    """Check that test scripts start with one of the allowed name prefixes."""
+    """Check that at most a handful of the
+       test scripts don't start with one of the allowed name prefixes."""
+
+    # LEEWAY is provided as a transition measure, so that pull-requests
+    # that introduce new tests that don't conform with the naming
+    # convention don't immediately cause the tests to fail.
+    LEEWAY = 10
 
     good_prefixes_re = re.compile("(example|feature|interface|mempool|mining|p2p|rpc|wallet)_")
     bad_script_names = [script for script in ALL_SCRIPTS if good_prefixes_re.match(script) is None]
 
-    if bad_script_names:
-        print("%sERROR:%s %d tests not meeting naming conventions:" % (BOLD[1], BOLD[0], len(bad_script_names)))
+    if len(bad_script_names) > 0:
+        print("INFO: %d tests not meeting naming conventions:" % (len(bad_script_names)))
         print("  %s" % ("\n  ".join(sorted(bad_script_names))))
-        raise AssertionError("Some tests are not following naming convention!")
+    assert len(bad_script_names) <= LEEWAY, "Too many tests not following naming convention! (%d found, maximum: %d)" % (len(bad_script_names), LEEWAY)
 
 
 def check_script_list(src_dir):
@@ -503,7 +495,7 @@ def check_script_list(src_dir):
     Check that there are no scripts in the functional tests directory which are
     not being run by pull-tester.py."""
     script_dir = src_dir + '/test/functional/'
-    python_files = set([test_file for test_file in os.listdir(script_dir) if test_file.endswith(".py")])
+    python_files = set([t for t in os.listdir(script_dir) if t[-3:] == ".py"])
     missed_tests = list(python_files - set(map(lambda x: x.split()[0], ALL_SCRIPTS + NON_SCRIPTS)))
     if len(missed_tests) != 0:
         print("%sWARNING!%s The following scripts are not being run: %s. Check the test lists in test_runner.py." % (BOLD[1], BOLD[0], str(missed_tests)))
@@ -539,7 +531,7 @@ class RPCCoverage():
 
         if uncovered:
             print("Uncovered RPC commands:")
-            print("".join(("  - %s\n" % command) for command in sorted(uncovered)))
+            print("".join(("  - %s\n" % i) for i in sorted(uncovered)))
         else:
             print("All RPC commands covered.")
 
@@ -563,8 +555,8 @@ class RPCCoverage():
         if not os.path.isfile(coverage_ref_filename):
             raise RuntimeError("No coverage reference found")
 
-        with open(coverage_ref_filename, 'r') as coverage_ref_file:
-            all_cmds.update([line.strip() for line in coverage_ref_file.readlines()])
+        with open(coverage_ref_filename, 'r') as f:
+            all_cmds.update([i.strip() for i in f.readlines()])
 
         for root, dirs, files in os.walk(self.dir):
             for filename in files:
@@ -572,8 +564,8 @@ class RPCCoverage():
                     coverage_filenames.add(os.path.join(root, filename))
 
         for filename in coverage_filenames:
-            with open(filename, 'r') as coverage_file:
-                covered_cmds.update([line.strip() for line in coverage_file.readlines()])
+            with open(filename, 'r') as f:
+                covered_cmds.update([i.strip() for i in f.readlines()])
 
         return all_cmds - covered_cmds
 

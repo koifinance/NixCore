@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>org.nix.nixd</string>
+	<string>nixplatform.io.nixd</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/bin/nixd</string>

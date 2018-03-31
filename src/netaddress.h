@@ -93,7 +93,7 @@ class CNetAddr
 
         template <typename Stream, typename Operation>
         inline void SerializationOp(Stream& s, Operation ser_action) {
-            READWRITE(ip);
+            READWRITE(FLATDATA(ip));
         }
 
         friend class CSubNet;
@@ -131,8 +131,8 @@ class CSubNet
         template <typename Stream, typename Operation>
         inline void SerializationOp(Stream& s, Operation ser_action) {
             READWRITE(network);
-            READWRITE(netmask);
-            READWRITE(valid);
+            READWRITE(FLATDATA(netmask));
+            READWRITE(FLATDATA(valid));
         }
 };
 
@@ -166,7 +166,7 @@ class CService : public CNetAddr
 
         template <typename Stream, typename Operation>
         inline void SerializationOp(Stream& s, Operation ser_action) {
-            READWRITE(ip);
+            READWRITE(FLATDATA(ip));
             unsigned short portN = htons(port);
             READWRITE(FLATDATA(portN));
             if (ser_action.ForRead())

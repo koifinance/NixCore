@@ -8,7 +8,7 @@
 #include <QAbstractTableModel>
 #include <QStringList>
 
-enum class OutputType;
+enum OutputType : int;
 
 class AddressTablePriv;
 class WalletModel;
@@ -75,8 +75,6 @@ public:
     int lookupAddress(const QString &address) const;
 
     EditStatus getEditStatus() const { return editStatus; }
-
-    OutputType GetDefaultAddressType() const;
 
 private:
     WalletModel *walletModel;

@@ -129,7 +129,7 @@ public:
     bool involvesWatchAddress;
 
     /** Return the unique identifier for this transaction (part) */
-    QString getTxHash() const;
+    QString getTxID() const;
 
     /** Return the output index of the subtransaction  */
     int getOutputIndex() const;

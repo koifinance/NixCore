@@ -6,14 +6,10 @@
 #ifndef BITCOIN_INIT_H
 #define BITCOIN_INIT_H
 
-#include <memory>
 #include <string>
 
 class CScheduler;
 class CWallet;
-
-class WalletInitInterface;
-extern std::unique_ptr<WalletInitInterface> g_wallet_init_interface;
 
 namespace boost
 {
@@ -61,9 +57,9 @@ bool AppInitLockDataDirectory();
 bool AppInitMain();
 
 /** The help message mode determines what help message to show */
-enum class HelpMessageMode {
-    BITCOIND,
-    BITCOIN_QT
+enum HelpMessageMode {
+    HMM_BITCOIND,
+    HMM_BITCOIN_QT
 };
 
 /** Help for options shared between UI and daemon (for -help) */

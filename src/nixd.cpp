@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
+#include <config/nix-config.h>
 #endif
 
 #include <chainparams.h>
@@ -18,10 +18,6 @@
 #include <httpserver.h>
 #include <httprpc.h>
 #include <utilstrencodings.h>
-#if ENABLE_WALLET
-#include <wallet/init.h>
-#endif
-#include <walletinitinterface.h>
 
 #include <boost/thread.hpp>
 
@@ -63,12 +59,6 @@ bool AppInit(int argc, char* argv[])
 {
     bool fRet = false;
 
-#if ENABLE_WALLET
-    g_wallet_init_interface.reset(new WalletInit);
-#else
-    g_wallet_init_interface.reset(new DummyWalletInit);
-#endif
-
     //
     // Parameters
     //
@@ -89,7 +79,7 @@ bool AppInit(int argc, char* argv[])
             strUsage += "\n" + _("Usage:") + "\n" +
                   "  bitcoind [options]                     " + strprintf(_("Start %s Daemon"), _(PACKAGE_NAME)) + "\n";
 
-            strUsage += "\n" + HelpMessage(HelpMessageMode::BITCOIND);
+            strUsage += "\n" + HelpMessage(HMM_BITCOIND);
         }
 
         fprintf(stdout, "%s", strUsage.c_str());

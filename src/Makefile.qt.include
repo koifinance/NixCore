@@ -1,4 +1,3 @@
-# Copyright (c) 2017-2018 The NIX Core developers
 # Copyright (c) 2013-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -10,22 +9,29 @@ EXTRA_LIBRARIES += qt/libnixqt.a
 QT_TS = \
   qt/locale/nix_af.ts \
   qt/locale/nix_af_ZA.ts \
+  qt/locale/nix_am.ts \
   qt/locale/nix_ar.ts \
   qt/locale/nix_be_BY.ts \
   qt/locale/nix_bg_BG.ts \
   qt/locale/nix_bg.ts \
+  qt/locale/nix_bn.ts \
+  qt/locale/nix_bs.ts \
   qt/locale/nix_ca_ES.ts \
   qt/locale/nix_ca.ts \
   qt/locale/nix_ca@valencia.ts \
+  qt/locale/nix_cs_CZ.ts \
   qt/locale/nix_cs.ts \
   qt/locale/nix_cy.ts \
   qt/locale/nix_da.ts \
+  qt/locale/nix_de_DE.ts \
   qt/locale/nix_de.ts \
   qt/locale/nix_el_GR.ts \
   qt/locale/nix_el.ts \
+  qt/locale/nix_en_AU.ts \
   qt/locale/nix_en_GB.ts \
   qt/locale/nix_en.ts \
   qt/locale/nix_eo.ts \
+  qt/locale/nix_es_419.ts \
   qt/locale/nix_es_AR.ts \
   qt/locale/nix_es_CL.ts \
   qt/locale/nix_es_CO.ts \
@@ -45,44 +51,64 @@ QT_TS = \
   qt/locale/nix_fr_FR.ts \
   qt/locale/nix_fr.ts \
   qt/locale/nix_gl.ts \
+  qt/locale/nix_he_IL.ts \
   qt/locale/nix_he.ts \
   qt/locale/nix_hi_IN.ts \
   qt/locale/nix_hr.ts \
+  qt/locale/nix_hu_HU.ts \
   qt/locale/nix_hu.ts \
   qt/locale/nix_id_ID.ts \
+  qt/locale/nix_id.ts \
+  qt/locale/nix_is.ts \
   qt/locale/nix_it_IT.ts \
   qt/locale/nix_it.ts \
+  qt/locale/nix_ja_JP.ts \
   qt/locale/nix_ja.ts \
   qt/locale/nix_ka.ts \
   qt/locale/nix_kk_KZ.ts \
+  qt/locale/nix_km_KH.ts \
   qt/locale/nix_ko_KR.ts \
+  qt/locale/nix_ko.ts \
   qt/locale/nix_ku_IQ.ts \
   qt/locale/nix_ky.ts \
   qt/locale/nix_la.ts \
   qt/locale/nix_lt.ts \
   qt/locale/nix_lv_LV.ts \
   qt/locale/nix_mk_MK.ts \
+  qt/locale/nix_ml.ts \
   qt/locale/nix_mn.ts \
+  qt/locale/nix_mr_IN.ts \
   qt/locale/nix_ms_MY.ts \
+  qt/locale/nix_ms.ts \
+  qt/locale/nix_my.ts \
+  qt/locale/nix_nb_NO.ts \
   qt/locale/nix_nb.ts \
   qt/locale/nix_ne.ts \
+  qt/locale/nix_nl_NL.ts \
   qt/locale/nix_nl.ts \
   qt/locale/nix_pam.ts \
+  qt/locale/nix_pl_PL.ts \
   qt/locale/nix_pl.ts \
   qt/locale/nix_pt_BR.ts \
   qt/locale/nix_pt_PT.ts \
+  qt/locale/nix_pt.ts \
   qt/locale/nix_ro_RO.ts \
   qt/locale/nix_ro.ts \
   qt/locale/nix_ru_RU.ts \
   qt/locale/nix_ru.ts \
+  qt/locale/nix_si.ts \
   qt/locale/nix_sk.ts \
   qt/locale/nix_sl_SI.ts \
+  qt/locale/nix_sn.ts \
   qt/locale/nix_sq.ts \
   qt/locale/nix_sr@latin.ts \
   qt/locale/nix_sr.ts \
   qt/locale/nix_sv.ts \
+  qt/locale/nix_ta_IN.ts \
   qt/locale/nix_ta.ts \
+  qt/locale/nix_te.ts \
   qt/locale/nix_th_TH.ts \
+  qt/locale/nix_th.ts \
   qt/locale/nix_tr_TR.ts \
   qt/locale/nix_tr.ts \
   qt/locale/nix_uk.ts \
@@ -91,6 +117,7 @@ QT_TS = \
   qt/locale/nix_vi.ts \
   qt/locale/nix_vi_VN.ts \
   qt/locale/nix_zh_CN.ts \
+  qt/locale/nix_zh-Hans.ts \
   qt/locale/nix_zh_HK.ts \
   qt/locale/nix_zh.ts \
   qt/locale/nix_zh_TW.ts

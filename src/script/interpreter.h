@@ -104,7 +104,7 @@ enum
     //
     SCRIPT_VERIFY_MINIMALIF = (1U << 13),
 
-    // Signature(s) must be empty vector if a CHECK(MULTI)SIG operation failed
+    // Signature(s) must be empty vector if an CHECK(MULTI)SIG operation failed
     //
     SCRIPT_VERIFY_NULLFAIL = (1U << 14),
 
@@ -123,10 +123,10 @@ struct PrecomputedTransactionData
     explicit PrecomputedTransactionData(const CTransaction& tx);
 };
 
-enum class SigVersion
+enum SigVersion
 {
-    BASE = 0,
-    WITNESS_V0 = 1,
+    SIGVERSION_BASE = 0,
+    SIGVERSION_WITNESS_V0 = 1,
 };
 
 uint256 SignatureHash(const CScript &scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache = nullptr);

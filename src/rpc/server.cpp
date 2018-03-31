@@ -5,9 +5,9 @@
 
 #include <rpc/server.h>
 
+#include <base58.h>
 #include <fs.h>
 #include <init.h>
-#include <key_io.h>
 #include <random.h>
 #include <sync.h>
 #include <ui_interface.h>
@@ -50,11 +50,12 @@ void RPCServer::OnStopped(std::function<void ()> slot)
 }
 
 void RPCTypeCheck(const UniValue& params,
-                  const std::list<UniValueType>& typesExpected,
+                  const std::list<UniValue::VType>& typesExpected,
                   bool fAllowNull)
 {
     unsigned int i = 0;
-    for (const UniValueType& t : typesExpected) {
+    for (UniValue::VType t : typesExpected)
+    {
         if (params.size() <= i)
             break;
 
@@ -66,10 +67,10 @@ void RPCTypeCheck(const UniValue& params,
     }
 }
 
-void RPCTypeCheckArgument(const UniValue& value, const UniValueType& typeExpected)
+void RPCTypeCheckArgument(const UniValue& value, UniValue::VType typeExpected)
 {
-    if (!typeExpected.typeAny && value.type() != typeExpected.type) {
-        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("Expected type %s, got %s", uvTypeName(typeExpected.type), uvTypeName(value.type())));
+    if (value.type() != typeExpected) {
+        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("Expected type %s, got %s", uvTypeName(typeExpected), uvTypeName(value.type())));
     }
 }
 
@@ -367,11 +368,7 @@ void JSONRPCRequest::parse(const UniValue& valRequest)
     if (!valMethod.isStr())
         throw JSONRPCError(RPC_INVALID_REQUEST, "Method must be a string");
     strMethod = valMethod.get_str();
-    if (fLogIPs)
-        LogPrint(BCLog::RPC, "ThreadRPCServer method=%s user=%s peeraddr=%s\n", SanitizeString(strMethod),
-            this->authUser, this->peerAddr);
-    else
-        LogPrint(BCLog::RPC, "ThreadRPCServer method=%s user=%s\n", SanitizeString(strMethod), this->authUser);
+    LogPrint(BCLog::RPC, "ThreadRPCServer method=%s\n", SanitizeString(strMethod));
 
     // Parse params
     UniValue valParams = find_value(request, "params");

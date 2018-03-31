@@ -10,8 +10,7 @@
 #include <qt/paymentrequest.pb.h>
 #pragma GCC diagnostic pop
 
-#include <amount.h>
-#include <script/script.h>
+#include <base58.h>
 
 #include <openssl/x509.h>
 

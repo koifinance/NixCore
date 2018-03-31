@@ -24,10 +24,9 @@ public:
     const std::string& DataDir() const { return strDataDir; }
     int RPCPort() const { return nRPCPort; }
 
-    CBaseChainParams() = delete;
-    CBaseChainParams(const std::string& data_dir, int rpc_port) : nRPCPort(rpc_port), strDataDir(data_dir) {}
+protected:
+    CBaseChainParams() {}
 
-private:
     int nRPCPort;
     std::string strDataDir;
 };

@@ -46,7 +46,6 @@ class RESTTest (BitcoinTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 3
-        self.extra_args = [["-rest"]] * self.num_nodes
 
     def setup_network(self, split=False):
         super().setup_network()
@@ -85,7 +84,7 @@ class RESTTest (BitcoinTestFramework):
         #######################################
         # GETUTXOS: query an unspent outpoint #
         #######################################
-        json_request = '/'+txid+'-'+str(n)
+        json_request = '/checkmempool/'+txid+'-'+str(n)
         json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
         json_obj = json.loads(json_string)
 
@@ -100,14 +99,14 @@ class RESTTest (BitcoinTestFramework):
         #################################################
         # GETUTXOS: now query an already spent outpoint #
         #################################################
-        json_request = '/'+vintx+'-0'
+        json_request = '/checkmempool/'+vintx+'-0'
         json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
         json_obj = json.loads(json_string)
 
         #check chainTip response
         assert_equal(json_obj['chaintipHash'], bb_hash)
 
-        #make sure there is no utxo in the response because this oupoint has been spent
+        #make sure there is no utox in the response because this oupoint has been spent
         assert_equal(len(json_obj['utxos']), 0)
 
         #check bitmap
@@ -117,7 +116,7 @@ class RESTTest (BitcoinTestFramework):
         ##################################################
         # GETUTXOS: now check both with the same request #
         ##################################################
-        json_request = '/'+txid+'-'+str(n)+'/'+vintx+'-0'
+        json_request = '/checkmempool/'+txid+'-'+str(n)+'/'+vintx+'-0'
         json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
         json_obj = json.loads(json_string)
         assert_equal(len(json_obj['utxos']), 1)
@@ -151,47 +150,22 @@ class RESTTest (BitcoinTestFramework):
         txid = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
         json_string = http_get_call(url.hostname, url.port, '/rest/tx/'+txid+self.FORMAT_SEPARATOR+"json")
         json_obj = json.loads(json_string)
-        # get the spent output to later check for utxo (should be spent by then)
-        spent = '{}-{}'.format(json_obj['vin'][0]['txid'], json_obj['vin'][0]['vout'])
+        vintx = json_obj['vin'][0]['txid'] # get the vin to later check for utxo (should be spent by then)
         # get n of 0.1 outpoint
         n = 0
         for vout in json_obj['vout']:
             if vout['value'] == 0.1:
                 n = vout['n']
-        spending = '{}-{}'.format(txid, n)
 
-        json_request = '/'+spending
+        json_request = '/'+txid+'-'+str(n)
         json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
         json_obj = json.loads(json_string)
-        assert_equal(len(json_obj['utxos']), 0) #there should be no outpoint because it has just added to the mempool
+        assert_equal(len(json_obj['utxos']), 0) #there should be an outpoint because it has just added to the mempool
 
-        json_request = '/checkmempool/'+spending
+        json_request = '/checkmempool/'+txid+'-'+str(n)
         json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
         json_obj = json.loads(json_string)
         assert_equal(len(json_obj['utxos']), 1) #there should be an outpoint because it has just added to the mempool
-
-        json_request = '/'+spent
-        json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
-        json_obj = json.loads(json_string)
-        assert_equal(len(json_obj['utxos']), 1) #there should be an outpoint because its spending tx is not confirmed
-
-        json_request = '/checkmempool/'+spent
-        json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
-        json_obj = json.loads(json_string)
-        assert_equal(len(json_obj['utxos']), 0) #there should be no outpoint because it has just spent (by mempool tx)
-
-        self.nodes[0].generate(1)
-        self.sync_all()
-
-        json_request = '/'+spending
-        json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
-        json_obj = json.loads(json_string)
-        assert_equal(len(json_obj['utxos']), 1) #there should be an outpoint because it was mined
-
-        json_request = '/checkmempool/'+spending
-        json_string = http_get_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json')
-        json_obj = json.loads(json_string)
-        assert_equal(len(json_obj['utxos']), 1) #there should be an outpoint because it was mined
 
         #do some invalid requests
         json_request = '{"checkmempool'
@@ -321,10 +295,8 @@ class RESTTest (BitcoinTestFramework):
         # check that there are our submitted transactions in the TX memory pool
         json_string = http_get_call(url.hostname, url.port, '/rest/mempool/contents'+self.FORMAT_SEPARATOR+'json')
         json_obj = json.loads(json_string)
-        for i, tx in enumerate(txs):
+        for tx in txs:
             assert_equal(tx in json_obj, True)
-            assert_equal(json_obj[tx]['spentby'], txs[i+1:i+2])
-            assert_equal(json_obj[tx]['depends'], txs[i-1:i])
 
         # now mine the transactions
         newblockhash = self.nodes[1].generate(1)

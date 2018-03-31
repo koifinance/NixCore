@@ -16,7 +16,7 @@ BEGIN
     BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
-            VALUE "CompanyName",        "nix"
+            VALUE "CompanyName",        "NIX"
             VALUE "FileDescription",    "nix-tx (CLI NIX transaction editor utility)"
             VALUE "FileVersion",        VER_FILEVERSION_STR
             VALUE "InternalName",       "nix-tx"

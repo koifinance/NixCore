@@ -26,9 +26,9 @@
 UniValue JSONRPCRequestObj(const std::string& strMethod, const UniValue& params, const UniValue& id)
 {
     UniValue request(UniValue::VOBJ);
-    request.pushKV("method", strMethod);
-    request.pushKV("params", params);
-    request.pushKV("id", id);
+    request.push_back(Pair("method", strMethod));
+    request.push_back(Pair("params", params));
+    request.push_back(Pair("id", id));
     return request;
 }
 
@@ -36,11 +36,11 @@ UniValue JSONRPCReplyObj(const UniValue& result, const UniValue& error, const Un
 {
     UniValue reply(UniValue::VOBJ);
     if (!error.isNull())
-        reply.pushKV("result", NullUniValue);
+        reply.push_back(Pair("result", NullUniValue));
     else
-        reply.pushKV("result", result);
-    reply.pushKV("error", error);
-    reply.pushKV("id", id);
+        reply.push_back(Pair("result", result));
+    reply.push_back(Pair("error", error));
+    reply.push_back(Pair("id", id));
     return reply;
 }
 
@@ -53,8 +53,8 @@ std::string JSONRPCReply(const UniValue& result, const UniValue& error, const Un
 UniValue JSONRPCError(int code, const std::string& message)
 {
     UniValue error(UniValue::VOBJ);
-    error.pushKV("code", code);
-    error.pushKV("message", message);
+    error.push_back(Pair("code", code));
+    error.push_back(Pair("message", message));
     return error;
 }
 
@@ -72,7 +72,9 @@ static fs::path GetAuthCookieFile(bool temp=false)
     if (temp) {
         arg += ".tmp";
     }
-    return AbsPathForConfigVal(fs::path(arg));
+    fs::path path(arg);
+    if (!path.is_complete()) path = GetDataDir() / path;
+    return path;
 }
 
 bool GenerateAuthCookie(std::string *cookie_out)

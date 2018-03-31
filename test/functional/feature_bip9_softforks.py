@@ -51,7 +51,7 @@ class BIP9SoftForksTest(ComparisonTestFramework):
         return tx
 
     def sign_transaction(self, node, tx):
-        signresult = node.signrawtransactionwithwallet(bytes_to_hex_str(tx.serialize()))
+        signresult = node.signrawtransaction(bytes_to_hex_str(tx.serialize()))
         tx = CTransaction()
         f = BytesIO(hex_str_to_bytes(signresult['hex']))
         tx.deserialize(f)
@@ -241,7 +241,7 @@ class BIP9SoftForksTest(ComparisonTestFramework):
         self.test.clear_all_connections()
         self.stop_nodes()
         self.nodes = []
-        shutil.rmtree(get_datadir_path(self.options.tmpdir, 0))
+        shutil.rmtree(self.options.tmpdir + "/node0")
         self.setup_chain()
         self.setup_network()
         self.test.add_all_connections(self.nodes)

@@ -14,8 +14,8 @@
 #include <qt/sendcoinsdialog.h>
 #include <qt/transactiontablemodel.h>
 
+#include <base58.h>
 #include <chain.h>
-#include <key_io.h>
 #include <keystore.h>
 #include <validation.h>
 #include <net.h> // for g_connman
@@ -42,7 +42,6 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *_wallet, O
     transactionTableModel(0),
     recentRequestsTableModel(0),
     cachedBalance(0), cachedUnconfirmedBalance(0), cachedImmatureBalance(0),
-    cachedWatchOnlyBalance{0}, cachedWatchUnconfBalance{0}, cachedWatchImmatureBalance{0},
     cachedEncryptionStatus(Unencrypted),
     cachedNumBlocks(0)
 {
@@ -110,9 +109,8 @@ void WalletModel::updateStatus()
 {
     EncryptionStatus newEncryptionStatus = getEncryptionStatus();
 
-    if(cachedEncryptionStatus != newEncryptionStatus) {
-        Q_EMIT encryptionStatusChanged();
-    }
+    if(cachedEncryptionStatus != newEncryptionStatus)
+        Q_EMIT encryptionStatusChanged(newEncryptionStatus);
 }
 
 void WalletModel::pollBalanceChanged()
@@ -276,9 +274,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         int nChangePosRet = -1;
         std::string strFailReason;
 
-        CTransactionRef& newTx = transaction.getTransaction();
+        CWalletTx *newTx = transaction.getTransaction();
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
-        bool fCreated = wallet->CreateTransaction(vecSend, newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl);
+        bool fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl);
         transaction.setTransactionFee(nFeeRequired);
         if (fSubtractFeeFromAmount && fCreated)
             transaction.reassignAmounts(nChangePosRet);
@@ -310,8 +308,8 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 
     {
         LOCK2(cs_main, wallet->cs_wallet);
+        CWalletTx *newTx = transaction.getTransaction();
 
-        std::vector<std::pair<std::string, std::string>> vOrderForm;
         for (const SendCoinsRecipient &rcp : transaction.getRecipients())
         {
             if (rcp.paymentRequest.IsInitialized())
@@ -322,22 +320,22 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
                 }
 
                 // Store PaymentRequests in wtx.vOrderForm in wallet.
+                std::string key("PaymentRequest");
                 std::string value;
                 rcp.paymentRequest.SerializeToString(&value);
-                vOrderForm.emplace_back("PaymentRequest", std::move(value));
+                newTx->vOrderForm.push_back(make_pair(key, value));
             }
             else if (!rcp.message.isEmpty()) // Message from normal bitcoin:URI (bitcoin:123...?message=example)
-                vOrderForm.emplace_back("Message", rcp.message.toStdString());
+                newTx->vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
         }
 
-        CTransactionRef& newTx = transaction.getTransaction();
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
         CValidationState state;
-        if (!wallet->CommitTransaction(newTx, {} /* mapValue */, std::move(vOrderForm), {} /* fromAccount */, *keyChange, g_connman.get(), state))
+        if(!wallet->CommitTransaction(*newTx, *keyChange, g_connman.get(), state))
             return SendCoinsReturn(TransactionCommitFailed, QString::fromStdString(state.GetRejectReason()));
 
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
-        ssTx << newTx;
+        ssTx << *newTx->tx;
         transaction_array.append(&(ssTx[0]), ssTx.size());
     }
 
@@ -697,9 +695,9 @@ bool WalletModel::bumpFee(uint256 hash)
     questionString.append("</td></tr></table>");
     SendConfirmationDialog confirmationDialog(tr("Confirm fee bump"), questionString);
     confirmationDialog.exec();
-    QMessageBox::StandardButton retval = static_cast<QMessageBox::StandardButton>(confirmationDialog.result());
+    QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
 
-    // cancel sign&broadcast if user doesn't want to bump the fee
+    // cancel sign&broadcast if users doesn't want to bump the fee
     if (retval != QMessageBox::Yes) {
         return false;
     }
@@ -737,21 +735,10 @@ bool WalletModel::hdEnabled() const
 
 OutputType WalletModel::getDefaultAddressType() const
 {
-    return wallet->m_default_address_type;
+    return g_address_type;
 }
 
 int WalletModel::getDefaultConfirmTarget() const
 {
     return nTxConfirmTarget;
-}
-
-QString WalletModel::getWalletName() const
-{
-    LOCK(wallet->cs_wallet);
-    return QString::fromStdString(wallet->GetName());
-}
-
-bool WalletModel::isMultiwallet()
-{
-    return gArgs.GetArgs("-wallet").size() > 1;
 }

@@ -21,22 +21,6 @@ CAmount GetRequiredFee(unsigned int nTxBytes)
 
 CAmount GetMinimumFee(unsigned int nTxBytes, const CCoinControl& coin_control, const CTxMemPool& pool, const CBlockPolicyEstimator& estimator, FeeCalculation *feeCalc)
 {
-    CAmount fee_needed = GetMinimumFeeRate(coin_control, pool, estimator, feeCalc).GetFee(nTxBytes);
-    // Always obey the maximum
-    if (fee_needed > maxTxFee) {
-        fee_needed = maxTxFee;
-        if (feeCalc) feeCalc->reason = FeeReason::MAXTXFEE;
-    }
-    return fee_needed;
-}
-
-CFeeRate GetRequiredFeeRate()
-{
-    return std::max(CWallet::minTxFee, ::minRelayTxFee);
-}
-
-CFeeRate GetMinimumFeeRate(const CCoinControl& coin_control, const CTxMemPool& pool, const CBlockPolicyEstimator& estimator, FeeCalculation *feeCalc)
-{
     /* User control of how to calculate fee uses the following parameter precedence:
        1. coin_control.m_feerate
        2. coin_control.m_confirm_target
@@ -44,15 +28,15 @@ CFeeRate GetMinimumFeeRate(const CCoinControl& coin_control, const CTxMemPool& p
        4. nTxConfirmTarget (user-set global variable)
        The first parameter that is set is used.
     */
-    CFeeRate feerate_needed ;
+    CAmount fee_needed;
     if (coin_control.m_feerate) { // 1.
-        feerate_needed = *(coin_control.m_feerate);
+        fee_needed = coin_control.m_feerate->GetFee(nTxBytes);
         if (feeCalc) feeCalc->reason = FeeReason::PAYTXFEE;
         // Allow to override automatic min/max check over coin control instance
-        if (coin_control.fOverrideFeeRate) return feerate_needed;
+        if (coin_control.fOverrideFeeRate) return fee_needed;
     }
     else if (!coin_control.m_confirm_target && ::payTxFee != CFeeRate(0)) { // 3. TODO: remove magic value of 0 for global payTxFee
-        feerate_needed = ::payTxFee;
+        fee_needed = ::payTxFee.GetFee(nTxBytes);
         if (feeCalc) feeCalc->reason = FeeReason::PAYTXFEE;
     }
     else { // 2. or 4.
@@ -64,31 +48,34 @@ CFeeRate GetMinimumFeeRate(const CCoinControl& coin_control, const CTxMemPool& p
         if (coin_control.m_fee_mode == FeeEstimateMode::CONSERVATIVE) conservative_estimate = true;
         else if (coin_control.m_fee_mode == FeeEstimateMode::ECONOMICAL) conservative_estimate = false;
 
-        feerate_needed = estimator.estimateSmartFee(target, feeCalc, conservative_estimate);
-        if (feerate_needed == CFeeRate(0)) {
+        fee_needed = estimator.estimateSmartFee(target, feeCalc, conservative_estimate).GetFee(nTxBytes);
+        if (fee_needed == 0) {
             // if we don't have enough data for estimateSmartFee, then use fallbackFee
-            feerate_needed = CWallet::fallbackFee;
+            fee_needed = CWallet::fallbackFee.GetFee(nTxBytes);
             if (feeCalc) feeCalc->reason = FeeReason::FALLBACK;
-
-            // directly return if fallback fee is disabled (feerate 0 == disabled)
-            if (CWallet::fallbackFee == CFeeRate(0)) return feerate_needed;
         }
         // Obey mempool min fee when using smart fee estimation
-        CFeeRate min_mempool_feerate = pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000);
-        if (feerate_needed < min_mempool_feerate) {
-            feerate_needed = min_mempool_feerate;
+        CAmount min_mempool_fee = pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFee(nTxBytes);
+        if (fee_needed < min_mempool_fee) {
+            fee_needed = min_mempool_fee;
             if (feeCalc) feeCalc->reason = FeeReason::MEMPOOL_MIN;
         }
     }
 
     // prevent user from paying a fee below minRelayTxFee or minTxFee
-    CFeeRate required_feerate = GetRequiredFeeRate();
-    if (required_feerate > feerate_needed) {
-        feerate_needed = required_feerate;
+    CAmount required_fee = GetRequiredFee(nTxBytes);
+    if (required_fee > fee_needed) {
+        fee_needed = required_fee;
         if (feeCalc) feeCalc->reason = FeeReason::REQUIRED;
     }
-    return feerate_needed;
+    // But always obey the maximum
+    if (fee_needed > maxTxFee) {
+        fee_needed = maxTxFee;
+        if (feeCalc) feeCalc->reason = FeeReason::MAXTXFEE;
+    }
+    return fee_needed;
 }
+
 
 CFeeRate GetDiscardRate(const CBlockPolicyEstimator& estimator)
 {

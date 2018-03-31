@@ -17,7 +17,6 @@
 class ClientModel;
 class PlatformStyle;
 class RPCTimerInterface;
-class WalletModel;
 
 namespace Ui {
     class RPCConsole;
@@ -37,13 +36,12 @@ public:
     explicit RPCConsole(const PlatformStyle *platformStyle, QWidget *parent);
     ~RPCConsole();
 
-    static bool RPCParseCommandLine(std::string &strResult, const std::string &strCommand, bool fExecute, std::string * const pstrFilteredOut = nullptr, const std::string *walletID = nullptr);
-    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, std::string * const pstrFilteredOut = nullptr, const std::string *walletID = nullptr) {
-        return RPCParseCommandLine(strResult, strCommand, true, pstrFilteredOut, walletID);
+    static bool RPCParseCommandLine(std::string &strResult, const std::string &strCommand, bool fExecute, std::string * const pstrFilteredOut = nullptr);
+    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, std::string * const pstrFilteredOut = nullptr) {
+        return RPCParseCommandLine(strResult, strCommand, true, pstrFilteredOut);
     }
 
     void setClientModel(ClientModel *model);
-    void addWallet(WalletModel * const walletModel);
 
     enum MessageClass {
         MC_ERROR,
@@ -122,7 +120,7 @@ public Q_SLOTS:
 Q_SIGNALS:
     // For RPC command executor
     void stopExecutor();
-    void cmdRequest(const QString &command, const QString &walletID);
+    void cmdRequest(const QString &command);
 
 private:
     void startExecutor();
@@ -153,7 +151,6 @@ private:
     int consoleFontSize;
     QCompleter *autoCompleter;
     QThread thread;
-    QString m_last_wallet_id;
 
     /** Update UI with latest network info from model. */
     void updateNetworkState();

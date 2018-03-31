@@ -85,7 +85,7 @@ public:
         base_uint ret;
         for (int i = 0; i < WIDTH; i++)
             ret.pn[i] = ~pn[i];
-        ++ret;
+        ret++;
         return ret;
     }
 
@@ -252,6 +252,18 @@ public:
     {
         static_assert(WIDTH >= 2, "Assertion WIDTH >= 2 failed (WIDTH = BITS / 32). BITS is a template parameter.");
         return pn[0] | (uint64_t)pn[1] << 32;
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& s) const
+    {
+        s.write((char*)pn, sizeof(pn));
+    }
+
+    template<typename Stream>
+    void Unserialize(Stream& s)
+    {
+        s.read((char*)pn, sizeof(pn));
     }
 };
 
