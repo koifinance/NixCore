@@ -5,7 +5,7 @@
 #include <bench/bench.h>
 #include <key.h>
 #if defined(HAVE_CONSENSUS_LIB)
-#include <script/bitcoinconsensus.h>
+#include <script/nixconsensus.h>
 #endif
 #include <script/script.h>
 #include <script/sign.h>
