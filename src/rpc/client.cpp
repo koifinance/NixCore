@@ -145,15 +145,15 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "rescanblockchain", 1, "stop_height"},
 
     //NIX Privacy commands
-    { "setmininput", 0 },
-    { "mintzerocoin", 0 },
-    { "spendzerocoin", 0 },
-    { "setgenerate", 0 },
-    { "setgenerate", 1 },
-    { "setmintzerocoinstatus", 2 },
-    { "setmintzerocoinstatus", 1 },
-    { "listmintzerocoins", 0 },
-    { "listpubcoins", 0 },
+    { "setmininput", 0 , "amount"},
+    { "mintzerocoin", 0 , "amount"},
+    { "spendzerocoin", 0 , "amount"},
+    { "setgenerate", 0 , "bool"},
+    { "setgenerate", 1 , "bool"},
+    { "setmintzerocoinstatus", 2 ,""},
+    { "setmintzerocoinstatus", 1 ,""},
+    { "listmintzerocoins", 0 ,""},
+    { "listpubcoins", 0, ""},
 };
 
 class CRPCConvertTable
