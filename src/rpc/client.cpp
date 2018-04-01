@@ -143,6 +143,17 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "echojson", 9, "arg9" },
     { "rescanblockchain", 0, "start_height"},
     { "rescanblockchain", 1, "stop_height"},
+
+    //NIX Privacy commands
+    { "setmininput", 0 },
+    { "mintzerocoin", 0 },
+    { "spendzerocoin", 0 },
+    { "setgenerate", 0 },
+    { "setgenerate", 1 },
+    { "setmintzerocoinstatus", 2 },
+    { "setmintzerocoinstatus", 1 },
+    { "listmintzerocoins", 0 },
+    { "listpubcoins", 0 },
 };
 
 class CRPCConvertTable
