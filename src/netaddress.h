@@ -15,7 +15,6 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-
 enum Network
 {
     NET_UNROUTABLE = 0,

@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2017 The Bitcoin Core developers
+// Copyright (c) 2017-2018 The NIX Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -56,12 +57,24 @@
 #endif
 
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/bind.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/function.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
 #include <openssl/crypto.h>
+#include <sys/stat.h>
+#include <boost/optional.hpp>
+#include <boost/thread.hpp>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
+#include <event2/util.h>
+#include <event2/event.h>
+#include <event2/thread.h>
 
 #if ENABLE_ZMQ
 #include <zmq/zmqnotificationinterface.h>
@@ -877,7 +890,6 @@ void RunTor(){
 
     tor_main(argv_c.size(), &argv_c[0]);
 
-
 }
 
 
@@ -1446,8 +1458,12 @@ bool AppInitMain()
         SetLimited(NET_TOR);
         SetLimited(NET_IPV4);
         SetLimited(NET_IPV6);
-        proxyType addrProxy = proxyType(CService("127.0.0.1", 9050),
-                                        true);
+        CService tor_proxy;
+        std::string tor_ip = "127.0.0.1";
+        if (!Lookup(tor_ip.c_str(), tor_proxy, 9050, false)) {
+            return InitError(strprintf(_("Invalid tor address or hostname: '%s'"), tor_ip));
+        }
+        proxyType addrProxy = proxyType(tor_proxy,true);
         SetProxy(NET_IPV4, addrProxy);
         SetProxy(NET_IPV6, addrProxy);
         SetProxy(NET_TOR, addrProxy);

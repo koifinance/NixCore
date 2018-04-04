@@ -352,4 +352,12 @@ inline int64_t roundint64(double d)
     return (int64_t)(d > 0 ? d + 0.5 : d - 0.5);
 }
 
+
+std::pair<bool,std::string> ReadBinaryFileTor(const std::string &filename, size_t maxsize=std::numeric_limits<size_t>::max());
+
+/** Write contents of std::string to a file.
+ * @return true on success.
+ */
+bool WriteBinaryFileTor(const std::string &filename, const std::string &data);
+
 #endif // BITCOIN_UTIL_H
