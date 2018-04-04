@@ -208,9 +208,9 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
     switch (txout.nValue) {
     default:
         return state.DoS(100,
-            false,
-            PUBCOIN_NOT_VALIDATE,
-            "CheckZerocoinTransaction : PubCoin denomination is invalid");
+                         false,
+                         PUBCOIN_NOT_VALIDATE,
+                         "CheckZerocoinTransaction : PubCoin denomination is invalid");
 
     case libzerocoin::ZQ_ONE*COIN:
     case libzerocoin::ZQ_FIVE*COIN:
@@ -224,9 +224,9 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
         libzerocoin::PublicCoin checkPubCoin(ZCParams, pubCoin, denomination);
         if (!checkPubCoin.validate())
             return state.DoS(100,
-                false,
-                PUBCOIN_NOT_VALIDATE,
-                "CheckZerocoinTransaction : PubCoin validation failed");
+                             false,
+                             PUBCOIN_NOT_VALIDATE,
+                             "CheckZerocoinTransaction : PubCoin validation failed");
 
         if (zerocoinTxInfo != NULL && !zerocoinTxInfo->fInfoIsComplete) {
             // Update public coin list in the info

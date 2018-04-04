@@ -372,6 +372,8 @@ libnix_util_a_SOURCES = \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
+  libexecstream/exec-stream.h \
+  libexecstream/exec-stream.cpp \
   libzerocoin/bignum.h \
   libzerocoin/Accumulator.h \
   libzerocoin/Accumulator.cpp \
