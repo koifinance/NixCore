@@ -70,3 +70,8 @@ univalue/gen
 tor/src/ext/timeouts/bench
 leveldb/issues
 secp256k1/src/modules/ecdh
+libexecstream/test
+libexecstream/win
+libexecstream/posix
+libexecstream
+stealth-address

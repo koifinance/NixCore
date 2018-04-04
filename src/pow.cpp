@@ -10,6 +10,11 @@
 #include <primitives/block.h>
 #include <uint256.h>
 
+/*Forward declarations*/
+/*********************/
+unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const Consensus::Params& params);
+/*********************/
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     //NIX works off DarkGravityWave to calculate diff
