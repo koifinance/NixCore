@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2017 The Bitcoin Core developers
+// Copyright (c) 2017-2018 The NIX Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -13,6 +14,15 @@
 uint256 CBlockHeader::GetHash() const
 {
     return SerializeHash(*this);
+}
+
+uint256 CBlockHeader::GetPoWHash(int nHeight) const
+{
+
+   uint256 thash;
+   lyra2re2_hash(BEGIN(nVersion), BEGIN(thash));
+
+   return thash;
 }
 
 std::string CBlock::ToString() const
@@ -30,7 +40,6 @@ std::string CBlock::ToString() const
     }
     return s.str();
 }
-
 
 void CBlock::ZerocoinClean() const {
     /*if (zerocoinTxInfo != NULL)
