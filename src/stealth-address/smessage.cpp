@@ -53,10 +53,10 @@ Notes:
 #include "init.h" // pwalletMain
 #include "txdb.h"
 
-#include "lz4/lz4.c"
+#include "lz4.c"
 
-#include "xxhash/xxhash.h"
-#include "xxhash/xxhash.c"
+#include "xxhash.h"
+#include "xxhash.c"
 
 // On 64 bit system ld is 64bits
 #ifdef IS_ARCH_64

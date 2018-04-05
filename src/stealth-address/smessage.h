@@ -10,7 +10,7 @@
 #include "net.h"
 #include "db.h"
 #include "wallet.h"
-#include "stealth-address/lz4.h"
+#include "lz4.h"
 
 
 const unsigned int SMSG_HDR_LEN         = 104;               // length of unencrypted header, 4 + 2 + 1 + 8 + 16 + 33 + 32 + 4 +4

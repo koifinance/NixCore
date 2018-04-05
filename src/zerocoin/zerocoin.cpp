@@ -242,8 +242,8 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    /*
-    if (((nHeight >= DevRewardStartBlock) && (nHeight <= DevRewardStopBlock))) {
+
+    if (nHeight >= 1) {
         bool found_1 = false;
         bool found_2 = false;
 
@@ -251,18 +251,21 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript FOUNDER_2_SCRIPT;
 
         if (!fTestNet) {
-            FOUNDER_1_SCRIPT = GetScriptForDestination(CBitcoinAddress("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8").Get());
-            FOUNDER_2_SCRIPT = GetScriptForDestination(CBitcoinAddress("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ").Get());
+            FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8"));
+            FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ"));
         }
         else {
-            FOUNDER_1_SCRIPT = GetScriptForDestination(CBitcoinAddress("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ").Get());
-            FOUNDER_2_SCRIPT = GetScriptForDestination(CBitcoinAddress("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK").Get());
+            FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
+            FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
         }
+        //5% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
-            if (output.scriptPubKey == FOUNDER_1_SCRIPT && output.nValue == (int64_t)(22.5 * COIN)) {
+            //3% for first address
+            if (output.scriptPubKey == FOUNDER_1_SCRIPT && output.nValue == (int64_t)(0.03 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
-            if (output.scriptPubKey == FOUNDER_2_SCRIPT && output.nValue == (int64_t)(15 * COIN)) {
+            //2% for second address
+            if (output.scriptPubKey == FOUNDER_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_2 = true;
             }
         }
@@ -273,7 +276,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         }
 
     }
-    */
+
     /* Check for Zoinode payment in block */
     /*
     if(nHeight >= Params().GetConsensus().nZoinodePaymentsStartBlock){
