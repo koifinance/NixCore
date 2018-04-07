@@ -163,7 +163,7 @@ private:
     /** Clear the block's state and prepare for assembling a new block */
     void resetBlock();
     /** Add a tx to the block */
-    void AddToBlock(CTxMemPool::txiter iter);
+    void AddToBlock(CTxMemPool::txiter iter, unsigned int COUNT_SPEND_ZC_TX = 0, unsigned int MAX_SPEND_ZC_TX_PER_BLOCK = 5);
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on feerate including unconfirmed ancestors
