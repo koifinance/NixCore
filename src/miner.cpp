@@ -257,25 +257,22 @@ bool BlockAssembler::TestPackageTransactions(const CTxMemPool::setEntries& packa
     return true;
 }
 
-void BlockAssembler::AddToBlock(CTxMemPool::txiter iter, unsigned int COUNT_SPEND_ZC_TX, unsigned int MAX_SPEND_ZC_TX_PER_BLOCK)
+void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
 {
-    bool isZerocoin = iter->GetTx().IsZerocoinSpend();
-    if(!isZerocoin || (isZerocoin && (COUNT_SPEND_ZC_TX < MAX_SPEND_ZC_TX_PER_BLOCK))){
-        pblock->vtx.emplace_back(iter->GetSharedTx());
-        pblocktemplate->vTxFees.push_back(iter->GetFee());
-        pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
-        nBlockWeight += iter->GetTxWeight();
-        ++nBlockTx;
-        nBlockSigOpsCost += iter->GetSigOpCost();
-        nFees += iter->GetFee();
-        inBlock.insert(iter);
+    pblock->vtx.emplace_back(iter->GetSharedTx());
+    pblocktemplate->vTxFees.push_back(iter->GetFee());
+    pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
+    nBlockWeight += iter->GetTxWeight();
+    ++nBlockTx;
+    nBlockSigOpsCost += iter->GetSigOpCost();
+    nFees += iter->GetFee();
+    inBlock.insert(iter);
 
-        bool fPrintPriority = gArgs.GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
-        if (fPrintPriority) {
-            LogPrintf("fee %s txid %s\n",
-                      CFeeRate(iter->GetModifiedFee(), iter->GetTxSize()).ToString(),
-                      iter->GetTx().GetHash().ToString());
-        }
+    bool fPrintPriority = gArgs.GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
+    if (fPrintPriority) {
+        LogPrintf("fee %s txid %s\n",
+                  CFeeRate(iter->GetModifiedFee(), iter->GetTxSize()).ToString(),
+                  iter->GetTx().GetHash().ToString());
     }
 }
 
@@ -464,13 +461,19 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         SortForBlock(ancestors, iter, sortedEntries);
 
         for (size_t i=0; i<sortedEntries.size(); ++i) {
-            AddToBlock(sortedEntries[i], COUNT_SPEND_ZC_TX, MAX_SPEND_ZC_TX_PER_BLOCK);
+            if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
+                if(MAX_SPEND_ZC_TX_PER_BLOCK >= COUNT_SPEND_ZC_TX)
+                    AddToBlock(sortedEntries[i]);
+                COUNT_SPEND_ZC_TX++;
+            }
+            else
+                AddToBlock(sortedEntries[i]);
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);
         }
 
         ++nPackagesSelected;
-        COUNT_SPEND_ZC_TX++;
+
         // Update transactions that depend on each of these
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
     }
