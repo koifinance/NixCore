@@ -78,7 +78,7 @@ public:
         consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0;
         consensus.BIP34Height = 0;
-        consensus.BIP34Hash = uint256S("0xaec1b0223ff745a81417e462eab71e5346406764cc5924d54b6dbdbd0090714e"); //genesis block
+        consensus.BIP34Hash = uint256S("0x657dcc75c0dc8be8625fb43d91d6fe30c1bbc93fb6a333e4ca1eaa47f3da724f"); //genesis block
         consensus.BIP65Height = 0;
         consensus.BIP66Height = 0;
         consensus.powLimit = uint256S("0x00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -173,7 +173,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0x9eea953a4e8ef299b93f308c8d49ea79c9997cc8a8ace93128fa4495aac16dc7")},
+                { 0, uint256S("0x657dcc75c0dc8be8625fb43d91d6fe30c1bbc93fb6a333e4ca1eaa47f3da724f")},
             }
         };
 
