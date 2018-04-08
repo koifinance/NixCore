@@ -29,7 +29,7 @@
 #include <wallet/walletdb.h>
 #include <wallet/walletutil.h>
 #include "zerocoin/zerocoin.h"
-#include "libzerocoin/Zerocoin.h"
+#include "../libzerocoin/Zerocoin.h"
 
 #include <init.h>  // For StartShutdown
 
