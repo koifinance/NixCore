@@ -49,7 +49,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
  */
 static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
-    const char* pszTimestamp = "01/09/2014 Germany to Help in Disposal of Syrian Chemical Weapons";
+    const char* pszTimestamp = "Chemical attack on Douma denied by Assad Regime 04/07/2018";
     const CScript genesisOutputScript = CScript();
     return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
@@ -147,12 +147,12 @@ public:
         }
         */
 
-        genesis = CreateGenesisBlock(1522615406, 654150, 0x1e0ffff0, 1, 0 * COIN);
+        genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
         std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
-        assert(consensus.hashGenesisBlock == uint256S("0x657dcc75c0dc8be8625fb43d91d6fe30c1bbc93fb6a333e4ca1eaa47f3da724f"));
-        assert(genesis.hashMerkleRoot == uint256S("0x868a3cf41bb86f01dd3c2037b1c3bb8482c075a06c89237360c5ca8db7baf291"));
+        assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
+        assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
 
         vSeeds.emplace_back("ny.nixplatform.io");
@@ -235,12 +235,39 @@ public:
         nDefaultPort = 16214;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1522615406, 915027, 0x1e0ffff0, 1, 0 * COIN);
+
+        //mine genesis block
+        /*
+        uint NONCE = 0;
+        bool isValidGen = false;
+        while(!isValidGen){
+            genesis = CreateGenesisBlock(1522615406, NONCE, 0x1e0ffff0, 1, 0 * COIN);
+            bool fNegative;
+            bool fOverflow;
+            arith_uint256 bnTarget;
+            bnTarget.SetCompact(genesis.nBits, &fNegative, &fOverflow);
+            // Check range
+            if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensus.powLimit))
+                isValidGen = false;
+            else
+                isValidGen = true;
+            // Check proof of work matches claimed amount
+            if (UintToArith256(genesis.GetPoWHash(0)) > bnTarget)
+                isValidGen = false;
+            else
+                isValidGen = true;
+
+            if(!isValidGen)
+                NONCE++;
+        }
+        */
+
+        genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
         std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
-        assert(consensus.hashGenesisBlock == uint256S("0x0baf63af2d67c75e8e1d2956bbdb7a0cd3548146d6e952a750ae0175eb5657db"));
-        assert(genesis.hashMerkleRoot == uint256S("0x868a3cf41bb86f01dd3c2037b1c3bb8482c075a06c89237360c5ca8db7baf291"));
+        assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
+        assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
