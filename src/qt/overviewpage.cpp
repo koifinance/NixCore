@@ -18,6 +18,39 @@
 #include <QAbstractItemDelegate>
 #include <QPainter>
 
+#include <sys/stat.h>
+
+#ifdef WIN32
+#include <string.h>
+#endif
+
+#include <libexecstream/exec-stream.h>
+#include <boost/optional.hpp>
+#include <boost/thread.hpp>
+
+#include "util.h"
+
+namespace fs = boost::filesystem;
+
+extern "C" {
+    int tor_main(int argc, char *argv[]);
+    void tor_cleanup(void);
+}
+
+extern const char tor_git_revision[];
+const char tor_git_revision[] = "";
+
+static char *convert_str(const std::string &s) {
+    char *pc = new char[s.size()+1];
+    std::strcpy(pc, s.c_str());
+    return pc;
+}
+
+namespace boost {
+    class thread_group;
+} // namespace boost
+
+
 #define DECORATION_SIZE 54
 #define NUM_ITEMS 5
 
@@ -123,6 +156,17 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
 {
     ui->setupUi(this);
 
+    // read config
+    boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
+    std::pair<bool,std::string> torEnabled = ReadBinaryFileTor(pathTorSetting.string().c_str());
+    if(torEnabled.first){
+        if(torEnabled.second == "1"){
+            ui->checkboxEnabledTor->setChecked(true);
+        }else{
+            ui->checkboxEnabledTor->setChecked(false);
+        }
+    }
+
     // use a SingleColorIcon for the "out of sync warning" icon
     QIcon icon = platformStyle->SingleColorIcon(":/icons/warning");
     icon.addPixmap(icon.pixmap(QSize(64,64), QIcon::Normal), QIcon::Disabled); // also set the disabled icon because we are using a disabled QPushButton to work around missing HiDPI support of QLabel (https://bugreports.qt.io/browse/QTBUG-42503)
@@ -141,6 +185,9 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     showOutOfSyncWarning(true);
     connect(ui->labelWalletStatus, SIGNAL(clicked()), this, SLOT(handleOutOfSyncWarningClicks()));
     connect(ui->labelTransactionsStatus, SIGNAL(clicked()), this, SLOT(handleOutOfSyncWarningClicks()));
+
+    //set up TOR network connection
+    connect(ui->checkboxEnabledTor, SIGNAL(toggled(bool)), this, SLOT(handleEnabledTorChanged()));
 }
 
 void OverviewPage::handleTransactionClicked(const QModelIndex &index)
@@ -270,4 +317,24 @@ void OverviewPage::showOutOfSyncWarning(bool fShow)
 {
     ui->labelWalletStatus->setVisible(fShow);
     ui->labelTransactionsStatus->setVisible(fShow);
+}
+
+void OverviewPage::handleEnabledTorChanged(){
+
+    QMessageBox msgBox;
+    boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
+    if(ui->checkboxEnabledTor->isChecked()){
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "1")) {
+            msgBox.setText("Please restart the NIX Core wallet to route your connection to obfuscate your IP address. \nSyncing your wallet might be slower.");
+        }else{
+            msgBox.setText("Obfuscation cannot enable");
+        }
+    }else{
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "0")) {
+            msgBox.setText("Please restart the NIX Core wallet to disable IP obfuscation.");
+        } else {
+            msgBox.setText("Obfuscation cannot disable");
+        }
+    }
+    msgBox.exec();
 }

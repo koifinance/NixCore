@@ -10,7 +10,6 @@
 #include <consensus/params.h>
 #include <primitives/block.h>
 #include <protocol.h>
-
 #include <memory>
 #include <vector>
 
