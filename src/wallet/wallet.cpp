@@ -5000,8 +5000,8 @@ string CWallet::MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx &wtxNew,
         return "ABORTED";
 
     CValidationState state;
-    CConnman *con;
-    if (!CommitTransaction(wtxNew, reservekey, con, state)) {
+
+    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
         return _(
                 "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
     } else {
