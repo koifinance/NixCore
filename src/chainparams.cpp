@@ -10,7 +10,6 @@
 #include <tinyformat.h>
 #include <util.h>
 #include <utilstrencodings.h>
-#include "validation.cpp"
 #include <assert.h>
 #include "arith_uint256.h"
 
@@ -121,10 +120,11 @@ public:
         pchMessageStart[3] = 0xf9;
         nDefaultPort = 6214;
         nPruneAfterHeight = 0;
+
+        //mine genesis block
+        /*
         uint NONCE = 0;
         bool isValidGen = false;
-        //genesis = CreateGenesisBlock(1522615406, 98726, 0x1e0ffff0, 1, 0 * COIN);
-        //mine genesis block
         while(!isValidGen){
             genesis = CreateGenesisBlock(1522615406, NONCE, 0x1e0ffff0, 1, 0 * COIN);
             bool fNegative;
@@ -145,10 +145,13 @@ public:
             if(!isValidGen)
                 NONCE++;
         }
+        */
+
+        genesis = CreateGenesisBlock(1522615406, 654150, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
         std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
-        assert(consensus.hashGenesisBlock == uint256S("0x00000bd97857cc8550c1de0936fd4b1ed098c7342c8456a69317acbc45828ebb"));
+        assert(consensus.hashGenesisBlock == uint256S("0x657dcc75c0dc8be8625fb43d91d6fe30c1bbc93fb6a333e4ca1eaa47f3da724f"));
         assert(genesis.hashMerkleRoot == uint256S("0x868a3cf41bb86f01dd3c2037b1c3bb8482c075a06c89237360c5ca8db7baf291"));
 
 

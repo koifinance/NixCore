@@ -14,42 +14,10 @@
 #include <qt/transactionfilterproxy.h>
 #include <qt/transactiontablemodel.h>
 #include <qt/walletmodel.h>
+#include "util.h"
 
 #include <QAbstractItemDelegate>
 #include <QPainter>
-
-#include <sys/stat.h>
-
-#ifdef WIN32
-#include <string.h>
-#endif
-
-#include <libexecstream/exec-stream.h>
-#include <boost/optional.hpp>
-#include <boost/thread.hpp>
-
-#include "util.h"
-
-namespace fs = boost::filesystem;
-
-extern "C" {
-    int tor_main(int argc, char *argv[]);
-    void tor_cleanup(void);
-}
-
-extern const char tor_git_revision[];
-const char tor_git_revision[] = "";
-
-static char *convert_str(const std::string &s) {
-    char *pc = new char[s.size()+1];
-    std::strcpy(pc, s.c_str());
-    return pc;
-}
-
-namespace boost {
-    class thread_group;
-} // namespace boost
-
 
 #define DECORATION_SIZE 54
 #define NUM_ITEMS 5
