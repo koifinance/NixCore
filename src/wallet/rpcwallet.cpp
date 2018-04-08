@@ -3915,6 +3915,64 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
     return results;
 }
 
+UniValue enableTor(const JSONRPCRequest& request){
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "enabletor <enable>(false/true)\n"
+                        "To enable obfuscation, set enabletor to \"true\"\n"
+                        "Please restart the NIX daemon to update your changes");
+
+    bool fStatus = true;
+    std::string sfStatus = request.params[0].get_str();
+    if(sfStatus == "true")
+        fStatus = true;
+    else if(sfStatus == "false")
+        fStatus = false;
+    else
+        throw runtime_error(
+                "enabletor <enable>(false/true)\n"
+                        "To enable obfuscation, set enabletor to \"true\"\n"
+                        "Please restart the NIX daemon to update your changes");
+
+    std::string result = "Error with enabletor feature\n";
+    boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
+    if(fStatus){
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "1")) {
+            result = ("Please restart the NIX Core wallet to route your connection to obfuscate your IP address. \nSyncing your wallet might be slower.");
+        }else{
+            result = ("Obfuscation cannot enable");
+        }
+    }else{
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "0")) {
+            result = ("Please restart the NIX Core wallet to disable IP obfuscation.");
+        } else {
+            result = ("Obfuscation cannot disable");
+        }
+    }
+    return result;
+}
+
+UniValue torStatus(const JSONRPCRequest& request){
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "torstatus\n"
+                        "Returns the status of tor obfuscation on your NIX daemon");
+
+    boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
+    std::string result = "Error with torstatus feature\n";
+    // read config
+    std::pair<bool,std::string> torEnabled = ReadBinaryFileTor(pathTorSetting.string().c_str());
+    if(torEnabled.first){
+        if(torEnabled.second == "1"){
+            result =  "Obfuscation Enabled";
+        }else{
+            result = "Obfuscation Disabled";
+        }
+    }
+    return result;
+}
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
@@ -3985,13 +4043,17 @@ static const CRPCCommand commands[] =
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
     // NIX privacy functions
-    { "wallet",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
-    { "wallet",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
-    { "wallet",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
-    { "wallet",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
-    { "wallet",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
-    { "wallet",             "listmintzerocoins",        &listmintzerocoins,        {} },
-    { "wallet",             "listpubcoins",             &listpubcoins,             {} },
+    { "NIX Privacy",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
+    { "NIX Privacy",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
+    { "NIX Privacy",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
+    { "NIX Privacy",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
+    { "NIX Privacy",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
+    { "NIX Privacy",             "listmintzerocoins",        &listmintzerocoins,        {} },
+    { "NIX Privacy",             "listpubcoins",             &listpubcoins,             {} },
+
+    //NIX TOR routing functions
+    { "NIX TOR",             "enabletor",        &enableTor,        {} },
+    { "NIX TOR",             "torstatus",             &torStatus,             {} },
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)
