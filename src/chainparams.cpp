@@ -155,7 +155,9 @@ public:
         assert(genesis.hashMerkleRoot == uint256S("0x868a3cf41bb86f01dd3c2037b1c3bb8482c075a06c89237360c5ca8db7baf291"));
 
 
-        vSeeds.emplace_back("node1.nixplatform.io");
+        vSeeds.emplace_back("ny.nixplatform.io");
+        vSeeds.emplace_back("sf.nixplatform.io");
+        vSeeds.emplace_back("ldn.nixplatform.io");
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,53);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);

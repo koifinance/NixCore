@@ -313,8 +313,8 @@ CoinDenomination AmountToClosestDenomination(CAmount nAmount, CAmount& nRemainin
 
     CAmount nConvert = nAmount / COIN;
     CoinDenomination denomination = ZQ_ERROR;
-    for (unsigned int i = 0; i < zerocoinDenomList.size(); i++) {
-        denomination = zerocoinDenomList[i];
+    for (unsigned int i = 0; i < denominationList.size(); i++) {
+        denomination = denominationList[i];
 
         //exact match
         if (nConvert == denomination) {
@@ -324,7 +324,7 @@ CoinDenomination AmountToClosestDenomination(CAmount nAmount, CAmount& nRemainin
 
         //we are beyond the value, use previous denomination
         if (denomination > nConvert && i) {
-            CoinDenomination d = zerocoinDenomList[i - 1];
+            CoinDenomination d = denominationList[i - 1];
             nRemaining = nConvert - d;
             return d;
         }
@@ -351,7 +351,6 @@ int64_t get_amount(std::string denomAmount) {
     int64_t nAmount = 0;
     CoinDenomination denom = get_denomination(denomAmount);
     if (denom == ZQ_ERROR) {
-        // SHOULD WE THROW EXCEPTION or Something?
         nAmount = 0;
     } else {
         nAmount = ZerocoinDenominationToAmount(denom);
