@@ -12,7 +12,7 @@
 
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
-
+#include "stealth-address/stealth.h"
 #include <algorithm>
 #include <assert.h>
 #include <string.h>
@@ -262,6 +262,7 @@ public:
     }
 
     std::string operator()(const CNoDestination& no) const { return {}; }
+    std::string operator()(const CStealthAddress& no) const { return {}; }
 };
 
 CTxDestination DecodeDestination(const std::string& str, const CChainParams& params)

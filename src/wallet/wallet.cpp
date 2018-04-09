@@ -4730,6 +4730,8 @@ bool CWallet::CreateZerocoinSpendTransaction(int64_t nValue, libzerocoin::CoinDe
             txNew.vout.clear();
             //wtxNew.fFromMe = true;
 
+            //We will integrate stealth address pairing to increase privacy on chain
+            //essentially we can mint/spend right away without risking user privacy.
             // Reserve a new key pair from key pool
             CPubKey vchPubKey;
             assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked

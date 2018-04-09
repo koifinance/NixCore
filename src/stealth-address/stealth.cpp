@@ -1,4 +1,5 @@
 // Copyright (c) 2014 The ShadowCoin developers
+// Copyright (c) 2014 The NIX Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,7 +12,6 @@
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
 
-//const uint8_t stealth_version_byte = 0x2a;
 const uint8_t stealth_version_byte = 0x28;
 
 

@@ -10,13 +10,14 @@
 #include <uint256.h>
 
 #include <boost/variant.hpp>
-
+#include "../stealth-address/stealth.h"
 #include <stdint.h>
 
 static const bool DEFAULT_ACCEPT_DATACARRIER = true;
 
 class CKeyID;
 class CScript;
+class CStealthAddress;
 
 /** A reference to a CScript: the Hash160 of its serialization (see script.h) */
 class CScriptID : public uint160
@@ -119,7 +120,7 @@ struct WitnessUnknown
  *  * WitnessUnknown: TX_WITNESS_UNKNOWN destination (P2W???)
  *  A CTxDestination is the internal data type encoded in a bitcoin address
  */
-typedef boost::variant<CNoDestination, CKeyID, CScriptID, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessUnknown> CTxDestination;
+typedef boost::variant<CNoDestination, CKeyID, CScriptID, CStealthAddress, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessUnknown> CTxDestination;
 
 /** Check whether a CTxDestination is a CNoDestination. */
 bool IsValidDestination(const CTxDestination& dest);

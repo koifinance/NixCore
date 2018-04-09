@@ -1,4 +1,5 @@
 // Copyright (c) 2014 The ShadowCoin developers
+// Copyright (c) 2014 The NIX Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
@@ -79,17 +80,16 @@ public:
     {
         return memcmp(&scan_pubkey[0], &y.scan_pubkey[0], ec_compressed_size) < 0;
     }
-    
-    IMPLEMENT_SERIALIZE
-    (
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(this->options);
         READWRITE(this->scan_pubkey);
         READWRITE(this->spend_pubkey);
-        READWRITE(this->label);
-        
+        READWRITE(this->label);      
         READWRITE(this->scan_secret);
         READWRITE(this->spend_secret);
-    );
+    }
     
     
 
