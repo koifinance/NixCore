@@ -385,7 +385,7 @@ public:
         pchMessageStart[1] = 0xbf;
         pchMessageStart[2] = 0xb5;
         pchMessageStart[3] = 0xda;
-        nDefaultPort = 17655;
+        nDefaultPort = 16215;
         nBIP44ID = 0x80000001;
         nPruneAfterHeight = 1000;
 
@@ -432,6 +432,9 @@ const CChainParams &Params() {
     return *globalChainParams;
 }
 
+const CChainParams *pParams() {
+    return globalChainParams.get();
+};
 std::unique_ptr<CChainParams> CreateChainParams(const std::string& chain)
 {
     if (chain == CBaseChainParams::MAIN)
