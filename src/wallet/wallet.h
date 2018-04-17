@@ -1161,6 +1161,7 @@ public:
      * Add stealth functions
      */
 
+    static bool InitLoadWallet();
     bool AddressBookChangedNotify(const CTxDestination &address, ChangeType nMode);
     int GetDefaultConfidentialChain(CWalletDB *pwdb, CExtKeyAccount *&sea, CStoredExtKey *&pc);
 

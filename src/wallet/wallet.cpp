@@ -32,6 +32,7 @@
 #include <utilstrencodings.h>
 #include <assert.h>
 #include <future>
+#include <rpc/protocol.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/thread.hpp>
@@ -5352,6 +5353,264 @@ int CWallet::NewStealthKeyFromAccount(std::string &sLabel, CEKAStealthKey &akSte
     return 0;
 };
 
+int CWallet::NewStealthKeyV2FromAccount(
+    CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel,
+    CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32)
+{
+    // Scan secrets must be stored uncrypted - always derive hardened keys
+
+    if (LogAcceptCategory(BCLog::HDWALLET))
+    {
+        LogPrintf("%s %s.\n", __func__, HDAccIDToString(idAccount));
+        AssertLockHeld(cs_wallet);
+    };
+
+    assert(pwdb);
+
+    if (IsLocked())
+        return errorN(1, "%s Wallet must be unlocked to derive hardened keys.", __func__);
+
+    ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+    if (mi == mapExtAccounts.end())
+        return errorN(1, "%s Unknown account.", __func__);
+
+    CExtKeyAccount *sea = mi->second;
+    uint64_t nScanChain, nSpendChain;
+    CStoredExtKey *sekScan = nullptr, *sekSpend = nullptr;
+    mapEKValue_t::iterator mvi = sea->mapValue.find(EKVT_STEALTH_SCAN_CHAIN);
+    if (mvi == sea->mapValue.end())
+    {
+        if (0 != InitAccountStealthV2Chains(pwdb, sea))
+            return errorN(1, "%s InitAccountStealthV2Chains failed.", __func__);
+        mvi = sea->mapValue.find(EKVT_STEALTH_SCAN_CHAIN);
+    };
+    if (mvi != sea->mapValue.end())
+    {
+        GetCompressedInt64(mvi->second, nScanChain);
+        sekScan = sea->GetChain(nScanChain);
+    };
+
+    if (!sekScan)
+        return errorN(1, "%s Unknown stealth scan chain.", __func__);
+
+    mvi = sea->mapValue.find(EKVT_STEALTH_SPEND_CHAIN);
+    if (mvi != sea->mapValue.end())
+    {
+        GetCompressedInt64(mvi->second, nSpendChain);
+        sekSpend = sea->GetChain(nSpendChain);
+    };
+    if (!sekSpend)
+        return errorN(1, "%s Unknown stealth spend chain.", __func__);
+
+
+    CPubKey pkSpend;
+    uint32_t nSpendGenerated;
+    if (0 != sekSpend->DeriveNextKey(pkSpend, nSpendGenerated, true))
+        return errorN(1, "DeriveNextKey failed.");
+
+    CKey kScan;
+    uint32_t nScanOut;
+    if (0 != sekScan->DeriveNextKey(kScan, nScanOut, true))
+        return errorN(1, "DeriveNextKey failed.");
+
+    uint32_t nPrefix = 0;
+    if (pPrefix)
+    {
+        if (!ExtractStealthPrefix(pPrefix, nPrefix))
+            return errorN(1, "ExtractStealthPrefix failed.");
+    } else
+    if (nPrefixBits > 0)
+    {
+        // If pPrefix is null, set nPrefix from the hash of kScan
+        uint8_t tmp32[32];
+        CSHA256().Write(kScan.begin(), 32).Finalize(tmp32);
+        memcpy(&nPrefix, tmp32, 4);
+    };
+
+
+    uint32_t nMask = SetStealthMask(nPrefixBits);
+    nPrefix = nPrefix & nMask;
+    akStealthOut = CEKAStealthKey(nScanChain, nScanOut, kScan, nSpendChain, WithHardenedBit(nSpendGenerated), pkSpend, nPrefixBits, nPrefix);
+    akStealthOut.sLabel = sLabel;
+
+    if (0 != SaveStealthAddress(pwdb, sea, akStealthOut, fBech32))
+        return errorN(1, "SaveStealthAddress failed.");
+
+    return 0;
+};
+
+int CWallet::InitAccountStealthV2Chains(CWalletDB *pwdb, CExtKeyAccount *sea)
+{
+    AssertLockHeld(cs_wallet);
+    LogPrint(BCLog::HDWALLET, "%s: %s.\n", __func__, sea->GetIDString58());
+
+    CStoredExtKey *sekAccount = sea->GetChain(0);
+    if (!sekAccount)
+        return 1;
+
+    CExtKey vkAcc0, vkAcc0_0, vkAccount = sekAccount->kp.GetExtKey();
+    if (!vkAccount.Derive(vkAcc0, 0)
+        || !vkAcc0.Derive(vkAcc0_0, 0))
+        return errorN(1, "%s: Derive failed.", __func__);
+
+    std::string msg = "Scan chain secret seed";
+    std::vector<uint8_t> vData, vchSig;
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << strMessageMagic;
+    ss << msg;
+    if (!vkAcc0_0.key.SignCompact(ss.GetHash(), vchSig))
+        return errorN(1, "%s: Sign failed.", __func__);
+
+    CPubKey pk = vkAcc0.key.GetPubKey();
+    vchSig.insert(vchSig.end(), pk.begin(), pk.end());
+
+    CExtKey evStealthScan;
+    evStealthScan.SetMaster(vchSig.data(), vchSig.size());
+
+    CStoredExtKey *sekStealthScan = new CStoredExtKey();
+    sekStealthScan->kp = evStealthScan;
+    std::vector<uint32_t> vPath;
+    //sekStealthSpend->SetPath(vPath);
+    sekStealthScan->nFlags |= EAF_ACTIVE | EAF_IN_ACCOUNT;
+    sekStealthScan->mapValue[EKVT_KEY_TYPE] = SetChar(vData, EKT_STEALTH_SCAN);
+    sea->InsertChain(sekStealthScan);
+    uint32_t nStealthScanChain = sea->NumChains();
+
+    CExtKey evStealthSpend;
+    uint32_t nStealthSpend;
+    if ((0 != sekAccount->DeriveKey(evStealthSpend, CHAIN_NO_STEALTH_SPEND, nStealthSpend, true)) != 0)
+    {
+        sea->FreeChains();
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Could not derive account chain keys.");
+    };
+
+    vPath.clear();
+    AppendPath(sekAccount, vPath);
+
+    CStoredExtKey *sekStealthSpend = new CStoredExtKey();
+    sekStealthSpend->kp = evStealthSpend;
+    vPath.push_back(nStealthSpend);
+    sekStealthSpend->SetPath(vPath);
+    sekStealthSpend->nFlags |= EAF_ACTIVE | EAF_IN_ACCOUNT;
+    sekStealthSpend->mapValue[EKVT_KEY_TYPE] = SetChar(vData, EKT_STEALTH_SPEND);
+    sea->InsertChain(sekStealthSpend);
+    uint32_t nStealthSpendChain = sea->NumChains();
+
+    sea->mapValue[EKVT_STEALTH_SCAN_CHAIN] = SetCompressedInt64(vData, nStealthScanChain);
+    sea->mapValue[EKVT_STEALTH_SPEND_CHAIN] = SetCompressedInt64(vData, nStealthSpendChain);
+
+    CKeyID idAccount = sea->GetID();
+    if (!pwdb->WriteExtAccount(idAccount, *sea))
+        return errorN(1, "%s WriteExtAccount failed.", __func__);
+
+    return 0;
+};
+
+int CWallet::NewStealthKeyV2FromAccount(std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32)
+{
+    {
+        LOCK(cs_wallet);
+        CWalletDB wdb(*dbw, "r+");
+
+        if (!wdb.TxnBegin())
+            return errorN(1, "%s TxnBegin failed.", __func__);
+
+        if (0 != NewStealthKeyV2FromAccount(&wdb, idDefaultAccount, sLabel, akStealthOut, nPrefixBits, pPrefix, fBech32))
+        {
+            wdb.TxnAbort();
+            ExtKeyRemoveAccountFromMapsAndFree(idDefaultAccount);
+            ExtKeyLoadAccount(&wdb, idDefaultAccount);
+            return 1;
+        };
+
+        if (!wdb.TxnCommit())
+        {
+            ExtKeyRemoveAccountFromMapsAndFree(idDefaultAccount);
+            ExtKeyLoadAccount(&wdb, idDefaultAccount);
+            return errorN(1, "%s TxnCommit failed.", __func__);
+        };
+    }
+    CStealthAddress sxAddr;
+    akStealthOut.SetSxAddr(sxAddr);
+    AddressBookChangedNotify(sxAddr, CT_NEW);
+    return 0;
+};
+
+int CWallet::SaveStealthAddress(CWalletDB *pwdb, CExtKeyAccount *sea, const CEKAStealthKey &akStealth, bool fBech32)
+{
+    AssertLockHeld(cs_wallet);
+    LogPrint(BCLog::HDWALLET, "%s.\n", __func__);
+    assert(sea);
+
+    std::vector<CEKAStealthKeyPack> aksPak;
+    CKeyID idKey = akStealth.GetID();
+    CKeyID idAccount = sea->GetID();
+
+    uint32_t nScanChain = akStealth.nScanParent;
+    uint32_t nSpendChain = akStealth.akSpend.nParent;
+
+    CStoredExtKey *sekScan, *sekSpend;
+    if (!(sekScan = sea->GetChain(nScanChain)))
+        return errorN(1, "Unknown scan chain.");
+    if (!(sekSpend = sea->GetChain(nScanChain)))
+        return errorN(1, "Unknown spend chain.");
+
+    sea->mapStealthKeys[idKey] = akStealth;
+
+    if (!pwdb->ReadExtStealthKeyPack(idAccount, sea->nPackStealth, aksPak))
+    {
+        // New pack
+        aksPak.clear();
+        if (LogAcceptCategory(BCLog::HDWALLET))
+            LogPrintf("Account %s, starting new stealth keypack %u.\n", HDAccIDToString(idAccount), sea->nPackStealth);
+    };
+
+    aksPak.push_back(CEKAStealthKeyPack(idKey, akStealth));
+    if (!pwdb->WriteExtStealthKeyPack(idAccount, sea->nPackStealth, aksPak))
+    {
+        sea->mapStealthKeys.erase(idKey);
+        return errorN(1, "WriteExtStealthKeyPack failed.");
+    };
+
+    if (!pwdb->WriteExtKey(sea->vExtKeyIDs[nScanChain], *sekScan)
+        || !pwdb->WriteExtKey(sea->vExtKeyIDs[nSpendChain], *sekSpend))
+    {
+        sea->mapStealthKeys.erase(idKey);
+        return errorN(1, "WriteExtKey failed.");
+    };
+
+    std::vector<uint32_t> vPath;
+    uint32_t idIndex;
+    bool requireUpdateDB;
+    if (0 == ExtKeyGetIndex(pwdb, sea, idIndex, requireUpdateDB))
+        vPath.push_back(idIndex); // first entry is the index to the account / master key
+
+    if (0 == AppendChainPath(sekSpend, vPath))
+    {
+        vPath.push_back(akStealth.akSpend.nKey);
+    } else
+    {
+        LogPrintf("Warning: %s - missing path value.\n", __func__);
+        vPath.clear();
+    };
+
+    if ((uint32_t)aksPak.size() >= MAX_KEY_PACK_SIZE-1)
+        sea->nPackStealth++;
+    if (((uint32_t)aksPak.size() >= MAX_KEY_PACK_SIZE-1 || requireUpdateDB)
+        && !pwdb->WriteExtAccount(idAccount, *sea))
+    {
+        return errorN(1, "WriteExtAccount failed.");
+    };
+
+    CStealthAddress sxAddr;
+    if (0 != akStealth.SetSxAddr(sxAddr))
+        return errorN(1, "SetSxAddr failed.");
+    SetAddressBook(pwdb, sxAddr, akStealth.sLabel, "receive", vPath, false, fBech32);
+
+    return 0;
+};
+
 bool CWallet::AddressBookChangedNotify(const CTxDestination &address, ChangeType nMode)
 {
     // Must run without cs_wallet locked
@@ -5376,6 +5635,756 @@ bool CWallet::AddressBookChangedNotify(const CTxDestination &address, ChangeType
         && address.type() == typeid(CKeyID))
     {
         CKeyID id = boost::get<CKeyID>(address);
+    };
+
+    return true;
+}
+
+int CWallet::ExtKeyGetIndex(CWalletDB *pwdb, CExtKeyAccount *sea, uint32_t &index, bool &fUpdate)
+{
+    mapEKValue_t::iterator mi = sea->mapValue.find(EKVT_INDEX);
+    if (mi != sea->mapValue.end())
+    {
+        fUpdate = false;
+        assert(mi->second.size() == 4);
+        memcpy(&index, &mi->second[0], 4);
+        return 0;
+    };
+
+    CKeyID idAccount = sea->GetID();
+    if (0 != ExtKeyNewIndex(pwdb, idAccount, index))
+        return errorN(1, "%s ExtKeyNewIndex failed.", __func__);
+    std::vector<uint8_t> vTmp;
+    sea->mapValue[EKVT_INDEX] = PushUInt32(vTmp, index);
+    fUpdate = true;
+
+    return 0;
+};
+
+int CWallet::ExtKeyGetIndex(CExtKeyAccount *sea, uint32_t &index)
+{
+    LOCK(cs_wallet);
+
+    CWalletDB wdb(*dbw, "r+");
+    bool requireUpdateDB;
+    if (0 != ExtKeyGetIndex(&wdb, sea, index, requireUpdateDB))
+        return errorN(1, "ExtKeyGetIndex failed.");
+
+    if (requireUpdateDB)
+    {
+        CKeyID idAccount = sea->GetID();
+        if (!wdb.WriteExtAccount(idAccount, *sea))
+            return errorN(7, "%s Save account chain failed.", __func__);
+    };
+
+    return 0;
+};
+
+int CWallet::ExtKeyRemoveAccountFromMapsAndFree(CExtKeyAccount *sea)
+{
+    // Remove account keys from wallet maps and free
+    if (!sea)
+        return 0;
+
+    CKeyID idAccount = sea->GetID();
+
+    for (size_t i = 0; i < sea->vExtKeys.size(); ++i)
+        mapExtKeys.erase(sea->vExtKeyIDs[i]);
+
+    mapExtAccounts.erase(idAccount);
+    sea->FreeChains();
+    delete sea;
+    return 0;
+};
+
+int CWallet::ExtKeyRemoveAccountFromMapsAndFree(const CKeyID &idAccount)
+{
+    ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+    if (mi == mapExtAccounts.end())
+        return errorN(1, "%s: Account %s not found.", __func__, HDAccIDToString(idAccount));
+
+    return ExtKeyRemoveAccountFromMapsAndFree(mi->second);
+};
+
+int CWallet::ExtKeyLoadAccountKeys(CWalletDB *pwdb, CExtKeyAccount *sea)
+{
+    sea->vExtKeys.resize(sea->vExtKeyIDs.size());
+    for (size_t i = 0; i < sea->vExtKeyIDs.size(); ++i)
+    {
+        CKeyID &id = sea->vExtKeyIDs[i];
+
+        CStoredExtKey *sek = new CStoredExtKey();
+        if (pwdb->ReadExtKey(id, *sek))
+        {
+            sea->vExtKeys[i] = sek;
+        } else
+        {
+            LogPrintf("WARNING: Could not read key %d of account %s\n", i, sea->GetIDString58());
+            sea->vExtKeys[i] = nullptr;
+            delete sek;
+        };
+    };
+    return 0;
+};
+
+int CWallet::ExtKeyLoadAccount(CWalletDB *pwdb, const CKeyID &idAccount)
+{
+    CExtKeyAccount *sea = new CExtKeyAccount();
+    if (!pwdb->ReadExtAccount(idAccount, *sea))
+        return errorN(1, "%s: ReadExtAccount failed.", __func__);
+
+    ExtKeyLoadAccountKeys(pwdb, sea);
+
+    if (0 != ExtKeyAddAccountToMaps(idAccount, sea, true))
+    {
+        sea->FreeChains();
+        delete sea;
+        return errorN(1, "%s: ExtKeyAddAccountToMaps failed: %s.", __func__, HDAccIDToString(idAccount));
+    };
+
+    return 0;
+};
+
+int CWallet::ExtKeyAddAccountToMaps(const CKeyID &idAccount, CExtKeyAccount *sea, bool fAddToLookAhead)
+{
+    // Open/activate account in wallet
+    //   add to mapExtAccounts and mapExtKeys
+
+    LogPrint(BCLog::HDWALLET, "ExtKeyAddAccountToMap()\n");
+    AssertLockHeld(cs_wallet);
+    assert(sea);
+
+    for (size_t i = 0; i < sea->vExtKeys.size(); ++i)
+    {
+        CStoredExtKey *sek = sea->vExtKeys[i];
+
+        if (sek->nFlags & EAF_IS_CRYPTED)
+            sek->fLocked = 1;
+
+        if (sek->nFlags & EAF_ACTIVE
+            && sek->nFlags & EAF_RECEIVE_ON)
+        {
+            uint64_t nLookAhead = gArgs.GetArg("-defaultlookaheadsize", N_DEFAULT_LOOKAHEAD);
+
+            mapEKValue_t::iterator itV = sek->mapValue.find(EKVT_N_LOOKAHEAD);
+            if (itV != sek->mapValue.end())
+                nLookAhead = GetCompressedInt64(itV->second, nLookAhead);
+
+            if (fAddToLookAhead)
+                sea->AddLookAhead(i, (uint32_t)nLookAhead);
+        };
+
+        mapExtKeys[sea->vExtKeyIDs[i]] = sek;
+    };
+
+    mapExtAccounts[idAccount] = sea;
+    return 0;
+};
+
+int CWallet::ExtKeyNewIndex(CWalletDB *pwdb, const CKeyID &idKey, uint32_t &index)
+{
+    if (LogAcceptCategory(BCLog::HDWALLET))
+    {
+        CBitcoinAddress addr;
+        addr.Set(idKey, CChainParams::EXT_ACC_HASH); // could be a loose key also
+        LogPrintf("%s %s.\n", __func__, addr.ToString());
+        AssertLockHeld(cs_wallet);
+    };
+
+    std::string sPrefix = "ine";
+    uint32_t lastId = 0xFFFFFFFF;
+    index = 0;
+
+    if (!pwdb->ReadFlag("ekLastI", (int32_t&)index))
+    {
+        LogPrint(BCLog::HDWALLET, "Warning: %s - ReadFlag ekLastI failed.\n", __func__);
+    }
+
+    index++;
+
+    if (index == lastId)
+        return errorN(1, "%s: Wallet extkey index is full!\n", __func__); // expect multiple wallets per node before anyone hits this
+
+    LogPrint(BCLog::HDWALLET, "%s: New index %u.\n", __func__, index);
+    if (!pwdb->WriteExtKeyIndex(index, idKey)
+        || !pwdb->WriteFlag("ekLastI", (int32_t&)index))
+        return errorN(1, "%s: WriteExtKeyIndex failed.\n", __func__);
+
+    return 0;
+};
+
+int CWallet::MakeDefaultAccount()
+{
+    LogPrintf("Generating initial master key and account from random data.\n");
+
+    LOCK(cs_wallet);
+    CHDWalletDB wdb(GetDBHandle(), "r+");
+    if (!wdb.TxnBegin())
+        return errorN(1, "TxnBegin failed.");
+
+    std::string sLblMaster = "Master Key";
+    std::string sLblAccount = "Default Account";
+    int rv;
+    CKeyID idNewMaster;
+    CExtKeyAccount *sea;
+    CExtKey ekMaster;
+
+    if (0 != ExtKeyNew32(ekMaster))
+    {
+        wdb.TxnAbort();
+        return 1;
+    };
+
+    CStoredExtKey sek;
+    sek.kp = ekMaster;
+    if (0 != (rv = ExtKeyImportLoose(&wdb, sek, idNewMaster, false, false)))
+    {
+        wdb.TxnAbort();
+        return errorN(1, "ExtKeyImportLoose failed, %s", ExtKeyGetString(rv));
+    };
+
+    idNewMaster = sek.GetID();
+    if (0 != (rv = ExtKeySetMaster(&wdb, idNewMaster)))
+    {
+        wdb.TxnAbort();
+        return errorN(1, "ExtKeySetMaster failed, %s.", ExtKeyGetString(rv));
+    };
+
+    sea = new CExtKeyAccount();
+    if (0 != (rv = ExtKeyDeriveNewAccount(&wdb, sea, sLblAccount)))
+    {
+        ExtKeyRemoveAccountFromMapsAndFree(sea);
+        wdb.TxnAbort();
+        return errorN(1, "ExtKeyDeriveNewAccount failed, %s.", ExtKeyGetString(rv));
+    };
+
+    CKeyID idNewDefaultAccount = sea->GetID();
+    CKeyID idOldDefault = idDefaultAccount;
+    if (0 != (rv = ExtKeySetDefaultAccount(&wdb, idNewDefaultAccount)))
+    {
+        ExtKeyRemoveAccountFromMapsAndFree(sea);
+        wdb.TxnAbort();
+        return errorN(1, "ExtKeySetDefaultAccount failed, %s.", ExtKeyGetString(rv));
+    };
+
+    if (!wdb.TxnCommit())
+    {
+        idDefaultAccount = idOldDefault;
+        ExtKeyRemoveAccountFromMapsAndFree(sea);
+        return errorN(1, "TxnCommit failed.");
+    };
+    return 0;
+}
+
+int CWallet::ExtKeyLoadMaster()
+{
+    LogPrintf("Loading master ext key %s.\n", GetName());
+
+    LOCK(cs_wallet);
+
+    CKeyID idMaster;
+
+    CWalletDB wdb(*dbw, "r+");
+    if (!wdb.ReadNamedExtKeyId("master", idMaster))
+    {
+        int nValue;
+        if (!wdb.ReadFlag("madeDefaultEKey", nValue)
+            || nValue == 0)
+        {
+            /*
+            if (IsLocked())
+            {
+                fMakeExtKeyInitials = true; // set flag for unlock
+                LogPrintf("Wallet locked, master key will be created when unlocked.\n");
+                return 0;
+            };
+
+            if (ExtKeyCreateInitial(&wdb) != 0)
+                return errorN(1, "ExtKeyCreateDefaultMaster failed.");
+
+            return 0;
+            */
+        };
+        LogPrintf("Warning: No master ext key has been set.\n");
+        return 1;
+    };
+
+    pEKMaster = new CStoredExtKey();
+    if (!wdb.ReadExtKey(idMaster, *pEKMaster))
+    {
+        delete pEKMaster;
+        pEKMaster = nullptr;
+        return errorN(1, "ReadExtKey failed to read master ext key.");
+    };
+
+    if (!pEKMaster->kp.IsValidP()) // wallet could be locked, check pk
+    {
+        delete pEKMaster;
+        pEKMaster = nullptr;
+        return errorN(1, " Loaded master ext key is invalid %s.", pEKMaster->GetIDString58().c_str());
+    };
+
+    if (pEKMaster->nFlags & EAF_IS_CRYPTED)
+        pEKMaster->fLocked = 1;
+
+    // Add to key map
+    mapExtKeys[idMaster] = pEKMaster;
+
+    // Find earliest key creation time, as wallet birthday
+    int64_t nCreatedAt = 0;
+    GetCompressedInt64(pEKMaster->mapValue[EKVT_CREATED_AT], (uint64_t&)nCreatedAt);
+
+    if (!nTimeFirstKey || (nCreatedAt && nCreatedAt < nTimeFirstKey))
+        nTimeFirstKey = nCreatedAt;
+
+    return 0;
+};
+
+int CWallet::ExtKeyLoadAccountKeys(CWalletDB *pwdb, CExtKeyAccount *sea)
+{
+    sea->vExtKeys.resize(sea->vExtKeyIDs.size());
+    for (size_t i = 0; i < sea->vExtKeyIDs.size(); ++i)
+    {
+        CKeyID &id = sea->vExtKeyIDs[i];
+
+        CStoredExtKey *sek = new CStoredExtKey();
+        if (pwdb->ReadExtKey(id, *sek))
+        {
+            sea->vExtKeys[i] = sek;
+        } else
+        {
+            LogPrintf("WARNING: Could not read key %d of account %s\n", i, sea->GetIDString58());
+            sea->vExtKeys[i] = nullptr;
+            delete sek;
+        };
+    };
+    return 0;
+};
+
+int CWallet::ExtKeyLoadAccount(CWalletDB *pwdb, const CKeyID &idAccount)
+{
+    CExtKeyAccount *sea = new CExtKeyAccount();
+    if (!pwdb->ReadExtAccount(idAccount, *sea))
+        return errorN(1, "%s: ReadExtAccount failed.", __func__);
+
+    ExtKeyLoadAccountKeys(pwdb, sea);
+
+    if (0 != ExtKeyAddAccountToMaps(idAccount, sea, true))
+    {
+        sea->FreeChains();
+        delete sea;
+        return errorN(1, "%s: ExtKeyAddAccountToMaps failed: %s.", __func__, HDAccIDToString(idAccount));
+    };
+
+    return 0;
+};
+
+int CWallet::ExtKeyLoadAccounts()
+{
+    LogPrintf("Loading ext accounts %s.\n", GetName());
+
+    LOCK(cs_wallet);
+
+    CWalletDB wdb(*dbw);
+
+    if (!wdb.ReadNamedExtKeyId("defaultAccount", idDefaultAccount))
+    {
+        LogPrintf("Warning: No default ext account set.\n");
+    };
+
+    Dbc *pcursor;
+    if (!(pcursor = wdb.GetCursor()))
+        throw std::runtime_error(strprintf("%s: cannot create DB cursor", __func__).c_str());
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+
+    CKeyID idAccount;
+    std::string strType;
+
+    unsigned int fFlags = DB_SET_RANGE;
+    ssKey << std::string("eacc");
+    while (wdb.ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        fFlags = DB_NEXT;
+
+        ssKey >> strType;
+        if (strType != "eacc")
+            break;
+
+        ssKey >> idAccount;
+
+        if (LogAcceptCategory(BCLog::HDWALLET))
+        {
+            LogPrintf("Loading account %s\n", HDAccIDToString(idAccount));
+        };
+
+        CExtKeyAccount *sea = new CExtKeyAccount();
+        ssValue >> *sea;
+
+        ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+        if (mi != mapExtAccounts.end())
+        {
+            // Account already loaded, skip, can be caused by ExtKeyCreateInitial()
+            LogPrint(BCLog::HDWALLET, "Account already loaded.\n");
+            continue;
+        };
+
+        if (!(sea->nFlags & EAF_ACTIVE))
+        {
+            if (LogAcceptCategory(BCLog::HDWALLET))
+            {
+                LogPrintf("Skipping inactive %s\n", HDAccIDToString(idAccount));
+            };
+            delete sea;
+            continue;
+        };
+
+        // Find earliest key creation time, as wallet birthday
+        int64_t nCreatedAt;
+        GetCompressedInt64(sea->mapValue[EKVT_CREATED_AT], (uint64_t&)nCreatedAt);
+
+        if (!nTimeFirstKey || (nCreatedAt && nCreatedAt < nTimeFirstKey))
+            nTimeFirstKey = nCreatedAt;
+
+        ExtKeyLoadAccountKeys(&wdb, sea);
+
+        if (0 != ExtKeyAddAccountToMaps(idAccount, sea, false))
+        {
+            LogPrintf("ExtKeyAddAccountToMaps() failed: %s\n", HDAccIDToString(idAccount));
+            sea->FreeChains();
+            delete sea;
+        };
+    };
+
+    pcursor->close();
+
+    return 0;
+};
+
+int CWallet::ExtKeyLoadAccountPacks()
+{
+    LogPrintf("Loading ext account packs %s.\n", GetName());
+
+    LOCK(cs_wallet);
+
+    CWalletDB wdb(*dbw);
+
+    Dbc *pcursor;
+    if (!(pcursor = wdb.GetCursor()))
+        throw std::runtime_error(strprintf("%s : cannot create DB cursor", __func__).c_str());
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+
+    CKeyID idAccount;
+    uint32_t nPack;
+    std::string strType;
+    std::vector<CEKAKeyPack> ekPak;
+    std::vector<CEKAStealthKeyPack> aksPak;
+    std::vector<CEKASCKeyPack> asckPak;
+
+    unsigned int fFlags = DB_SET_RANGE;
+    ssKey << std::string("epak");
+    while (wdb.ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        ekPak.clear();
+        fFlags = DB_NEXT;
+
+        ssKey >> strType;
+        if (strType != "epak")
+            break;
+
+        ssKey >> idAccount;
+        ssKey >> nPack;
+
+        if (LogAcceptCategory(BCLog::HDWALLET))
+        {
+            LogPrintf("Loading account key pack %s %u\n", HDAccIDToString(idAccount), nPack);
+        };
+
+        ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+        if (mi == mapExtAccounts.end())
+        {
+            LogPrintf("Warning: Unknown account %s.\n", HDAccIDToString(idAccount));
+            continue;
+        };
+
+        CExtKeyAccount *sea = mi->second;
+
+        ssValue >> ekPak;
+
+        std::vector<CEKAKeyPack>::iterator it;
+        for (it = ekPak.begin(); it != ekPak.end(); ++it)
+        {
+            sea->mapKeys[it->id] = it->ak;
+        };
+    };
+
+    size_t nStealthKeys = 0;
+    ssKey.clear();
+    ssKey << std::string("espk");
+    fFlags = DB_SET_RANGE;
+    while (wdb.ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        aksPak.clear();
+        fFlags = DB_NEXT;
+
+        ssKey >> strType;
+        if (strType != "espk")
+            break;
+
+        ssKey >> idAccount;
+        ssKey >> nPack;
+
+        if (LogAcceptCategory(BCLog::HDWALLET))
+            LogPrintf("Loading account stealth key pack %s %u\n", idAccount.ToString(), nPack);
+
+        ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+        if (mi == mapExtAccounts.end())
+        {
+            LogPrintf("Warning: Unknown account %s.\n", HDAccIDToString(idAccount));
+            continue;
+        };
+
+        CExtKeyAccount *sea = mi->second;
+
+        ssValue >> aksPak;
+
+        std::vector<CEKAStealthKeyPack>::iterator it;
+        for (it = aksPak.begin(); it != aksPak.end(); ++it)
+        {
+            nStealthKeys++;
+            sea->mapStealthKeys[it->id] = it->aks;
+        };
+    };
+
+    if (LogAcceptCategory(BCLog::HDWALLET))
+        LogPrintf("Loaded %d stealthkey%s.\n", nStealthKeys, nStealthKeys == 1 ? "" : "s");
+
+    ssKey.clear();
+    ssKey << std::string("ecpk");
+    fFlags = DB_SET_RANGE;
+    while (wdb.ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        aksPak.clear();
+        fFlags = DB_NEXT;
+
+        ssKey >> strType;
+        if (strType != "ecpk")
+            break;
+
+        ssKey >> idAccount;
+        ssKey >> nPack;
+
+        if (LogAcceptCategory(BCLog::HDWALLET))
+            LogPrintf("Loading account stealth child key pack %s %u\n", idAccount.ToString(), nPack);
+
+        ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+        if (mi == mapExtAccounts.end())
+        {
+            CBitcoinAddress addr;
+            addr.Set(idAccount, CChainParams::EXT_ACC_HASH);
+            LogPrintf("Warning: Unknown account %s.\n", addr.ToString());
+            continue;
+        };
+
+        CExtKeyAccount *sea = mi->second;
+
+        ssValue >> asckPak;
+
+        std::vector<CEKASCKeyPack>::iterator it;
+        for (it = asckPak.begin(); it != asckPak.end(); ++it)
+        {
+            sea->mapStealthChildKeys[it->id] = it->asck;
+        };
+    };
+
+    pcursor->close();
+
+    return 0;
+};
+
+int CWallet::LoadStealthAddresses()
+{
+    LogPrint(BCLog::HDWALLET, "%s\n", __func__);
+
+    LOCK(cs_wallet);
+
+    CWalletDB wdb(*dbw);
+
+    Dbc *pcursor;
+    if (!(pcursor = wdb.GetCursor()))
+        return errorN(1, "%s: cannot create DB cursor", __func__);
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+
+    CBitcoinAddress addr;
+    CStealthAddress sx;
+    std::string strType;
+
+    unsigned int fFlags = DB_SET_RANGE;
+    ssKey << std::string("sxad");
+    while (wdb.ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        fFlags = DB_NEXT;
+
+        ssKey >> strType;
+        if (strType != "sxad")
+            break;
+
+        ssValue >> sx;
+        if (LogAcceptCategory(BCLog::HDWALLET))
+            LogPrintf("Loading stealth address %s\n", sx.Encoded());
+
+        stealthAddresses.insert(sx);
+    };
+    pcursor->close();
+
+    LogPrint(BCLog::HDWALLET, "Loaded %u stealth address.\n", stealthAddresses.size());
+
+    return 0;
+};
+
+int CWallet::PrepareLookahead()
+{
+    LogPrintf("Preparing Lookahead pools.\n");
+
+    ExtKeyAccountMap::const_iterator it;
+    for (it = mapExtAccounts.begin(); it != mapExtAccounts.end(); ++it)
+    {
+        CExtKeyAccount *sea = it->second;
+        for (size_t i = 0; i < sea->vExtKeys.size(); ++i)
+        {
+            CStoredExtKey *sek = sea->vExtKeys[i];
+
+            if (sek->nFlags & EAF_ACTIVE
+                && sek->nFlags & EAF_RECEIVE_ON)
+            {
+                uint64_t nLookAhead = gArgs.GetArg("-defaultlookaheadsize", N_DEFAULT_LOOKAHEAD);
+                mapEKValue_t::iterator itV = sek->mapValue.find(EKVT_N_LOOKAHEAD);
+                if (itV != sek->mapValue.end())
+                    nLookAhead = GetCompressedInt64(itV->second, nLookAhead);
+
+                sea->AddLookAhead(i, (uint32_t)nLookAhead);
+            };
+        };
+    };
+
+    return 0;
+};
+
+
+static bool CWallet::InitLoadWallet()
+{
+    if (gArgs.GetBoolArg("-disablewallet", DEFAULT_DISABLE_WALLET))
+    {
+        LogPrintf("Wallet disabled!\n");
+        return true;
+    };
+
+    for (const std::string& walletFile : gArgs.GetArgs("-wallet"))
+    {
+        std::unique_ptr<CWalletDBWrapper> dbw(new CWalletDBWrapper(&bitdb, walletFile));
+        CWallet *const pwallet = (CWallet*) CreateWalletFromFile(walletFile);
+
+        if (!pwallet)
+            return false;
+
+        if (pwallet->mapMasterKeys.size() > 0
+            && !pwallet->SetCrypted())
+        {
+            delete pwallet;
+            return errorN(0, "SetCrypted failed.");
+        };
+
+        {
+            // Prepare extended keys
+            pwallet->ExtKeyLoadMaster();
+            pwallet->ExtKeyLoadAccounts();
+            pwallet->ExtKeyLoadAccountPacks();
+            pwallet->LoadStealthAddresses();
+            pwallet->PrepareLookahead(); // Must happen after ExtKeyLoadAccountPacks
+        }
+
+        {
+            LOCK2(cs_main, pwallet->cs_wallet); // Locking cs_main for MarkConflicted
+            CWalletDB wdb(pwallet->GetDBHandle());
+
+            //pwallet->LoadAddressBook(&wdb);
+            //pwallet->LoadTxRecords(&wdb);
+        }
+
+        CBlockIndex *pindexRescan = chainActive.Genesis();
+        if (!gArgs.GetBoolArg("-rescan", false))
+        {
+            CBlockLocator locator;
+            CWalletDB walletdb(*pwallet->dbw);
+            if (walletdb.ReadBestBlock(locator))
+                pindexRescan = FindForkInGlobalIndex(chainActive, locator);
+        }
+        if ((pwallet->mapExtAccounts.size() > 0 || pwallet->CountKeys() > 0) // Don't scan an empty wallet
+            && chainActive.Tip() && chainActive.Tip() != pindexRescan)
+        {
+            //We can't rescan beyond non-pruned blocks, stop and throw an error
+            //this might happen if a user uses an old wallet within a pruned node
+            // or if he ran -disablewallet for a longer time, then decided to re-enable
+            if (fPruneMode)
+            {
+                CBlockIndex *block = chainActive.Tip();
+                while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA) && block->pprev->nTx > 0 && pindexRescan != block)
+                    block = block->pprev;
+
+                if (pindexRescan != block) {
+                    return InitError(_("Prune: last wallet synchronisation goes beyond pruned data. You need to -reindex (download the whole blockchain again in case of pruned node)"));
+                }
+            }
+
+            uiInterface.InitMessage(_("Rescanning..."));
+            LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
+
+            // No need to read and scan block if block was created before
+            // our wallet birthday (as adjusted for block time variability)
+            while (pindexRescan && pwallet->nTimeFirstKey && (pindexRescan->GetBlockTime() < (pwallet->nTimeFirstKey - TIMESTAMP_WINDOW))) {
+                pindexRescan = chainActive.Next(pindexRescan);
+            }
+            pwallet->SetBestChain(chainActive.GetLocator());
+            pwallet->dbw->IncrementUpdateCounter();
+        }
+
+        if (!pwallet->pEKMaster)
+        {
+            if (gArgs.GetBoolArg("-createdefaultmasterkey", false))
+            {
+                std::string sMsg = "Generating random HD keys for wallet " + pwallet->GetName();
+                #ifndef ENABLE_QT
+                fprintf(stdout, "%s\n", sMsg.c_str());
+                #endif
+                LogPrintf("%s", sMsg);
+                if (pwallet->MakeDefaultAccount() != 0)
+                    fprintf(stdout, "Error: MakeDefaultAccount failed!\n");
+            } else
+            {
+                /*
+                std::string sWarning = "Warning: Wallet " + pwallet->GetName() + " has no master HD key set, please view the readme.";
+                #ifndef ENABLE_QT
+                fprintf(stdout, "%s\n", sWarning.c_str());
+                #endif
+                LogPrintf("%s", sWarning);
+                */
+            }
+        };
+        if (pwallet->idDefaultAccount.IsNull())
+        {
+            std::string sWarning = "Warning: Wallet " + pwallet->GetName() + " has no active account, please view the readme.";
+            #ifndef ENABLE_QT
+            fprintf(stdout, "%s\n", sWarning.c_str());
+            #endif
+            LogPrintf("%s", sWarning);
+        };
+
+        vpwallets.push_back(pwallet);
     };
 
     return true;

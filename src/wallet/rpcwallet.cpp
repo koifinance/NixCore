@@ -4444,18 +4444,23 @@ static const CRPCCommand commands[] =
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
-    // NIX privacy functions
-    { "NIX Privacy",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
-    { "NIX Privacy",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
-    { "NIX Privacy",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
-    { "NIX Privacy",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
-    { "NIX Privacy",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
-    { "NIX Privacy",             "listmintzerocoins",        &listmintzerocoins,        {} },
-    { "NIX Privacy",             "listpubcoins",             &listpubcoins,             {} },
+    // NIX ghost functions
+    { "NIX Ghost",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
+    { "NIX Ghost",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
+    { "NIX Ghost",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
+    { "NIX Ghost",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
+    { "NIX Ghost",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
+    { "NIX Ghost",             "listmintzerocoins",        &listmintzerocoins,        {} },
+    { "NIX Ghost",             "listpubcoins",             &listpubcoins,             {} },
+    { "NIX Ghost",             "getnewstealthaddress",             &getnewstealthaddress,             {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
+
 
     //NIX TOR routing functions
     { "NIX TOR",             "enabletor",        &enableTor,        {} },
     { "NIX TOR",             "torstatus",             &torStatus,             {} },
+
+    //NIX Stealth address functions
+
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)
