@@ -7155,6 +7155,7 @@ int CWallet::ExtKeyLoadMaster()
         if (!wdb.ReadFlag("madeDefaultEKey", nValue)
             || nValue == 0)
         {
+            //TODO: Check for wallet lock, only run this on initial wallet creation
             /*
             if (IsLocked())
             {
