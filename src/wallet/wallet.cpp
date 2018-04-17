@@ -3211,8 +3211,55 @@ DBErrors CWallet::ZapWalletTx(std::vector<CWalletTx>& vWtx)
     return DB_LOAD_OK;
 }
 
+bool CWallet::SetAddressBook(CWalletDB *pwdb, const CTxDestination &address, const std::string &strName,
+    const std::string &strPurpose, const std::vector<uint32_t> &vPath, bool fNotifyChanged, bool fBech32)
+{
+    ChangeType nMode;
+    isminetype tIsMine;
 
-bool CWallet::SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& strPurpose)
+    CAddressBookData *entry;
+    {
+        LOCK(cs_wallet); // mapAddressBook
+
+        CAddressBookData emptyEntry;
+        std::pair<std::map<CTxDestination, CAddressBookData>::iterator, bool> ret;
+        ret = mapAddressBook.insert(std::pair<CTxDestination, CAddressBookData>(address, emptyEntry));
+        nMode = (ret.second) ? CT_NEW : CT_UPDATED;
+
+        entry = &ret.first->second;
+
+        entry->name = strName;
+        entry->vPath = vPath;
+        entry->fBech32 = fBech32;
+
+        tIsMine = ::IsMine(*this, address);
+        if (!strPurpose.empty()) /* update purpose only if requested */
+            entry->purpose = strPurpose;
+
+        //if (fFileBacked)
+        {
+            if (pwdb)
+            {
+                if (!pwdb->WriteAddressBookEntry(CBitcoinAddress(address).ToString(), *entry))
+                    return false;
+            } else
+            {
+                if (!CWalletDB(*dbw).WriteAddressBookEntry(CBitcoinAddress(address).ToString(), *entry))
+                    return false;
+            };
+        };
+    }
+
+    if (fNotifyChanged)
+    {
+        // Must run without cs_wallet locked
+        NotifyAddressBookChanged(this, address, strName, tIsMine != ISMINE_NO, strPurpose, nMode);
+    };
+
+    return true;
+}
+
+bool CWallet::SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& strPurpose, bool bech32)
 {
     bool fUpdated = false;
     {
@@ -3222,6 +3269,7 @@ bool CWallet::SetAddressBook(const CTxDestination& address, const std::string& s
         mapAddressBook[address].name = strName;
         if (!strPurpose.empty()) /* update purpose only if requested */
             mapAddressBook[address].purpose = strPurpose;
+        mapAddressBook[address].fBech32 = bech32;
     }
     NotifyAddressBookChanged(this, address, strName, ::IsMine(*this, address) != ISMINE_NO,
                              strPurpose, (fUpdated ? CT_UPDATED : CT_NEW) );
@@ -5153,3 +5201,182 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
 bool CompHeight(const CZerocoinEntry &a, const CZerocoinEntry &b) { return a.nHeight < b.nHeight; }
 
 bool CompID(const CZerocoinEntry &a, const CZerocoinEntry &b) { return a.id < b.id; }
+
+
+int CWallet::NewStealthKeyFromAccount(
+    CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel,
+    CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32)
+{
+    // Scan secrets must be stored uncrypted - always derive hardened keys
+
+    if (LogAcceptCategory(BCLog::HDWALLET))
+    {
+        LogPrintf("%s %s.\n", __func__, HDAccIDToString(idAccount));
+        AssertLockHeld(cs_wallet);
+    };
+
+    assert(pwdb);
+
+    if (IsLocked())
+        return errorN(1, "%s Wallet must be unlocked to derive hardened keys.", __func__);
+
+    ExtKeyAccountMap::iterator mi = mapExtAccounts.find(idAccount);
+    if (mi == mapExtAccounts.end())
+        return errorN(1, "%s Unknown account.", __func__);
+
+    CExtKeyAccount *sea = mi->second;
+    uint32_t nChain = sea->nActiveStealth;
+    CStoredExtKey *sek = sea->GetChain(nChain);
+    if (!sek)
+        return errorN(1, "%s Stealth chain unknown %d.", __func__, nChain);
+
+    uint32_t nChildBkp = sek->nHGenerated;
+
+    CKey kScan, kSpend;
+    uint32_t nScanOut, nSpendOut;
+    if (0 != sek->DeriveNextKey(kScan, nScanOut, true))
+        return errorN(1, "%s Derive failed.", __func__);
+
+    if (0 != sek->DeriveNextKey(kSpend, nSpendOut, true))
+    {
+        sek->SetCounter(nChildBkp, true);
+        return errorN(1, "%s Derive failed.", __func__);
+    };
+
+    uint32_t nPrefix = 0;
+    if (pPrefix)
+    {
+        if (!ExtractStealthPrefix(pPrefix, nPrefix))
+            return errorN(1, "%s ExtractStealthPrefix.", __func__);
+    } else
+    if (nPrefixBits > 0)
+    {
+        // If pPrefix is null, set nPrefix from the hash of kSpend
+        uint8_t tmp32[32];
+        CSHA256().Write(kSpend.begin(), 32).Finalize(tmp32);
+        memcpy(&nPrefix, tmp32, 4);
+    };
+
+    uint32_t nMask = SetStealthMask(nPrefixBits);
+    nPrefix = nPrefix & nMask;
+
+    CPubKey pkSpend = kSpend.GetPubKey();
+    CEKAStealthKey aks(nChain, nScanOut, kScan, nChain, nSpendOut, pkSpend, nPrefixBits, nPrefix);
+    aks.sLabel = sLabel;
+
+    CStealthAddress sxAddr;
+    if (0 != aks.SetSxAddr(sxAddr))
+        return errorN(1, "%s SetSxAddr failed.", __func__);
+
+    // Set path for address book
+    std::vector<uint32_t> vPath;
+    uint32_t idIndex;
+    bool requireUpdateDB;
+    if (0 == ExtKeyGetIndex(pwdb, sea, idIndex, requireUpdateDB))
+        vPath.push_back(idIndex); // first entry is the index to the account / master key
+
+    if (0 == AppendChainPath(sek, vPath))
+    {
+        uint32_t nChild = nScanOut;
+        vPath.push_back(SetHardenedBit(nChild));
+    } else
+    {
+        LogPrintf("Warning: %s - missing path value.\n", __func__);
+        vPath.clear();
+    };
+
+    std::vector<CEKAStealthKeyPack> aksPak;
+
+    CKeyID idKey = aks.GetID();
+    sea->mapStealthKeys[idKey] = aks;
+
+    if (!pwdb->ReadExtStealthKeyPack(idAccount, sea->nPackStealth, aksPak))
+    {
+        // New pack
+        aksPak.clear();
+        if (LogAcceptCategory(BCLog::HDWALLET))
+            LogPrintf("Account %s, starting new stealth keypack %u.\n", idAccount.ToString(), sea->nPackStealth);
+    };
+
+    aksPak.push_back(CEKAStealthKeyPack(idKey, aks));
+
+    if (!pwdb->WriteExtStealthKeyPack(idAccount, sea->nPackStealth, aksPak))
+    {
+        sea->mapStealthKeys.erase(idKey);
+        sek->SetCounter(nChildBkp, true);
+        return errorN(1, "%s Save key pack %u failed.", __func__, sea->nPackStealth);
+    };
+
+    if (!pwdb->WriteExtKey(sea->vExtKeyIDs[nChain], *sek))
+    {
+        sea->mapStealthKeys.erase(idKey);
+        sek->SetCounter(nChildBkp, true);
+        return errorN(1, "%s Save account chain failed.", __func__);
+    };
+
+    if ((uint32_t)aksPak.size() >= MAX_KEY_PACK_SIZE-1)
+    {
+        sea->nPackStealth++;
+        CKeyID idAccount = sea->GetID();
+        if (!pwdb->WriteExtAccount(idAccount, *sea))
+            return errorN(1, "%s WriteExtAccount failed.", __func__);
+    };
+
+    SetAddressBook(pwdb, sxAddr, sLabel, "receive", vPath, false, fBech32);
+
+    akStealthOut = aks;
+    return 0;
+};
+
+int CWallet::NewStealthKeyFromAccount(std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32)
+{
+    {
+        LOCK(cs_wallet);
+        CWalletDB wdb(*dbw, "r+");
+
+        if (!wdb.TxnBegin())
+            return errorN(1, "%s TxnBegin failed.", __func__);
+
+        if (0 != NewStealthKeyFromAccount(&wdb, idDefaultAccount, sLabel, akStealthOut, nPrefixBits, pPrefix, fBech32))
+        {
+            wdb.TxnAbort();
+            return 1;
+        };
+
+        if (!wdb.TxnCommit())
+            return errorN(1, "%s TxnCommit failed.", __func__);
+    }
+    CStealthAddress sxAddr;
+    akStealthOut.SetSxAddr(sxAddr);
+    AddressBookChangedNotify(sxAddr, CT_NEW);
+    return 0;
+};
+
+bool CWallet::AddressBookChangedNotify(const CTxDestination &address, ChangeType nMode)
+{
+    // Must run without cs_wallet locked
+
+    CAddressBookData entry;
+    isminetype tIsMine;
+
+    {
+        LOCK(cs_wallet);
+
+        std::map<CTxDestination, CAddressBookData>::const_iterator mi = mapAddressBook.find(address);
+        if (mi == mapAddressBook.end())
+            return false;
+        entry = mi->second;
+
+        tIsMine = ::IsMine(*this, address);
+    }
+
+    NotifyAddressBookChanged(this, address, entry.name, tIsMine != ISMINE_NO, entry.purpose, nMode);
+
+    if (tIsMine == ISMINE_SPENDABLE
+        && address.type() == typeid(CKeyID))
+    {
+        CKeyID id = boost::get<CKeyID>(address);
+    };
+
+    return true;
+}

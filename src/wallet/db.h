@@ -173,7 +173,7 @@ public:
 
 public:
     template <typename K, typename T>
-    bool Read(const K& key, T& value)
+    bool Read(const K& key, T& value, uint32_t nFlags=0)
     {
         if (!pdb)
             return false;

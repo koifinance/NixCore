@@ -4,7 +4,7 @@
 </div>
 <hr />
 
-[![Build Status](https://travis-ci.org/nixplatform/nix.svg?branch=master)](https://travis-ci.org/nixplatform/nix)
+[![Build Status](https://travis-ci.org/NixPlatform/nix.svg?branch=master)](https://travis-ci.org/NixPlatform/NixCore)
 
 ### What is NIX?
 ---
@@ -20,7 +20,7 @@ NIX is an open source digital currency that focuses on privacy centered metrics.
 
 * Ghost Protocol to enhance privacy features.
 
-For more information, please visit [NixPlatform.io](nixplatform.io) or read the [whitepaper](nixplatform.io/whitepaper).
+For more information, please visit [NixPlatform.io](https://nixplatform.io/nixplatform.io) or read the [whitepaper](https://nixplatform.io/nixplatform.io/whitepaper).
 
 
 ### Guides & Documentation

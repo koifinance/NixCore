@@ -3915,6 +3915,7 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
     return results;
 }
 
+//TOR/I2P Config
 UniValue enableTor(const JSONRPCRequest& request){
 
     if (request.fHelp || request.params.size() > 1)
@@ -3971,6 +3972,407 @@ UniValue torStatus(const JSONRPCRequest& request){
             result = "Obfuscation Disabled";
         }
     }
+    return result;
+}
+
+//Stealth address config
+
+UniValue getnewstealthaddress(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 5)
+        throw std::runtime_error(
+            "getnewstealthaddress ( \"label\" num_prefix_bits prefix_num bech32 makeV2 )\n"
+            "Returns a new Particl stealth address for receiving payments."
+            + HelpRequiringPassphrase(pwallet) +
+            "\nArguments:\n"
+            "1. \"label\"             (string, optional) If specified the key is added to the address book.\n"
+            "2. num_prefix_bits     (int, optional) If specified and > 0, the stealth address is created with a prefix.\n"
+            "3. prefix_num          (int, optional) If prefix_num is not specified the prefix will be selected deterministically.\n"
+            "           prefix_num can be specified in base2, 10 or 16, for base 2 prefix_num must begin with 0b, 0x for base16.\n"
+            "           A 32bit integer will be created from prefix_num and the least significant num_prefix_bits will become the prefix.\n"
+            "           A stealth address created without a prefix will scan all incoming stealth transactions, irrespective of transaction prefixes.\n"
+            "           Stealth addresses with prefixes will scan only incoming stealth transactions with a matching prefix.\n"
+            "4. bech32              (bool, optional, default=false) Use Bech32 encoding.\n"
+            "5. makeV2              (bool, optional, default=false) Generate an address from the same method used for hardware wallets.\n"
+            "\nResult:\n"
+            "\"address\"              (string) The new particl stealth address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getnewstealthaddress", "\"lblTestSxAddrPrefix\" 3 \"0b101\"")
+            + HelpExampleRpc("getnewstealthaddress", "\"lblTestSxAddrPrefix\", 3, \"0b101\""));
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    std::string sLabel;
+    if (request.params.size() > 0)
+        sLabel = request.params[0].get_str();
+
+    uint32_t num_prefix_bits = 0;
+    if (request.params.size() > 1)
+    {
+        std::string sTemp = request.params[1].get_str();
+        char *pend;
+        errno = 0;
+        num_prefix_bits = strtoul(sTemp.c_str(), &pend, 10);
+        if (errno != 0 || !pend || *pend != '\0')
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("num_prefix_bits invalid number."));
+    };
+
+    if (num_prefix_bits > 32)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("num_prefix_bits must be <= 32."));
+
+    std::string sPrefix_num;
+    if (request.params.size() > 2)
+        sPrefix_num = request.params[2].get_str();
+
+    bool fBech32 = request.params.size() > 3 ? request.params[3].get_bool() : false;
+    bool fMakeV2 = request.params.size() > 4 ? request.params[4].get_bool() : false;
+
+    if (fMakeV2 && !fBech32)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("bech32 must be true when using makeV2."));
+
+    CEKAStealthKey akStealth;
+    std::string sError;
+    if (fMakeV2)
+    {
+        if (0 != pwallet->NewStealthKeyV2FromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32))
+            throw JSONRPCError(RPC_WALLET_ERROR, _("NewStealthKeyV2FromAccount failed."));
+    } else
+    {
+        if (0 != pwallet->NewStealthKeyFromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32))
+            throw JSONRPCError(RPC_WALLET_ERROR, _("NewStealthKeyFromAccount failed."));
+    };
+
+    CStealthAddress sxAddr;
+    akStealth.SetSxAddr(sxAddr);
+
+    return sxAddr.ToString(fBech32);
+}
+
+UniValue importstealthaddress(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 6)
+        throw std::runtime_error(
+            "importstealthaddress \"scan_secret\" \"spend_secret\" ( \"label\" num_prefix_bits prefix_num bech32 )\n"
+            "Import an owned stealth addresses.\n"
+            + HelpRequiringPassphrase(pwallet) +
+            "\nArguments:\n"
+            "1. \"scan_secret\"       (string, required) The hex or wif encoded scan secret.\n"
+            "2. \"spend_secret\"      (string, required) The hex or wif encoded spend secret.\n"
+            "3. \"label\"             (string, optional) If specified the key is added to the address book.\n"
+            "4. num_prefix_bits     (int, optional) If specified and > 0, the stealth address is created with a prefix.\n"
+            "5. prefix_num          (int, optional) If prefix_num is not specified the prefix will be selected deterministically.\n"
+            "           prefix_num can be specified in base2, 10 or 16, for base 2 prefix_num must begin with 0b, 0x for base16.\n"
+            "           A 32bit integer will be created from prefix_num and the least significant num_prefix_bits will become the prefix.\n"
+            "           A stealth address created without a prefix will scan all incoming stealth transactions, irrespective of transaction prefixes.\n"
+            "           Stealth addresses with prefixes will scan only incoming stealth transactions with a matching prefix.\n"
+            "6. bech32              (bool, optional) Use Bech32 encoding.\n"
+            "\nResult:\n"
+            "\"address\"              (string) The new particl stealth address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("importstealthaddress", "scan_secret spend_secret \"label\" 3 \"0b101\"")
+            + HelpExampleRpc("importstealthaddress", "scan_secret, spend_secret, \"label\", 3, \"0b101\""));
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    std::string sScanSecret  = request.params[0].get_str();
+    std::string sSpendSecret = request.params[1].get_str();
+    std::string sLabel;
+
+    if (request.params.size() > 2)
+        sLabel = request.params[2].get_str();
+
+    uint32_t num_prefix_bits = 0;
+    if (request.params.size() > 3)
+    {
+        std::string sTemp = request.params[3].get_str();
+        char *pend;
+        errno = 0;
+        num_prefix_bits = strtoul(sTemp.c_str(), &pend, 10);
+        if (errno != 0 || !pend || *pend != '\0')
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("num_prefix_bits invalid number."));
+    };
+
+    if (num_prefix_bits > 32)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("num_prefix_bits must be <= 32."));
+
+    uint32_t nPrefix = 0;
+    std::string sPrefix_num;
+    if (request.params.size() > 4)
+    {
+        sPrefix_num = request.params[4].get_str();
+        if (!ExtractStealthPrefix(sPrefix_num.c_str(), nPrefix))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Could not convert prefix to number."));
+    };
+
+    bool fBech32 = request.params.size() > 5 ? request.params[5].get_bool() : false;
+
+    std::vector<uint8_t> vchScanSecret;
+    std::vector<uint8_t> vchSpendSecret;
+    CBitcoinSecret wifScanSecret, wifSpendSecret;
+    CKey skScan, skSpend;
+    if (IsHex(sScanSecret))
+    {
+        vchScanSecret = ParseHex(sScanSecret);
+    } else
+    if (wifScanSecret.SetString(sScanSecret))
+    {
+        skScan = wifScanSecret.GetKey();
+    } else
+    {
+        if (!DecodeBase58(sScanSecret, vchScanSecret))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Could not decode scan secret as wif, hex or base58."));
+    };
+    if (vchScanSecret.size() > 0)
+    {
+        if (vchScanSecret.size() != 32)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Scan secret is not 32 bytes."));
+        skScan.Set(&vchScanSecret[0], true);
+    };
+
+    if (IsHex(sSpendSecret))
+    {
+        vchSpendSecret = ParseHex(sSpendSecret);
+    } else
+    if (wifSpendSecret.SetString(sSpendSecret))
+    {
+        skSpend = wifSpendSecret.GetKey();
+    } else
+    {
+        if (!DecodeBase58(sSpendSecret, vchSpendSecret))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Could not decode spend secret as hex or base58."));
+    };
+    if (vchSpendSecret.size() > 0)
+    {
+        if (vchSpendSecret.size() != 32)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Spend secret is not 32 bytes."));
+        skSpend.Set(&vchSpendSecret[0], true);
+    };
+
+    if (skSpend == skScan)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Spend secret must be different to scan secret."));
+
+    CStealthAddress sxAddr;
+    sxAddr.label = sLabel;
+    sxAddr.scan_secret = skScan;
+    sxAddr.spend_secret_id = skSpend.GetPubKey().GetID();
+
+    sxAddr.prefix.number_bits = num_prefix_bits;
+    if (sxAddr.prefix.number_bits > 0)
+    {
+        if (sPrefix_num.empty())
+        {
+            // if pPrefix is null, set nPrefix from the hash of kSpend
+            uint8_t tmp32[32];
+            CSHA256().Write(skSpend.begin(), 32).Finalize(tmp32);
+            memcpy(&nPrefix, tmp32, 4);
+        };
+
+        uint32_t nMask = SetStealthMask(num_prefix_bits);
+        nPrefix = nPrefix & nMask;
+        sxAddr.prefix.bitfield = nPrefix;
+    };
+
+    if (0 != SecretToPublicKey(sxAddr.scan_secret, sxAddr.scan_pubkey))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, _("Could not get scan public key."));
+    if (0 != SecretToPublicKey(skSpend, sxAddr.spend_pubkey))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, _("Could not get spend public key."));
+
+    UniValue result(UniValue::VOBJ);
+    bool fFound = false;
+    // Find if address already exists, can update
+    std::set<CStealthAddress>::iterator it;
+    for (it = pwallet->stealthAddresses.begin(); it != pwallet->stealthAddresses.end(); ++it)
+    {
+        CStealthAddress &sxAddrIt = const_cast<CStealthAddress&>(*it);
+        if (sxAddrIt.scan_pubkey == sxAddr.scan_pubkey
+            && sxAddrIt.spend_pubkey == sxAddr.spend_pubkey)
+        {
+            CKeyID sid = sxAddrIt.GetSpendKeyID();
+
+            if (!pwallet->HaveKey(sid))
+            {
+                CPubKey pk = skSpend.GetPubKey();
+                if (!pwallet->AddKeyPubKey(skSpend, pk))
+                    throw JSONRPCError(RPC_WALLET_ERROR, _("Import failed - AddKeyPubKey failed."));
+                fFound = true; // update stealth address with secret
+                break;
+            };
+
+            throw JSONRPCError(RPC_WALLET_ERROR, _("Import failed - stealth address exists."));
+        };
+    };
+
+    {
+        LOCK(pwallet->cs_wallet);
+        if (pwallet->HaveStealthAddress(sxAddr)) // check for extkeys, no update possible
+            throw JSONRPCError(RPC_WALLET_ERROR, _("Import failed - stealth address exists."));
+
+        pwallet->SetAddressBook(sxAddr, sLabel, "", fBech32);
+    }
+
+    if (fFound)
+    {
+        result.pushKV("result", "Success, updated " + sxAddr.Encoded(fBech32));
+    } else
+    {
+        if (!pwallet->ImportStealthAddress(sxAddr, skSpend))
+            throw std::runtime_error("Could not save to wallet.");
+        result.pushKV("result", "Success");
+        result.pushKV("stealth_address", sxAddr.Encoded(fBech32));
+    };
+
+    return result;
+}
+
+int ListLooseStealthAddresses(UniValue &arr, CWallet *pwallet, bool fShowSecrets, bool fAddressBookInfo)
+{
+    std::set<CStealthAddress>::iterator it;
+    for (it = pwallet->stealthAddresses.begin(); it != pwallet->stealthAddresses.end(); ++it)
+    {
+        UniValue obj(UniValue::VOBJ);
+        obj.pushKV("Label", it->label);
+        obj.pushKV("Address", it->Encoded());
+
+        if (fShowSecrets)
+        {
+            obj.pushKV("Scan Secret", CBitcoinSecret(it->scan_secret).ToString());
+
+            CKeyID sid = it->GetSpendKeyID();
+            CKey skSpend;
+            if (pwallet->GetKey(sid, skSpend))
+                obj.pushKV("Spend Secret", CBitcoinSecret(skSpend).ToString());
+        };
+
+        if (fAddressBookInfo)
+        {
+            std::map<CTxDestination, CAddressBookData>::const_iterator mi = pwallet->mapAddressBook.find(*it);
+            if (mi != pwallet->mapAddressBook.end())
+            {
+                // TODO: confirm vPath?
+
+                if (mi->second.name != it->label)
+                    obj.pushKV("addr_book_label", mi->second.name);
+                if (!mi->second.purpose.empty())
+                    obj.pushKV("purpose", mi->second.purpose);
+
+                UniValue objDestData(UniValue::VOBJ);
+                for (const auto &pair : mi->second.destdata)
+                    obj.pushKV(pair.first, pair.second);
+                if (objDestData.size() > 0)
+                    obj.pushKV("destdata", objDestData);
+            };
+        };
+
+        arr.push_back(obj);
+    };
+
+    return 0;
+};
+
+UniValue liststealthaddresses(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 1)
+        throw std::runtime_error(
+            "liststealthaddresses ( show_secrets=0 )\n"
+            "List owned stealth addresses.");
+
+    bool fShowSecrets = false;
+
+    if (request.params.size() > 0)
+    {
+        std::string str = request.params[0].get_str();
+
+        if (nix::IsStringBoolNegative(str))
+            fShowSecrets = false;
+        else
+            fShowSecrets = true;
+    };
+
+    if (fShowSecrets)
+        EnsureWalletIsUnlocked(pwallet);
+
+    UniValue result(UniValue::VARR);
+
+    ExtKeyAccountMap::const_iterator mi;
+    for (mi = pwallet->mapExtAccounts.begin(); mi != pwallet->mapExtAccounts.end(); ++mi)
+    {
+        CExtKeyAccount *ea = mi->second;
+
+        if (ea->mapStealthKeys.size() < 1)
+            continue;
+
+        UniValue rAcc(UniValue::VOBJ);
+        UniValue arrayKeys(UniValue::VARR);
+
+        rAcc.pushKV("Account", ea->sLabel);
+
+        AccStealthKeyMap::iterator it;
+        for (it = ea->mapStealthKeys.begin(); it != ea->mapStealthKeys.end(); ++it)
+        {
+            const CEKAStealthKey &aks = it->second;
+
+            UniValue objA(UniValue::VOBJ);
+            objA.pushKV("Label", aks.sLabel);
+            objA.pushKV("Address", aks.ToStealthAddress());
+
+            if (fShowSecrets)
+            {
+                objA.pushKV("Scan Secret", HexStr(aks.skScan.begin(), aks.skScan.end()));
+                std::string sSpend;
+                CStoredExtKey *sekAccount = ea->ChainAccount();
+                if (sekAccount && !sekAccount->fLocked)
+                {
+                    CKey skSpend;
+                    if (ea->GetKey(aks.akSpend, skSpend))
+                        sSpend = HexStr(skSpend.begin(), skSpend.end());
+                    else
+                        sSpend = "Extract failed.";
+                } else
+                {
+                    sSpend = "Account Locked.";
+                };
+                objA.pushKV("Spend Secret", sSpend);
+            };
+
+            arrayKeys.push_back(objA);
+        };
+
+        if (arrayKeys.size() > 0)
+        {
+            rAcc.pushKV("Stealth Addresses", arrayKeys);
+            result.push_back(rAcc);
+        };
+    };
+
+
+    if (pwallet->stealthAddresses.size() > 0)
+    {
+        UniValue rAcc(UniValue::VOBJ);
+        UniValue arrayKeys(UniValue::VARR);
+
+        rAcc.pushKV("Account", "Loose Keys");
+
+        ListLooseStealthAddresses(arrayKeys, pwallet, fShowSecrets, false);
+
+        if (arrayKeys.size() > 0)
+        {
+            rAcc.pushKV("Stealth Addresses", arrayKeys);
+            result.push_back(rAcc);
+        };
+    };
+
     return result;
 }
 
