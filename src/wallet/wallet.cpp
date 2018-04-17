@@ -7162,12 +7162,12 @@ int CWallet::ExtKeyLoadMaster()
                 LogPrintf("Wallet locked, master key will be created when unlocked.\n");
                 return 0;
             };
-
+            */
             if (ExtKeyCreateInitial(&wdb) != 0)
                 return errorN(1, "ExtKeyCreateDefaultMaster failed.");
 
             return 0;
-            */
+
         };
         LogPrintf("Warning: No master ext key has been set.\n");
         return 1;
