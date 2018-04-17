@@ -1277,8 +1277,6 @@ public:
     void KeepKey(int64_t nIndex);
     void ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey);
     bool GetKeyFromPool(CPubKey &key, bool internal = false);
-    bool GetPubKey(const CKeyID &address, CPubKey &pkOut) const override;
-
     isminetype HaveStealthAddress(const CStealthAddress &sxAddr) const;
     bool GetStealthAddressScanKey(CStealthAddress &sxAddr) const;
 
