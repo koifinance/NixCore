@@ -103,6 +103,12 @@ AC_ARG_ENABLE([wallet],
   [enable_wallet=$enableval],
   [enable_wallet=yes])
 
+AC_ARG_ENABLE([usbdevice],
+  [AS_HELP_STRING([--enable-usbdevice],
+  [enable usbdevice (disabled by default)])],
+  [enable_usbdevice=$enableval],
+  [enable_usbdevice=no])
+
 AC_ARG_WITH([miniupnpc],
   [AS_HELP_STRING([--with-miniupnpc],
   [enable UPNP (default is yes if libminiupnpc is found)])],
@@ -929,6 +935,21 @@ fi
 
 fi
 
+case $host in
+  *linux*)
+    LIBHIDAPINAME=hidapi-libusb
+    HIDAPILIBS=-l$LIBHIDAPINAME
+    ;;
+  *mingw*)
+    LIBHIDAPINAME=hidapi
+    HIDAPILIBS="-l$LIBHIDAPINAME -lsetupapi"
+    ;;
+  *)
+    LIBHIDAPINAME=hidapi
+    HIDAPILIBS=-l$LIBHIDAPINAME
+    ;;
+esac
+
 if test x$use_pkgconfig = xyes; then
   : dnl
   m4_ifdef(
@@ -957,6 +978,17 @@ if test x$use_pkgconfig = xyes; then
       else
           AC_DEFINE_UNQUOTED([ENABLE_ZMQ],[0],[Define to 1 to enable ZMQ functions])
       fi
+
+      if test "x$enable_usbdevice" = "xyes"; then
+        PKG_CHECK_MODULES([USB],[$LIBHIDAPINAME >= 0],
+          [AC_DEFINE([ENABLE_USBDEVICE],[1],[Define to 1 to enable USBDEVICE functions])],
+          [AC_DEFINE([ENABLE_USBDEVICE],[0],[Define to 1 to enable USBDEVICE functions])
+           AC_MSG_WARN([$LIBHIDAPINAME version 0 or greater not found, disabling])
+           enable_usbdevice=no])
+      else
+          AC_DEFINE_UNQUOTED([ENABLE_USBDEVICE],[0],[Define to 1 to enable USBDEVICE functions])
+      fi
+
     ]
   )
 else
@@ -995,6 +1027,20 @@ else
         ZMQ_CFLAGS="$ZMQ_CFLAGS -DZMQ_STATIC"
       ;;
     esac
+  fi
+
+  if test "x$enable_usbdevice" = "xyes"; then
+    AC_CHECK_HEADER([hidapi/hidapi.h],
+       [AC_DEFINE([ENABLE_USBDEVICE],[1],[Define to 1 to enable USBDEVICE functions])],
+       [AC_MSG_WARN([hidapi.h not found, disabling usbdevice support])
+        enable_usbdevice=no
+        AC_DEFINE([ENABLE_USBDEVICE],[0],[Define to 1 to enable USBDEVICE functions])])
+    AC_CHECK_LIB([$LIBHIDAPINAME],[hid_open],USB_LIBS=$HIDAPILIBS,
+       [AC_MSG_WARN([$LIBHIDAPINAME not found, disabling usbdevice support])
+        enable_usbdevice=no
+        AC_DEFINE([ENABLE_USBDEVICE],[0],[Define to 1 to enable USBDEVICE functions])],[-lsetupapi])
+  else
+    AC_DEFINE_UNQUOTED([ENABLE_USBDEVICE],[0],[Define to 1 to enable USBDEVICE functions])
   fi
 
   NIX_QT_CHECK(AC_CHECK_LIB([protobuf] ,[main],[PROTOBUF_LIBS=-lprotobuf], NIX_QT_FAIL(libprotobuf not found)))
@@ -1110,6 +1156,15 @@ else
   AC_MSG_RESULT(no)
 fi
 
+dnl enable usbdevice
+AC_MSG_CHECKING([if usbdevice should be enabled])
+if test x$enable_usbdevice != xno; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE_UNQUOTED([ENABLE_USBDEVICE],[1],[Define to 1 to enable usbdevice functions])
+else
+  AC_MSG_RESULT(no)
+fi
+
 dnl enable upnp support
 AC_MSG_CHECKING([whether to build with support for UPnP])
 if test x$have_miniupnpc = xno; then
@@ -1203,6 +1258,7 @@ AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
 AM_CONDITIONAL([BUILD_DARWIN], [test x$BUILD_OS = xdarwin])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([ENABLE_WALLET],[test x$enable_wallet = xyes])
+AM_CONDITIONAL([ENABLE_USBDEVICE],[test x$enable_usbdevice = xyes])
 AM_CONDITIONAL([ENABLE_TESTS],[test x$BUILD_TEST = xyes])
 AM_CONDITIONAL([ENABLE_QT],[test x$nix_enable_qt = xyes])
 AM_CONDITIONAL([ENABLE_QT_TESTS],[test x$BUILD_TEST_QT = xyes])
@@ -1259,6 +1315,7 @@ AC_SUBST(SSL_LIBS)
 AC_SUBST(EVENT_LIBS)
 AC_SUBST(EVENT_PTHREADS_LIBS)
 AC_SUBST(ZMQ_LIBS)
+AC_SUBST(USB_LIBS)
 AC_SUBST(PROTOBUF_LIBS)
 AC_SUBST(QR_LIBS)
 AC_CONFIG_FILES([Makefile src/Makefile doc/man/Makefile share/setup.nsi share/qt/Info.plist test/config.ini])
@@ -1328,6 +1385,7 @@ esac
 echo
 echo "Options used to compile and link:"
 echo "  with wallet   = $enable_wallet"
+echo "  with usbdevice  = $enable_usbdevice"
 echo "  with gui / qt = $nix_enable_qt"
 if test x$nix_enable_qt != xno; then
     echo "    qt version  = $nix_qt_got_major_vers"

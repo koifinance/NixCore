@@ -69,6 +69,9 @@ endif
 if ENABLE_WALLET
 LIBNIX_WALLET=libnix_wallet.a
 endif
+if ENABLE_USBDEVICE
+LIBPARTICL_USBDEVICE=libnix_usbdevice.a
+endif
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F)
@@ -83,6 +86,7 @@ EXTRA_LIBRARIES += \
   $(LIBNIX_SERVER) \
   $(LIBNIX_CLI) \
   $(LIBNIX_WALLET) \
+  $(LIBNIX_USBDEVICE) \
   $(LIBNIX_ZMQ)
 
 lib_LTLIBRARIES = $(LIBNIXCONSENSUS)
@@ -168,7 +172,8 @@ NIX_CORE_H = \
   script/standard.h \
   script/ismine.h \
   stealth-address\l4z.h \
-  stealth-address\smessage.h \
+  stealth-address\keystore.h \
+  stealth-address\keyutil.h \
   stealth-address\stealth.h \
   stealth-address\xxhash.h \
   streams.h \
@@ -207,6 +212,8 @@ NIX_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
+  usbdevice/usbdevice.h \
+  usbdevice/rpcusbdevice.h \
   zmq/zmqpublishnotifier.h
 
 
@@ -268,6 +275,24 @@ libnix_zmq_a_SOURCES = \
   zmq/zmqabstractnotifier.cpp \
   zmq/zmqnotificationinterface.cpp \
   zmq/zmqpublishnotifier.cpp
+endif
+
+if ENABLE_USBDEVICE
+libnix_usbdevice_a_CPPFLAGS = $(NIX_INCLUDES) $(AM_CPPFLAGS)
+libnix_usbdevice_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libnix_usbdevice_a_CFLAGS = -DHAVE_HIDAPI $(AM_CFLAGS)
+libnix_usbdevice_a_SOURCES = \
+  usbdevice/ledger/btchipApdu.h \
+  usbdevice/ledger/ledgerLayer.h \
+  usbdevice/ledger/ledgerLayer.c \
+  usbdevice/ledger/dongleCommHidHidapi.h \
+  usbdevice/ledger/dongleCommHidHidapi.c \
+  usbdevice/usbdevice.cpp \
+  usbdevice/debugdevice.h \
+  usbdevice/debugdevice.cpp \
+  usbdevice/ledgerdevice.h \
+  usbdevice/ledgerdevice.cpp \
+  usbdevice/rpcusbdevice.cpp
 endif
 
 
@@ -389,7 +414,8 @@ libnix_common_a_SOURCES = \
   script/sign.cpp \
   script/standard.cpp \
   stealth-address\l4z.h \
-  stealth-address\smessage.h \
+  stealth-address\keystore.h \
+  stealth-address\keyutil.h \
   stealth-address\stealth.h \
   stealth-address\xxhash.h \
   warnings.cpp \
@@ -478,9 +504,10 @@ nixd_LDADD = \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
-  $(LIBSECP256K1)
+  $(LIBSECP256K1) \
+  $(LIBNIX_USBDEVICE)
 
-nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) -lz
+nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(USB_LIBS) -lz
 
 # nix-cli binary #
 nix_cli_SOURCES = nix-cli.cpp

@@ -16,9 +16,13 @@
 
 #include <chainparams.h>
 #include <key.h>
+#include <key/extkey.h>
+#include <key/stealth.h>
 #include <pubkey.h>
+#include <script/script.h>
 #include <script/standard.h>
 #include <support/allocators/zeroafterfree.h>
+#include <bech32.h>
 
 #include <string>
 #include <vector>
@@ -76,6 +80,7 @@ protected:
     //! the actually encoded data
     typedef std::vector<unsigned char, zero_after_free_allocator<unsigned char> > vector_uchar;
     vector_uchar vchData;
+    bool fBech32;
 
     CBase58Data();
     void SetData(const std::vector<unsigned char> &vchVersionIn, const void* pdata, size_t nSize);
@@ -94,6 +99,43 @@ public:
     bool operator> (const CBase58Data& b58) const { return CompareTo(b58) >  0; }
 };
 
+/** base58-encoded Bitcoin addresses.
+ * Public-key-hash-addresses have version 0 (or 111 testnet).
+ * The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
+ * Script-hash-addresses have version 5 (or 196 testnet).
+ * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
+ */
+class CBitcoinAddress : public CBase58Data {
+public:
+    bool Set(const CKeyID &id, bool fBech32 = false);
+    bool Set(const CScriptID &id, bool fBech32 = false);
+    bool Set(const CKeyID256 &id, bool fBech32 = false);
+    bool Set(const CScriptID256 &id, bool fBech32 = false);
+    bool Set(const CKeyID &id, CChainParams::Base58Type prefix, bool fBech32 = false);
+    bool Set(const CStealthAddress &sx, bool fBech32 = false);
+    bool Set(const CExtKeyPair &ek, bool fBech32 = false);
+    bool Set(const CTxDestination &dest, bool fBech32 = false);
+
+    bool IsValidStealthAddress() const;
+    bool IsValidStealthAddress(const CChainParams &params) const;
+    bool IsValid() const;
+    bool IsValid(const CChainParams &params) const;
+    bool IsValid(CChainParams::Base58Type prefix) const;
+
+    CBitcoinAddress() {}
+    CBitcoinAddress(const CTxDestination &dest) { Set(dest); }
+    CBitcoinAddress(const CTxDestination &dest, bool fBech32) { Set(dest, fBech32); }
+    CBitcoinAddress(const std::string& strAddress) { SetString(strAddress); }
+    CBitcoinAddress(const char* pszAddress) { SetString(pszAddress); }
+
+    CTxDestination Get() const;
+    bool GetKeyID(CKeyID &keyID) const;
+    bool GetKeyID(CKeyID256 &keyID) const;
+    bool GetKeyID(CKeyID &keyID, CChainParams::Base58Type prefix) const;
+    bool GetIndexKey(uint256 &hashBytes, int &type) const;
+    bool IsScript() const;
+};
+
 /**
  * A base58-encoded secret key
  */
@@ -101,7 +143,7 @@ class CBitcoinSecret : public CBase58Data
 {
 public:
     void SetKey(const CKey& vchSecret);
-    CKey GetKey();
+    CKey GetKey() const;
     bool IsValid() const;
     bool SetString(const char* pszSecret);
     bool SetString(const std::string& strSecret);
@@ -117,6 +159,25 @@ public:
         unsigned char vch[Size];
         key.Encode(vch);
         SetData(Params().Base58Prefix(Type), vch, vch+Size);
+    }
+
+    int Set58(const char *base58)
+    {
+        std::vector<uint8_t> vchBytes;
+        if (!DecodeBase58(base58, vchBytes))
+            return 1;
+
+        if (vchBytes.size() != BIP32_KEY_LEN)
+            return 2;
+
+        if (!VerifyChecksum(vchBytes))
+            return 3;
+
+        if (0 != memcmp(&vchBytes[0], &Params().Base58Prefix(Type)[0], 4))
+            return 4;
+
+        SetData(Params().Base58Prefix(Type), &vchBytes[4], &vchBytes[4]+Size);
+        return 0;
     }
 
     K GetKey() {
@@ -142,9 +203,93 @@ public:
 typedef CBitcoinExtKeyBase<CExtKey, BIP32_EXTKEY_SIZE, CChainParams::EXT_SECRET_KEY> CBitcoinExtKey;
 typedef CBitcoinExtKeyBase<CExtPubKey, BIP32_EXTKEY_SIZE, CChainParams::EXT_PUBLIC_KEY> CBitcoinExtPubKey;
 
-std::string EncodeDestination(const CTxDestination& dest);
+
+class CExtKey58 : public CBase58Data
+{
+public:
+    CExtKey58() {};
+
+    CExtKey58(const CExtKeyPair &key, CChainParams::Base58Type type)
+    {
+        SetKey(key, type);
+    };
+
+    void SetKeyV(const CExtKeyPair &key)
+    {
+        SetKey(key, CChainParams::EXT_SECRET_KEY);
+    };
+
+    void SetKeyP(const CExtKeyPair &key)
+    {
+        SetKey(key, CChainParams::EXT_PUBLIC_KEY);
+    };
+
+    void SetKey(const CExtKeyPair &key, CChainParams::Base58Type type)
+    {
+        uint8_t vch[74];
+
+        switch (type)
+        {
+            case CChainParams::EXT_SECRET_KEY:
+            case CChainParams::EXT_SECRET_KEY_BTC:
+                key.EncodeV(vch);
+                break;
+            //case CChainParams::EXT_PUBLIC_KEY:
+            //case CChainParams::EXT_PUBLIC_KEY_BTC:
+            default:
+                key.EncodeP(vch);
+                break;
+        };
+
+        SetData(Params().Base58Prefix(type), vch, vch+74);
+    };
+
+    CExtKeyPair GetKey()
+    {
+        CExtKeyPair rv;
+        if (vchVersion == Params().Base58Prefix(CChainParams::EXT_SECRET_KEY)
+            || vchVersion == Params().Base58Prefix(CChainParams::EXT_SECRET_KEY_BTC))
+        {
+            rv.DecodeV(&vchData[0]);
+            return rv;
+        };
+        rv.DecodeP(&vchData[0]);
+        return rv;
+    };
+
+    bool GetPubKey(CExtPubKey &rv, const CChainParams *pparams)
+    {
+        if (vchVersion == pparams->Base58Prefix(CChainParams::EXT_SECRET_KEY)
+            || vchVersion == pparams->Base58Prefix(CChainParams::EXT_SECRET_KEY_BTC))
+        {
+            CExtKey ek;
+            ek.Decode(&vchData[0]);
+            rv = ek.Neutered();
+            return true;
+        };
+
+        if (vchVersion == pparams->Base58Prefix(CChainParams::EXT_PUBLIC_KEY)
+            || vchVersion == pparams->Base58Prefix(CChainParams::EXT_PUBLIC_KEY_BTC))
+        {
+            rv.Decode(&vchData[0]);
+            return true;
+        }
+
+        return false;
+    };
+
+    int Set58(const char *base58);
+    int Set58(const char *base58, CChainParams::Base58Type type, const CChainParams *pparams);
+
+    bool IsValid(CChainParams::Base58Type prefix) const;
+
+    std::string ToStringVersion(CChainParams::Base58Type prefix);
+};
+
+std::string EncodeDestination(const CTxDestination& dest, bool fBech32=false);
 CTxDestination DecodeDestination(const std::string& str);
 bool IsValidDestinationString(const std::string& str);
 bool IsValidDestinationString(const std::string& str, const CChainParams& params);
+
 
 #endif // BITCOIN_BASE58_H

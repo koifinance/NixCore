@@ -75,3 +75,6 @@ libexecstream/win
 libexecstream/posix
 libexecstream
 stealth-address
+usbdevice
+stealth-address/wordlists
+usbdevice/ledger
