@@ -217,6 +217,129 @@ public:
     CWalletDB(const CWalletDB&) = delete;
     CWalletDB& operator=(const CWalletDB&) = delete;
 
+    Dbc *GetTxnCursor()
+    {
+        if (!batch.pdb || !batch.activeTxn)
+            return nullptr;
+
+        DbTxn *ptxnid = batch.activeTxn; // call TxnBegin first
+
+        Dbc *pcursor = nullptr;
+        int ret = batch.pdb->cursor(ptxnid, &pcursor, 0);
+        if (ret != 0)
+            return nullptr;
+        return pcursor;
+    }
+
+    Dbc *GetCursor()
+    {
+        return batch.GetCursor();
+    }
+
+    template< typename T>
+    bool Replace(Dbc *pcursor, const T &value)
+    {
+        if (!pcursor)
+            return false;
+
+        if (batch.fReadOnly)
+            assert(!"Replace called on database in read-only mode");
+
+        // Value
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        ssValue.reserve(10000);
+        ssValue << value;
+        Dbt datValue(&ssValue[0], ssValue.size());
+
+        // Write
+        int ret = pcursor->put(nullptr, &datValue, DB_CURRENT);
+
+        if (ret != 0)
+        {
+            LogPrintf("CursorPut ret %d - %s\n", ret, DbEnv::strerror(ret));
+        }
+        // Clear memory in case it was a private key
+        memset(datValue.get_data(), 0, datValue.get_size());
+
+        return (ret == 0);
+    }
+
+    int ReadAtCursor(Dbc *pcursor, CDataStream &ssKey, CDataStream &ssValue, unsigned int fFlags=DB_NEXT)
+    {
+        // Read at cursor
+        Dbt datKey;
+        memset(&datKey, 0, sizeof(datKey));
+        if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
+        {
+            datKey.set_data(&ssKey[0]);
+            datKey.set_size(ssKey.size());
+        }
+
+        Dbt datValue;
+        memset(&datValue, 0, sizeof(datValue));
+        if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
+        {
+            datValue.set_data(&ssValue[0]);
+            datValue.set_size(ssValue.size());
+        }
+        datKey.set_flags(DB_DBT_MALLOC);
+        datValue.set_flags(DB_DBT_MALLOC);
+        int ret = pcursor->get(&datKey, &datValue, fFlags);
+        if (ret != 0)
+            return ret;
+        else if (datKey.get_data() == nullptr || datValue.get_data() == nullptr)
+            return 99999;
+
+        // Convert to streams
+        ssKey.SetType(SER_DISK);
+        ssKey.clear();
+        ssKey.write((char*)datKey.get_data(), datKey.get_size());
+
+        ssValue.SetType(SER_DISK);
+        ssValue.clear();
+        ssValue.write((char*)datValue.get_data(), datValue.get_size());
+
+        // Clear and free memory
+        memset(datKey.get_data(), 0, datKey.get_size());
+        memset(datValue.get_data(), 0, datValue.get_size());
+        free(datKey.get_data());
+        free(datValue.get_data());
+        return 0;
+    }
+
+    int ReadKeyAtCursor(Dbc *pcursor, CDataStream &ssKey, unsigned int fFlags=DB_NEXT)
+    {
+        // Read key at cursor
+        Dbt datKey;
+        memset(&datKey, 0, sizeof(datKey));
+        if (fFlags == DB_SET || fFlags == DB_SET_RANGE)
+        {
+            datKey.set_data(&ssKey[0]);
+            datKey.set_size(ssKey.size());
+        }
+        datKey.set_flags(DB_DBT_MALLOC);
+
+        Dbt datValue;
+        memset(&datValue, 0, sizeof(datValue));
+        datValue.set_flags(DB_DBT_PARTIAL); // don't read data, dlen and doff are 0 after memset
+
+        int ret = pcursor->get(&datKey, &datValue, fFlags);
+        if (ret != 0)
+            return ret;
+        if (datKey.get_data() == nullptr)
+            return 99999;
+
+        // Convert to streams
+        ssKey.SetType(SER_DISK);
+        ssKey.clear();
+        ssKey.write((char*)datKey.get_data(), datKey.get_size());
+
+        // Clear and free memory
+        memset(datKey.get_data(), 0, datKey.get_size());
+        free(datKey.get_data());
+        return 0;
+    }
+
     bool WriteName(const std::string& strAddress, const std::string& strName);
     bool EraseName(const std::string& strAddress);
 

@@ -30,7 +30,6 @@ const unsigned int WALLET_CRYPTO_IV_SIZE = 16;
  * master key's key as the encryption key (see keystore.[ch]).
  */
 
-/** Master key for wallet encryption */
 class CMasterKey
 {
 public:
@@ -64,6 +63,9 @@ public:
         vchOtherDerivationParameters = std::vector<unsigned char>(0);
     }
 };
+
+bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CKeyingMaterial &vchPlaintext, const uint256& nIV, std::vector<unsigned char> &vchCiphertext);
+bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCiphertext, const uint256& nIV, CKeyingMaterial& vchPlaintext);
 
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;
 
@@ -114,6 +116,7 @@ public:
  */
 class CCryptoKeyStore : public CBasicKeyStore
 {
+    friend class CWallet;
 private:
 
     CKeyingMaterial vMasterKey;
@@ -141,14 +144,23 @@ public:
 
     bool IsCrypted() const { return fUseCrypto; }
     bool IsLocked() const;
-    bool Lock();
+    virtual bool Lock();
 
     virtual bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey) override;
+    isminetype IsMine(const CKeyID &address) const override;
     bool HaveKey(const CKeyID &address) const override;
     bool GetKey(const CKeyID &address, CKey& keyOut) const override;
     bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const override;
     std::set<CKeyID> GetKeys() const override;
+
+    virtual size_t CountKeys() const override
+    {
+        if (!IsCrypted())
+            return CBasicKeyStore::CountKeys();
+        LOCK(cs_KeyStore);
+        return mapCryptedKeys.size();
+    };
 
     /**
      * Wallet status (encrypted, locked) changed.

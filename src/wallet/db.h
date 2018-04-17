@@ -144,7 +144,7 @@ private:
 /** RAII class that provides access to a Berkeley database */
 class CDB
 {
-protected:
+public:
     Db* pdb;
     std::string strFile;
     DbTxn* activeTxn;

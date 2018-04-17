@@ -108,7 +108,7 @@ bool CCrypter::Decrypt(const std::vector<unsigned char>& vchCiphertext, CKeyingM
 }
 
 
-static bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CKeyingMaterial &vchPlaintext, const uint256& nIV, std::vector<unsigned char> &vchCiphertext)
+bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CKeyingMaterial &vchPlaintext, const uint256& nIV, std::vector<unsigned char> &vchCiphertext)
 {
     CCrypter cKeyCrypter;
     std::vector<unsigned char> chIV(WALLET_CRYPTO_IV_SIZE);
@@ -118,7 +118,7 @@ static bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CKeyingMateri
     return cKeyCrypter.Encrypt(*((const CKeyingMaterial*)&vchPlaintext), vchCiphertext);
 }
 
-static bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCiphertext, const uint256& nIV, CKeyingMaterial& vchPlaintext)
+bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCiphertext, const uint256& nIV, CKeyingMaterial& vchPlaintext)
 {
     CCrypter cKeyCrypter;
     std::vector<unsigned char> chIV(WALLET_CRYPTO_IV_SIZE);
@@ -143,6 +143,7 @@ static bool DecryptKey(const CKeyingMaterial& vMasterKey, const std::vector<unsi
 
 bool CCryptoKeyStore::SetCrypted()
 {
+
     LOCK(cs_KeyStore);
     if (fUseCrypto)
         return true;
@@ -181,14 +182,20 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
         LOCK(cs_KeyStore);
         if (!SetCrypted())
             return false;
-
         bool keyPass = false;
         bool keyFail = false;
+
+        size_t nTries = 0;
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
         for (; mi != mapCryptedKeys.end(); ++mi)
         {
             const CPubKey &vchPubKey = (*mi).second.first;
             const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
+
+            if (vchCryptedSecret.size() == 0) // unexpanded key received on stealth address
+                continue;
+
+            nTries++;
             CKey key;
             if (!DecryptKey(vMasterKeyIn, vchCryptedSecret, vchPubKey, key))
             {
@@ -204,7 +211,7 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
             LogPrintf("The wallet is probably corrupted: Some keys decrypt but not all.\n");
             assert(false);
         }
-        if (keyFail || !keyPass)
+        if (keyFail || (!keyPass && nTries > 0))
             return false;
         vMasterKey = vMasterKeyIn;
         fDecryptionThoroughlyChecked = true;
@@ -236,7 +243,6 @@ bool CCryptoKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)
     return true;
 }
 
-
 bool CCryptoKeyStore::AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
 {
     LOCK(cs_KeyStore);
@@ -248,6 +254,19 @@ bool CCryptoKeyStore::AddCryptedKey(const CPubKey &vchPubKey, const std::vector<
     ImplicitlyLearnRelatedKeyScripts(vchPubKey);
     return true;
 }
+
+isminetype CCryptoKeyStore::IsMine(const CKeyID &address) const
+{
+    LOCK(cs_KeyStore);
+    if (!IsCrypted()) {
+        return CBasicKeyStore::IsMine(address);
+    }
+    if (mapCryptedKeys.count(address) > 0)
+        return ISMINE_SPENDABLE;
+    if (mapWatchKeys.count(address) > 0)
+        return ISMINE_WATCH_SOLVABLE;
+    return ISMINE_NO;
+};
 
 bool CCryptoKeyStore::HaveKey(const CKeyID &address) const
 {

@@ -31,6 +31,7 @@
 #include "zerocoin/zerocoin.h"
 #include <stealth-address/extkey.h>
 #include <stealth-address/stealth.h>
+#include <crypto/sha512.h>
 typedef CWallet* CWalletRef;
 extern std::vector<CWalletRef> vpwallets;
 
@@ -133,6 +134,42 @@ enum OutputType : int
 extern OutputType g_address_type;
 extern OutputType g_change_type;
 
+
+class CHMAC_SHA256
+{
+private:
+    CSHA256 outer;
+    CSHA256 inner;
+
+public:
+    static const size_t OUTPUT_SIZE = 32;
+
+    CHMAC_SHA256(const unsigned char* key, size_t keylen);
+    CHMAC_SHA256& Write(const unsigned char* data, size_t len)
+    {
+        inner.Write(data, len);
+        return *this;
+    }
+    void Finalize(unsigned char hash[OUTPUT_SIZE]);
+};
+
+class CHMAC_SHA512
+{
+private:
+    CSHA512 outer;
+    CSHA512 inner;
+
+public:
+    static const size_t OUTPUT_SIZE = 64;
+
+    CHMAC_SHA512(const unsigned char* key, size_t keylen);
+    CHMAC_SHA512& Write(const unsigned char* data, size_t len)
+    {
+        inner.Write(data, len);
+        return *this;
+    }
+    void Finalize(unsigned char hash[OUTPUT_SIZE]);
+};
 
 /** A key pool entry */
 class CKeyPool
