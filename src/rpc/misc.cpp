@@ -120,6 +120,20 @@ public:
         return obj;
     }
 
+    UniValue operator()(const CExtKeyPair &ekp) const {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("isextkey", true));
+        return obj;
+    }
+
+    UniValue operator()(const CStealthAddress &sxAddr) const {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("isstealthaddress", true));
+        obj.push_back(Pair("prefix_num_bits", sxAddr.prefix.number_bits));
+        obj.push_back(Pair("prefix_bitfield", strprintf("0x%04x", sxAddr.prefix.bitfield)));
+        return obj;
+    }
+
     UniValue operator()(const WitnessV0ScriptHash& id) const
     {
         UniValue obj(UniValue::VOBJ);
@@ -144,6 +158,41 @@ public:
         obj.push_back(Pair("iswitness", true));
         obj.push_back(Pair("witness_version", (int)id.version));
         obj.push_back(Pair("witness_program", HexStr(id.program, id.program + id.length)));
+        return obj;
+    }
+
+    UniValue operator()(const CKeyID256 &idk256) const {
+        UniValue obj(UniValue::VOBJ);
+        CPubKey vchPubKey;
+        obj.push_back(Pair("isscript", false));
+        CKeyID id160(idk256);
+        if (pwallet && pwallet->GetPubKey(id160, vchPubKey)) {
+            obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
+            obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
+        }
+        return obj;
+    }
+
+    UniValue operator()(const CScriptID256 &scriptID256) const {
+        UniValue obj(UniValue::VOBJ);
+        CScript subscript;
+        obj.push_back(Pair("isscript", true));
+        CScriptID scriptID;
+        scriptID.Set(scriptID256);
+        if (pwallet && pwallet->GetCScript(scriptID, subscript)) {
+            std::vector<CTxDestination> addresses;
+            txnouttype whichType;
+            int nRequired;
+            ExtractDestinations(subscript, whichType, addresses, nRequired);
+            obj.push_back(Pair("script", GetTxnOutputType(whichType)));
+            obj.push_back(Pair("hex", HexStr(subscript.begin(), subscript.end())));
+            UniValue a(UniValue::VARR);
+            for (const CTxDestination& addr : addresses)
+                a.push_back(CBitcoinAddress(addr).ToString());
+            obj.push_back(Pair("addresses", a));
+            if (whichType == TX_MULTISIG)
+                obj.push_back(Pair("sigsrequired", nRequired));
+        }
         return obj;
     }
 };

@@ -7,6 +7,8 @@
 #define BITCOIN_KEYSTORE_H
 
 #include <key.h>
+#include <stealth-address/extkey.h>
+#include <stealth-address/stealth.h>
 #include <pubkey.h>
 #include <script/script.h>
 #include <script/standard.h>
@@ -28,6 +30,7 @@ public:
     virtual bool AddKey(const CKey &key);
 
     //! Check whether a key corresponding to a given address is present in the store.
+    virtual isminetype IsMine(const CKeyID &address) const =0;
     virtual bool HaveKey(const CKeyID &address) const =0;
     virtual bool GetKey(const CKeyID &address, CKey& keyOut) const =0;
     virtual std::set<CKeyID> GetKeys() const =0;
@@ -44,6 +47,8 @@ public:
     virtual bool RemoveWatchOnly(const CScript &dest) =0;
     virtual bool HaveWatchOnly(const CScript &dest) const =0;
     virtual bool HaveWatchOnly() const =0;
+
+    virtual size_t CountKeys() const =0;
 };
 
 typedef std::map<CKeyID, CKey> KeyMap;
@@ -65,18 +70,25 @@ protected:
 public:
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey) override;
     bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const override;
+    isminetype IsMine(const CKeyID &address) const override;
     bool HaveKey(const CKeyID &address) const override;
     std::set<CKeyID> GetKeys() const override;
     bool GetKey(const CKeyID &address, CKey &keyOut) const override;
-    bool AddCScript(const CScript& redeemScript) override;
-    bool HaveCScript(const CScriptID &hash) const override;
-    std::set<CScriptID> GetCScripts() const override;
-    bool GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const override;
+    virtual bool AddCScript(const CScript& redeemScript) override;
+    virtual bool HaveCScript(const CScriptID &hash) const override;
+    virtual std::set<CScriptID> GetCScripts() const override;
+    virtual bool GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const override;
 
-    bool AddWatchOnly(const CScript &dest) override;
-    bool RemoveWatchOnly(const CScript &dest) override;
-    bool HaveWatchOnly(const CScript &dest) const override;
-    bool HaveWatchOnly() const override;
+    virtual bool AddWatchOnly(const CScript &dest) override;
+    virtual bool RemoveWatchOnly(const CScript &dest) override;
+    virtual bool HaveWatchOnly(const CScript &dest) const override;
+    virtual bool HaveWatchOnly() const override;
+
+    virtual size_t CountKeys() const override
+    {
+        LOCK(cs_KeyStore);
+        return mapKeys.size();
+    };
 };
 
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;

@@ -13,6 +13,9 @@
 #include <memory>
 #include <vector>
 
+static const uint32_t CHAIN_NO_GENESIS = 444444;
+static const uint32_t CHAIN_NO_STEALTH_SPEND = 444445; // used hardened
+
 struct SeedSpec6 {
     uint8_t addr[16];
     uint16_t port;
@@ -46,7 +49,13 @@ public:
         SECRET_KEY,
         EXT_PUBLIC_KEY,
         EXT_SECRET_KEY,
-
+        STEALTH_ADDRESS,
+        EXT_KEY_HASH,
+        EXT_ACC_HASH,
+        EXT_PUBLIC_KEY_BTC,
+        EXT_SECRET_KEY_BTC,
+        PUBKEY_ADDRESS_256,
+        SCRIPT_ADDRESS_256,
         MAX_BASE58_TYPES
     };
 
@@ -54,6 +63,7 @@ public:
     const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
     int GetDefaultPort() const { return nDefaultPort; }
 
+    int BIP44ID() const { return nBIP44ID; }
     const CBlock& GenesisBlock() const { return genesis; }
     /** Default value for -checkmempool and -checkblockindex argument */
     bool DefaultConsistencyChecks() const { return fDefaultConsistencyChecks; }
@@ -72,15 +82,22 @@ public:
     const CCheckpointData& Checkpoints() const { return checkpointData; }
     const ChainTxData& TxData() const { return chainTxData; }
     void UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout);
+
+    bool IsBech32Prefix(const std::vector<unsigned char> &vchPrefixIn) const;
+    bool IsBech32Prefix(const std::vector<unsigned char> &vchPrefixIn, CChainParams::Base58Type &rtype) const;
+    bool IsBech32Prefix(const char *ps, size_t slen, CChainParams::Base58Type &rtype) const;
+
 protected:
     CChainParams() {}
 
     Consensus::Params consensus;
     CMessageHeader::MessageStartChars pchMessageStart;
     int nDefaultPort;
+    int nBIP44ID;
     uint64_t nPruneAfterHeight;
     std::vector<std::string> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
+    std::vector<unsigned char> bech32Prefixes[MAX_BASE58_TYPES];
     std::string bech32_hrp;
     std::string strNetworkID;
     CBlock genesis;

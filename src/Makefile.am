@@ -171,12 +171,13 @@ NIX_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/ismine.h \
-  stealth-address\l4z.h \
-  stealth-address\extkey.h \
-  stealth-address\keystore.h \
-  stealth-address\keyutil.h \
-  stealth-address\stealth.h \
-  stealth-address\xxhash.h \
+  stealth-address/l4z.h \
+  stealth-address/extkey.h \
+  stealth-address/keystore.h \
+  stealth-address/keyutil.h \
+  stealth-address/mnemonic.h \
+  stealth-address/stealth.h \
+  stealth-address/xxhash.h \
   streams.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
@@ -414,12 +415,13 @@ libnix_common_a_SOURCES = \
   scheduler.cpp \
   script/sign.cpp \
   script/standard.cpp \
-  stealth-address\l4z.c \
-  stealth-address\extkey.cpp \
-  stealth-address\keystore.cpp \
-  stealth-address\keyutil.cpp \
-  stealth-address\stealth.cpp \
-  stealth-address\xxhash.c \
+  stealth-address/l4z.c \
+  stealth-address/extkey.cpp \
+  stealth-address/keystore.cpp \
+  stealth-address/keyutil.cpp \
+  stealth-address/mnemonic.cpp \
+  stealth-address/stealth.cpp \
+  stealth-address/xxhash.c \
   warnings.cpp \
   $(NIX_CORE_H)
 

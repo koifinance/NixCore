@@ -91,6 +91,8 @@ scheduler.h
 serialize.h
 stealth-address/extkey.cpp
 stealth-address/extkey.h
+stealth-address/mnemonic.cpp
+stealth-address/mnemonic.h
 streams.h
 sync.cpp
 sync.h

@@ -119,6 +119,7 @@ public:
         pchMessageStart[2] = 0xbe;
         pchMessageStart[3] = 0xf9;
         nDefaultPort = 6214;
+        nBIP44ID = 0x8000002C;
         nPruneAfterHeight = 0;
 
         //mine genesis block
@@ -164,6 +165,25 @@ public:
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
+
+        base58Prefixes[PUBKEY_ADDRESS_256] = {0x39};
+        base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
+        base58Prefixes[STEALTH_ADDRESS]    = {0x14};
+        base58Prefixes[EXT_KEY_HASH]       = {0x4b}; // X
+        base58Prefixes[EXT_ACC_HASH]       = {0x17}; // A
+        base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
+        base58Prefixes[EXT_SECRET_KEY_BTC] = {0x04, 0x88, 0xAD, 0xE4}; // xprv
+
+        bech32Prefixes[PUBKEY_ADDRESS].assign       ("ph","ph"+2);
+        bech32Prefixes[SCRIPT_ADDRESS].assign       ("pr","pr"+2);
+        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("pl","pl"+2);
+        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("pj","pj"+2);
+        bech32Prefixes[SECRET_KEY].assign           ("px","px"+2);
+        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("pep","pep"+3);
+        bech32Prefixes[EXT_SECRET_KEY].assign       ("pex","pex"+3);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ps","ps"+2);
+        bech32Prefixes[EXT_KEY_HASH].assign         ("pek","pek"+3);
+        bech32Prefixes[EXT_ACC_HASH].assign         ("pea","pea"+3);
 
         bech32_hrp = "nix";
 
@@ -233,6 +253,7 @@ public:
         pchMessageStart[2] = 0x0b;
         pchMessageStart[3] = 0x11;
         nDefaultPort = 16214;
+        nBIP44ID = 0x80000001;
         nPruneAfterHeight = 1000;
 
 
@@ -279,6 +300,25 @@ public:
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCF};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
+
+        base58Prefixes[PUBKEY_ADDRESS_256] = {0x39};
+        base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
+        base58Prefixes[STEALTH_ADDRESS]    = {0x14};
+        base58Prefixes[EXT_KEY_HASH]       = {0x4b}; // X
+        base58Prefixes[EXT_ACC_HASH]       = {0x17}; // A
+        base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
+        base58Prefixes[EXT_SECRET_KEY_BTC] = {0x04, 0x88, 0xAD, 0xE4}; // xprv
+
+        bech32Prefixes[PUBKEY_ADDRESS].assign       ("ph","ph"+2);
+        bech32Prefixes[SCRIPT_ADDRESS].assign       ("pr","pr"+2);
+        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("pl","pl"+2);
+        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("pj","pj"+2);
+        bech32Prefixes[SECRET_KEY].assign           ("px","px"+2);
+        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("pep","pep"+3);
+        bech32Prefixes[EXT_SECRET_KEY].assign       ("pex","pex"+3);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ps","ps"+2);
+        bech32Prefixes[EXT_KEY_HASH].assign         ("pek","pek"+3);
+        bech32Prefixes[EXT_ACC_HASH].assign         ("pea","pea"+3);
 
         bech32_hrp = "tnix";
 
@@ -346,6 +386,7 @@ public:
         pchMessageStart[2] = 0xb5;
         pchMessageStart[3] = 0xda;
         nDefaultPort = 17655;
+        nBIP44ID = 0x80000001;
         nPruneAfterHeight = 1000;
 
         genesis = CreateGenesisBlock(1522615406, 2, 0x207fffff, 1, 0 * COIN);
@@ -412,3 +453,47 @@ void UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime,
 {
     globalChainParams->UpdateVersionBitsParameters(d, nStartTime, nTimeout);
 }
+
+bool CChainParams::IsBech32Prefix(const std::vector<unsigned char> &vchPrefixIn) const
+{
+    for (auto &hrp : bech32Prefixes)
+    {
+        if (vchPrefixIn == hrp)
+            return true;
+    };
+
+    return false;
+};
+
+bool CChainParams::IsBech32Prefix(const std::vector<unsigned char> &vchPrefixIn, CChainParams::Base58Type &rtype) const
+{
+    for (size_t k = 0; k < MAX_BASE58_TYPES; ++k)
+    {
+        auto &hrp = bech32Prefixes[k];
+        if (vchPrefixIn == hrp)
+        {
+            rtype = static_cast<CChainParams::Base58Type>(k);
+            return true;
+        };
+    };
+
+    return false;
+};
+
+bool CChainParams::IsBech32Prefix(const char *ps, size_t slen, CChainParams::Base58Type &rtype) const
+{
+    for (size_t k = 0; k < MAX_BASE58_TYPES; ++k)
+    {
+        auto &hrp = bech32Prefixes[k];
+        size_t hrplen = hrp.size();
+        if (hrplen > 0
+            && slen > hrplen
+            && strncmp(ps, (const char*)&hrp[0], hrplen) == 0)
+        {
+            rtype = static_cast<CChainParams::Base58Type>(k);
+            return true;
+        };
+    };
+
+    return false;
+};
