@@ -83,6 +83,18 @@ public:
             fValid = false;
         }
     }
+    void Set(const unsigned char *p, bool fCompressedIn)
+    {
+        if (Check(p))
+        {
+            memcpy(keydata.data(), p, keydata.size());
+            fValid = true;
+            fCompressed = fCompressedIn;
+        } else
+        {
+            fValid = false;
+        };
+    };
 
     //! Simple read-only vector-like interface.
     unsigned int size() const { return (fValid ? keydata.size() : 0); }
@@ -91,6 +103,12 @@ public:
 
     //! Check whether this private key is valid.
     bool IsValid() const { return fValid; }
+
+    void SetFlags(bool fValidIn, bool fCompressedIn)
+    {
+        fValid = fValidIn;
+        fCompressed = fCompressedIn;
+    };
 
     //! Check whether the public key corresponding to this private key is (to be) compressed.
     bool IsCompressed() const { return fCompressed; }
@@ -137,7 +155,7 @@ public:
     //! Load private key and check that public key matches.
     bool Load(const CPrivKey& privkey, const CPubKey& vchPubKey, bool fSkipCheck);
 };
-
+/*
 struct CExtKey {
     unsigned char nDepth;
     unsigned char vchFingerprint[4];
@@ -179,7 +197,7 @@ struct CExtKey {
         Decode(code);
     }
 };
-
+*/
 /** Initialize the elliptic curve support. May not be called twice without calling ECC_Stop first. */
 void ECC_Start(void);
 

@@ -167,6 +167,21 @@ bool error(const char* fmt, const Args&... args)
     return false;
 }
 
+template<typename... Args>
+int errorN(int n, const char *fmt, const Args&... args)
+{
+    LogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
+    return n;
+}
+
+template<typename... Args>
+int errorN(int n, std::string &s, const char *func, const char *fmt, const Args&... args)
+{
+    s = tfm::format(fmt, args...);
+    LogPrintStr(_("ERROR, ") + func + ": " + s + "\n");
+    return n;
+}
+
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void FileCommit(FILE *file);
 bool TruncateFile(FILE *file, unsigned int length);

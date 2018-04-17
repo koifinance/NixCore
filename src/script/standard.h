@@ -18,6 +18,7 @@ static const bool DEFAULT_ACCEPT_DATACARRIER = true;
 class CKeyID;
 class CScript;
 class CStealthAddress;
+class CExtKeyPair;
 
 /** A reference to a CScript: the Hash160 of its serialization (see script.h) */
 class CScriptID : public uint160
@@ -66,6 +67,12 @@ enum txnouttype
     TX_WITNESS_V0_SCRIPTHASH,
     TX_WITNESS_V0_KEYHASH,
     TX_WITNESS_UNKNOWN, //!< Only for Witness versions not already defined above
+
+    TX_SCRIPTHASH256,
+    TX_PUBKEYHASH256,
+    TX_TIMELOCKED_SCRIPTHASH,
+    TX_TIMELOCKED_PUBKEYHASH,
+    TX_TIMELOCKED_MULTISIG,
 };
 
 class CNoDestination {

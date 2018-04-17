@@ -23,10 +23,14 @@ enum isminetype
     ISMINE_WATCH_SOLVABLE = 2,
     ISMINE_WATCH_ONLY = ISMINE_WATCH_SOLVABLE | ISMINE_WATCH_UNSOLVABLE,
     ISMINE_SPENDABLE = 4,
+    ISMINE_HARDWARE_DEVICE = (1 << 6), // Pivate key is on external device
     ISMINE_ALL = ISMINE_WATCH_ONLY | ISMINE_SPENDABLE
 };
 /** used for bitflags of isminetype */
 typedef uint8_t isminefilter;
+
+typedef std::vector<unsigned char> valtype;
+unsigned int HaveKeys(const std::vector<valtype>& pubkeys, const CKeyStore& keystore);
 
 /* isInvalid becomes true when the script is found invalid by consensus or policy. This will terminate the recursion
  * and return a ISMINE_NO immediately, as an invalid script should never be considered as "mine". This is needed as

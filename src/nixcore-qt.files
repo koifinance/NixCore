@@ -89,6 +89,8 @@ reverselock.h
 scheduler.cpp
 scheduler.h
 serialize.h
+stealth-address/extkey.cpp
+stealth-address/extkey.h
 streams.h
 sync.cpp
 sync.h

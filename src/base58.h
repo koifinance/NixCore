@@ -16,8 +16,8 @@
 
 #include <chainparams.h>
 #include <key.h>
-#include <key/extkey.h>
-#include <key/stealth.h>
+#include <stealth-address/extkey.h>
+#include <stealth-address/stealth.h>
 #include <pubkey.h>
 #include <script/script.h>
 #include <script/standard.h>

@@ -6,12 +6,14 @@
 #include <script/ismine.h>
 
 #include <key.h>
+#include <stealth-address/extkey.h>
+#include <stealth-address/stealth.h>
 #include <keystore.h>
 #include <script/script.h>
+#include <script/standard.h>
 #include <script/sign.h>
 
-
-typedef std::vector<unsigned char> valtype;
+//typedef std::vector<unsigned char> valtype;
 
 unsigned int HaveKeys(const std::vector<valtype>& pubkeys, const CKeyStore& keystore)
 {
@@ -39,12 +41,19 @@ isminetype IsMine(const CKeyStore& keystore, const CTxDestination& dest, SigVers
 
 isminetype IsMine(const CKeyStore &keystore, const CTxDestination& dest, bool& isInvalid, SigVersion sigversion)
 {
+    if (dest.type() == typeid(CStealthAddress))
+    {
+        const CStealthAddress &sxAddr = boost::get<CStealthAddress>(dest);
+        return sxAddr.scan_secret.size() == EC_SECRET_SIZE ? ISMINE_SPENDABLE : ISMINE_NO; // TODO: watch only?
+    };
+
     CScript script = GetScriptForDestination(dest);
     return IsMine(keystore, script, isInvalid, sigversion);
 }
 
 isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& isInvalid, SigVersion sigversion)
 {
+
     isInvalid = false;
 
     std::vector<valtype> vSolutions;
@@ -56,6 +65,8 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
     }
 
     CKeyID keyID;
+
+    isminetype mine = ISMINE_NO;
     switch (whichType)
     {
     case TX_NONSTANDARD:
@@ -68,8 +79,10 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
             isInvalid = true;
             return ISMINE_NO;
         }
-        if (keystore.HaveKey(keyID))
-            return ISMINE_SPENDABLE;
+        if ((mine = keystore.IsMine(keyID)))
+            return mine;
+        //if (keystore.HaveKey(keyID))
+        //    return ISMINE_SPENDABLE;
         break;
     case TX_WITNESS_V0_KEYHASH:
     {
@@ -85,7 +98,15 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
         break;
     }
     case TX_PUBKEYHASH:
-        keyID = CKeyID(uint160(vSolutions[0]));
+    case TX_TIMELOCKED_PUBKEYHASH:
+    case TX_PUBKEYHASH256:
+        if (vSolutions[0].size() == 20)
+            keyID = CKeyID(uint160(vSolutions[0]));
+        else
+        if (vSolutions[0].size() == 32)
+            keyID = CKeyID(uint256(vSolutions[0]));
+        else
+            return ISMINE_NO;
         if (sigversion != SIGVERSION_BASE) {
             CPubKey pubkey;
             if (keystore.GetPubKey(keyID, pubkey) && !pubkey.IsCompressed()) {
@@ -93,12 +114,23 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
                 return ISMINE_NO;
             }
         }
-        if (keystore.HaveKey(keyID))
-            return ISMINE_SPENDABLE;
+        if ((mine = keystore.IsMine(keyID)))
+            return mine;
+        //if (keystore.HaveKey(keyID))
+        //    return ISMINE_SPENDABLE;
         break;
     case TX_SCRIPTHASH:
+    case TX_TIMELOCKED_SCRIPTHASH:
+    case TX_SCRIPTHASH256:
     {
-        CScriptID scriptID = CScriptID(uint160(vSolutions[0]));
+        CScriptID scriptID;
+        if (vSolutions[0].size() == 20)
+            scriptID = CScriptID(uint160(vSolutions[0]));
+        else
+        if (vSolutions[0].size() == 32)
+            scriptID.Set(uint256(vSolutions[0]));
+        else
+            return ISMINE_NO;
         CScript subscript;
         if (keystore.GetCScript(scriptID, subscript)) {
             isminetype ret = IsMine(keystore, subscript, isInvalid);
@@ -125,6 +157,7 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
     }
 
     case TX_MULTISIG:
+    case TX_TIMELOCKED_MULTISIG:
     {
         // Only consider transactions "mine" if we own ALL the
         // keys involved. Multi-signature transactions that are
@@ -144,6 +177,8 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
             return ISMINE_SPENDABLE;
         break;
     }
+    default:
+        break;
     }
 
     if (keystore.HaveWatchOnly(scriptPubKey)) {
