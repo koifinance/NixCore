@@ -1057,6 +1057,18 @@ bool CWallet::LoadToWallet(const CWalletTx& wtxIn)
     return true;
 }
 
+bool CWallet::LoadToWallet(const uint256 &hash, const CTransactionRecord &rtx)
+{
+    std::pair<MapRecords_t::iterator, bool> ret = mapRecords.insert(std::make_pair(hash, rtx));
+
+    MapRecords_t::iterator mri = ret.first;
+    rtxOrdered.insert(std::make_pair(rtx.GetTxTime(), mri));
+
+    // TODO: Spend only owned inputs?
+
+    return true;
+};
+
 /**
  * Add a transaction to the wallet, or update it.  pIndex and posInBlock should
  * be set when the transaction was known to be included in a block.  When
@@ -5736,6 +5748,206 @@ int CWallet::LoadStealthAddresses()
     return 0;
 };
 
+bool CWallet::LoadAddressBook(CWalletDB *pwdb)
+{
+    LogPrint(BCLog::HDWALLET, _("Loading address book.\n").c_str());
+
+    assert(pwdb);
+    LOCK(cs_wallet);
+
+    Dbc *pcursor;
+    if (!(pcursor = pwdb->GetCursor()))
+        throw std::runtime_error(strprintf("%s: cannot create DB cursor", __func__).c_str());
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+
+    CBitcoinAddress addr;
+    CKeyID idAccount;
+
+    std::string sPrefix = "abe";
+    std::string strType;
+    std::string strAddress;
+
+    size_t nCount = 0;
+    unsigned int fFlags = DB_SET_RANGE;
+    ssKey << sPrefix;
+    while (pwdb->ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        fFlags = DB_NEXT;
+        ssKey >> strType;
+        if (strType != sPrefix)
+            break;
+
+        ssKey >> strAddress;
+
+        CAddressBookData data;
+        ssValue >> data;
+
+        std::pair<std::map<CTxDestination, CAddressBookData>::iterator, bool> ret;
+        ret = mapAddressBook.insert(std::pair<CTxDestination, CAddressBookData>
+            (CBitcoinAddress(strAddress).Get(), data));
+        if (!ret.second)
+        {
+            // update existing record
+            CAddressBookData &entry = ret.first->second;
+            entry.name = data.name;
+            entry.purpose = data.purpose;
+            entry.vPath = data.vPath;
+        } else
+        {
+            nCount++;
+        }
+    };
+
+    LogPrint(BCLog::HDWALLET, "Loaded %d addresses.\n", nCount);
+    pcursor->close();
+
+    return true;
+};
+
+int CTransactionRecord::InsertOutput(COutputRecord &r)
+{
+    for (size_t i = 0; i < vout.size(); ++i)
+    {
+        if (vout[i].n == r.n)
+            return 0; // duplicate
+
+        if (vout[i].n < r.n)
+            continue;
+
+        vout.insert(vout.begin() + i, r);
+        return 1;
+    };
+    vout.push_back(r);
+    return 1;
+};
+
+bool CTransactionRecord::EraseOutput(uint16_t n)
+{
+    for (size_t i = 0; i < vout.size(); ++i)
+    {
+        if (vout[i].n != n)
+            continue;
+
+        vout.erase(vout.begin() + i);
+        return true;
+    };
+    return false;
+};
+
+COutputRecord *CTransactionRecord::GetOutput(int n)
+{
+    // vout is always in order by asc n
+    for (auto &r : vout)
+    {
+        if (r.n > n)
+            return nullptr;
+        if (r.n == n)
+            return &r;
+    };
+    return nullptr;
+};
+
+const COutputRecord *CTransactionRecord::GetOutput(int n) const
+{
+    // vout is always in order by asc n
+    for (auto &r : vout)
+    {
+        if (r.n > n)
+            return nullptr;
+        if (r.n == n)
+            return &r;
+    };
+    return nullptr;
+};
+
+const COutputRecord *CTransactionRecord::GetChangeOutput() const
+{
+    for (auto &r : vout)
+    {
+        if (r.nFlags & ORF_CHANGE)
+            return &r;
+    };
+    return nullptr;
+};
+
+bool CWallet::LoadTxRecords(CWalletDB *pwdb)
+{
+    LogPrint(BCLog::HDWALLET, _("Loading transaction records.\n").c_str());
+
+    assert(pwdb);
+    LOCK(cs_wallet);
+
+    Dbc *pcursor;
+    if (!(pcursor = pwdb->GetCursor()))
+        throw std::runtime_error(strprintf("%s: cannot create DB cursor", __func__).c_str());
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+
+    std::string sPrefix = "rtx";
+    std::string strType;
+    uint256 txhash;
+
+    size_t nCount = 0;
+    unsigned int fFlags = DB_SET_RANGE;
+    ssKey << sPrefix;
+    while (pwdb->ReadAtCursor(pcursor, ssKey, ssValue, fFlags) == 0)
+    {
+        fFlags = DB_NEXT;
+        ssKey >> strType;
+        if (strType != sPrefix)
+            break;
+
+        ssKey >> txhash;
+
+        CTransactionRecord data;
+        ssValue >> data;
+        LoadToWallet(txhash, data);
+        nCount++;
+    };
+
+    // Must load all records before marking spent.
+
+    {
+        MapRecords_t::iterator mri;
+        MapWallet_t::iterator mwi;
+
+        CWalletDB wdb(*dbw, "r");
+        for (const auto &ri : mapRecords)
+        {
+            const uint256 &txhash = ri.first;
+            const CTransactionRecord &rtx = ri.second;
+
+            for (const auto &prevout : rtx.vin)
+            {
+                AddToSpends(prevout, txhash);
+
+                if ((mri = mapRecords.find(prevout.hash)) != mapRecords.end())
+                {
+                    CTransactionRecord &prevtx = mri->second;
+                    if (prevtx.nIndex == -1 && !prevtx.HashUnset())
+                        MarkConflicted(prevtx.blockHash, txhash);
+                } else
+                if ((mwi = mapWallet.find(prevout.hash)) != mapWallet.end())
+                {
+                    CWalletTx &prevtx = mwi->second;
+                    if (prevtx.nIndex == -1 && !prevtx.hashUnset())
+                        MarkConflicted(prevtx.hashBlock, txhash);
+                };
+            };
+        };
+    }
+
+
+    pcursor->close();
+
+    LogPrint(BCLog::HDWALLET, "Loaded %d records.\n", nCount);
+
+    return true;
+};
+
 bool CWallet::InitLoadWallet()
 {
     if (gArgs.GetBoolArg("-disablewallet", DEFAULT_DISABLE_WALLET))
@@ -5772,8 +5984,8 @@ bool CWallet::InitLoadWallet()
             LOCK2(cs_main, pwallet->cs_wallet); // Locking cs_main for MarkConflicted
             CWalletDB wdb(pwallet->GetDBHandle());
 
-            //pwallet->LoadAddressBook(&wdb);
-            //pwallet->LoadTxRecords(&wdb);
+            pwallet->LoadAddressBook(&wdb);
+            pwallet->LoadTxRecords(&wdb);
         }
 
         CBlockIndex *pindexRescan = chainActive.Genesis();
@@ -7800,4 +8012,78 @@ int CWallet::NewKeyFromAccount(CWalletDB *pwdb, const CKeyID &idAccount, CPubKey
     };
 
     return 0;
+};
+
+isminetype CWallet::HaveStealthAddress(const CStealthAddress &sxAddr) const
+{
+    AssertLockHeld(cs_wallet);
+
+    std::set<CStealthAddress>::const_iterator si = stealthAddresses.find(sxAddr);
+    if (si != stealthAddresses.end())
+    {
+        isminetype imSpend = CCryptoKeyStore::IsMine(si->spend_secret_id);
+        if (imSpend & ISMINE_SPENDABLE)
+            return imSpend; // Retain ISMINE_HARDWARE_DEVICE flag if present
+        return ISMINE_WATCH_SOLVABLE;
+    };
+
+    CKeyID sxId = CPubKey(sxAddr.scan_pubkey).GetID();
+
+    ExtKeyAccountMap::const_iterator mi;
+    for (mi = mapExtAccounts.begin(); mi != mapExtAccounts.end(); ++mi)
+    {
+        CExtKeyAccount *ea = mi->second;
+
+        if (ea->mapStealthKeys.size() < 1)
+            continue;
+        AccStealthKeyMap::const_iterator it = ea->mapStealthKeys.find(sxId);
+        if (it != ea->mapStealthKeys.end())
+        {
+            const CStoredExtKey *sek = ea->GetChain(it->second.akSpend.nParent);
+            if (sek)
+                return sek->IsMine();
+
+            break;
+        };
+    };
+
+    return ISMINE_NO;
+};
+
+bool CWallet::ImportStealthAddress(const CStealthAddress &sxAddr, const CKey &skSpend)
+{
+    if (LogAcceptCategory(BCLog::HDWALLET))
+        LogPrintf("%s: %s.\n", __func__, sxAddr.Encoded());
+
+    LOCK(cs_wallet);
+
+    // Must add before changing spend_secret
+    stealthAddresses.insert(sxAddr);
+
+    bool fOwned = skSpend.IsValid();
+
+    if (fOwned)
+    {
+        // Owned addresses can only be added when wallet is unlocked
+        if (IsLocked())
+        {
+            stealthAddresses.erase(sxAddr);
+            return error("%s: Wallet must be unlocked.", __func__);
+        };
+
+        CPubKey pk = skSpend.GetPubKey();
+        if (!AddKeyPubKey(skSpend, pk))
+        {
+            stealthAddresses.erase(sxAddr);
+            return error("%s: AddKeyPubKey failed.", __func__);
+        };
+    };
+
+    if (!CWalletDB(*dbw).WriteStealthAddress(sxAddr))
+    {
+        stealthAddresses.erase(sxAddr);
+        return error("%s: WriteStealthAddress failed.", __func__);
+    };
+
+    return true;
 };

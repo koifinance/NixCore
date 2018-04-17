@@ -3975,6 +3975,8 @@ UniValue torStatus(const JSONRPCRequest& request){
     return result;
 }
 
+//ext-key config
+
 //Stealth address config
 
 UniValue getnewstealthaddress(const JSONRPCRequest &request)
@@ -4452,7 +4454,9 @@ static const CRPCCommand commands[] =
     { "NIX Ghost",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
     { "NIX Ghost",             "listmintzerocoins",        &listmintzerocoins,        {} },
     { "NIX Ghost",             "listpubcoins",             &listpubcoins,             {} },
-    { "NIX Ghost",             "getnewstealthaddress",             &getnewstealthaddress,             {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
+    { "NIX Ghost",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
+    { "NIX Ghost",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
+    { "NIX Ghost",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
 
 
     //NIX TOR routing functions

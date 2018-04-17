@@ -38,6 +38,7 @@ extern std::vector<CWalletRef> vpwallets;
 /**
  * Settings
  */
+const uint256 ABANDON_HASH;
 extern CFeeRate payTxFee;
 extern unsigned int nTxConfirmTarget;
 extern bool bSpendZeroConfChange;
@@ -91,7 +92,160 @@ typedef std::map<CKeyID, CStoredExtKey*> ExtKeyMap;
 
 typedef std::map<uint256, CWalletTx> MapWallet_t;
 
+
+
 typedef std::map<uint8_t, std::vector<uint8_t> > mapRTxValue_t;
+
+const uint16_t PLACEHOLDER_N = 0xFFFF;
+enum OutputRecordFlags
+{
+    ORF_OWNED               = (1 << 0),
+    ORF_FROM                = (1 << 1),
+    ORF_CHANGE              = (1 << 2),
+    ORF_SPENT               = (1 << 3),
+    ORF_LOCKED              = (1 << 4), // Needs wallet to be unlocked for further processing
+    ORF_WATCHONLY           = (1 << 6),
+    ORF_HARDWARE_DEVICE     = (1 << 7),
+
+    ORF_OWN_WATCH           =  ORF_WATCHONLY,
+    ORF_OWN_ANY             = ORF_OWNED | ORF_OWN_WATCH,
+};
+
+enum OutputRecordAddressTypes
+{
+    ORA_EXTKEY       = 1,
+    ORA_STEALTH      = 2,
+    ORA_STANDARD     = 3,
+};
+
+class COutputRecord
+{
+public:
+    COutputRecord() : nType(0), nFlags(0), n(0), nValue(-1) {};
+    uint8_t nType;
+    uint8_t nFlags;
+    uint16_t n;
+    CAmount nValue;
+    CScript scriptPubKey;
+    std::string sNarration;
+
+    /*
+    vPath 0 - ORA_EXTKEY
+        1 - index to m
+        2... path
+    vPath 0 - ORA_STEALTH
+        [1, 21] stealthkeyid
+        [22, 55] pubkey (if not using ephemkey)
+    vPath 0 - ORA_STANDARD
+        [1, 34] pubkey
+    */
+    std::vector<uint8_t> vPath; // index to m is stored in first entry
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream &s, Operation ser_action)
+    {
+        READWRITE(nType);
+        READWRITE(nFlags);
+        READWRITE(n);
+        READWRITE(nValue);
+        READWRITE(*(CScriptBase*)(&scriptPubKey));
+        READWRITE(sNarration);
+        READWRITE(vPath);
+    };
+};
+
+typedef std::map<uint8_t, std::vector<uint8_t> > mapRTxValue_t;
+class CTransactionRecord
+{
+// Stored by uint256 txnHash;
+public:
+    CTransactionRecord() :
+        nFlags(0), nIndex(0), nBlockTime(0) , nTimeReceived(0) , nFee(0) {};
+
+    // Conflicted state is marked by set blockHash and nIndex -1
+    uint256 blockHash;
+    int16_t nFlags;
+    int16_t nIndex;
+
+    int64_t nBlockTime;
+    int64_t nTimeReceived;
+    CAmount nFee;
+    mapRTxValue_t mapValue;
+
+    std::vector<COutPoint> vin;
+    std::vector<COutputRecord> vout;
+
+    int InsertOutput(COutputRecord &r);
+    bool EraseOutput(uint16_t n);
+
+    COutputRecord *GetOutput(int n);
+    const COutputRecord *GetOutput(int n) const;
+    const COutputRecord *GetChangeOutput() const;
+
+    void SetMerkleBranch(const uint256 &blockHash_, int posInBlock)
+    {
+        blockHash = blockHash_;
+        nIndex = posInBlock;
+    };
+
+    bool IsAbandoned() const { return (blockHash == ABANDON_HASH); }
+    bool HashUnset() const { return (blockHash.IsNull() || blockHash == ABANDON_HASH); }
+
+    void SetAbandoned()
+    {
+        blockHash = ABANDON_HASH;
+    };
+
+    int64_t GetTxTime() const
+    {
+        if (HashUnset() || nIndex < 0)
+            return nTimeReceived;
+        return std::min(nTimeReceived, nBlockTime);
+    };
+
+    bool HaveChange() const
+    {
+        for (const auto &r : vout)
+            if (r.nFlags & ORF_CHANGE)
+                return true;
+        return false;
+    };
+
+    CAmount TotalOutput()
+    {
+        CAmount nTotal = 0;
+        for (auto &r : vout)
+            nTotal += r.nValue;
+        return nTotal;
+    };
+
+    mutable uint32_t nCacheFlags;
+
+    bool InMempool() const;
+    bool IsTrusted() const;
+
+    bool IsCoinBase() const {return false;};
+    bool IsCoinStake() const {return false;};
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream &s, Operation ser_action)
+    {
+        READWRITE(blockHash);
+        READWRITE(nFlags);
+        READWRITE(nIndex);
+        READWRITE(nBlockTime);
+        READWRITE(nTimeReceived);
+        READWRITE(mapValue);
+        READWRITE(nFee);
+        READWRITE(vin);
+        READWRITE(vout);
+    };
+};
+
+typedef std::map<uint256, CTransactionRecord> MapRecords_t;
+typedef std::multimap<int64_t, std::map<uint256, CTransactionRecord>::iterator> RtxOrdered_t;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -1036,6 +1190,9 @@ public:
     ExtKeyAccountMap mapExtAccounts;
     ExtKeyMap mapExtKeys;
 
+    MapRecords_t mapRecords;
+    RtxOrdered_t rtxOrdered;
+
     std::map<CTxDestination, CAddressBookData> mapAddressBook;
 
     std::set<COutPoint> setLockedCoins;
@@ -1087,6 +1244,9 @@ public:
      * keystore implementation
      * Generate a new key
      */
+    bool LoadAddressBook(CWalletDB *pwdb);
+    bool LoadTxRecords(CWalletDB *pwdb);
+    bool LoadToWallet(const uint256 &hash, const CTransactionRecord &rtx);
     CPubKey GenerateNewKey(CWalletDB& walletdb, bool internal = false);
     //! Adds a key to the store, and saves it to disk.
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey) override;
