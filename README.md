@@ -44,3 +44,5 @@ License
 
 NIX Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
 information or see https://opensource.org/licenses/MIT.
+
+Copyright (c) 2017-2018 The NIX Core Developers Copyright (c) 2013-2015 The Bitcoin Core Developers

@@ -3,7 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <key/mnemonic.h>
+#include <stealth-address/mnemonic.h>
 
 #include <util.h>
 #include <crypto/hmac_sha512.h>
@@ -12,14 +12,14 @@
 #include <unilib/uninorms.h>
 #include <unilib/utf8.h>
 
-#include <key/wordlists/english.h>
-#include <key/wordlists/french.h>
-#include <key/wordlists/japanese.h>
-#include <key/wordlists/spanish.h>
-#include <key/wordlists/chinese_simplified.h>
-#include <key/wordlists/chinese_traditional.h>
-#include <key/wordlists/italian.h>
-#include <key/wordlists/korean.h>
+#include <stealth-address/wordlists/english.h>
+#include <stealth-address/wordlists/french.h>
+#include <stealth-address/wordlists/japanese.h>
+#include <stealth-address/wordlists/spanish.h>
+#include <stealth-address/wordlists/chinese_simplified.h>
+#include <stealth-address/wordlists/chinese_traditional.h>
+#include <stealth-address/wordlists/italian.h>
+#include <stealth-address/wordlists/korean.h>
 
 
 static const unsigned char *mnLanguages[] =
@@ -84,7 +84,7 @@ static void NormaliseUnicode(std::string &str)
 
 static void NormaliseInput(std::string &str)
 {
-    part::TrimWhitespace(str);
+    nix::TrimWhitespace(str);
     NormaliseUnicode(str);
 };
 
@@ -283,7 +283,7 @@ int MnemonicEncode(int nLanguage, const std::vector<uint8_t> &vEntropy, std::str
     };
 
     if (nLanguage == WLL_JAPANESE)
-        part::ReplaceStrInPlace(sWordList, " ", "\u3000");
+        nix::ReplaceStrInPlace(sWordList, " ", "\u3000");
 
     return 0;
 };

@@ -171,7 +171,7 @@ NIX_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/ismine.h \
-  stealth-address/l4z.h \
+  stealth-address/lz4.h \
   stealth-address/extkey.h \
   stealth-address/keystore.h \
   stealth-address/keyutil.h \
@@ -193,6 +193,8 @@ NIX_CORE_H = \
   txmempool.h \
   ui_interface.h \
   undo.h \
+  unilib/uninorms.h \
+  unilib/utf8.h \
   util.h \
   utilmoneystr.h \
   utiltime.h \
@@ -415,7 +417,9 @@ libnix_common_a_SOURCES = \
   scheduler.cpp \
   script/sign.cpp \
   script/standard.cpp \
-  stealth-address/l4z.c \
+  unilib/uninorms.cpp \
+  unilib/utf8.cpp \
+  stealth-address/lz4.c \
   stealth-address/extkey.cpp \
   stealth-address/keystore.cpp \
   stealth-address/keyutil.cpp \

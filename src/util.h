@@ -19,7 +19,7 @@
 #include <sync.h>
 #include <tinyformat.h>
 #include <utiltime.h>
-
+#include <amount.h>
 #include <atomic>
 #include <exception>
 #include <map>
@@ -103,6 +103,7 @@ namespace BCLog {
         COINDB      = (1 << 18),
         QT          = (1 << 19),
         LEVELDB     = (1 << 20),
+        HDWALLET    = (1 << 30),
         ALL         = ~(uint32_t)0,
     };
 }
@@ -374,5 +375,28 @@ std::pair<bool,std::string> ReadBinaryFileTor(const std::string &filename, size_
  * @return true on success.
  */
 bool WriteBinaryFileTor(const std::string &filename, const std::string &data);
+
+namespace nix
+{
+    void *memrchr(const void *s, int c, size_t n);
+
+    int memcmp_nta(const void *cs, const void *ct, size_t count);
+
+    void ReplaceStrInPlace(std::string &subject, const std::string search, const std::string replace);
+    bool IsStringBoolPositive(const std::string &value);
+    bool IsStringBoolNegative(const std::string &value);
+    bool GetStringBool(const std::string &value, bool &fOut);
+    bool IsStrOnlyDigits(const std::string &s);
+    std::string GetTimeString(int64_t timestamp, char *buffer, size_t nBuffer);
+    std::string BytesReadable(uint64_t nBytes);
+    bool stringsMatchI(const std::string &sString, const std::string &sFind, int type);
+    std::string AmountToString(CAmount nValue);
+    std::string &TrimQuotes(std::string &s);
+    std::string &LTrimWhitespace(std::string &s);
+    std::string &RTrimWhitespace(std::string &s);
+    std::string &TrimWhitespace(std::string &s);
+    int64_t strToEpoch(const char *input, bool fFillMax=false);
+    bool endsWith(const std::string &str, const std::string &suffix);
+}
 
 #endif // BITCOIN_UTIL_H

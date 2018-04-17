@@ -113,6 +113,10 @@ ui_interface.h
 uint256.cpp
 uint256.h
 undo.h
+unilib/uninorms.cpp
+unilib/uninorms.h
+unilib/utf8.cpp
+unilib/utf8.h
 util.cpp
 util.h
 utilmoneystr.cpp

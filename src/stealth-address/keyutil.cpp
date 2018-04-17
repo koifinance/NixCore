@@ -2,7 +2,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <key/keyutil.h>
+#include <stealth-address/keyutil.h>
 
 #include <string.h>
 #include <crypto/sha256.h>
