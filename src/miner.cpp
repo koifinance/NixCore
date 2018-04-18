@@ -137,7 +137,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // To devs and investors
     if (nHeight >= 1) {
 
-        coinbaseTx.vout[0].nValue = -0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+        coinbaseTx.vout[0].nValue -= 0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
         CScript FOUNDER_1_SCRIPT;
         CScript FOUNDER_2_SCRIPT;

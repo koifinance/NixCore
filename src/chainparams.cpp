@@ -150,8 +150,8 @@ public:
 
         genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
-        std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
+        //std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
+        //std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
         assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
         assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
@@ -285,8 +285,8 @@ public:
 
         genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
-        std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
+        //std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
+        //std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
         assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
         assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
@@ -352,12 +352,12 @@ class CRegTestParams : public CChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
-        consensus.nSubsidyHalvingInterval = 150;
+        consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0; // always enforce P2SH BIP16 on regtest
-        consensus.BIP34Height = 100000000; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
+        consensus.BIP34Height = 100000; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
         consensus.BIP34Hash = uint256();
-        consensus.BIP65Height = 1351; // BIP65 activated on regtest (Used in rpc activation tests)
-        consensus.BIP66Height = 1251; // BIP66 activated on regtest (Used in rpc activation tests)
+        consensus.BIP65Height = 5; // BIP65 activated on regtest (Used in rpc activation tests)
+        consensus.BIP66Height = 5; // BIP66 activated on regtest (Used in rpc activation tests)
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
@@ -389,12 +389,38 @@ public:
         nBIP44ID = 0x80000001;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1522615406, 2, 0x207fffff, 1, 0 * COIN);
+        //mine genesis block
+        /*
+        uint NONCE = 0;
+        bool isValidGen = false;
+        while(!isValidGen){
+            genesis = CreateGenesisBlock(1522615406, NONCE, 0x1e0ffff0, 1, 0 * COIN);
+            bool fNegative;
+            bool fOverflow;
+            arith_uint256 bnTarget;
+            bnTarget.SetCompact(genesis.nBits, &fNegative, &fOverflow);
+            // Check range
+            if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensus.powLimit))
+                isValidGen = false;
+            else
+                isValidGen = true;
+            // Check proof of work matches claimed amount
+            if (UintToArith256(genesis.GetPoWHash(0)) > bnTarget)
+                isValidGen = false;
+            else
+                isValidGen = true;
+
+            if(!isValidGen)
+                NONCE++;
+        }
+        */
+
+        genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
         std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
-        assert(consensus.hashGenesisBlock == uint256S("0x0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
-        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
+        assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
+        assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();      //!< Regtest mode doesn't have any DNS seeds.
@@ -405,7 +431,7 @@ public:
 
         checkpointData = {
             {
-                {0, uint256S("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")},
+                {0, uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117")},
             }
         };
 
@@ -421,7 +447,26 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCF};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
-        bech32_hrp = "bcrt";
+        base58Prefixes[PUBKEY_ADDRESS_256] = {0x39};
+        base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
+        base58Prefixes[STEALTH_ADDRESS]    = {0x14};
+        base58Prefixes[EXT_KEY_HASH]       = {0x4b}; // X
+        base58Prefixes[EXT_ACC_HASH]       = {0x17}; // A
+        base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
+        base58Prefixes[EXT_SECRET_KEY_BTC] = {0x04, 0x88, 0xAD, 0xE4}; // xprv
+
+        bech32Prefixes[PUBKEY_ADDRESS].assign       ("ph","ph"+2);
+        bech32Prefixes[SCRIPT_ADDRESS].assign       ("pr","pr"+2);
+        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("pl","pl"+2);
+        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("pj","pj"+2);
+        bech32Prefixes[SECRET_KEY].assign           ("px","px"+2);
+        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("pep","pep"+3);
+        bech32Prefixes[EXT_SECRET_KEY].assign       ("pex","pex"+3);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ps","ps"+2);
+        bech32Prefixes[EXT_KEY_HASH].assign         ("pek","pek"+3);
+        bech32Prefixes[EXT_ACC_HASH].assign         ("pea","pea"+3);
+
+        bech32_hrp = "nxrt";
     }
 };
 
