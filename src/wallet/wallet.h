@@ -1356,8 +1356,10 @@ public:
     /**
      * Add ghost functions
      */
-    bool EnableGhostMode(string &stringError, string totalAmount);
+    bool EnableGhostMode(string totalAmount);
     bool DisableGhostMode();
+    bool GhostModeMintTrigger(string &stringError, string totalAmount);
+    bool GhostModeSpendTrigger(string &stringError, string denomination);
     /**
      * Add stealth functions
      */

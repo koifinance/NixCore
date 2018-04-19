@@ -8145,15 +8145,37 @@ bool CWallet::ImportStealthAddress(const CStealthAddress &sxAddr, const CKey &sk
 
 static const char * CoinDenominationStrings[] = { "0", "1", "5", "10", "50", "100", "500", "1000", "5000" };
 
-bool CWallet::EnableGhostMode(string &stringError, string totalAmount){
+//unlock wallet and create ghost timer
+bool CWallet::EnableGhostMode(string totalAmount){
 
     SecureString strWalletPass;
-
+    string stringError;
+    //for sanity, check for decimal
+    if (totalAmount.find('.') != std::string::npos)
+        return error("%s: Error: The Ghost Mode value needs to be a whole number.", __func__);
     if (!this->Unlock(strWalletPass)) {
         return error("%s: Error: The wallet passphrase entered was incorrect.", __func__);
     }
 
+    //TODO: Change amount.h total money circulation
+    if(!GhostModeMintTrigger(stringError, totalAmount))
+        return error("%s: Error: Cannot trigger ghost mode mint.", __func__);
 
+    return true;
+}
+
+//Lock wallet and destroy ghost timer
+bool CWallet::DisableGhostMode(){
+    LOCK(this->cs_wallet);
+    this->nRelockTime = 0;
+    this->Lock();
+    return true;
+}
+
+//ghost timer mint responder
+bool CWallet::GhostModeMintTrigger(string &stringError, string totalAmount){
+
+    //TODO: Change amount.h total money circulation
     CAmount amount = 0;
     CAmount nRemaining = 0;
     libzerocoin::CoinDenomination denomination = libzerocoin::ZQ_ONE;
@@ -8168,12 +8190,18 @@ bool CWallet::EnableGhostMode(string &stringError, string totalAmount){
         CreateZerocoinMintModel(stringError, CoinDenominationStrings[denomination]);
         amount = nRemaining;
     }
+
     return true;
 }
 
-bool CWallet::DisableGhostMode(){
-    LOCK(this->cs_wallet);
-    this->nRelockTime = 0;
-    this->Lock();
+//ghost timer spend responder
+bool CWallet::GhostModeSpendTrigger(string &stringError, string denomination){
+
+    if (this->IsLocked())
+        return error("%s: Error: The wallet needs to be unlocked.", __func__);
+
+    if(!CreateZerocoinSpendModel(stringError, denomination))
+        return error("%s: Error: Failed to create zerocoin spend model.", __func__);
+
     return true;
 }
