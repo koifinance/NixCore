@@ -79,13 +79,23 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
+    case TX_ZEROCOINMINT:
+        return false;
     case TX_WITNESS_UNKNOWN:
         return false;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, creator, scriptPubKey, ret, sigversion);
+    case TX_TIMELOCKED_PUBKEYHASH:
+    case TX_PUBKEYHASH256:
     case TX_PUBKEYHASH:
-        keyID = CKeyID(uint160(vSolutions[0]));
+        if (vSolutions[0].size() == 20)
+            keyID = CKeyID(uint160(vSolutions[0]));
+        else
+        if (vSolutions[0].size() == 32)
+            keyID = CKeyID(uint256(vSolutions[0]));
+        else
+            return false;
         if (!Sign1(keyID, creator, scriptPubKey, ret, sigversion))
             return false;
         else
@@ -95,13 +105,23 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
             ret.push_back(ToByteVector(vch));
         }
         return true;
+    case TX_TIMELOCKED_SCRIPTHASH:
+    case TX_SCRIPTHASH256:
     case TX_SCRIPTHASH:
-        if (creator.KeyStore().GetCScript(uint160(vSolutions[0]), scriptRet)) {
+        CScriptID idScript;
+        if (vSolutions[0].size() == 20)
+            idScript = CScriptID(uint160(vSolutions[0]));
+        else
+        if (vSolutions[0].size() == 32)
+            idScript.Set(uint256(vSolutions[0]));
+        else
+            return false;
+        if (creator.KeyStore().GetCScript(idScript, scriptRet)) {
             ret.push_back(std::vector<unsigned char>(scriptRet.begin(), scriptRet.end()));
             return true;
         }
         return false;
-
+    case TX_TIMELOCKED_MULTISIG:
     case TX_MULTISIG:
         ret.push_back(valtype()); // workaround CHECKMULTISIG bug
         return (SignN(vSolutions, creator, scriptPubKey, ret, sigversion));
@@ -310,6 +330,7 @@ static Stacks CombineSignatures(const CScript& scriptPubKey, const BaseSignature
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
+    case TX_ZEROCOINMINT:
     case TX_WITNESS_UNKNOWN:
         // Don't know anything about this, assume bigger one is correct:
         if (sigs1.script.size() >= sigs2.script.size())
@@ -346,6 +367,7 @@ static Stacks CombineSignatures(const CScript& scriptPubKey, const BaseSignature
             result.script.push_back(spk);
             return result;
         }
+    case TX_TIMELOCKED_MULTISIG:
     case TX_MULTISIG:
         return Stacks(CombineMultisig(scriptPubKey, checker, vSolutions, sigs1.script, sigs2.script, sigversion));
     case TX_WITNESS_V0_SCRIPTHASH:
