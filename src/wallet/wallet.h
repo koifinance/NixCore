@@ -1353,11 +1353,14 @@ public:
     bool CreateZerocoinMintModel(string &stringError, string denomAmount);
     bool CreateZerocoinSpendModel(string &stringError, string denomAmount);
     bool SetZerocoinBook(const CZerocoinEntry& zerocoinEntry);
-
+    /**
+     * Add ghost functions
+     */
+    bool EnableGhostMode(string &stringError, string totalAmount);
+    bool DisableGhostMode();
     /**
      * Add stealth functions
      */
-
     static bool InitLoadWallet();
     bool AddressBookChangedNotify(const CTxDestination &address, ChangeType nMode);
     int GetDefaultConfidentialChain(CWalletDB *pwdb, CExtKeyAccount *&sea, CStoredExtKey *&pc);

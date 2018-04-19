@@ -8142,3 +8142,38 @@ bool CWallet::ImportStealthAddress(const CStealthAddress &sxAddr, const CKey &sk
 
     return true;
 };
+
+static const char * CoinDenominationStrings[] = { "0", "1", "5", "10", "50", "100", "500", "1000", "5000" };
+
+bool CWallet::EnableGhostMode(string &stringError, string totalAmount){
+
+    SecureString strWalletPass;
+
+    if (!this->Unlock(strWalletPass)) {
+        return error("%s: Error: The wallet passphrase entered was incorrect.", __func__);
+    }
+
+
+    CAmount amount = 0;
+    CAmount nRemaining = 0;
+    libzerocoin::CoinDenomination denomination = libzerocoin::ZQ_ONE;
+    if (!ParseFixedPoint(totalAmount, 8, &amount))
+        return error("%s: Error: Invalid amount.", __func__);
+    if (!MoneyRange(amount))
+        return error("%s: Error: Amount out of range.", __func__);
+
+    //TODO: Create timer function to mint and recognize freshly finished mints to spend
+    while(denomination != libzerocoin::ZQ_ERROR){
+        denomination = libzerocoin::AmountToClosestDenomination(amount, nRemaining);
+        CreateZerocoinMintModel(stringError, CoinDenominationStrings[denomination]);
+        amount = nRemaining;
+    }
+    return true;
+}
+
+bool CWallet::DisableGhostMode(){
+    LOCK(this->cs_wallet);
+    this->nRelockTime = 0;
+    this->Lock();
+    return true;
+}
