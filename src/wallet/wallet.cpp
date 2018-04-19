@@ -49,6 +49,7 @@ OutputType g_change_type = OUTPUT_TYPE_NONE;
 
 const char * DEFAULT_WALLET_DAT = "wallet.dat";
 const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
+const int ZEROCOIN_CONFIRM_HEIGHT = 1;
 
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
@@ -655,7 +656,7 @@ void CWallet::AddToSpends(const uint256& wtxid)
     auto it = mapWallet.find(wtxid);
     assert(it != mapWallet.end());
     CWalletTx& thisTx = it->second;
-    if (thisTx.IsCoinBase() || thisTx.tx->IsZerocoinSpend()) // Coinbases don't spend anything!
+    if (thisTx.IsCoinBase() || thisTx.tx->IsZerocoinSpend()) // Coinbases and zerocoin spends don't spend anything!
         return;
     for (const CTxIn& txin : thisTx.tx->vin)
         AddToSpends(txin.prevout, wtxid);
@@ -1804,7 +1805,7 @@ void CWallet::ReacceptWalletTransactions()
 
         int nDepth = wtx.GetDepthInMainChain();
 
-        if ((!wtx.IsCoinBase() || wtx.tx->IsZerocoinSpend())&& (nDepth == 0 && !wtx.isAbandoned())) {
+        if ((!wtx.IsCoinBase() || !wtx.tx->IsZerocoinSpend()) && (nDepth == 0 && !wtx.isAbandoned())) {
             mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
         }
     }
@@ -4676,6 +4677,16 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                     if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange)) {
                         scriptChange = GetScriptForDestination(coinControl->destChange);
                     }
+                    else if (gArgs.mapArgs.count("-change") && gArgs.mapMultiArgs["-change"].size() > 0) {
+                        CBitcoinAddress
+                        address(gArgs.mapMultiArgs["-change"][GetRandInt(gArgs.mapMultiArgs["-change"].size())]);
+                        CKeyID keyID;
+                        if (!address.GetKeyID(keyID)) {
+                            strFailReason = _("Bad change address");
+                            return false;
+                        }
+                        scriptChange = GetScriptForDestination(keyID);
+                    }
                         // no coin control: send change to newly generated address
                     else {
                         // Note: We use a new key here to keep it from being obvious which side is the change.
@@ -4700,16 +4711,43 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                     CTxOut newTxOut(nChange, scriptChange);
 
 
-                    if (nChangePosInOut == -1) {
-                        // Insert change txn at random position:
-                        nChangePosInOut = GetRandInt(txNew.vout.size() + 1);
-                    } else if ((unsigned int) nChangePosInOut > txNew.vout.size()) {
-                        strFailReason = _("Change index out of range");
-                        return false;
+                    // We do not move dust-change to fees, because the sender would end up paying more than requested.
+                    // This would be against the purpose of the all-inclusive feature.
+                    // So instead we raise the change and deduct from the recipient.
+                    if (nSubtractFeeFromAmount > 0 && IsDust(newTxOut, ::minRelayTxFee)) {
+                        CAmount nDust = GetDustThreshold(newTxOut, ::minRelayTxFee) - newTxOut.nValue;
+                        newTxOut.nValue += nDust; // raise change until no more dust
+                        for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
+                        {
+                            if (vecSend[i].fSubtractFeeFromAmount) {
+                                txNew.vout[i].nValue -= nDust;
+                                if (IsDust(txNew.vout[i], ::minRelayTxFee)) {
+                                    strFailReason = _(
+                                            "The transaction amount is too small to send after the fee has been deducted");
+                                    return false;
+                                }
+                                break;
+                            }
+                        }
                     }
+                    // Never create dust outputs; if we would, just
+                    // add the dust to the fee.
+                    if (IsDust(newTxOut, ::minRelayTxFee)) {
+                        nChangePosInOut = -1;
+                        nFeeRet += nChange;
+                        reservekey.ReturnKey();
+                    } else {
+                        if (nChangePosInOut == -1) {
+                            // Insert change txn at random position:
+                            nChangePosInOut = GetRandInt(txNew.vout.size() + 1);
+                        } else if ((unsigned int) nChangePosInOut > txNew.vout.size()) {
+                            strFailReason = _("Change index out of range");
+                            return false;
+                        }
 
-                    vector<CTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
-                    txNew.vout.insert(position, newTxOut);
+                        vector<CTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
+                        txNew.vout.insert(position, newTxOut);
+                    }
 
                 } else
                     reservekey.ReturnKey();
@@ -4848,10 +4886,26 @@ bool CWallet::CreateZerocoinSpendTransaction(int64_t nValue, libzerocoin::CoinDe
             //We will integrate stealth address pairing to increase privacy on chain
             //essentially we can mint/spend right away without risking user privacy.
             // Reserve a new key pair from key pool
-            CPubKey vchPubKey;
-            assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+
+            std::string sLabel;
+            uint32_t num_prefix_bits = 0;
+            std::string sPrefix_num;
+            bool fBech32 = false;
+
+            CEKAStealthKey akStealth;
+            if (0 != this->NewStealthKeyFromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32)){
+                strFailReason = _("zerocoin stealth output creation failed!");
+                return false;
+            }
+
+            CStealthAddress sxAddr;
+            akStealth.SetSxAddr(sxAddr);
+
             CScript scriptChange;
-            scriptChange = GetScriptForDestination(vchPubKey.GetID());
+            //CPubKey vchPubKey;
+            //assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+            //scriptChange = GetScriptForDestination(vchPubKey.GetID());
+            scriptChange = GetScriptForDestination(sxAddr.GetSpendKeyID());
 
             CTxOut newTxOut(nValue, scriptChange);
 
@@ -4898,9 +4952,9 @@ bool CWallet::CreateZerocoinSpendTransaction(int64_t nValue, libzerocoin::CoinDe
                     coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
                     if (coinHeight > 0
                             && id < coinId
-                            && coinHeight + (5) <= chainActive.Height()
+                            && coinHeight + (ZEROCOIN_CONFIRM_HEIGHT) <= chainActive.Height()
                             && zerocoinState->GetAccumulatorValueForSpend(
-                                    chainActive.Height()-(5),
+                                    chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
                                     denomination,
                                     id,
                                     accumulatorValue,
@@ -4933,7 +4987,7 @@ bool CWallet::CreateZerocoinSpendTransaction(int64_t nValue, libzerocoin::CoinDe
             // 4. Get witness from the index
             libzerocoin::AccumulatorWitness witness =
                     zerocoinState->GetWitnessForSpend(&chainActive,
-                                                      chainActive.Height()-(5),
+                                                      chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
                                                       denomination, coinId,
                                                       coinToUse.value);
 

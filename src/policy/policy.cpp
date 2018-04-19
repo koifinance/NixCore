@@ -98,6 +98,7 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
 
     for (const CTxIn& txin : tx.vin)
     {
+        //TODO: possible increase of zerocoin spend script size for scaling(reduce proof size and increase limit)
         if (txin.scriptSig.IsZerocoinSpend() && txin.scriptSig.size() > MAX_STANDARD_TX_WEIGHT) {
             reason = "scriptsig-size";
             return false;

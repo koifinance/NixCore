@@ -154,6 +154,11 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "setmintzerocoinstatus", 1 ,""},
     { "listmintzerocoins", 0 ,""},
     { "listpubcoins", 0, ""},
+    { "getnewstealthaddress", 1 ,"label"},
+    { "importstealthaddress", 0 ,"scan_secret"},
+    { "liststealthaddresses", 0, "show_secrets"},
+    { "enabletor", 0 ,""},
+    { "torstatus", 0, ""},
 };
 
 class CRPCConvertTable

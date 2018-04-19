@@ -226,9 +226,9 @@ class ArgsManager
 {
 protected:
     mutable CCriticalSection cs_args;
+public:
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string>> mapMultiArgs;
-public:
     void ParseParameters(int argc, const char*const argv[]);
     void ReadConfigFile(const std::string& confPath);
 
