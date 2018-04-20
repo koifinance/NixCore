@@ -4495,6 +4495,7 @@ bool CWallet::CreateZerocoinMintModel(string &stringError, string denomAmount) {
         zerocoinTx.randomness = newCoin.getRandomness();
         zerocoinTx.serialNumber = newCoin.getSerialNumber();
         zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
+        zerocoinTx.nHeight = chainActive.Height();
         LogPrintf("CreateZerocoinMintModel() -> NotifyZerocoinChanged\n");
         LogPrintf("pubcoin=%s, isUsed=%s\n", zerocoinTx.value.GetHex(), zerocoinTx.IsUsed);
         LogPrintf("randomness=%s, serialNumber=%s\n", zerocoinTx.randomness, zerocoinTx.serialNumber);
@@ -8146,11 +8147,10 @@ bool CWallet::ImportStealthAddress(const CStealthAddress &sxAddr, const CKey &sk
 static const char * CoinDenominationStrings[] = { "0", "1", "5", "10", "50", "100", "500", "1000", "5000" };
 
 //unlock wallet and create ghost timer
-bool CWallet::EnableGhostMode(string totalAmount){
+bool CWallet::EnableGhostMode(SecureString strWalletPass, string totalAmount){
 
     this->NotifyZerocoinChanged.connect(boost::bind(&CWallet::NotifyGhostChanged, this, _1, _2, _3, _4, _5));
 
-    SecureString strWalletPass;
     string stringError;
     //for sanity, check for decimal
     if (totalAmount.find('.') != std::string::npos)

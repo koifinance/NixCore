@@ -1356,7 +1356,7 @@ public:
     /**
      * Add ghost functions
      */
-    bool EnableGhostMode(string totalAmount);
+    bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
     bool DisableGhostMode();
     bool GhostModeMintTrigger(string &stringError, string totalAmount);
     bool GhostModeSpendTrigger(string &stringError, string denomination);
