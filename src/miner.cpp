@@ -134,8 +134,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
-    // To devs and investors
-    if (nHeight >= 1) {
+    // To devs
+    if (nHeight >= 2) {
 
         coinbaseTx.vout[0].nValue -= 0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 

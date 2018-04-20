@@ -4498,7 +4498,7 @@ bool CWallet::CreateZerocoinMintModel(string &stringError, string denomAmount) {
         LogPrintf("CreateZerocoinMintModel() -> NotifyZerocoinChanged\n");
         LogPrintf("pubcoin=%s, isUsed=%s\n", zerocoinTx.value.GetHex(), zerocoinTx.IsUsed);
         LogPrintf("randomness=%s, serialNumber=%s\n", zerocoinTx.randomness, zerocoinTx.serialNumber);
-        NotifyZerocoinChanged(this, zerocoinTx.value.GetHex(), zerocoinTx.IsUsed ? "Used" : "New", CT_NEW);
+        NotifyZerocoinChanged(this, zerocoinTx.value.GetHex(), zerocoinTx.denomination, zerocoinTx.IsUsed ? "Used" : "New", CT_NEW);
         if (!CWalletDB(*dbw).WriteZerocoinEntry(zerocoinTx))
             return false;
         return true;
@@ -5058,7 +5058,7 @@ bool CWallet::CreateZerocoinSpendTransaction(int64_t nValue, libzerocoin::CoinDe
                     CWalletDB(*dbw).WriteZerocoinEntry(pubCoinTx);
                     LogPrintf("CreateZerocoinSpendTransaction() -> NotifyZerocoinChanged\n");
                     LogPrintf("pubcoin=%s, isUsed=Used\n", coinToUse.value.GetHex());
-                    NotifyZerocoinChanged(this, coinToUse.value.GetHex(), "Used",
+                    NotifyZerocoinChanged(this, coinToUse.value.GetHex(), pubCoinTx.denomination, "Used",
                                                        CT_UPDATED);
                     strFailReason = _("the coin spend has been used");
                     return false;
@@ -5086,7 +5086,7 @@ bool CWallet::CreateZerocoinSpendTransaction(int64_t nValue, libzerocoin::CoinDe
             coinToUse.id = coinId;
             coinToUse.nHeight = coinHeight;
             CWalletDB(*dbw).WriteZerocoinEntry(coinToUse);
-            NotifyZerocoinChanged(this, coinToUse.value.GetHex(), "Used",
+            NotifyZerocoinChanged(this, coinToUse.value.GetHex(), coinToUse.denomination, "Used",
                                                CT_UPDATED);
         }
     }
@@ -5240,7 +5240,7 @@ string CWallet::SpendZerocoin(int64_t nValue, libzerocoin::CoinDenomination deno
                 CWalletDB(*dbw).WriteZerocoinEntry(pubCoinTx);
                 LogPrintf("SpendZerocoin failed, re-updated status -> NotifyZerocoinChanged\n");
                 LogPrintf("pubcoin=%s, isUsed=New\n", pubCoinItem.value.GetHex());
-                NotifyZerocoinChanged(this, pubCoinItem.value.GetHex(), "New", CT_UPDATED);
+                NotifyZerocoinChanged(this, pubCoinItem.value.GetHex(), pubCoinItem.denomination, "New", CT_UPDATED);
             }
         }
         CZerocoinSpendEntry entry;
@@ -8145,8 +8145,21 @@ bool CWallet::ImportStealthAddress(const CStealthAddress &sxAddr, const CKey &sk
 
 static const char * CoinDenominationStrings[] = { "0", "1", "5", "10", "50", "100", "500", "1000", "5000" };
 
+
+
+void CWallet::NotifyGhostChanged(CWallet *wallet, const std::string &pubCoin, libzerocoin::CoinDenomination denomination, const std::string &isUsed, ChangeType status)
+{
+
+    std::string stringError;
+    if(isUsed == "New")
+        GhostModeSpendTrigger(stringError, std::to_string(denomination));
+
+}
+
 //unlock wallet and create ghost timer
 bool CWallet::EnableGhostMode(string totalAmount){
+
+    this->NotifyZerocoinChanged.connect(boost::bind(&NotifyGhostChanged, this, _1, _2, _3, _4));
 
     SecureString strWalletPass;
     string stringError;
@@ -8168,6 +8181,7 @@ bool CWallet::EnableGhostMode(string totalAmount){
 bool CWallet::DisableGhostMode(){
     LOCK(this->cs_wallet);
     this->nRelockTime = 0;
+    this->NotifyZerocoinChanged.disconnect(boost::bind(&NotifyGhostChanged, this, _1, _2, _3, _4));
     this->Lock();
     return true;
 }

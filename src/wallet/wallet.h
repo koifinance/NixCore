@@ -1584,7 +1584,7 @@ public:
      * Zerocoin entry changed.
      * @note called with lock cs_wallet held.
      */
-    boost::signals2::signal<void (CWallet *wallet, const std::string &pubCoin, const std::string &isUsed, ChangeType status)> NotifyZerocoinChanged;
+    boost::signals2::signal<void (CWallet *wallet, const std::string &pubCoin, libzerocoin::CoinDenomination denomination, const std::string &isUsed, ChangeType status)> NotifyZerocoinChanged;
 
     /** Show progress e.g. for rescan */
     boost::signals2::signal<void (const std::string &title, int nProgress)> ShowProgress;
