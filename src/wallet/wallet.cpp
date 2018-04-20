@@ -8147,19 +8147,55 @@ static const char * CoinDenominationStrings[] = { "0", "1", "5", "10", "50", "10
 
 
 
-void CWallet::NotifyGhostChanged(CWallet *wallet, const std::string &pubCoin, libzerocoin::CoinDenomination denomination, const std::string &isUsed, ChangeType status)
+void CWallet::NotifyGhostChanged(CWallet *wallet, const std::string &pubCoin, int denomination, const std::string &isUsed, ChangeType status)
 {
 
+    libzerocoin::CoinDenomination denom = libzerocoin::ZQ_ERROR;
+    if (denomination == 1) {
+        denom = libzerocoin::ZQ_ONE;
+    } else if (denomination == 5) {
+        denom = libzerocoin::ZQ_FIVE;
+    } else if (denomination == 10) {
+        denom = libzerocoin::ZQ_TEN;
+    } else if (denomination == 50) {
+        denom = libzerocoin::ZQ_FIFTY;
+    } else if (denomination == 100) {
+        denom = libzerocoin::ZQ_ONE_HUNDRED;
+    }  else if (denomination == 500) {
+        denom = libzerocoin::ZQ_FIVE_HUNDRED;
+    } else if (denomination == 1000) {
+        denom = libzerocoin::ZQ_ONE_THOUSAND;
+    } else if (denomination == 5000) {
+        denom = libzerocoin::ZQ_FIVE_THOUSAND;
+    }
     std::string stringError;
     if(isUsed == "New")
-        GhostModeSpendTrigger(stringError, std::to_string(denomination));
+        GhostModeSpendTrigger(stringError, std::to_string(denom));
+    if(isUsed == "Used")
+        GhostModeMintTrigger(stringError, std::to_string(denom));
 
+}
+
+bool CWallet::SpendAllZerocoins(){
+
+
+    std::list<CZerocoinEntry> listPubcoin;
+    string stringError;
+    CWalletDB(*this->dbw).ListPubCoin(listPubcoin);
+    BOOST_FOREACH(const CZerocoinEntry& item, listPubcoin)
+    {
+        if(item.IsUsed == false)
+            GhostModeSpendTrigger(stringError, std::to_string(item.denomination));
+        if(stringError != "")
+            return false;
+    }
+    return true;
 }
 
 //unlock wallet and create ghost timer
 bool CWallet::EnableGhostMode(string totalAmount){
 
-    this->NotifyZerocoinChanged.connect(boost::bind(&NotifyGhostChanged, this, _1, _2, _3, _4));
+    this->NotifyZerocoinChanged.connect(boost::bind(&CWallet::NotifyGhostChanged, this, _1, _2, _3, _4, _5));
 
     SecureString strWalletPass;
     string stringError;
@@ -8181,7 +8217,7 @@ bool CWallet::EnableGhostMode(string totalAmount){
 bool CWallet::DisableGhostMode(){
     LOCK(this->cs_wallet);
     this->nRelockTime = 0;
-    this->NotifyZerocoinChanged.disconnect(boost::bind(&NotifyGhostChanged, this, _1, _2, _3, _4));
+    this->NotifyZerocoinChanged.disconnect(boost::bind(&CWallet::NotifyGhostChanged, this, _1, _2, _3, _4, _5));
     this->Lock();
     return true;
 }
@@ -8201,6 +8237,8 @@ bool CWallet::GhostModeMintTrigger(string &stringError, string totalAmount){
     //TODO: Create timer function to mint and recognize freshly finished mints to spend
     while(denomination != libzerocoin::ZQ_ERROR){
         denomination = libzerocoin::AmountToClosestDenomination(amount, nRemaining);
+        if (this->IsLocked())
+            return error("%s: Error: The wallet needs to be unlocked.", __func__);
         CreateZerocoinMintModel(stringError, CoinDenominationStrings[denomination]);
         amount = nRemaining;
     }
