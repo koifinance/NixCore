@@ -8,7 +8,6 @@
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
 #include <consensus/validation.h>
-
 // TODO remove the following dependencies
 #include <chain.h>
 #include <coins.h>
@@ -156,7 +155,7 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
     return nSigOps;
 }
 
-bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fCheckDuplicateInputs)
+bool CheckTransaction(const CTransaction& tx, CValidationState& state, bool fCheckDuplicateInputs, uint256 hashTx, bool isVerifyDB, int nHeight, bool isCheckWallet, CZerocoinTxInfo *zerocoinTxInfo)
 {
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
@@ -194,12 +193,16 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
     {
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
+        if (!CheckDevFundInputs(tx, state, nHeight, false))
+            return false;
     }
     else
     {
         for (const auto& txin : tx.vin)
             if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
+        if (!CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
+                    return false;
     }
 
     return true;

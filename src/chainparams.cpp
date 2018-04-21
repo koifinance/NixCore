@@ -122,36 +122,8 @@ public:
         nBIP44ID = 0x8000002C;
         nPruneAfterHeight = 0;
 
-        //mine genesis block
-        /*
-        uint NONCE = 0;
-        bool isValidGen = false;
-        while(!isValidGen){
-            genesis = CreateGenesisBlock(1522615406, NONCE, 0x1e0ffff0, 1, 0 * COIN);
-            bool fNegative;
-            bool fOverflow;
-            arith_uint256 bnTarget;
-            bnTarget.SetCompact(genesis.nBits, &fNegative, &fOverflow);
-            // Check range
-            if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensus.powLimit))
-                isValidGen = false;
-            else
-                isValidGen = true;
-            // Check proof of work matches claimed amount
-            if (UintToArith256(genesis.GetPoWHash(0)) > bnTarget)
-                isValidGen = false;
-            else
-                isValidGen = true;
-
-            if(!isValidGen)
-                NONCE++;
-        }
-        */
-
         genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        //std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
-        //std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
         assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
         assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
@@ -257,37 +229,8 @@ public:
         nBIP44ID = 0x80000001;
         nPruneAfterHeight = 1000;
 
-
-        //mine genesis block
-        /*
-        uint NONCE = 0;
-        bool isValidGen = false;
-        while(!isValidGen){
-            genesis = CreateGenesisBlock(1522615406, NONCE, 0x1e0ffff0, 1, 0 * COIN);
-            bool fNegative;
-            bool fOverflow;
-            arith_uint256 bnTarget;
-            bnTarget.SetCompact(genesis.nBits, &fNegative, &fOverflow);
-            // Check range
-            if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensus.powLimit))
-                isValidGen = false;
-            else
-                isValidGen = true;
-            // Check proof of work matches claimed amount
-            if (UintToArith256(genesis.GetPoWHash(0)) > bnTarget)
-                isValidGen = false;
-            else
-                isValidGen = true;
-
-            if(!isValidGen)
-                NONCE++;
-        }
-        */
-
         genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        //std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
-        //std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
         assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
         assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
@@ -419,8 +362,6 @@ public:
 
         genesis = CreateGenesisBlock(1522615406, 71492, 0x1e0ffff0, 1, 0 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        std::cout << consensus.hashGenesisBlock.ToString() << std::endl;
-        std::cout << genesis.hashMerkleRoot.ToString() << std::endl;
         assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
         assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 

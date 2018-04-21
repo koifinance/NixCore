@@ -243,7 +243,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
 
-    if (nHeight >= 1) {
+    if (nHeight >= 2) {
         bool found_1 = false;
         bool found_2 = false;
 
@@ -258,10 +258,10 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
             FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
         }
-        //5% development fee total
+        //7% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
-            //3% for first address
-            if (output.scriptPubKey == FOUNDER_1_SCRIPT && output.nValue == (int64_t)(0.03 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            //5% for first address
+            if (output.scriptPubKey == FOUNDER_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
             //2% for second address

@@ -137,7 +137,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // To devs
     if (nHeight >= 2) {
 
-        coinbaseTx.vout[0].nValue -= 0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+        coinbaseTx.vout[0].nValue -= 0.07 * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
         CScript FOUNDER_1_SCRIPT;
         CScript FOUNDER_2_SCRIPT;
@@ -153,7 +153,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         }
 
         // And give it to the dev fund
-        coinbaseTx.vout.push_back(CTxOut(0.03 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_1_SCRIPT.begin(), FOUNDER_1_SCRIPT.end())));
+        coinbaseTx.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_1_SCRIPT.begin(), FOUNDER_1_SCRIPT.end())));
         coinbaseTx.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_2_SCRIPT.begin(), FOUNDER_2_SCRIPT.end())));
     }
 

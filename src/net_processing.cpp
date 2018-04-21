@@ -2130,6 +2130,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         LOCK2(cs_main, g_cs_orphans);
 
         bool fMissingInputs = false;
+        bool fMissingZerocoinInputs = false;
         CValidationState state;
 
         pfrom->setAskFor.erase(inv.hash);
@@ -2137,7 +2138,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
         std::list<CTransactionRef> lRemovedTxn;
 
-        if (!AlreadyHave(inv) &&
+        if (!AlreadyHave(inv) && !tx.IsZerocoinSpend() &&
             AcceptToMemoryPool(mempool, state, ptx, &fMissingInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
             mempool.check(pcoinsTip.get());
             RelayTransaction(tx, connman);
@@ -2212,6 +2213,10 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
+        }
+        else if (!AlreadyHave(inv) && tx.IsZerocoinSpend() && AcceptToMemoryPool(mempool, state, ptx, &fMissingZerocoinInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
+            RelayTransaction(tx, connman);
+
         }
         else if (fMissingInputs)
         {
