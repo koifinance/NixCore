@@ -1358,8 +1358,8 @@ public:
      */
     bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
     bool DisableGhostMode();
-    bool GhostModeMintTrigger(string &stringError, string totalAmount);
-    bool GhostModeSpendTrigger(string &stringError, string denomination);
+    bool GhostModeMintTrigger(string totalAmount);
+    bool GhostModeSpendTrigger(string denomination);
     bool SpendAllZerocoins();
     /**
      * Add stealth functions

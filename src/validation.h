@@ -150,6 +150,10 @@ static const bool DEFAULT_PEERBLOOMFILTERS = true;
 /** Default for -stopatheight */
 static const int DEFAULT_STOPATHEIGHT = 0;
 
+static const bool DEFAULT_TIMESTAMPINDEX = false;
+static const bool DEFAULT_ADDRESSINDEX = false;
+static const bool DEFAULT_SPENTINDEX = false;
+
 struct BlockHasher
 {
     size_t operator()(const uint256& hash) const { return hash.GetCheapHash(); }

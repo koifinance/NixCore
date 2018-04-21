@@ -39,13 +39,15 @@
 #include <utilstrencodings.h>
 #include <validationinterface.h>
 #include <warnings.h>
-
+#include <coins.h>
 #include <future>
 #include <sstream>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
+
+
 
 #if defined(NDEBUG)
 # error "NIX cannot be compiled without assertions."
@@ -218,6 +220,9 @@ size_t nCoinCacheUsage = 5000 * 300;
 uint64_t nPruneTarget = 0;
 int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
+bool fAddressIndex = false;
+bool fSpentIndex = false;
+bool fTimestampIndex = false;
 
 uint256 hashAssumeValid;
 arith_uint256 nMinimumChainWork;
@@ -1570,7 +1575,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
         const CTransaction &tx = *(block.vtx[i]);
         uint256 hash = tx.GetHash();
-        bool is_coinbase = tx.IsCoinBase();
+        bool is_coinbase = tx.IsCoinBase() || tx.IsZerocoinSpend();
 
         // Check that all outputs are available and match the outputs in the block itself
         // exactly.

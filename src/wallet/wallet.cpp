@@ -4495,7 +4495,6 @@ bool CWallet::CreateZerocoinMintModel(string &stringError, string denomAmount) {
         zerocoinTx.randomness = newCoin.getRandomness();
         zerocoinTx.serialNumber = newCoin.getSerialNumber();
         zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
-        zerocoinTx.nHeight = chainActive.Height();
         LogPrintf("CreateZerocoinMintModel() -> NotifyZerocoinChanged\n");
         LogPrintf("pubcoin=%s, isUsed=%s\n", zerocoinTx.value.GetHex(), zerocoinTx.IsUsed);
         LogPrintf("randomness=%s, serialNumber=%s\n", zerocoinTx.randomness, zerocoinTx.serialNumber);
@@ -8151,8 +8150,7 @@ bool CWallet::EnableGhostMode(SecureString strWalletPass, string totalAmount){
 
     this->NotifyZerocoinChanged.connect(boost::bind(&CWallet::NotifyGhostChanged, this, _1, _2, _3, _4, _5));
 
-    string stringError;
-    //for sanity, check for decimal
+    //sanity check for decimal
     if (totalAmount.find('.') != std::string::npos)
         return error("%s: Error: The Ghost Mode value needs to be a whole number.", __func__);
     if (!this->Unlock(strWalletPass)) {
@@ -8160,7 +8158,7 @@ bool CWallet::EnableGhostMode(SecureString strWalletPass, string totalAmount){
     }
 
     //TODO: Change amount.h total money circulation
-    if(!GhostModeMintTrigger(stringError, totalAmount))
+    if(!GhostModeMintTrigger(totalAmount))
         return error("%s: Error: Cannot trigger ghost mode mint.", __func__);
 
     return true;
@@ -8197,32 +8195,37 @@ void CWallet::NotifyGhostChanged(CWallet *wallet, const std::string &pubCoin, in
     } else if (denomination == 5000) {
         denom = libzerocoin::ZQ_FIVE_THOUSAND;
     }
-    std::string stringError;
     if(isUsed == "New")
-        GhostModeSpendTrigger(stringError, std::to_string(denom));
+        GhostModeSpendTrigger(std::to_string(denom));
     if(isUsed == "Used")
-        GhostModeMintTrigger(stringError, std::to_string(denom));
+        GhostModeMintTrigger(std::to_string(denom));
 
 }
 
 bool CWallet::SpendAllZerocoins(){
 
+    std::list<CZerocoinEntry> pc;
+    CWalletDB(*dbw).ListPubCoin(pc);
+    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
+    int coinHeight;
 
-    std::list<CZerocoinEntry> listPubcoin;
-    string stringError;
-    CWalletDB(*this->dbw).ListPubCoin(listPubcoin);
-    BOOST_FOREACH(const CZerocoinEntry& item, listPubcoin)
-    {
-        if(item.IsUsed == false)
-            GhostModeSpendTrigger(stringError, std::to_string(item.denomination));
-        if(stringError != "")
-            return false;
-    }
+    BOOST_FOREACH(const CZerocoinEntry &minIdPubcoin, pc) {
+        if(minIdPubcoin.IsUsed == false){
+            int id;
+            coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
+            if(coinHeight >= chainActive.Height() + ZEROCOIN_CONFIRM_HEIGHT)
+                if(!GhostModeSpendTrigger(std::to_string(minIdPubcoin.denomination)))
+                    return error("%s: Error: Failed to spend all zerocoins.", __func__);
+        }
+     }
+
     return true;
 }
 
 //ghost timer mint responder
-bool CWallet::GhostModeMintTrigger(string &stringError, string totalAmount){
+bool CWallet::GhostModeMintTrigger(string totalAmount){
+
+    string stringError;
 
     //TODO: Change amount.h total money circulation
     CAmount amount = 0;
@@ -8239,7 +8242,7 @@ bool CWallet::GhostModeMintTrigger(string &stringError, string totalAmount){
         if (this->IsLocked())
             return error("%s: Error: The wallet needs to be unlocked.", __func__);
         if(!CreateZerocoinMintModel(stringError, CoinDenominationStrings[denomination]))
-            return error("%s: Error: Failed to create zerocoin mint model.", __func__);
+            return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
         amount = nRemaining;
         denomination = libzerocoin::AmountToClosestDenomination(amount, nRemaining);
 
@@ -8249,13 +8252,15 @@ bool CWallet::GhostModeMintTrigger(string &stringError, string totalAmount){
 }
 
 //ghost timer spend responder
-bool CWallet::GhostModeSpendTrigger(string &stringError, string denomination){
+bool CWallet::GhostModeSpendTrigger(string denomination){
+
+    string stringError;
 
     if (this->IsLocked())
         return error("%s: Error: The wallet needs to be unlocked.", __func__);
 
     if(!CreateZerocoinSpendModel(stringError, denomination))
-        return error("%s: Error: Failed to create zerocoin spend model.", __func__);
+        return error("%s: Error: Failed to create zerocoin spend model - %s.", __func__, stringError);
 
     return true;
 }
