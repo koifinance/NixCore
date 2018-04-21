@@ -174,20 +174,21 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
         base58Prefixes[EXT_SECRET_KEY_BTC] = {0x04, 0x88, 0xAD, 0xE4}; // xprv
 
-        bech32Prefixes[PUBKEY_ADDRESS].assign       ("ph","ph"+2);
-        bech32Prefixes[SCRIPT_ADDRESS].assign       ("pr","pr"+2);
-        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("pl","pl"+2);
-        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("pj","pj"+2);
-        bech32Prefixes[SECRET_KEY].assign           ("px","px"+2);
-        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("pep","pep"+3);
-        bech32Prefixes[EXT_SECRET_KEY].assign       ("pex","pex"+3);
-        bech32Prefixes[STEALTH_ADDRESS].assign      ("ps","ps"+2);
-        bech32Prefixes[EXT_KEY_HASH].assign         ("pek","pek"+3);
-        bech32Prefixes[EXT_ACC_HASH].assign         ("pea","pea"+3);
+        bech32Prefixes[PUBKEY_ADDRESS].assign       ("nh","nh"+2);
+        bech32Prefixes[SCRIPT_ADDRESS].assign       ("nr","nr"+2);
+        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("nl","nl"+2);
+        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("nj","nj"+2);
+        bech32Prefixes[SECRET_KEY].assign           ("nx","nx"+2);
+        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("nen","nen"+3);
+        bech32Prefixes[EXT_SECRET_KEY].assign       ("nex","nex"+3);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ps"+2);
+        bech32Prefixes[EXT_KEY_HASH].assign         ("nek","nek"+3);
+        bech32Prefixes[EXT_ACC_HASH].assign         ("nea","nea"+3);
 
         bech32_hrp = "nix";
 
-        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
+        //vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
+        vFixedSeeds.clear();
 
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
@@ -195,7 +196,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0x657dcc75c0dc8be8625fb43d91d6fe30c1bbc93fb6a333e4ca1eaa47f3da724f")},
+                { 0, uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117")},
             }
         };
 
@@ -309,20 +310,21 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
         base58Prefixes[EXT_SECRET_KEY_BTC] = {0x04, 0x88, 0xAD, 0xE4}; // xprv
 
-        bech32Prefixes[PUBKEY_ADDRESS].assign       ("ph","ph"+2);
-        bech32Prefixes[SCRIPT_ADDRESS].assign       ("pr","pr"+2);
-        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("pl","pl"+2);
-        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("pj","pj"+2);
-        bech32Prefixes[SECRET_KEY].assign           ("px","px"+2);
-        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("pep","pep"+3);
-        bech32Prefixes[EXT_SECRET_KEY].assign       ("pex","pex"+3);
-        bech32Prefixes[STEALTH_ADDRESS].assign      ("ps","ps"+2);
-        bech32Prefixes[EXT_KEY_HASH].assign         ("pek","pek"+3);
-        bech32Prefixes[EXT_ACC_HASH].assign         ("pea","pea"+3);
+        bech32Prefixes[PUBKEY_ADDRESS].assign       ("nh","nh"+2);
+        bech32Prefixes[SCRIPT_ADDRESS].assign       ("nr","nr"+2);
+        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("nl","nl"+2);
+        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("nj","nj"+2);
+        bech32Prefixes[SECRET_KEY].assign           ("nx","nx"+2);
+        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("nen","nen"+3);
+        bech32Prefixes[EXT_SECRET_KEY].assign       ("nex","nex"+3);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ps"+2);
+        bech32Prefixes[EXT_KEY_HASH].assign         ("nek","nek"+3);
+        bech32Prefixes[EXT_ACC_HASH].assign         ("nea","nea"+3);
 
         bech32_hrp = "tnix";
 
-        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
+        //vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
+        vFixedSeeds.clear();
 
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
@@ -331,7 +333,7 @@ public:
 
         checkpointData = {
             {
-                {546, uint256S("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70")},
+                {0, uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117")},
             }
         };
 
@@ -455,16 +457,16 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
         base58Prefixes[EXT_SECRET_KEY_BTC] = {0x04, 0x88, 0xAD, 0xE4}; // xprv
 
-        bech32Prefixes[PUBKEY_ADDRESS].assign       ("ph","ph"+2);
-        bech32Prefixes[SCRIPT_ADDRESS].assign       ("pr","pr"+2);
-        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("pl","pl"+2);
-        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("pj","pj"+2);
-        bech32Prefixes[SECRET_KEY].assign           ("px","px"+2);
-        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("pep","pep"+3);
-        bech32Prefixes[EXT_SECRET_KEY].assign       ("pex","pex"+3);
-        bech32Prefixes[STEALTH_ADDRESS].assign      ("ps","ps"+2);
-        bech32Prefixes[EXT_KEY_HASH].assign         ("pek","pek"+3);
-        bech32Prefixes[EXT_ACC_HASH].assign         ("pea","pea"+3);
+        bech32Prefixes[PUBKEY_ADDRESS].assign       ("nh","nh"+2);
+        bech32Prefixes[SCRIPT_ADDRESS].assign       ("nr","nr"+2);
+        bech32Prefixes[PUBKEY_ADDRESS_256].assign   ("nl","nl"+2);
+        bech32Prefixes[SCRIPT_ADDRESS_256].assign   ("nj","nj"+2);
+        bech32Prefixes[SECRET_KEY].assign           ("nx","nx"+2);
+        bech32Prefixes[EXT_PUBLIC_KEY].assign       ("nen","nen"+3);
+        bech32Prefixes[EXT_SECRET_KEY].assign       ("nex","nex"+3);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ps"+2);
+        bech32Prefixes[EXT_KEY_HASH].assign         ("nek","nek"+3);
+        bech32Prefixes[EXT_ACC_HASH].assign         ("nea","nea"+3);
 
         bech32_hrp = "nxrt";
     }
