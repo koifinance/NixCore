@@ -1,23 +1,24 @@
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2017-2018 The NIX Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "activezoinode.h"
+#include "activeghostnode.h"
 #include "checkpoints.h"
 #include "main.h"
-#include "zoinode.h"
-#include "zoinode-payments.h"
-#include "zoinode-sync.h"
-#include "zoinodeman.h"
+#include "ghostnode.h"
+#include "ghostnode-payments.h"
+#include "ghostnode-sync.h"
+#include "ghostnodeman.h"
 #include "netfulfilledman.h"
 #include "spork.h"
 #include "util.h"
 
-class CZoinodeSync;
+class CGhostnodeSync;
 
-CZoinodeSync zoinodeSync;
+CGhostnodeSync ghostnodeSync;
 
-bool CZoinodeSync::CheckNodeHeight(CNode *pnode, bool fDisconnectStuckNodes) {
+bool CGhostnodeSync::CheckNodeHeight(CNode *pnode, bool fDisconnectStuckNodes) {
     CNodeStateStats stats;
     if (!GetNodeStateStats(pnode->id, stats) || stats.nCommonHeight == -1 || stats.nSyncHeight == -1) return false; // not enough info about this peer
 
@@ -27,16 +28,16 @@ bool CZoinodeSync::CheckNodeHeight(CNode *pnode, bool fDisconnectStuckNodes) {
         if (fDisconnectStuckNodes) {
             // Disconnect to free this connection slot for another peer.
             pnode->fDisconnect = true;
-            LogPrintf("CZoinodeSync::CheckNodeHeight -- disconnecting from stuck peer, nHeight=%d, nCommonHeight=%d, peer=%d\n",
+            LogPrintf("CGhostnodeSync::CheckNodeHeight -- disconnecting from stuck peer, nHeight=%d, nCommonHeight=%d, peer=%d\n",
                       pCurrentBlockIndex->nHeight, stats.nCommonHeight, pnode->id);
         } else {
-            LogPrintf("CZoinodeSync::CheckNodeHeight -- skipping stuck peer, nHeight=%d, nCommonHeight=%d, peer=%d\n",
+            LogPrintf("CGhostnodeSync::CheckNodeHeight -- skipping stuck peer, nHeight=%d, nCommonHeight=%d, peer=%d\n",
                       pCurrentBlockIndex->nHeight, stats.nCommonHeight, pnode->id);
         }
         return false;
     } else if (pCurrentBlockIndex->nHeight < stats.nSyncHeight - 1) {
         // This peer announced more headers than we have blocks currently
-        LogPrintf("CZoinodeSync::CheckNodeHeight -- skipping peer, who announced more headers than we have blocks currently, nHeight=%d, nSyncHeight=%d, peer=%d\n",
+        LogPrintf("CGhostnodeSync::CheckNodeHeight -- skipping peer, who announced more headers than we have blocks currently, nHeight=%d, nSyncHeight=%d, peer=%d\n",
                   pCurrentBlockIndex->nHeight, stats.nSyncHeight, pnode->id);
         return false;
     }
@@ -44,7 +45,7 @@ bool CZoinodeSync::CheckNodeHeight(CNode *pnode, bool fDisconnectStuckNodes) {
     return true;
 }
 
-bool CZoinodeSync::IsBlockchainSynced(bool fBlockAccepted) {
+bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
     static bool fBlockchainSynced = false;
     static int64_t nTimeLastProcess = GetTime();
     static int nSkipped = 0;
@@ -52,7 +53,7 @@ bool CZoinodeSync::IsBlockchainSynced(bool fBlockAccepted) {
 
     // if the last call to this function was more than 60 minutes ago (client was in sleep mode) reset the sync process
     if (GetTime() - nTimeLastProcess > 60 * 60) {
-        LogPrintf("CZoinodeSync::IsBlockchainSynced time-check fBlockchainSynced=%s\n", fBlockchainSynced);
+        LogPrintf("CGhostnodeSync::IsBlockchainSynced time-check fBlockchainSynced=%s\n", fBlockchainSynced);
         Reset();
         fBlockchainSynced = false;
     }
@@ -70,13 +71,13 @@ bool CZoinodeSync::IsBlockchainSynced(bool fBlockAccepted) {
         }
     } else {
         // skip if we already checked less than 1 tick ago
-        if (GetTime() - nTimeLastProcess < ZOINODE_SYNC_TICK_SECONDS) {
+        if (GetTime() - nTimeLastProcess < GHOSTNODE_SYNC_TICK_SECONDS) {
             nSkipped++;
             return fBlockchainSynced;
         }
     }
 
-    LogPrint("zoinode-sync", "CZoinodeSync::IsBlockchainSynced -- state before check: %ssynced, skipped %d times\n", fBlockchainSynced ? "" : "not ", nSkipped);
+    LogPrint("ghostnode-sync", "CGhostnodeSync::IsBlockchainSynced -- state before check: %ssynced, skipped %d times\n", fBlockchainSynced ? "" : "not ", nSkipped);
 
     nTimeLastProcess = GetTime();
     nSkipped = 0;
@@ -91,7 +92,7 @@ bool CZoinodeSync::IsBlockchainSynced(bool fBlockAccepted) {
 
     std::vector < CNode * > vNodesCopy = CopyNodeVector();
     // We have enough peers and assume most of them are synced
-    if (vNodesCopy.size() >= ZOINODE_SYNC_ENOUGH_PEERS) {
+    if (vNodesCopy.size() >= GHOSTNODE_SYNC_ENOUGH_PEERS) {
         // Check to see how many of our peers are (almost) at the same height as we are
         int nNodesAtSameHeight = 0;
         BOOST_FOREACH(CNode * pnode, vNodesCopy)
@@ -102,8 +103,8 @@ bool CZoinodeSync::IsBlockchainSynced(bool fBlockAccepted) {
             }
             nNodesAtSameHeight++;
             // if we have decent number of such peers, most likely we are synced now
-            if (nNodesAtSameHeight >= ZOINODE_SYNC_ENOUGH_PEERS) {
-                LogPrintf("CZoinodeSync::IsBlockchainSynced -- found enough peers on the same height as we are, done\n");
+            if (nNodesAtSameHeight >= GHOSTNODE_SYNC_ENOUGH_PEERS) {
+                LogPrintf("CGhostnodeSync::IsBlockchainSynced -- found enough peers on the same height as we are, done\n");
                 fBlockchainSynced = true;
                 ReleaseNodeVector(vNodesCopy);
                 return true;
@@ -122,92 +123,92 @@ bool CZoinodeSync::IsBlockchainSynced(bool fBlockAccepted) {
     return fBlockchainSynced;
 }
 
-void CZoinodeSync::Fail() {
+void CGhostnodeSync::Fail() {
     nTimeLastFailure = GetTime();
-    nRequestedZoinodeAssets = ZOINODE_SYNC_FAILED;
+    nRequestedGhostnodeAssets = GHOSTNODE_SYNC_FAILED;
 }
 
-void CZoinodeSync::Reset() {
-    nRequestedZoinodeAssets = ZOINODE_SYNC_INITIAL;
-    nRequestedZoinodeAttempt = 0;
+void CGhostnodeSync::Reset() {
+    nRequestedGhostnodeAssets = GHOSTNODE_SYNC_INITIAL;
+    nRequestedGhostnodeAttempt = 0;
     nTimeAssetSyncStarted = GetTime();
-    nTimeLastZoinodeList = GetTime();
+    nTimeLastGhostnodeList = GetTime();
     nTimeLastPaymentVote = GetTime();
     nTimeLastGovernanceItem = GetTime();
     nTimeLastFailure = 0;
     nCountFailures = 0;
 }
 
-std::string CZoinodeSync::GetAssetName() {
-    switch (nRequestedZoinodeAssets) {
-        case (ZOINODE_SYNC_INITIAL):
-            return "ZOINODE_SYNC_INITIAL";
-        case (ZOINODE_SYNC_SPORKS):
-            return "ZOINODE_SYNC_SPORKS";
-        case (ZOINODE_SYNC_LIST):
-            return "ZOINODE_SYNC_LIST";
-        case (ZOINODE_SYNC_MNW):
-            return "ZOINODE_SYNC_MNW";
-        case (ZOINODE_SYNC_FAILED):
-            return "ZOINODE_SYNC_FAILED";
-        case ZOINODE_SYNC_FINISHED:
-            return "ZOINODE_SYNC_FINISHED";
+std::string CGhostnodeSync::GetAssetName() {
+    switch (nRequestedGhostnodeAssets) {
+        case (GHOSTNODE_SYNC_INITIAL):
+            return "GHOSTNODE_SYNC_INITIAL";
+        case (GHOSTNODE_SYNC_SPORKS):
+            return "GHOSTNODE_SYNC_SPORKS";
+        case (GHOSTNODE_SYNC_LIST):
+            return "GHOSTNODE_SYNC_LIST";
+        case (GHOSTNODE_SYNC_MNW):
+            return "GHOSTNODE_SYNC_MNW";
+        case (GHOSTNODE_SYNC_FAILED):
+            return "GHOSTNODE_SYNC_FAILED";
+        case GHOSTNODE_SYNC_FINISHED:
+            return "GHOSTNODE_SYNC_FINISHED";
         default:
             return "UNKNOWN";
     }
 }
 
-void CZoinodeSync::SwitchToNextAsset() {
-    switch (nRequestedZoinodeAssets) {
-        case (ZOINODE_SYNC_FAILED):
+void CGhostnodeSync::SwitchToNextAsset() {
+    switch (nRequestedGhostnodeAssets) {
+        case (GHOSTNODE_SYNC_FAILED):
             throw std::runtime_error("Can't switch to next asset from failed, should use Reset() first!");
             break;
-        case (ZOINODE_SYNC_INITIAL):
+        case (GHOSTNODE_SYNC_INITIAL):
             ClearFulfilledRequests();
-            nRequestedZoinodeAssets = ZOINODE_SYNC_SPORKS;
-            LogPrintf("CZoinodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
+            nRequestedGhostnodeAssets = GHOSTNODE_SYNC_SPORKS;
+            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
             break;
-        case (ZOINODE_SYNC_SPORKS):
-            nTimeLastZoinodeList = GetTime();
-            nRequestedZoinodeAssets = ZOINODE_SYNC_LIST;
-            LogPrintf("CZoinodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
+        case (GHOSTNODE_SYNC_SPORKS):
+            nTimeLastGhostnodeList = GetTime();
+            nRequestedGhostnodeAssets = GHOSTNODE_SYNC_LIST;
+            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
             break;
-        case (ZOINODE_SYNC_LIST):
+        case (GHOSTNODE_SYNC_LIST):
             nTimeLastPaymentVote = GetTime();
-            nRequestedZoinodeAssets = ZOINODE_SYNC_MNW;
-            LogPrintf("CZoinodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
+            nRequestedGhostnodeAssets = GHOSTNODE_SYNC_MNW;
+            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
             break;
 
-        case (ZOINODE_SYNC_MNW):
+        case (GHOSTNODE_SYNC_MNW):
             nTimeLastGovernanceItem = GetTime();
-            LogPrintf("CZoinodeSync::SwitchToNextAsset -- Sync has finished\n");
-            nRequestedZoinodeAssets = ZOINODE_SYNC_FINISHED;
+            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Sync has finished\n");
+            nRequestedGhostnodeAssets = GHOSTNODE_SYNC_FINISHED;
             break;
     }
-    nRequestedZoinodeAttempt = 0;
+    nRequestedGhostnodeAttempt = 0;
     nTimeAssetSyncStarted = GetTime();
 }
 
-std::string CZoinodeSync::GetSyncStatus() {
-    switch (zoinodeSync.nRequestedZoinodeAssets) {
-        case ZOINODE_SYNC_INITIAL:
+std::string CGhostnodeSync::GetSyncStatus() {
+    switch (ghostnodeSync.nRequestedGhostnodeAssets) {
+        case GHOSTNODE_SYNC_INITIAL:
             return _("Synchronization pending...");
-        case ZOINODE_SYNC_SPORKS:
+        case GHOSTNODE_SYNC_SPORKS:
             return _("Synchronizing sporks...");
-        case ZOINODE_SYNC_LIST:
-            return _("Synchronizing zoinodes...");
-        case ZOINODE_SYNC_MNW:
-            return _("Synchronizing zoinode payments...");
-        case ZOINODE_SYNC_FAILED:
+        case GHOSTNODE_SYNC_LIST:
+            return _("Synchronizing ghostnodes...");
+        case GHOSTNODE_SYNC_MNW:
+            return _("Synchronizing ghostnode payments...");
+        case GHOSTNODE_SYNC_FAILED:
             return _("Synchronization failed");
-        case ZOINODE_SYNC_FINISHED:
+        case GHOSTNODE_SYNC_FINISHED:
             return _("Synchronization finished");
         default:
             return "";
     }
 }
 
-void CZoinodeSync::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataStream &vRecv) {
+void CGhostnodeSync::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataStream &vRecv) {
     if (strCommand == NetMsgType::SYNCSTATUSCOUNT) { //Sync status count
 
         //do not care about stats if sync process finished or failed
@@ -221,42 +222,42 @@ void CZoinodeSync::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataSt
     }
 }
 
-void CZoinodeSync::ClearFulfilledRequests() {
+void CGhostnodeSync::ClearFulfilledRequests() {
     TRY_LOCK(cs_vNodes, lockRecv);
     if (!lockRecv) return;
 
     BOOST_FOREACH(CNode * pnode, vNodes)
     {
         netfulfilledman.RemoveFulfilledRequest(pnode->addr, "spork-sync");
-        netfulfilledman.RemoveFulfilledRequest(pnode->addr, "zoinode-list-sync");
-        netfulfilledman.RemoveFulfilledRequest(pnode->addr, "zoinode-payment-sync");
+        netfulfilledman.RemoveFulfilledRequest(pnode->addr, "ghostnode-list-sync");
+        netfulfilledman.RemoveFulfilledRequest(pnode->addr, "ghostnode-payment-sync");
         netfulfilledman.RemoveFulfilledRequest(pnode->addr, "full-sync");
     }
 }
 
-void CZoinodeSync::ProcessTick() {
+void CGhostnodeSync::ProcessTick() {
     static int nTick = 0;
-    if (nTick++ % ZOINODE_SYNC_TICK_SECONDS != 0) return;
+    if (nTick++ % GHOSTNODE_SYNC_TICK_SECONDS != 0) return;
     if (!pCurrentBlockIndex) return;
 
-    //the actual count of zoinodes we have currently
-    int nMnCount = mnodeman.CountZoinodes();
+    //the actual count of ghostnodes we have currently
+    int nMnCount = mnodeman.CountGhostnodes();
 
-    LogPrint("ProcessTick", "CZoinodeSync::ProcessTick -- nTick %d nMnCount %d\n", nTick, nMnCount);
+    LogPrint("ProcessTick", "CGhostnodeSync::ProcessTick -- nTick %d nMnCount %d\n", nTick, nMnCount);
 
     // INITIAL SYNC SETUP / LOG REPORTING
-    double nSyncProgress = double(nRequestedZoinodeAttempt + (nRequestedZoinodeAssets - 1) * 8) / (8 * 4);
-    LogPrint("ProcessTick", "CZoinodeSync::ProcessTick -- nTick %d nRequestedZoinodeAssets %d nRequestedZoinodeAttempt %d nSyncProgress %f\n", nTick, nRequestedZoinodeAssets, nRequestedZoinodeAttempt, nSyncProgress);
+    double nSyncProgress = double(nRequestedGhostnodeAttempt + (nRequestedGhostnodeAssets - 1) * 8) / (8 * 4);
+    LogPrint("ProcessTick", "CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d nRequestedGhostnodeAttempt %d nSyncProgress %f\n", nTick, nRequestedGhostnodeAssets, nRequestedGhostnodeAttempt, nSyncProgress);
     uiInterface.NotifyAdditionalDataSyncProgressChanged(pCurrentBlockIndex->nHeight, nSyncProgress);
 
     // RESET SYNCING INCASE OF FAILURE
     {
         if (IsSynced()) {
             /*
-                Resync if we lost all zoinodes from sleep/wake or failed to sync originally
+                Resync if we lost all ghostnodes from sleep/wake or failed to sync originally
             */
             if (nMnCount == 0) {
-                LogPrintf("CZoinodeSync::ProcessTick -- WARNING: not enough data, restarting sync\n");
+                LogPrintf("CGhostnodeSync::ProcessTick -- WARNING: not enough data, restarting sync\n");
                 Reset();
             } else {
                 std::vector < CNode * > vNodesCopy = CopyNodeVector();
@@ -274,13 +275,13 @@ void CZoinodeSync::ProcessTick() {
         }
     }
 
-    if (Params().NetworkIDString() != CBaseChainParams::REGTEST && !IsBlockchainSynced() && nRequestedZoinodeAssets > ZOINODE_SYNC_SPORKS) {
-        nTimeLastZoinodeList = GetTime();
+    if (Params().NetworkIDString() != CBaseChainParams::REGTEST && !IsBlockchainSynced() && nRequestedGhostnodeAssets > GHOSTNODE_SYNC_SPORKS) {
+        nTimeLastGhostnodeList = GetTime();
         nTimeLastPaymentVote = GetTime();
         nTimeLastGovernanceItem = GetTime();
         return;
     }
-    if (nRequestedZoinodeAssets == ZOINODE_SYNC_INITIAL || (nRequestedZoinodeAssets == ZOINODE_SYNC_SPORKS && IsBlockchainSynced())) {
+    if (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_INITIAL || (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_SPORKS && IsBlockchainSynced())) {
         SwitchToNextAsset();
     }
 
@@ -288,25 +289,25 @@ void CZoinodeSync::ProcessTick() {
 
     BOOST_FOREACH(CNode * pnode, vNodesCopy)
     {
-        // Don't try to sync any data from outbound "zoinode" connections -
+        // Don't try to sync any data from outbound "ghostnode" connections -
         // they are temporary and should be considered unreliable for a sync process.
-        // Inbound connection this early is most likely a "zoinode" connection
+        // Inbound connection this early is most likely a "ghostnode" connection
         // initialted from another node, so skip it too.
-        if (pnode->fZoinode || (fZoiNode && pnode->fInbound)) continue;
+        if (pnode->fGhostnode || (fGhostNode && pnode->fInbound)) continue;
 
         // QUICK MODE (REGTEST ONLY!)
         if (Params().NetworkIDString() == CBaseChainParams::REGTEST) {
-            if (nRequestedZoinodeAttempt <= 2) {
+            if (nRequestedGhostnodeAttempt <= 2) {
                 pnode->PushMessage(NetMsgType::GETSPORKS); //get current network sporks
-            } else if (nRequestedZoinodeAttempt < 4) {
+            } else if (nRequestedGhostnodeAttempt < 4) {
                 mnodeman.DsegUpdate(pnode);
-            } else if (nRequestedZoinodeAttempt < 6) {
-                int nMnCount = mnodeman.CountZoinodes();
-                pnode->PushMessage(NetMsgType::ZOINODEPAYMENTSYNC, nMnCount); //sync payment votes
+            } else if (nRequestedGhostnodeAttempt < 6) {
+                int nMnCount = mnodeman.CountGhostnodes();
+                pnode->PushMessage(NetMsgType::GHOSTNODEPAYMENTSYNC, nMnCount); //sync payment votes
             } else {
-                nRequestedZoinodeAssets = ZOINODE_SYNC_FINISHED;
+                nRequestedGhostnodeAssets = GHOSTNODE_SYNC_FINISHED;
             }
-            nRequestedZoinodeAttempt++;
+            nRequestedGhostnodeAttempt++;
             ReleaseNodeVector(vNodesCopy);
             return;
         }
@@ -317,7 +318,7 @@ void CZoinodeSync::ProcessTick() {
                 // We already fully synced from this node recently,
                 // disconnect to free this connection slot for another peer.
                 pnode->fDisconnect = true;
-                LogPrintf("CZoinodeSync::ProcessTick -- disconnecting from recently synced peer %d\n", pnode->id);
+                LogPrintf("CGhostnodeSync::ProcessTick -- disconnecting from recently synced peer %d\n", pnode->id);
                 continue;
             }
 
@@ -328,19 +329,19 @@ void CZoinodeSync::ProcessTick() {
                 netfulfilledman.AddFulfilledRequest(pnode->addr, "spork-sync");
                 // get current network sporks
                 pnode->PushMessage(NetMsgType::GETSPORKS);
-                LogPrintf("CZoinodeSync::ProcessTick -- nTick %d nRequestedZoinodeAssets %d -- requesting sporks from peer %d\n", nTick, nRequestedZoinodeAssets, pnode->id);
+                LogPrintf("CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d -- requesting sporks from peer %d\n", nTick, nRequestedGhostnodeAssets, pnode->id);
                 continue; // always get sporks first, switch to the next node without waiting for the next tick
             }
 
-            // MNLIST : SYNC ZOINODE LIST FROM OTHER CONNECTED CLIENTS
+            // MNLIST : SYNC GHOSTNODE LIST FROM OTHER CONNECTED CLIENTS
 
-            if (nRequestedZoinodeAssets == ZOINODE_SYNC_LIST) {
+            if (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_LIST) {
                 // check for timeout first
-                if (nTimeLastZoinodeList < GetTime() - ZOINODE_SYNC_TIMEOUT_SECONDS) {
-                    LogPrintf("CZoinodeSync::ProcessTick -- nTick %d nRequestedZoinodeAssets %d -- timeout\n", nTick, nRequestedZoinodeAssets);
-                    if (nRequestedZoinodeAttempt == 0) {
-                        LogPrintf("CZoinodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetAssetName());
-                        // there is no way we can continue without zoinode list, fail here and try later
+                if (nTimeLastGhostnodeList < GetTime() - GHOSTNODE_SYNC_TIMEOUT_SECONDS) {
+                    LogPrintf("CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d -- timeout\n", nTick, nRequestedGhostnodeAssets);
+                    if (nRequestedGhostnodeAttempt == 0) {
+                        LogPrintf("CGhostnodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetAssetName());
+                        // there is no way we can continue without ghostnode list, fail here and try later
                         Fail();
                         ReleaseNodeVector(vNodesCopy);
                         return;
@@ -351,11 +352,11 @@ void CZoinodeSync::ProcessTick() {
                 }
 
                 // only request once from each peer
-                if (netfulfilledman.HasFulfilledRequest(pnode->addr, "zoinode-list-sync")) continue;
-                netfulfilledman.AddFulfilledRequest(pnode->addr, "zoinode-list-sync");
+                if (netfulfilledman.HasFulfilledRequest(pnode->addr, "ghostnode-list-sync")) continue;
+                netfulfilledman.AddFulfilledRequest(pnode->addr, "ghostnode-list-sync");
 
-                if (pnode->nVersion < mnpayments.GetMinZoinodePaymentsProto()) continue;
-                nRequestedZoinodeAttempt++;
+                if (pnode->nVersion < mnpayments.GetMinGhostnodePaymentsProto()) continue;
+                nRequestedGhostnodeAttempt++;
 
                 mnodeman.DsegUpdate(pnode);
 
@@ -363,17 +364,17 @@ void CZoinodeSync::ProcessTick() {
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
 
-            // MNW : SYNC ZOINODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
+            // MNW : SYNC GHOSTNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
 
-            if (nRequestedZoinodeAssets == ZOINODE_SYNC_MNW) {
-                LogPrint("mnpayments", "CZoinodeSync::ProcessTick -- nTick %d nRequestedZoinodeAssets %d nTimeLastPaymentVote %lld GetTime() %lld diff %lld\n", nTick, nRequestedZoinodeAssets, nTimeLastPaymentVote, GetTime(), GetTime() - nTimeLastPaymentVote);
+            if (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_MNW) {
+                LogPrint("mnpayments", "CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d nTimeLastPaymentVote %lld GetTime() %lld diff %lld\n", nTick, nRequestedGhostnodeAssets, nTimeLastPaymentVote, GetTime(), GetTime() - nTimeLastPaymentVote);
                 // check for timeout first
-                // This might take a lot longer than ZOINODE_SYNC_TIMEOUT_SECONDS minutes due to new blocks,
+                // This might take a lot longer than GHOSTNODE_SYNC_TIMEOUT_SECONDS minutes due to new blocks,
                 // but that should be OK and it should timeout eventually.
-                if (nTimeLastPaymentVote < GetTime() - ZOINODE_SYNC_TIMEOUT_SECONDS) {
-                    LogPrintf("CZoinodeSync::ProcessTick -- nTick %d nRequestedZoinodeAssets %d -- timeout\n", nTick, nRequestedZoinodeAssets);
-                    if (nRequestedZoinodeAttempt == 0) {
-                        LogPrintf("CZoinodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetAssetName());
+                if (nTimeLastPaymentVote < GetTime() - GHOSTNODE_SYNC_TIMEOUT_SECONDS) {
+                    LogPrintf("CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d -- timeout\n", nTick, nRequestedGhostnodeAssets);
+                    if (nRequestedGhostnodeAttempt == 0) {
+                        LogPrintf("CGhostnodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetAssetName());
                         // probably not a good idea to proceed without winner list
                         Fail();
                         ReleaseNodeVector(vNodesCopy);
@@ -387,22 +388,22 @@ void CZoinodeSync::ProcessTick() {
                 // check for data
                 // if mnpayments already has enough blocks and votes, switch to the next asset
                 // try to fetch data from at least two peers though
-                if (nRequestedZoinodeAttempt > 1 && mnpayments.IsEnoughData()) {
-                    LogPrintf("CZoinodeSync::ProcessTick -- nTick %d nRequestedZoinodeAssets %d -- found enough data\n", nTick, nRequestedZoinodeAssets);
+                if (nRequestedGhostnodeAttempt > 1 && mnpayments.IsEnoughData()) {
+                    LogPrintf("CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d -- found enough data\n", nTick, nRequestedGhostnodeAssets);
                     SwitchToNextAsset();
                     ReleaseNodeVector(vNodesCopy);
                     return;
                 }
 
                 // only request once from each peer
-                if (netfulfilledman.HasFulfilledRequest(pnode->addr, "zoinode-payment-sync")) continue;
-                netfulfilledman.AddFulfilledRequest(pnode->addr, "zoinode-payment-sync");
+                if (netfulfilledman.HasFulfilledRequest(pnode->addr, "ghostnode-payment-sync")) continue;
+                netfulfilledman.AddFulfilledRequest(pnode->addr, "ghostnode-payment-sync");
 
-                if (pnode->nVersion < mnpayments.GetMinZoinodePaymentsProto()) continue;
-                nRequestedZoinodeAttempt++;
+                if (pnode->nVersion < mnpayments.GetMinGhostnodePaymentsProto()) continue;
+                nRequestedGhostnodeAttempt++;
 
                 // ask node for all payment votes it has (new nodes will only return votes for future payments)
-                pnode->PushMessage(NetMsgType::ZOINODEPAYMENTSYNC, mnpayments.GetStorageLimit());
+                pnode->PushMessage(NetMsgType::GHOSTNODEPAYMENTSYNC, mnpayments.GetStorageLimit());
                 // ask node for missing pieces only (old nodes will not be asked)
                 mnpayments.RequestLowDataPaymentBlocks(pnode);
 
@@ -416,6 +417,6 @@ void CZoinodeSync::ProcessTick() {
     ReleaseNodeVector(vNodesCopy);
 }
 
-void CZoinodeSync::UpdatedBlockTip(const CBlockIndex *pindex) {
+void CGhostnodeSync::UpdatedBlockTip(const CBlockIndex *pindex) {
     pCurrentBlockIndex = pindex;
 }

@@ -1,56 +1,57 @@
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2017-2018 The NIX Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef ZOINODE_PAYMENTS_H
-#define ZOINODE_PAYMENTS_H
+#ifndef GHOSTNODE_PAYMENTS_H
+#define GHOSTNODE_PAYMENTS_H
 
 #include "util.h"
 #include "core_io.h"
 #include "key.h"
 #include "main.h"
-#include "zoinode.h"
+#include "ghostnode.h"
 #include "utilstrencodings.h"
 
-class CZoinodePayments;
-class CZoinodePaymentVote;
-class CZoinodeBlockPayees;
+class CGhostnodePayments;
+class CGhostnodePaymentVote;
+class CGhostnodeBlockPayees;
 
 static const int MNPAYMENTS_SIGNATURES_REQUIRED         = 6;
 static const int MNPAYMENTS_SIGNATURES_TOTAL            = 10;
 
-//! minimum peer version that can receive and send zoinode payment messages,
-//  vote for zoinode and be elected as a payment winner
+//! minimum peer version that can receive and send ghostnode payment messages,
+//  vote for ghostnode and be elected as a payment winner
 // V1 - Last protocol version before update
 // V2 - Newest protocol version
-static const int MIN_ZOINODE_PAYMENT_PROTO_VERSION_1 = 90046;
-static const int MIN_ZOINODE_PAYMENT_PROTO_VERSION_2 = 90046;
+static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_1 = 90046;
+static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2 = 90046;
 
 extern CCriticalSection cs_vecPayees;
-extern CCriticalSection cs_mapZoinodeBlocks;
-extern CCriticalSection cs_mapZoinodePayeeVotes;
+extern CCriticalSection cs_mapGhostnodeBlocks;
+extern CCriticalSection cs_mapGhostnodePayeeVotes;
 
-extern CZoinodePayments mnpayments;
+extern CGhostnodePayments mnpayments;
 
 /// TODO: all 4 functions do not belong here really, they should be refactored/moved somewhere (main.cpp ?)
 bool IsBlockValueValid(const CBlock& block, int nBlockHeight, CAmount blockReward, std::string &strErrorRet);
 bool IsBlockPayeeValid(const CTransaction& txNew, int nBlockHeight, CAmount blockReward);
-void FillBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutZoinodeRet, std::vector<CTxOut>& voutSuperblockRet);
+void FillBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGhostnodeRet, std::vector<CTxOut>& voutSuperblockRet);
 std::string GetRequiredPaymentsString(int nBlockHeight);
 
-class CZoinodePayee
+class CGhostnodePayee
 {
 private:
     CScript scriptPubKey;
     std::vector<uint256> vecVoteHashes;
 
 public:
-    CZoinodePayee() :
+    CGhostnodePayee() :
         scriptPubKey(),
         vecVoteHashes()
         {}
 
-    CZoinodePayee(CScript payee, uint256 hashIn) :
+    CGhostnodePayee(CScript payee, uint256 hashIn) :
         scriptPubKey(payee),
         vecVoteHashes()
     {
@@ -73,18 +74,18 @@ public:
     std::string ToString() const;
 };
 
-// Keep track of votes for payees from zoinodes
-class CZoinodeBlockPayees
+// Keep track of votes for payees from ghostnodes
+class CGhostnodeBlockPayees
 {
 public:
     int nBlockHeight;
-    std::vector<CZoinodePayee> vecPayees;
+    std::vector<CGhostnodePayee> vecPayees;
 
-    CZoinodeBlockPayees() :
+    CGhostnodeBlockPayees() :
         nBlockHeight(0),
         vecPayees()
         {}
-    CZoinodeBlockPayees(int nBlockHeightIn) :
+    CGhostnodeBlockPayees(int nBlockHeightIn) :
         nBlockHeight(nBlockHeightIn),
         vecPayees()
         {}
@@ -97,7 +98,7 @@ public:
         READWRITE(vecPayees);
     }
 
-    void AddPayee(const CZoinodePaymentVote& vote);
+    void AddPayee(const CGhostnodePaymentVote& vote);
     bool GetBestPayee(CScript& payeeRet);
     bool HasPayeeWithVotes(CScript payeeIn, int nVotesReq);
 
@@ -107,24 +108,24 @@ public:
 };
 
 // vote for the winning payment
-class CZoinodePaymentVote
+class CGhostnodePaymentVote
 {
 public:
-    CTxIn vinZoinode;
+    CTxIn vinGhostnode;
 
     int nBlockHeight;
     CScript payee;
     std::vector<unsigned char> vchSig;
 
-    CZoinodePaymentVote() :
-        vinZoinode(),
+    CGhostnodePaymentVote() :
+        vinGhostnode(),
         nBlockHeight(0),
         payee(),
         vchSig()
         {}
 
-    CZoinodePaymentVote(CTxIn vinZoinode, int nBlockHeight, CScript payee) :
-        vinZoinode(vinZoinode),
+    CGhostnodePaymentVote(CTxIn vinGhostnode, int nBlockHeight, CScript payee) :
+        vinGhostnode(vinGhostnode),
         nBlockHeight(nBlockHeight),
         payee(payee),
         vchSig()
@@ -134,7 +135,7 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(vinZoinode);
+        READWRITE(vinGhostnode);
         READWRITE(nBlockHeight);
         READWRITE(*(CScriptBase*)(&payee));
         READWRITE(vchSig);
@@ -144,12 +145,12 @@ public:
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << *(CScriptBase*)(&payee);
         ss << nBlockHeight;
-        ss << vinZoinode.prevout;
+        ss << vinGhostnode.prevout;
         return ss.GetHash();
     }
 
     bool Sign();
-    bool CheckSignature(const CPubKey& pubKeyZoinode, int nValidationHeight, int &nDos);
+    bool CheckSignature(const CPubKey& pubKeyGhostnode, int nValidationHeight, int &nDos);
 
     bool IsValid(CNode* pnode, int nValidationHeight, std::string& strError);
     void Relay();
@@ -161,14 +162,14 @@ public:
 };
 
 //
-// Zoinode Payments Class
+// Ghostnode Payments Class
 // Keeps track of who should get paid for which blocks
 //
 
-class CZoinodePayments
+class CGhostnodePayments
 {
 private:
-    // zoinode count times nStorageCoeff payments blocks should be stored ...
+    // ghostnode count times nStorageCoeff payments blocks should be stored ...
     const float nStorageCoeff;
     // ... but at least nMinBlocksToStore (payments blocks)
     const int nMinBlocksToStore;
@@ -177,23 +178,23 @@ private:
     const CBlockIndex *pCurrentBlockIndex;
 
 public:
-    std::map<uint256, CZoinodePaymentVote> mapZoinodePaymentVotes;
-    std::map<int, CZoinodeBlockPayees> mapZoinodeBlocks;
-    std::map<COutPoint, int> mapZoinodesLastVote;
+    std::map<uint256, CGhostnodePaymentVote> mapGhostnodePaymentVotes;
+    std::map<int, CGhostnodeBlockPayees> mapGhostnodeBlocks;
+    std::map<COutPoint, int> mapGhostnodesLastVote;
 
-    CZoinodePayments() : nStorageCoeff(1.25), nMinBlocksToStore(5000) {}
+    CGhostnodePayments() : nStorageCoeff(1.25), nMinBlocksToStore(5000) {}
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(mapZoinodePaymentVotes);
-        READWRITE(mapZoinodeBlocks);
+        READWRITE(mapGhostnodePaymentVotes);
+        READWRITE(mapGhostnodeBlocks);
     }
 
     void Clear();
 
-    bool AddPaymentVote(const CZoinodePaymentVote& vote);
+    bool AddPaymentVote(const CGhostnodePaymentVote& vote);
     bool HasVerifiedPaymentVote(uint256 hashIn);
     bool ProcessBlock(int nBlockHeight);
 
@@ -203,18 +204,18 @@ public:
 
     bool GetBlockPayee(int nBlockHeight, CScript& payee);
     bool IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
-    bool IsScheduled(CZoinode& mn, int nNotBlockHeight);
+    bool IsScheduled(CGhostnode& mn, int nNotBlockHeight);
 
-    bool CanVote(COutPoint outZoinode, int nBlockHeight);
+    bool CanVote(COutPoint outGhostnode, int nBlockHeight);
 
-    int GetMinZoinodePaymentsProto();
+    int GetMinGhostnodePaymentsProto();
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     std::string GetRequiredPaymentsString(int nBlockHeight);
-    void FillBlockPayee(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutZoinodeRet);
+    void FillBlockPayee(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGhostnodeRet);
     std::string ToString() const;
 
-    int GetBlockCount() { return mapZoinodeBlocks.size(); }
-    int GetVoteCount() { return mapZoinodePaymentVotes.size(); }
+    int GetBlockCount() { return mapGhostnodeBlocks.size(); }
+    int GetVoteCount() { return mapGhostnodePaymentVotes.size(); }
 
     bool IsEnoughData();
     int GetStorageLimit();

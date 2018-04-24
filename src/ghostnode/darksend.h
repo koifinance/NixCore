@@ -1,11 +1,12 @@
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2017-2018 The NIX Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef DARKSEND_H
 #define DARKSEND_H
 
-#include "zoinode.h"
+#include "ghostnode.h"
 #include "wallet/wallet.h"
 
 class CDarksendPool;
@@ -38,7 +39,7 @@ static const int PRIVATESEND_KEYS_THRESHOLD_STOP    = 50;
 
 // The main object for accessing mixing
 extern CDarksendPool darkSendPool;
-// A helper object for signing messages from Zoinodes
+// A helper object for signing messages from Ghostnodes
 extern CDarkSendSigner darkSendSigner;
 
 extern int nPrivateSendRounds;
@@ -170,14 +171,14 @@ public:
 
     /** Sign this mixing transaction
      *  \return true if all conditions are met:
-     *     1) we have an active Zoinode,
-     *     2) we have a valid Zoinode private key,
+     *     1) we have an active Ghostnode,
+     *     2) we have a valid Ghostnode private key,
      *     3) we signed the message successfully, and
      *     4) we verified the message successfully
      */
     bool Sign();
-    /// Check if we have a valid Zoinode address
-    bool CheckSignature(const CPubKey& pubKeyZoinode);
+    /// Check if we have a valid Ghostnode address
+    bool CheckSignature(const CPubKey& pubKeyGhostnode);
 
     bool Relay();
 
@@ -186,7 +187,7 @@ public:
 
     std::string ToString()
     {
-        return strprintf("nDenom=%d, nTime=%lld, fReady=%s, fTried=%s, zoinode=%s",
+        return strprintf("nDenom=%d, nTime=%lld, fReady=%s, fTried=%s, ghostnode=%s",
                         nDenom, nTime, fReady ? "true" : "false", fTried ? "true" : "false", vin.prevout.ToStringShort());
     }
 
@@ -231,7 +232,7 @@ public:
     }
 
     bool Sign();
-    bool CheckSignature(const CPubKey& pubKeyZoinode);
+    bool CheckSignature(const CPubKey& pubKeyGhostnode);
 };
 
 /** Helper object for signing and checking signatures
@@ -239,7 +240,7 @@ public:
 class CDarkSendSigner
 {
 public:
-    /// Is the input associated with this public key? (and there is 1000 XZC - checking if valid zoinode)
+    /// Is the input associated with this public key? (and there is 1000 XZC - checking if valid ghostnode)
     bool IsVinAssociatedWithPubkey(const CTxIn& vin, const CPubKey& pubkey);
     /// Set the private/public key values, returns true if successful
     bool GetKeysFromSecret(std::string strSecret, CKey& keyRet, CPubKey& pubkeyRet);
@@ -305,15 +306,15 @@ private:
 
     // The current mixing sessions in progress on the network
     std::vector<CDarksendQueue> vecDarksendQueue;
-    // Keep track of the used Zoinodes
-    std::vector<CTxIn> vecZoinodesUsed;
+    // Keep track of the used Ghostnodes
+    std::vector<CTxIn> vecGhostnodesUsed;
 
     std::vector<CAmount> vecDenominationsSkipped;
     std::vector<COutPoint> vecOutPointLocked;
     // Mixing uses collateral transactions to trust parties entering the pool
     // to behave honestly. If they don't it takes their money.
     std::vector<CTransaction> vecSessionCollaterals;
-    std::vector<CDarkSendEntry> vecEntries; // Zoinode/clients entries
+    std::vector<CDarkSendEntry> vecEntries; // Ghostnode/clients entries
 
     PoolState nState; // should be one of the POOL_STATE_XXX values
     int64_t nTimeLastSuccessfulStep; // the time when last successful mixing step was performed, in UTC milliseconds
@@ -389,14 +390,14 @@ private:
     bool MakeCollateralAmounts();
     bool MakeCollateralAmounts(const CompactTallyItem& tallyItem);
 
-    /// As a client, submit part of a future mixing transaction to a Zoinode to start the process
+    /// As a client, submit part of a future mixing transaction to a Ghostnode to start the process
     bool SubmitDenominate();
     /// step 1: prepare denominated inputs and outputs
     bool PrepareDenominate(int nMinRounds, int nMaxRounds, std::string& strErrorRet, std::vector<CTxIn>& vecTxInRet, std::vector<CTxOut>& vecTxOutRet);
     /// step 2: send denominated inputs and outputs prepared in step 1
     bool SendDenominate(const std::vector<CTxIn>& vecTxIn, const std::vector<CTxOut>& vecTxOut);
 
-    /// Get Zoinode updates about the progress of mixing
+    /// Get Ghostnode updates about the progress of mixing
     bool CheckPoolStateUpdate(PoolState nStateNew, int nEntriesCountNew, PoolStatusUpdate nStatusUpdate, PoolMessage nMessageID, int nSessionIDNew=0);
     // Set the 'state' value, with some logging and capturing when the state changed
     void SetState(PoolState nStateNew);
@@ -416,7 +417,7 @@ private:
     void SetNull();
 
 public:
-    CZoinode* pSubmittedToZoinode;
+    CGhostnode* pSubmittedToGhostnode;
     int nSessionDenom; //Users must submit an denom matching this
     int nCachedNumBlocks; //used for the overview screen
     bool fCreateAutoBackups; //builtin support for automatic backups

@@ -1,20 +1,21 @@
 
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2017-2018 The NIX Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef SRC_ZOINODECONFIG_H_
-#define SRC_ZOINODECONFIG_H_
+#ifndef SRC_GHOSTNODECONFIG_H_
+#define SRC_GHOSTNODECONFIG_H_
 
-class CZoinodeConfig;
-extern CZoinodeConfig zoinodeConfig;
+class CGhostnodeConfig;
+extern CGhostnodeConfig ghostnodeConfig;
 
-class CZoinodeConfig
+class CGhostnodeConfig
 {
 
 public:
 
-    class CZoinodeEntry {
+    class CGhostnodeEntry {
 
     private:
         std::string alias;
@@ -24,7 +25,7 @@ public:
         std::string outputIndex;
     public:
 
-        CZoinodeEntry(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex) {
+        CGhostnodeEntry(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex) {
             this->alias = alias;
             this->ip = ip;
             this->privKey = privKey;
@@ -73,15 +74,15 @@ public:
         }
     };
 
-    CZoinodeConfig() {
-        entries = std::vector<CZoinodeEntry>();
+    CGhostnodeConfig() {
+        entries = std::vector<CGhostnodeEntry>();
     }
 
     void clear();
     bool read(std::string& strErr);
     void add(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex);
 
-    std::vector<CZoinodeEntry>& getEntries() {
+    std::vector<CGhostnodeEntry>& getEntries() {
         return entries;
     }
 
@@ -90,10 +91,10 @@ public:
     }
 
 private:
-    std::vector<CZoinodeEntry> entries;
+    std::vector<CGhostnodeEntry> entries;
 
 
 };
 
 
-#endif /* SRC_ZOINODECONFIG_H_ */
+#endif /* SRC_GHOSTNODECONFIG_H_ */
