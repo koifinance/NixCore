@@ -1166,12 +1166,16 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
     if (halvings >= 64)
         return 0;
 
-    CAmount nSubsidy = 12.5 * COIN;
-    // Subsidy is cut in half every 840,000 blocks which will occur approximately every 4 years.
+    CAmount nSubsidy = 64 * COIN;
+    // Subsidy is cut in half every 1,050,000 blocks which will occur approximately every 4 years.
     nSubsidy >>= halvings;
-    //On genesis, create 5.8 million ZCN for the Zoin airdrop, unclaimed coins will be burned
+    //On genesis, create 38 million NIX for the Zoin airdrop
     if(nHeight == 1)
-        nSubsidy = 5800000 * COIN;
+        nSubsidy = 38000000 * COIN;
+
+    //stop halving when subsidy reaches 1 coin per block
+    if(nSubsidy < (1 * COIN))
+        nSubsidy = 1*COIN;
 
     return nSubsidy;
 }
