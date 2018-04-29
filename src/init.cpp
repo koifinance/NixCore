@@ -1459,7 +1459,7 @@ bool AppInitMain()
     std::pair<bool,std::string> torEnabledArg = ReadBinaryFileTor(pathTorSetting.string().c_str());
 
     //Enable tor on default
-    if(torEnabledArg.second != ""){
+    if(torEnabledArg.second == ""){
         LogPrintf("AppInitMain(): Initial startup, Tor networking enabled \n");
         WriteBinaryFileTor(pathTorSetting.string().c_str(), "1");
     }
