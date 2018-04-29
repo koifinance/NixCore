@@ -132,6 +132,16 @@ NIX_CORE_H = \
   core_memusage.h \
   cuckoocache.h \
   fs.h \
+  ghostnode/activeghostnode.h \
+  ghostnode/darksend.h \
+  ghostnode/darksend-relay.h \
+  ghostnode/ghostnode.h \
+  ghostnode/ghostnode-payments.h \
+  ghostnode/ghostnode-sync.h \
+  ghostnode/ghostnodeman.h \
+  ghostnode/ghostnodeconfig.h \
+  ghostnode/instantx.h \
+  ghostnode/netfulfilledman.h \
   httprpc.h \
   httpserver.h \
   indirectmap.h \
@@ -242,6 +252,8 @@ libnix_server_a_SOURCES = \
   httpserver.cpp \
   init.cpp \
   dbwrapper.cpp \
+  ghostnode/rpcghostnode.cpp \
+  ghostnode/netfulfilledman.cpp \
   merkleblock.cpp \
   miner.cpp \
   net.cpp \
@@ -305,6 +317,15 @@ endif
 libnix_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(NIX_INCLUDES)
 libnix_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libnix_wallet_a_SOURCES = \
+  ghostnode/activeghostnode.cpp \
+  ghostnode/darksend.cpp \
+  ghostnode/darksend-relay.cpp \
+  ghostnode/ghostnode.cpp \
+  ghostnode/ghostnode-payments.cpp \
+  ghostnode/ghostnode-sync.cpp \
+  ghostnode/ghostnodeman.cpp \
+  ghostnode/ghostnodeconfig.cpp \
+  ghostnode/instantx.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
   wallet/feebumper.cpp \
@@ -373,6 +394,8 @@ libnix_consensus_a_SOURCES = \
   consensus/merkle.h \
   consensus/params.h \
   consensus/validation.h \
+  ghostnode/flat-database.h \
+  ghostnode/spork.h \
   hash.cpp \
   hash.h \
   prevector.h \
@@ -408,6 +431,7 @@ libnix_common_a_SOURCES = \
   compressor.cpp \
   core_read.cpp \
   core_write.cpp \
+  ghostnode/spork.cpp \
   key.cpp \
   keystore.cpp \
   netaddress.cpp \
