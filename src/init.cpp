@@ -1457,7 +1457,14 @@ bool AppInitMain()
     // Enable tor networking
     boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
     std::pair<bool,std::string> torEnabledArg = ReadBinaryFileTor(pathTorSetting.string().c_str());
-    if(torEnabledArg.second != "" && torEnabledArg.second != "0"){
+
+    //Enable tor on default
+    if(torEnabledArg.second != ""){
+        LogPrintf("AppInitMain(): Initial startup, Tor networking enabled \n");
+        WriteBinaryFileTor(pathTorSetting.string().c_str(), "1");
+    }
+
+    if(torEnabledArg.second != "0"){
         StartTorEnabled(threadGroup, scheduler);
         SetLimited(NET_TOR);
         SetLimited(NET_IPV4);

@@ -8227,7 +8227,6 @@ bool CWallet::GhostModeMintTrigger(string totalAmount){
 
     string stringError;
 
-    //TODO: Change amount.h total money circulation
     CAmount amount = 0;
     CAmount nRemaining = 0;
     libzerocoin::CoinDenomination denomination = libzerocoin::ZQ_ONE;
