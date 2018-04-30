@@ -32,6 +32,8 @@
 #include <stealth-address/extkey.h>
 #include <stealth-address/stealth.h>
 #include <crypto/sha512.h>
+#include "../base58.h"
+
 typedef CWallet* CWalletRef;
 extern std::vector<CWalletRef> vpwallets;
 
@@ -97,6 +99,28 @@ typedef std::map<uint256, CWalletTx> MapWallet_t;
 typedef std::map<uint8_t, std::vector<uint8_t> > mapRTxValue_t;
 
 const uint16_t PLACEHOLDER_N = 0xFFFF;
+
+enum AvailableCoinsType
+{
+    ALL_COINS = 1,
+    ONLY_DENOMINATED = 2,
+    ONLY_NOT40000IFMN = 3,
+    ONLY_NONDENOMINATED_NOT40000IFMN = 4,
+    ONLY_40000 = 5, // find ghostnode outputs
+    ONLY_PRIVATESEND_COLLATERAL = 6
+};
+
+struct CompactTallyItem
+{
+    CBitcoinAddress address;
+    CAmount nAmount;
+    std::vector<CTxIn> vecTxIn;
+    CompactTallyItem()
+    {
+        nAmount = 0;
+    }
+};
+
 enum OutputRecordFlags
 {
     ORF_OWNED               = (1 << 0),
@@ -332,7 +356,6 @@ public:
     int64_t nTime;
     CPubKey vchPubKey;
     bool fInternal; // for change outputs
-
     CKeyPool();
     CKeyPool(const CPubKey& vchPubKeyIn, bool internalIn);
 
@@ -603,6 +626,10 @@ public:
      */
     int GetDepthInMainChain(const CBlockIndex* &pindexRet) const;
     int GetDepthInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
+
+    int GetDepthInMainChain(const CBlockIndex* &pindexRet, bool enableIX) const;
+    int GetDepthInMainChain(bool enableIX) const { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet, enableIX); }
+
     bool IsInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet) > 0; }
     int GetBlocksToMaturity() const;
     bool hashUnset() const { return (hashBlock.IsNull() || hashBlock == ABANDON_HASH); }
@@ -805,6 +832,7 @@ public:
     CAmount GetImmatureWatchOnlyCredit(const bool fUseCache=true) const;
     CAmount GetAvailableWatchOnlyCredit(const bool fUseCache=true) const;
     CAmount GetChange() const;
+    CAmount GetAnonymizedCredit(bool fUseCache=true) const;
 
     void GetAmounts(std::list<COutputEntry>& listReceived,
                     std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
@@ -891,6 +919,7 @@ public:
         tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn; fSafe = fSafeIn;
     }
 
+    int Priority() const;
     std::string ToString() const;
 };
 
@@ -1026,7 +1055,7 @@ private:
      * all coins from coinControl are selected; Never select unconfirmed coins
      * if they are not ours
      */
-    bool SelectCoins(const std::vector<COutput>& vAvailableCoins, const CAmount& nTargetValue, std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet, const CCoinControl *coinControl = nullptr) const;
+    bool SelectCoins(const std::vector<COutput>& vAvailableCoins, const CAmount& nTargetValue, std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet, const CCoinControl *coinControl = nullptr, AvailableCoinsType nCoinType = ALL_COINS, bool fUseInstantSend = false) const;
 
     CWalletDB *pwalletdbEncryption;
 
@@ -1039,6 +1068,11 @@ private:
     int64_t nNextResend;
     int64_t nLastResend;
     bool fBroadcastTransactions;
+
+    mutable bool fAnonymizableTallyCached;
+    mutable std::vector<CompactTallyItem> vecAnonymizableTallyCached;
+    mutable bool fAnonymizableTallyCachedNonDenom;
+    mutable std::vector<CompactTallyItem> vecAnonymizableTallyCachedNonDenom;
 
     /**
      * Used to keep track of spent outpoints, and
@@ -1168,6 +1202,10 @@ public:
         m_max_keypool_index = 0;
         nTimeFirstKey = 0;
         fBroadcastTransactions = false;
+        fAnonymizableTallyCached = false;
+        fAnonymizableTallyCachedNonDenom = false;
+        vecAnonymizableTallyCached.clear();
+        vecAnonymizableTallyCachedNonDenom.clear();
         nRelockTime = 0;
         fAbortRescan = false;
         fScanningWallet = false;
@@ -1207,7 +1245,7 @@ public:
     /**
      * populate vCoins with vector of available COutputs.
      */
-    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlySafe=true, const CCoinControl *coinControl = nullptr, const CAmount& nMinimumAmount = 1, const CAmount& nMaximumAmount = MAX_MONEY, const CAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t nMaximumCount = 0, const int nMinDepth = 0, const int nMaxDepth = 9999999) const;
+    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlySafe=true, const CCoinControl *coinControl = nullptr, const CAmount& nMinimumAmount = 1, const CAmount& nMaximumAmount = MAX_MONEY, const CAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t nMaximumCount = 0, const int nMinDepth = 0, const int nMaxDepth = 9999999, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend = false) const;
 
     /**
      * Return list of available coins and locked coins grouped by non-change output address.
@@ -1227,6 +1265,11 @@ public:
      */
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, uint64_t nMaxAncestors, std::vector<COutput> vCoins, std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet) const;
 
+    bool SelectCoinsByDenominations(int nDenom, CAmount nValueMin, CAmount nValueMax, std::vector<CTxIn>& vecTxInRet, std::vector<COutput>& vCoinsRet, CAmount& nValueRet, int nPrivateSendRoundsMin, int nPrivateSendRoundsMax);
+    bool GetCollateralTxIn(CTxIn& txinRet, CAmount& nValueRet) const;
+    bool SelectCoinsDark(CAmount nValueMin, CAmount nValueMax, std::vector<CTxIn>& vecTxInRet, CAmount& nValueRet, int nPrivateSendRoundsMin, int nPrivateSendRoundsMax) const;
+    bool SelectCoinsGrouppedByAddresses(std::vector<CompactTallyItem>& vecTallyRet, bool fSkipDenominated = true, bool fAnonymizable = true) const;
+
     bool IsSpent(const uint256& hash, unsigned int n) const;
 
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
@@ -1234,6 +1277,14 @@ public:
     void UnlockCoin(const COutPoint& output);
     void UnlockAllCoins();
     void ListLockedCoins(std::vector<COutPoint>& vOutpts) const;
+
+    // ghostnode
+    /// Get 40000 NIX output and keys which can be used for the Ghostnode
+    bool GetGhostnodeVinAndKeys(CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash = "", std::string strOutputIndex = "");
+    /// Extract txin information and keys from output
+    bool GetVinAndKeysFromOutput(COutput out, CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet);
+    bool HasCollateralInputs(bool fOnlyConfirmed = true) const;
+    int  CountInputsWithAmount(CAmount nInputAmount);
 
     /*
      * Rescan abort properties
@@ -1327,6 +1378,18 @@ public:
     CAmount GetImmatureWatchOnlyBalance() const;
     CAmount GetLegacyBalance(const isminefilter& filter, int minDepth, const std::string* account) const;
     CAmount GetAvailableBalance(const CCoinControl* coinControl = nullptr) const;
+
+
+    int GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const;
+    // respect current settings
+    int GetInputPrivateSendRounds(CTxIn txin) const;
+    bool IsDenominated(const CTxIn &txin) const;
+    bool IsDenominatedAmount(CAmount nInputAmount) const;
+    bool IsCollateralAmount(CAmount nInputAmount) const;
+    CAmount GetAnonymizableBalance(bool fSkipDenominated = false) const;
+    CAmount GetAnonymizedBalance() const;
+    CAmount GetNeedsToBeAnonymizedBalance(CAmount nMinBalance = 0) const;
+    CAmount GetDenominatedBalance(bool unconfirmed=false) const;
 
     OutputType TransactionChangeType(OutputType change_type, const std::vector<CRecipient>& vecSend);
 
@@ -1463,8 +1526,11 @@ public:
      * @note passing nChangePosInOut as -1 will result in setting a random position
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
-                           std::string& strFailReason, const CCoinControl& coin_control, bool sign = true);
+                           std::string& strFailReason, const CCoinControl& coin_control, bool sign = true, AvailableCoinsType nCoinType = ALL_COINS, bool fUseInstantSend = false);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
+
+    bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);
+    bool ConvertList(std::vector<CTxIn> vecTxIn, std::vector<CAmount>& vecAmounts);
 
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
     bool AddAccountingEntry(const CAccountingEntry&);

@@ -15,10 +15,12 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "net.h"
+#include "base58.h"
 
 #include <fstream>
 #include <iomanip>
 #include <univalue.h>
+#include <boost/foreach.hpp>
 
 void EnsureWalletIsUnlocked();
 
@@ -84,7 +86,7 @@ UniValue getpoolinfo(const UniValue &params, bool fHelp) {
 
     if (vpwallets.front()) {
         obj.push_back(Pair("keys_left", vpwallets.front()->nKeysLeftSinceAutoBackup));
-        obj.push_back(Pair("warnings", pwalletMain->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
+        obj.push_back(Pair("warnings", vpwallets.front()->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
                                        ? "WARNING: keypool is almost depleted!" : ""));
     }
 
@@ -215,7 +217,7 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
         CPubKey pubkey;
         CKey key;
 
-        if (!pwalletMain || !pwalletMain->GetGhostnodeVinAndKeys(vin, pubkey, key))
+        if (!vpwallets.front() || !vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubkey, key))
             throw JSONRPCError(RPC_INVALID_PARAMETER,
                                "Missing ghostnode input, please look at the documentation for instructions on ghostnode creation");
 
@@ -227,7 +229,7 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "You must set ghostnode=1 in the configuration");
 
         {
-            LOCK(pwalletMain->cs_wallet);
+            LOCK(vpwallets.front()->cs_wallet);
             EnsureWalletIsUnlocked();
         }
 
@@ -244,7 +246,7 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
 
         {
-            LOCK(pwalletMain->cs_wallet);
+            LOCK(vpwallets.front()->cs_wallet);
             EnsureWalletIsUnlocked();
         }
 
@@ -289,7 +291,7 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
 
     if (strCommand == "start-all" || strCommand == "start-missing" || strCommand == "start-disabled") {
         {
-            LOCK(pwalletMain->cs_wallet);
+            LOCK(vpwallets.front()->cs_wallet);
             EnsureWalletIsUnlocked();
         }
 
