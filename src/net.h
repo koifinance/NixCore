@@ -314,7 +314,7 @@ public:
     unsigned int GetReceiveFloodSize() const;
 
     void WakeMessageHandler();
-    void RelayInv(CInv &inv, const int minProtoVersion);
+    void RelayInv(CInv &inv, const int minProtoVersion = MIN_PEER_PROTO_VERSION);
 private:
     struct ListenSocket {
         SOCKET socket;

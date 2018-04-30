@@ -436,7 +436,7 @@ public:
     void Relay() const
     {
         CInv inv(MSG_GHOSTNODE_VERIFY, GetHash());
-        RelayInv(inv);
+        g_connman->RelayInv(inv);
     }
 };
 
