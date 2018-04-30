@@ -314,6 +314,7 @@ public:
     unsigned int GetReceiveFloodSize() const;
 
     void WakeMessageHandler();
+    void RelayInv(CInv &inv, const int minProtoVersion);
 private:
     struct ListenSocket {
         SOCKET socket;
@@ -851,8 +852,6 @@ public:
     //! Sets the addrName only if it was not previously set
     void MaybeSetAddrName(const std::string& addrNameIn);
 };
-
-
 
 
 

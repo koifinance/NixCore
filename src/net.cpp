@@ -2862,3 +2862,16 @@ uint64_t CConnman::CalculateKeyedNetGroup(const CAddress& ad) const
 
     return GetDeterministicRandomizer(RANDOMIZER_ID_NETGROUP).Write(vchNetGroup.data(), vchNetGroup.size()).Finalize();
 }
+
+void CConnman::RelayInv(CInv &inv, const int minProtoVersion) {
+    LOCK(cs_vNodes);
+    LogPrintf("RelayInv, vNodes.size()=%s\n", vNodes.size());
+    BOOST_FOREACH(CNode * pnode, vNodes)
+    {
+        LogPrintf("pnode->nVersion=%s\n", pnode->nVerson);
+        LogPrintf("minProtoVersion=%s\n", minProtoVersion);
+        if (pnode->nVersion >= minProtoVersion) {
+            pnode->PushInventory(inv);
+        }
+    }
+}

@@ -88,6 +88,13 @@ public:
     bool IsBech32Prefix(const std::vector<unsigned char> &vchPrefixIn, CChainParams::Base58Type &rtype) const;
     bool IsBech32Prefix(const char *ps, size_t slen, CChainParams::Base58Type &rtype) const;
 
+    /** ghostnode code*/
+    int64_t MaxTipAge() const { return nMaxTipAge; }
+    int PoolMaxTransactions() const { return nPoolMaxTransactions; }
+    int FulfilledRequestExpireTime() const { return nFulfilledRequestExpireTime; }
+    std::string SporkPubKey() const { return strSporkPubKey; }
+    std::string GhostnodePaymentPubKey() const { return strGhostnodePaymentsPubKey; }
+
 protected:
     CChainParams() {}
 
@@ -108,6 +115,13 @@ protected:
     bool fMineBlocksOnDemand;
     CCheckpointData checkpointData;
     ChainTxData chainTxData;
+
+    /** ghostnode params*/
+    long nMaxTipAge;
+    int nPoolMaxTransactions;
+    int nFulfilledRequestExpireTime;
+    std::string strSporkPubKey;
+    std::string strGhostnodePaymentsPubKey;
 };
 
 /**

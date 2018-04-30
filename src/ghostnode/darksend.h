@@ -8,6 +8,7 @@
 
 #include "ghostnode.h"
 #include "wallet/wallet.h"
+#include <boost/foreach.hpp>
 
 class CDarksendPool;
 class CDarkSendSigner;
