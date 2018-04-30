@@ -288,17 +288,6 @@ enum WalletFeature
     FEATURE_LATEST = FEATURE_COMPRPUBKEY // HD is optional, use FEATURE_COMPRPUBKEY as latest version
 };
 
-enum AvailableCoinsType
-{
-    ALL_COINS = 1,
-    ONLY_DENOMINATED = 2,
-    ONLY_NOT1000IFMN = 3,
-    ONLY_NONDENOMINATED_NOT1000IFMN = 4,
-    ONLY_1000 = 5, // find node outputs including locked ones (use with caution)
-    ONLY_PRIVATESEND_COLLATERAL = 6
-};
-
-
 enum OutputType : int
 {
     OUTPUT_TYPE_NONE,
