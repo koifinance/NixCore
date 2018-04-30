@@ -5,7 +5,7 @@
 
 #include "activeghostnode.h"
 #include "checkpoints.h"
-#include "main.h"
+#include "validation.h"
 #include "ghostnode.h"
 #include "ghostnode-payments.h"
 #include "ghostnode-sync.h"

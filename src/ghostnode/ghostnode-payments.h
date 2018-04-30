@@ -9,7 +9,7 @@
 #include "util.h"
 #include "core_io.h"
 #include "key.h"
-#include "main.h"
+#include "validation.h"
 #include "ghostnode.h"
 #include "utilstrencodings.h"
 

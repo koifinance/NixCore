@@ -7,7 +7,7 @@
 #include "darksend.h"
 #include "instantx.h"
 #include "key.h"
-#include "main.h"
+#include "validation.h"
 #include "ghostnode-sync.h"
 #include "ghostnodeman.h"
 #include "net.h"

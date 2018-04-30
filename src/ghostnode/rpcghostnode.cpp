@@ -1,9 +1,12 @@
+// Copyright (c) 2014-2017 The Dash Core developers
 // Copyright (c) 2017-2018 The NIX Core developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "activeghostnode.h"
 #include "darksend.h"
 #include "init.h"
-#include "main.h"
+#include "validation.h"
 #include "ghostnode-payments.h"
 #include "ghostnode-sync.h"
 #include "ghostnodeconfig.h"
@@ -33,7 +36,9 @@ UniValue privatesend(const UniValue &params, bool fHelp) {
 
     if (params[0].get_str() == "start") {
         {
-            LOCK(pwalletMain->cs_wallet);
+            if(vpwallets.front() == NULL)
+                return "rpcghostnode(): Error loading wallet";
+            LOCK(vpwallets.front()->cs_wallet);
             EnsureWalletIsUnlocked();
         }
 
@@ -77,8 +82,8 @@ UniValue getpoolinfo(const UniValue &params, bool fHelp) {
         obj.push_back(Pair("addr", darkSendPool.pSubmittedToGhostnode->addr.ToString()));
     }
 
-    if (pwalletMain) {
-        obj.push_back(Pair("keys_left", pwalletMain->nKeysLeftSinceAutoBackup));
+    if (vpwallets.front()) {
+        obj.push_back(Pair("keys_left", vpwallets.front()->nKeysLeftSinceAutoBackup));
         obj.push_back(Pair("warnings", pwalletMain->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
                                        ? "WARNING: keypool is almost depleted!" : ""));
     }

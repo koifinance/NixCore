@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "darksend.h"
-#include "main.h"
+#include "validation.h"
 #include "spork.h"
 
 #include <boost/lexical_cast.hpp>

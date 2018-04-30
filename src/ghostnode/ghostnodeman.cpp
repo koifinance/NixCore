@@ -6,13 +6,11 @@
 #include "activeghostnode.h"
 #include "addrman.h"
 #include "darksend.h"
-//#include "governance.h"
 #include "ghostnode-payments.h"
 #include "ghostnode-sync.h"
 #include "ghostnodeman.h"
 #include "netfulfilledman.h"
 #include "util.h"
-//#include "random.h"
 
 /** Ghostnode manager */
 CGhostnodeMan mnodeman;

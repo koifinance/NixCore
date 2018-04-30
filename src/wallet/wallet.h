@@ -1127,6 +1127,8 @@ public:
 
     // Map from Key ID to key metadata.
     std::map<CKeyID, CKeyMetadata> mapKeyMetadata;
+    //Ghostnode
+    int64_t nKeysLeftSinceAutoBackup;
 
     // Map from Script ID to key metadata (for watch-only keys).
     std::map<CScriptID, CKeyMetadata> m_script_metadata;

@@ -79,6 +79,12 @@
 #include <openssl/rand.h>
 #include <openssl/conf.h>
 
+
+// Ghostnodes
+bool fGhostNode = false;
+bool fLiteMode = false;
+int nWalletBackups = 10;
+
 // Application startup time (used for uptime calculation)
 const int64_t nStartupTime = GetTime();
 

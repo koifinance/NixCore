@@ -7,7 +7,6 @@
 #include "consensus/validation.h"
 #include "darksend.h"
 #include "init.h"
-//#include "governance.h"
 #include "ghostnode.h"
 #include "ghostnode-payments.h"
 #include "ghostnode-sync.h"
