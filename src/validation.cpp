@@ -47,6 +47,14 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
 
+#include "ghostnode/darksend.h"
+#include "ghostnode/instantx.h"
+#include "ghostnode/ghostnode-payments.h"
+#include "ghostnode/ghostnode-sync.h"
+#include "ghostnode/ghostnodeman.h"
+#include "zerocoin/zerocoin.h"
+
+
 
 
 #if defined(NDEBUG)
@@ -55,6 +63,28 @@
 
 #define MICRO 0.000001
 #define MILLI 0.001
+
+//ghostnode
+map <uint256, int64_t> mapRejectedBlocks GUARDED_BY(cs_main);
+
+bool GetBlockHash(uint256 &hashRet, int nBlockHeight) {
+    LOCK(cs_main);
+    if (chainActive.Tip() == NULL) return false;
+    if (nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return false;
+    if (nBlockHeight == -1) nBlockHeight = chainActive.Height();
+    hashRet = chainActive[nBlockHeight]->GetBlockPoWHash();
+    return true;
+}
+
+
+//TODO: configure ghostnode fees
+CAmount GetGhostnodePayment(int nHeight, CAmount blockValue) {
+
+    const Consensus::Params &consensusParams = Params().GetConsensus();
+    CAmount ret = GetBlockSubsidy(nHeight, consensusParams) * GHOSTNODE_REWARD;
+
+    return ret;
+}
 
 /**
  * Global state
@@ -80,6 +110,8 @@ namespace {
             return false;
         }
     };
+
+    std::map<CInv, CDataStream> mapRelayInv;
 } // anon namespace
 
 enum DisconnectResult
@@ -2003,10 +2035,30 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                                block.vtx[0]->GetValueOut(), blockReward),
                                REJECT_INVALID, "bad-cb-amount");
 
+
+
+    // Ghostnode
+    std::string strError = "";
+    if (!IsBlockValueValid(block, pindex->nHeight, blockReward, strError)) {
+        return state.DoS(0, error("ConnectBlock(): %s", strError), REJECT_INVALID, "bad-cb-amount");
+    }
+
+    if (!IsBlockPayeeValid(block.vtx[0], pindex->nHeight, blockReward)) {
+        mapRejectedBlocks.insert(make_pair(block.GetHash(), GetTime()));
+        return state.DoS(0, error("ConnectBlock(): couldn't find ghostnode payments"),
+                         REJECT_INVALID, "bad-cb-payee");
+    }
+    // END Ghostnode
+
+
     if (!control.Wait())
         return state.DoS(100, error("%s: CheckQueue failed", __func__), REJECT_INVALID, "block-validation-failed");
     int64_t nTime4 = GetTimeMicros(); nTimeVerify += nTime4 - nTime2;
     LogPrint(BCLog::BENCH, "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs (%.2fms/blk)]\n", nInputs - 1, MILLI * (nTime4 - nTime2), nInputs <= 1 ? 0 : MILLI * (nTime4 - nTime2) / (nInputs-1), nTimeVerify * MICRO, nTimeVerify * MILLI / nBlocksTotal);
+
+
+    if (!ConnectBlockGhost(state, chainparams, pindex, &block))
+        return false;
 
     if (fJustCheck)
         return true;
@@ -2174,8 +2226,16 @@ static void DoWarning(const std::string& strWarning)
 
 /** Check warning conditions and do some notifications on new chain tip set. */
 void static UpdateTip(const CBlockIndex *pindexNew, const CChainParams& chainParams) {
+
+
     // New best block
     mempool.AddTransactionsUpdated(1);
+
+    //ghostnode
+    mnodeman.UpdatedBlockTip(pindexNew);
+    darkSendPool.UpdatedBlockTip(pindexNew);
+    mnpayments.UpdatedBlockTip(pindexNew);
+    ghostnodeSync.UpdatedBlockTip(pindexNew);
 
     cvBlockChange.notify_all();
 
@@ -3046,6 +3106,36 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         if (block.vtx[i]->IsCoinBase())
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
 
+
+    // Ghostnode
+    if(sporkManager.IsSporkActive(SPORK_3_INSTANTSEND_BLOCK_FILTERING)) {
+        // We should never accept block which conflicts with completed transaction lock,
+        // that's why this is in CheckBlock unlike coinbase payee/amount.
+        // Require other nodes to comply, send them some data in case they are missing it.
+        BOOST_FOREACH(const CTransaction& tx, block.vtx) {
+            // skip coinbase, it has no inputs
+            if (tx.IsCoinBase()) continue;
+            // LOOK FOR TRANSACTION LOCK IN OUR MAP OF OUTPOINTS
+            BOOST_FOREACH(const CTxIn& txin, tx.vin) {
+                uint256 hashLocked;
+                if(instantsend.GetLockedOutPointTxHash(txin.prevout, hashLocked) && hashLocked != tx.GetHash()) {
+                    // Every node which relayed this block to us must invalidate it
+                    // but they probably need more data.
+                    // Relay corresponding transaction lock request and all its votes
+                    // to let other nodes complete the lock.
+                    instantsend.Relay(hashLocked);
+                    LOCK(cs_main);
+                    mapRejectedBlocks.insert(make_pair(block.GetHash(), GetTime()));
+                    return state.DoS(0, error("CheckBlock(): transaction %s conflicts with transaction lock %s",
+                                              tx.GetHash().ToString(), hashLocked.ToString()),
+                                     REJECT_INVALID, "conflict-tx-lock");
+                }
+            }
+        }
+    } else {
+        LogPrintf("CheckBlock(): spork is off, skipping transaction locking checks\n");
+    }
+
     // Check transactions
     if (nHeight == INT_MAX)
         nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
@@ -3480,6 +3570,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
     CValidationState state; // Only used to report errors, not invalidity - ignore it
     if (!g_chainstate.ActivateBestChain(state, chainparams, pblock))
         return error("%s: ActivateBestChain failed", __func__);
+
+    ghostnodeSync.IsBlockchainSynced(true);
 
     return true;
 }

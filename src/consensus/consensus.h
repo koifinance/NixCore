@@ -18,6 +18,11 @@ static const int64_t MAX_BLOCK_SIGOPS_COST = 80000;
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
 static const int COINBASE_MATURITY = 500;
 
+/** Ghostnode block percent */
+static const int64_t GHOSTNODE_REWARD = 0.28;
+/** Development block percent */
+static const int64_t DEVELOPMENT_REWARD = 0.07;
+
 static const int WITNESS_SCALE_FACTOR = 4;
 
 static const size_t MIN_TRANSACTION_WEIGHT = WITNESS_SCALE_FACTOR * 60; // 60 is the lower bound for the size of a valid serialized CTransaction

@@ -76,6 +76,16 @@
 #include <event2/event.h>
 #include <event2/thread.h>
 
+#include "ghostnode/activeghostnode.h"
+#include "ghostnode/darksend.h"
+#include "ghostnode/ghostnode-payments.h"
+#include "ghostnode/ghostnode-sync.h"
+#include "ghostnode/ghostnodeman.h"
+#include "ghostnode/ghostnodeconfig.h"
+#include "ghostnode/netfulfilledman.h"
+#include "ghostnode/instantx.h"
+#include "ghostnode/spork.h"
+
 #if ENABLE_ZMQ
 #include <zmq/zmqnotificationinterface.h>
 #endif
@@ -1898,6 +1908,111 @@ bool AppInitMain()
     if (!connman.Start(scheduler, connOptions)) {
         return false;
     }
+
+    // ********************************************************* Step 11a: setup PrivateSend
+    fGhostNode = gArgs.GetBoolArg("-ghostnode", false);
+
+    LogPrintf("fGhostNode = %s\n", fGhostNode);
+    LogPrintf("ghostnodeConfig.getCount(): %s\n", ghostnodeConfig.getCount());
+
+    if ((fGhostNode || ghostnodeConfig.getCount() > 0) && !fTxIndex) {
+        return InitError("Enabling Ghostnode support requires turning on transaction indexing."
+                         "Please add txindex=1 to your configuration and start with -reindex");
+    }
+
+    if (fGhostNode) {
+        LogPrintf("ghostnode:\n");
+
+        if (!GetArg("-ghostnodeaddr", "").empty()) {
+            // Hot Ghostnode (either local or remote) should get its address in
+            // CActiveGhostnode::ManageState() automatically and no longer relies on Ghostnodeaddr.
+            return InitError(_("ghostnodeaddr option is deprecated. Please use ghostnode.conf to manage your remote ghostnodes."));
+        }
+
+        std::string strGhostnodePrivKey = GetArg("-ghostnodeprivkey", "");
+        if (!strGhostnodePrivKey.empty()) {
+            if (!darkSendSigner.GetKeysFromSecret(strGhostnodePrivKey, activeGhostnode.keyGhostnode,
+                                                  activeGhostnode.pubKeyGhostnode))
+                return InitError(_("Invalid ghostnode privkey. Please see documenation."));
+
+            LogPrintf("pubKeyGhostnode: %s\n", CBitcoinAddress(activeGhostnode.pubKeyGhostnode.GetID()).ToString());
+        } else {
+            return InitError(
+                        _("You must specify a ghostnode privkey in the configuration. Please see documentation for help."));
+        }
+    }
+
+    LogPrintf("Using Ghostnode config file %s\n", GetGhostnodeConfigFile().string());
+
+    if (GetBoolArg("-zoinconflock", true) && pwalletMain && (ghostnodeConfig.getCount() > 0)) {
+        LOCK(pwalletMain->cs_wallet);
+        LogPrintf("Locking Ghostnodes:\n");
+        uint256 mnTxHash;
+        int outputIndex;
+        BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry
+                      mne, ghostnodeConfig.getEntries()) {
+            mnTxHash.SetHex(mne.getTxHash());
+            outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
+            COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
+            // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
+            if (pwalletMain->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
+                LogPrintf("  %s %s - IS NOT SPENDABLE, was not locked\n", mne.getTxHash(), mne.getOutputIndex());
+                continue;
+            }
+            pwalletMain->LockCoin(outpoint);
+            LogPrintf("  %s %s - locked successfully\n", mne.getTxHash(), mne.getOutputIndex());
+        }
+    }
+
+
+    nLiquidityProvider = GetArg("-liquidityprovider", nLiquidityProvider);
+    nLiquidityProvider = std::min(std::max(nLiquidityProvider, 0), 100);
+    darkSendPool.SetMinBlockSpacing(nLiquidityProvider * 15);
+
+    fEnablePrivateSend = GetBoolArg("-enableprivatesend", 0);
+    fPrivateSendMultiSession = GetBoolArg("-privatesendmultisession", DEFAULT_PRIVATESEND_MULTISESSION);
+    nPrivateSendRounds = GetArg("-privatesendrounds", DEFAULT_PRIVATESEND_ROUNDS);
+    nPrivateSendRounds = std::min(std::max(nPrivateSendRounds, 2), nLiquidityProvider ? 99999 : 16);
+    nPrivateSendAmount = GetArg("-privatesendamount", DEFAULT_PRIVATESEND_AMOUNT);
+    nPrivateSendAmount = std::min(std::max(nPrivateSendAmount, 2), 999999);
+
+    fEnableInstantSend = GetBoolArg("-enableinstantsend", 1);
+    nInstantSendDepth = GetArg("-instantsenddepth", DEFAULT_INSTANTSEND_DEPTH);
+    nInstantSendDepth = std::min(std::max(nInstantSendDepth, 0), 60);
+
+    //lite mode disables all Ghostnode and Darksend related functionality
+    fLiteMode = GetBoolArg("-litemode", false);
+    if (fGhostNode && fLiteMode) {
+        return InitError("You can not start a ghostnode in litemode");
+    }
+
+    LogPrintf("fLiteMode %d\n", fLiteMode);
+    LogPrintf("nInstantSendDepth %d\n", nInstantSendDepth);
+    LogPrintf("PrivateSend rounds %d\n", nPrivateSendRounds);
+    LogPrintf("PrivateSend amount %d\n", nPrivateSendAmount);
+
+    darkSendPool.InitDenominations();
+
+
+    // ********************************************************* Step 11b: Load cache data
+
+
+    CFlatDB<CNetFulfilledRequestManager> flatdb4("netfulfilled.dat", "magicFulfilledCache");
+    flatdb4.Load(netfulfilledman);
+
+
+    // ********************************************************* Step 11c: update block tip in Dash modules
+
+
+    mnodeman.UpdatedBlockTip(chainActive.Tip());
+    darkSendPool.UpdatedBlockTip(chainActive.Tip());
+    mnpayments.UpdatedBlockTip(chainActive.Tip());
+    ghostnodeSync.UpdatedBlockTip(chainActive.Tip());
+
+    // ********************************************************* Step 11d: start ghostnode thread
+
+    threadGroup.create_thread(boost::bind(&ThreadCheckDarkSendPool));
+
 
     // ********************************************************* Step 12: finished
 

@@ -43,8 +43,8 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     bool isCheckWallet,
     CZerocoinTxInfo *zerocoinTxInfo);
 
-void DisconnectTipZC(CBlock &block, CBlockIndex *pindexDelete);
-bool ConnectTipZC(CValidationState &state, const CChainParams &chainparams, CBlockIndex *pindexNew, const CBlock *pblock);
+void DisconnectTipGhost(CBlock &block, CBlockIndex *pindexDelete);
+bool ConnectBlockGhost(CValidationState &state, const CChainParams &chainparams, CBlockIndex *pindexNew, const CBlock *pblock);
 
 int ZerocoinGetNHeight(const CBlockHeader &block);
 

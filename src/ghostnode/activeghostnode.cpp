@@ -225,7 +225,7 @@ void CActiveGhostnode::ManageStateInitial() {
     }
 
     if (pwalletMain->GetBalance() < GHOSTNODE_COIN_REQUIRED * COIN) {
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet balance is < 1000 XZC\n", GetStateString());
+        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet balance is < 40000 NIX\n", GetStateString());
         return;
     }
 
