@@ -25,7 +25,7 @@ public:
     // <denomination, pubCoin> for all the mints
     vector<pair<int,CBigNum> > mints;
     // serial for every spend
-    set<CBigNum> spentSerials;
+    map<CBigNum, int> spentSerials;
     // information about transactions in the block is complete
     bool fInfoIsComplete;
 
