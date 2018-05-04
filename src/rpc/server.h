@@ -189,12 +189,12 @@ extern std::string HelpExampleCli(const std::string& methodname, const std::stri
 extern std::string HelpExampleRpc(const std::string& methodname, const std::string& args);
 
 //Ghostnode
-extern UniValue getpoolinfo(const UniValue& params, bool fHelp);
+extern UniValue getpoolinfo(const JSONRPCRequest& req);
 extern UniValue spork(const UniValue& params, bool fHelp);
-extern UniValue ghostnode(const UniValue& params, bool fHelp);
-extern UniValue ghostnodelist(const UniValue& params, bool fHelp);
-extern UniValue ghostnodebroadcast(const UniValue& params, bool fHelp);
-extern UniValue ghostnodesync(const UniValue& params, bool fHelp);
+extern UniValue ghostnode(const JSONRPCRequest& req);
+extern UniValue ghostnodelist(const JSONRPCRequest& req);
+extern UniValue ghostnodebroadcast(const JSONRPCRequest& req);
+extern UniValue ghostnodesync(const JSONRPCRequest& req);
 
 bool StartRPC();
 void InterruptRPC();

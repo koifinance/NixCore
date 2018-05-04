@@ -200,11 +200,13 @@ public:
 #endif
 
 //Ghostnode
-UniValue ghostnodesync(const UniValue& params, bool fHelp)
+UniValue ghostnodesync(const JSONRPCRequest& req)
 {
+    UniValue params = req.params;
+    bool fHelp = req.fHelp;
     if (fHelp || params.size() != 1)
         throw runtime_error(
-                "zoinsync [status|next|reset]\n"
+                "ghostnodesync [status|next|reset]\n"
                         "Returns the sync status, updates to the next step or resets it entirely.\n"
         );
 

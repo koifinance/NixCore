@@ -67,7 +67,10 @@ UniValue privatesend(const UniValue &params, bool fHelp) {
     return "Unknown command, please see \"help privatesend\"";
 }
 
-UniValue getpoolinfo(const UniValue &params, bool fHelp) {
+UniValue getpoolinfo(const JSONRPCRequest& req) {
+
+    UniValue params = req.params;
+    bool fHelp = req.fHelp;
     if (fHelp || params.size() != 0)
         throw std::runtime_error(
                 "getpoolinfo\n"
@@ -95,8 +98,10 @@ UniValue getpoolinfo(const UniValue &params, bool fHelp) {
 }
 
 
-UniValue ghostnode(const UniValue &params, bool fHelp) {
+UniValue ghostnode(const JSONRPCRequest& req) {
     std::string strCommand;
+    bool fHelp = req.fHelp;
+    UniValue params = req.params;
     if (params.size() >= 1) {
         strCommand = params[0].get_str();
     }
@@ -138,7 +143,9 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
         for (unsigned int i = 1; i < params.size(); i++) {
             newParams.push_back(params[i]);
         }
-        return ghostnodelist(newParams, fHelp);
+        JSONRPCRequest JSONParams;
+        JSONParams.params = newParams;
+        return ghostnodelist(JSONParams, fHelp);
     }
 
     if (strCommand == "connect") {
@@ -443,7 +450,9 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
     return NullUniValue;
 }
 
-UniValue ghostnodelist(const UniValue &params, bool fHelp) {
+UniValue ghostnodelist(const JSONRPCRequest &req) {
+    UniValue params = req.params;
+    bool fHelp = req.fHelp;
     std::string strMode = "status";
     std::string strFilter = "";
 
@@ -588,7 +597,10 @@ bool DecodeHexVecMnb(std::vector <CGhostnodeBroadcast> &vecMnb, std::string strH
     return true;
 }
 
-UniValue ghostnodebroadcast(const UniValue &params, bool fHelp) {
+UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
+
+    UniValue params = req.params;
+    bool fHelp = req.fHelp;
     std::string strCommand;
     if (params.size() >= 1)
         strCommand = params[0].get_str();

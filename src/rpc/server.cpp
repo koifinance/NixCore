@@ -268,10 +268,10 @@ static const CRPCCommand vRPCCommands[] =
   { "control",            "uptime",                 &uptime,                 {}  },
 
   /* Ghostnode features */
-  { "NIX",               "ghostnode",             &ghostnode,             {}  },
-  { "NIX",               "ghostsync",             &ghostnodesync,             {}  },
-  { "NIX",               "ghostnodelist",         &ghostnodelist,         {}  },
-  { "NIX",               "ghostnodebroadcast",    &ghostnodebroadcast,    {}  },
+  { "NIX",               "ghostnode",             &ghostnode,             {"command"}  },
+  { "NIX",               "ghostsync",             &ghostnodesync,             {"command"}  },
+  { "NIX",               "ghostnodelist",         &ghostnodelist,         {"mode", "filter"}  },
+  { "NIX",               "ghostnodebroadcast",    &ghostnodebroadcast,    {"command"}  },
   { "NIX",               "getpoolinfo",            &getpoolinfo,            {}  },
 };
 
