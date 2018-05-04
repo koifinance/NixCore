@@ -569,7 +569,7 @@ std::string LicenseInfo()
     const std::string URL_SOURCE_CODE = "<https://github.com/nixplatform/nixcore>";
     const std::string URL_WEBSITE = "<https://nixplatform.io>";
 
-    return CopyrightHolders(strprintf(_("Copyright (C) %i-%i"), 2009, COPYRIGHT_YEAR) + " ") + "\n" +
+    return CopyrightHolders(strprintf(_("Copyright (C) %i-%i"), 2017, COPYRIGHT_YEAR) + " ") + "\n" +
            "\n" +
            strprintf(_("Please contribute if you find %s useful. "
                        "Visit %s for further information about the software."),
@@ -1945,8 +1945,8 @@ bool AppInitMain()
 
     LogPrintf("Using Ghostnode config file %s\n", GetGhostnodeConfigFile().string());
 
-    if (gArgs.GetBoolArg("-ghostnodeconflock", true) && pwalletMain && (ghostnodeConfig.getCount() > 0)) {
-        LOCK(pwalletMain->cs_wallet);
+    if (gArgs.GetBoolArg("-ghostnodeconflock", true) && vpwallets.front() && (ghostnodeConfig.getCount() > 0)) {
+        LOCK(vpwallets.front()->cs_wallet);
         LogPrintf("Locking Ghostnodes:\n");
         uint256 mnTxHash;
         int outputIndex;
@@ -1956,11 +1956,11 @@ bool AppInitMain()
             outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
-            if (pwalletMain->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
+            if (vpwallets.front()->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
                 LogPrintf("  %s %s - IS NOT SPENDABLE, was not locked\n", mne.getTxHash(), mne.getOutputIndex());
                 continue;
             }
-            pwalletMain->LockCoin(outpoint);
+            vpwallets.front()->LockCoin(outpoint);
             LogPrintf("  %s %s - locked successfully\n", mne.getTxHash(), mne.getOutputIndex());
         }
     }

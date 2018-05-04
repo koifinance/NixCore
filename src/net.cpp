@@ -19,6 +19,7 @@
 #include <scheduler.h>
 #include <ui_interface.h>
 #include <utilstrencodings.h>
+#include <boost/foreach.hpp>
 
 #ifdef WIN32
 #include <string.h>
@@ -2870,7 +2871,7 @@ void CConnman::RelayInv(CInv &inv, const int minProtoVersion) {
     LogPrintf("RelayInv, vNodes.size()=%s\n", vNodes.size());
     BOOST_FOREACH(CNode * pnode, vNodes)
     {
-        LogPrintf("pnode->nVersion=%s\n", pnode->nVerson);
+        LogPrintf("pnode->nVersion=%s\n", pnode->nVersion);
         LogPrintf("minProtoVersion=%s\n", minProtoVersion);
         if (pnode->nVersion >= minProtoVersion) {
             pnode->PushInventory(inv);

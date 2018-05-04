@@ -16,6 +16,7 @@
 #include "utilmoneystr.h"
 #include "net.h"
 #include "base58.h"
+#include "netbase.h"
 
 #include <fstream>
 #include <iomanip>
@@ -146,10 +147,7 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
 
         std::string strAddress = params[1].get_str();
 
-        CService addr = CService(strAddress);
-
-        CNode *pnode = ConnectNode(CAddress(addr, NODE_NETWORK), NULL);
-        if (!pnode)
+        if (g_connman->AddNode(strAddress))
             throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to ghostnode %s", strAddress));
 
         return "successfully connected";
@@ -377,7 +375,7 @@ UniValue ghostnode(const UniValue &params, bool fHelp) {
     if (strCommand == "outputs") {
         // Find possible candidates
         std::vector <COutput> vPossibleCoins;
-        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_1000);
+        vpwallets.front()->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_40000);
 
         UniValue obj(UniValue::VOBJ);
         BOOST_FOREACH(COutput & out, vPossibleCoins)
@@ -618,7 +616,7 @@ UniValue ghostnodebroadcast(const UniValue &params, bool fHelp) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
 
         {
-            LOCK(pwalletMain->cs_wallet);
+            LOCK(vpwallets.front()->cs_wallet);
             EnsureWalletIsUnlocked();
         }
 
@@ -668,7 +666,7 @@ UniValue ghostnodebroadcast(const UniValue &params, bool fHelp) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wait for reindex and/or import to finish");
 
         {
-            LOCK(pwalletMain->cs_wallet);
+            LOCK(vpwallets.front()->cs_wallet);
             EnsureWalletIsUnlocked();
         }
 
