@@ -363,10 +363,10 @@ static CAddress GetBindAddress(SOCKET sock)
     return addr_bind;
 }
 
-CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure)
+CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, bool fConnectToGhostnode)
 {
     if (pszDest == nullptr) {
-        if (IsLocal(addrConnect))
+        if (IsLocal(addrConnect) && !fConnectToGhostnode)
             return nullptr;
 
         // Look for an existing connection
@@ -2741,6 +2741,8 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
     fPauseRecv = false;
     fPauseSend = false;
     nProcessQueueSize = 0;
+    //Ghostnode
+    fGhostnode = false;
 
     for (const std::string &msg : getAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;

@@ -118,7 +118,7 @@ public:
         ZerocoinClean();
         CBlockHeader::SetNull();
         vtx.clear();
-        txoutZnode = CTxOut();
+        txoutGhostnode = CTxOut();
         voutSuperblock.clear();
         fChecked = false;
     }

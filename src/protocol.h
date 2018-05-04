@@ -237,6 +237,28 @@ extern const char *GETBLOCKTXN;
  * @since protocol version 70014 as described by BIP 152
  */
 extern const char *BLOCKTXN;
+
+//GHOSTNODE
+extern const char *TXLOCKVOTE;
+extern const char *SPORK;
+extern const char *GETSPORKS;
+extern const char *GHOSTNODEPAYMENTVOTE;
+extern const char *GHOSTNODEPAYMENTSYNC;
+extern const char *SYNCSTATUSCOUNT;
+extern const char *MNVERIFY;
+extern const char *MNPING;
+extern const char *MNANNOUNCE;
+extern const char *DSACCEPT;
+extern const char *DSQUEUE;
+extern const char *DSEG;
+extern const char *DSVIN;
+extern const char *DSSTATUSUPDATE;
+extern const char *DSSIGNFINALTX;
+extern const char *DSCOMPLETE;
+extern const char *DSFINALTX;
+extern const char *TXLOCKVOTE;
+extern const char *DSTX;
+extern const char *TXLOCKREQUEST;
 };
 
 /* Get a vector of all valid message types (see above) */

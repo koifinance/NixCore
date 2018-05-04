@@ -19,6 +19,7 @@
 #include <timedata.h>
 #include <util.h>
 #include <utilstrencodings.h>
+#include "ghostnode/ghostnode-sync.h"
 #ifdef ENABLE_WALLET
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
@@ -197,6 +198,44 @@ public:
     }
 };
 #endif
+
+//Ghostnode
+UniValue ghostnodesync(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                "zoinsync [status|next|reset]\n"
+                        "Returns the sync status, updates to the next step or resets it entirely.\n"
+        );
+
+    std::string strMode = params[0].get_str();
+
+    if(strMode == "status") {
+        UniValue objStatus(UniValue::VOBJ);
+        objStatus.push_back(Pair("AssetID", ghostnodeSync.GetAssetID()));
+        objStatus.push_back(Pair("AssetName", ghostnodeSync.GetAssetName()));
+        objStatus.push_back(Pair("Attempt", ghostnodeSync.GetAttempt()));
+        objStatus.push_back(Pair("IsBlockchainSynced", ghostnodeSync.IsBlockchainSynced()));
+        objStatus.push_back(Pair("IsGhostnodeListSynced", ghostnodeSync.IsGhostnodeListSynced()));
+        objStatus.push_back(Pair("IsWinnersListSynced", ghostnodeSync.IsWinnersListSynced()));
+        objStatus.push_back(Pair("IsSynced", ghostnodeSync.IsSynced()));
+        objStatus.push_back(Pair("IsFailed", ghostnodeSync.IsFailed()));
+        return objStatus;
+    }
+
+    if(strMode == "next")
+    {
+        ghostnodeSync.SwitchToNextAsset();
+        return "sync updated to " + ghostnodeSync.GetAssetName();
+    }
+
+    if(strMode == "reset")
+    {
+        ghostnodeSync.Reset();
+        return "success";
+    }
+    return "failure";
+}
 
 UniValue validateaddress(const JSONRPCRequest& request)
 {

@@ -262,10 +262,17 @@ UniValue uptime(const JSONRPCRequest& jsonRequest)
 static const CRPCCommand vRPCCommands[] =
 { //  category              name                      actor (function)         argNames
   //  --------------------- ------------------------  -----------------------  ----------
-    /* Overall control/query calls */
-    { "control",            "help",                   &help,                   {"command"}  },
-    { "control",            "stop",                   &stop,                   {}  },
-    { "control",            "uptime",                 &uptime,                 {}  },
+  /* Overall control/query calls */
+  { "control",            "help",                   &help,                   {"command"}  },
+  { "control",            "stop",                   &stop,                   {}  },
+  { "control",            "uptime",                 &uptime,                 {}  },
+
+  /* Ghostnode features */
+  { "NIX",               "ghostnode",             &ghostnode,             {}  },
+  { "NIX",               "ghostsync",             &ghostnodesync,             {}  },
+  { "NIX",               "ghostnodelist",         &ghostnodelist,         {}  },
+  { "NIX",               "ghostnodebroadcast",    &ghostnodebroadcast,    {}  },
+  { "NIX",               "getpoolinfo",            &getpoolinfo,            {}  },
 };
 
 CRPCTable::CRPCTable()

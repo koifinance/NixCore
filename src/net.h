@@ -343,7 +343,7 @@ private:
     CNode* FindNode(const CService& addr);
 
     bool AttemptToEvictConnection();
-    CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
+    CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, bool fConnectToGhostnode = false);
     bool IsWhitelistedRange(const CNetAddr &addr);
 
     void DeleteNode(CNode* pnode);
@@ -726,6 +726,9 @@ public:
     CNode(const CNode&) = delete;
     CNode& operator=(const CNode&) = delete;
 
+    //Ghostnode
+    bool fGhostnode;
+
 private:
     const NodeId id;
     const uint64_t nLocalHostNonce;
@@ -741,6 +744,7 @@ private:
     // Our address, as reported by the peer
     CService addrLocal;
     mutable CCriticalSection cs_addrLocal;
+
 public:
 
     NodeId GetId() const {

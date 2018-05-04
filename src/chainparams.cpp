@@ -110,8 +110,8 @@ public:
         consensus.defaultAssumeValid = uint256S("0x9eea953a4e8ef299b93f308c8d49ea79c9997cc8a8ace93128fa4495aac16dc7"); //506067
 
 
-        // zoinode params
-        consensus.nGhostnodePaymentsStartBlock = 1; // not true, but it's ok as long as it's less then nZnodePaymentsIncreaseBlock
+        // ghostnode params
+        consensus.nGhostnodePaymentsStartBlock = 2; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -232,7 +232,7 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000002e9e7b00e1f6dc5123a04aad68dd0f0968d8c7aa45f6640795c37b1"); //1135275
 
-        consensus.nGhostnodePaymentsStartBlock = 1;
+        consensus.nGhostnodePaymentsStartBlock = 2;
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 

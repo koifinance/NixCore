@@ -124,6 +124,11 @@ public:
         return !(a == b);
     }
 
+    friend bool operator<(const CTxIn& a, const CTxIn& b)
+    {
+        return a.prevout<b.prevout;
+    }
+
     std::string ToString() const;
 };
 
@@ -135,6 +140,7 @@ class CTxOut
 public:
     CAmount nValue;
     CScript scriptPubKey;
+    int nRounds;
 
     CTxOut()
     {
@@ -155,6 +161,7 @@ public:
     {
         nValue = -1;
         scriptPubKey.clear();
+        nRounds = -10; // an initial value, should be no way to get this by calculations
     }
 
     bool IsNull() const
@@ -162,10 +169,15 @@ public:
         return (nValue == -1);
     }
 
+    bool IsDust() const
+    {
+        return false;
+    }
+
     friend bool operator==(const CTxOut& a, const CTxOut& b)
     {
-        return (a.nValue       == b.nValue &&
-                a.scriptPubKey == b.scriptPubKey);
+        return (a.nValue == b.nValue &&
+                a.scriptPubKey == b.scriptPubKey && a.nRounds == b.nRounds);
     }
 
     friend bool operator!=(const CTxOut& a, const CTxOut& b)
@@ -173,6 +185,10 @@ public:
         return !(a == b);
     }
 
+    friend bool operator<(const CTxOut& a, const CTxOut& b)
+    {
+        return a.nValue < b.nValue || (a.nValue == b.nValue && a.scriptPubKey < b.scriptPubKey);
+    }
     std::string ToString() const;
     uint256 GetHash() const;
 };

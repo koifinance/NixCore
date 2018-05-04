@@ -188,6 +188,14 @@ extern CAmount AmountFromValue(const UniValue& value);
 extern std::string HelpExampleCli(const std::string& methodname, const std::string& args);
 extern std::string HelpExampleRpc(const std::string& methodname, const std::string& args);
 
+//Ghostnode
+extern UniValue getpoolinfo(const UniValue& params, bool fHelp);
+extern UniValue spork(const UniValue& params, bool fHelp);
+extern UniValue ghostnode(const UniValue& params, bool fHelp);
+extern UniValue ghostnodelist(const UniValue& params, bool fHelp);
+extern UniValue ghostnodebroadcast(const UniValue& params, bool fHelp);
+extern UniValue ghostnodesync(const UniValue& params, bool fHelp);
+
 bool StartRPC();
 void InterruptRPC();
 void StopRPC();

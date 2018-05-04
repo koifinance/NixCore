@@ -646,6 +646,9 @@ public:
      */
     unsigned int GetSigOpCount(const CScript& scriptSig) const;
 
+    //Ghostnode
+    bool IsNormalPaymentScript() const;
+
     bool IsPayToPublicKeyHash() const;
     bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToScriptHash256() || IsPayToTimeLockedScriptHash();};
     bool IsPayToScriptHash() const;

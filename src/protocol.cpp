@@ -39,8 +39,47 @@ const char *SENDCMPCT="sendcmpct";
 const char *CMPCTBLOCK="cmpctblock";
 const char *GETBLOCKTXN="getblocktxn";
 const char *BLOCKTXN="blocktxn";
+//Ghostnode
+const char *TXLOCKVOTE="txlvote";
+const char *SPORK = "spork";
+const char *GETSPORKS = "getsporks";
+const char *GHOSTNODEPAYMENTVOTE = "mnw";
+const char *GHOSTNODEPAYMENTBLOCK = "mnwb";
+const char *GHOSTNODEPAYMENTSYNC = "mnget";
+const char *MNANNOUNCE = "mnb";
+const char *MNPING = "mnp";
+const char *DSACCEPT = "dsa";
+const char *DSVIN = "dsi";
+const char *DSFINALTX = "dsf";
+const char *DSSIGNFINALTX = "dss";
+const char *DSCOMPLETE = "dsc";
+const char *DSSTATUSUPDATE = "dssu";
+const char *DSTX = "dstx";
+const char *DSQUEUE = "dsq";
+const char *DSEG = "dseg";
+const char *SYNCSTATUSCOUNT = "ssc";
+const char *MNVERIFY = "mnv";
+const char *TXLOCKREQUEST = "ix";
 } // namespace NetMsgType
 
+//Ghostnode
+static const char *ppszTypeName[] =
+{
+    "ERROR", // Should never occur
+    NetMsgType::TX,
+    NetMsgType::BLOCK,
+    "filtered block", // Should never occur
+    // NOTE: include non-implmented here, we must keep this list in sync with enum in protocol.h
+    NetMsgType::TXLOCKREQUEST,
+    NetMsgType::TXLOCKVOTE,
+    NetMsgType::SPORK,
+    NetMsgType::GHOSTNODEPAYMENTVOTE,
+    NetMsgType::GHOSTNODEPAYMENTBLOCK, // reusing, was MNSCANERROR previousely, was NOT used in 12.0, we need this for inv
+    NetMsgType::MNANNOUNCE,
+    NetMsgType::MNPING,
+    NetMsgType::DSTX,
+    NetMsgType::MNVERIFY,
+};
 /** All known message types. Keep this in the same order as the list of
  * messages above and in protocol.h.
  */
@@ -71,6 +110,26 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::CMPCTBLOCK,
     NetMsgType::GETBLOCKTXN,
     NetMsgType::BLOCKTXN,
+    //Ghostnode
+    NetMsgType::TXLOCKREQUEST,
+    NetMsgType::GHOSTNODEPAYMENTVOTE,
+    NetMsgType::GHOSTNODEPAYMENTBLOCK,
+    NetMsgType::GHOSTNODEPAYMENTSYNC,
+    NetMsgType::SPORK,
+    NetMsgType::GETSPORKS,
+    NetMsgType::MNANNOUNCE,
+    NetMsgType::MNPING,
+    NetMsgType::DSACCEPT,
+    NetMsgType::DSVIN,
+    NetMsgType::DSFINALTX,
+    NetMsgType::DSSIGNFINALTX,
+    NetMsgType::DSCOMPLETE,
+    NetMsgType::DSSTATUSUPDATE,
+    NetMsgType::DSTX,
+    NetMsgType::DSQUEUE,
+    NetMsgType::DSEG,
+    NetMsgType::SYNCSTATUSCOUNT,
+    NetMsgType::MNVERIFY,
 };
 const static std::vector<std::string> allNetMessageTypesVec(allNetMessageTypes, allNetMessageTypes+ARRAYLEN(allNetMessageTypes));
 
@@ -166,10 +225,19 @@ std::string CInv::GetCommand() const
     int masked = type & MSG_TYPE_MASK;
     switch (masked)
     {
-    case MSG_TX:             return cmd.append(NetMsgType::TX);
-    case MSG_BLOCK:          return cmd.append(NetMsgType::BLOCK);
-    case MSG_FILTERED_BLOCK: return cmd.append(NetMsgType::MERKLEBLOCK);
-    case MSG_CMPCT_BLOCK:    return cmd.append(NetMsgType::CMPCTBLOCK);
+    case MSG_TX:                        return cmd.append(NetMsgType::TX);
+    case MSG_BLOCK:                     return cmd.append(NetMsgType::BLOCK);
+    case MSG_FILTERED_BLOCK:            return cmd.append(NetMsgType::MERKLEBLOCK);
+    case MSG_CMPCT_BLOCK:               return cmd.append(NetMsgType::CMPCTBLOCK);
+    case MSG_TXLOCK_REQUEST:            return cmd.append(NetMsgType::TXLOCKREQUEST);
+    case MSG_TXLOCK_VOTE:               return cmd.append(NetMsgType::TXLOCKVOTE);
+    case MSG_SPORK:                     return cmd.append(NetMsgType::SPORK);
+    case MSG_GHOSTNODE_PAYMENT_VOTE:    return cmd.append(NetMsgType::GHOSTNODEPAYMENTVOTE);
+    case MSG_GHOSTNODE_PAYMENT_BLOCK:   return cmd.append(NetMsgType::GHOSTNODEPAYMENTBLOCK);
+    case MSG_GHOSTNODE_ANNOUNCE:        return cmd.append(NetMsgType::MNANNOUNCE);
+    case MSG_GHOSTNODE_PING:            return cmd.append(NetMsgType::MNPING);
+    case MSG_DSTX:                      return cmd.append(NetMsgType::DSTX);
+    case MSG_GHOSTNODE_VERIFY:          return cmd.append(NetMsgType::MNVERIFY);
     default:
         throw std::out_of_range(strprintf("CInv::GetCommand(): type=%d unknown type", type));
     }

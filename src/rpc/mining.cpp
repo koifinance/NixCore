@@ -26,6 +26,9 @@
 #include <validationinterface.h>
 #include <warnings.h>
 
+#ifdef ENABLE_WALLET
+    #include "ghostnode/ghostnode-sync.h"
+#endif
 #include <memory>
 #include <stdint.h>
 
@@ -363,6 +366,12 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             "  \"curtime\" : ttt,                  (numeric) current timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"bits\" : \"xxxxxxxx\",              (string) compressed target of next block\n"
             "  \"height\" : n                      (numeric) The height of the next block\n"
+            "  \"ghostnode\" : {                  (json object) required ghostnode payee that must be included in the next block\n"
+                        "      \"payee\" : \"xxxx\",             (string) payee address\n"
+                        "      \"script\" : \"xxxx\",            (string) payee scriptPubKey\n"
+                        "      \"amount\": n                   (numeric) required amount to pay\n"
+                        "  },\n"
+                        "  \"ghostnode_payments_started\" :  true|false, (boolean) true, if ghostnode payments started\n"
             "}\n"
 
             "\nExamples:\n"
@@ -445,7 +454,11 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
 
     if (IsInitialBlockDownload())
-        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Bitcoin is downloading blocks...");
+        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "NIX Core is downloading blocks...");
+
+    if (!ghostnodeSync.IsSynced())
+        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "NIX Core is syncing with network...");
+
 
     static unsigned int nTransactionsUpdatedLast;
 
@@ -677,6 +690,22 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     if (!pblocktemplate->vchCoinbaseCommitment.empty() && fSupportsSegwit) {
         result.push_back(Pair("default_witness_commitment", HexStr(pblocktemplate->vchCoinbaseCommitment.begin(), pblocktemplate->vchCoinbaseCommitment.end())));
     }
+
+
+
+    UniValue zoinodeObj(UniValue::VOBJ);
+    if(pblock->txoutGhostnode != CTxOut()) {
+        CTxDestination address1;
+        ExtractDestination(pblock->txoutGhostnode.scriptPubKey, address1);
+        CBitcoinAddress address2(address1);
+        zoinodeObj.push_back(Pair("payee", address2.ToString().c_str()));
+        zoinodeObj.push_back(Pair("script", HexStr(pblock->txoutGhostnode.scriptPubKey.begin(), pblock->txoutGhostnode.scriptPubKey.end())));
+        zoinodeObj.push_back(Pair("amount", pblock->txoutGhostnode.nValue));
+    }
+    result.push_back(Pair("ghostnode", zoinodeObj));
+    result.push_back(Pair("ghostnode_payments_started", pindexPrev->nHeight + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock));
+
+
 
     return result;
 }
