@@ -8,6 +8,7 @@
 
 #include "hash.h"
 #include "net.h"
+#include "net_processing.h"
 #include "utilstrencodings.h"
 #include "util.h"
 
@@ -73,7 +74,7 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nSporkID);
         READWRITE(nValue);
         READWRITE(nTimeSigned);
