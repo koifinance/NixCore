@@ -2043,7 +2043,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         return state.DoS(0, error("ConnectBlock(): %s", strError), REJECT_INVALID, "bad-cb-amount");
     }
 
-    if (!IsBlockPayeeValid(block.vtx[0], pindex->nHeight, blockReward)) {
+    if (!IsBlockPayeeValid(*block.vtx[0], pindex->nHeight, blockReward)) {
         mapRejectedBlocks.insert(make_pair(block.GetHash(), GetTime()));
         return state.DoS(0, error("ConnectBlock(): couldn't find ghostnode payments"),
                          REJECT_INVALID, "bad-cb-payee");
@@ -3112,13 +3112,13 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         // We should never accept block which conflicts with completed transaction lock,
         // that's why this is in CheckBlock unlike coinbase payee/amount.
         // Require other nodes to comply, send them some data in case they are missing it.
-        BOOST_FOREACH(const CTransaction& tx, block.vtx) {
+        BOOST_FOREACH(const CTransactionRef& tx, block.vtx) {
             // skip coinbase, it has no inputs
-            if (tx.IsCoinBase()) continue;
+            if (tx->IsCoinBase()) continue;
             // LOOK FOR TRANSACTION LOCK IN OUR MAP OF OUTPOINTS
-            BOOST_FOREACH(const CTxIn& txin, tx.vin) {
+            BOOST_FOREACH(const CTxIn& txin, tx->vin) {
                 uint256 hashLocked;
-                if(instantsend.GetLockedOutPointTxHash(txin.prevout, hashLocked) && hashLocked != tx.GetHash()) {
+                if(instantsend.GetLockedOutPointTxHash(txin.prevout, hashLocked) && hashLocked != tx->GetHash()) {
                     // Every node which relayed this block to us must invalidate it
                     // but they probably need more data.
                     // Relay corresponding transaction lock request and all its votes
@@ -3127,7 +3127,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
                     LOCK(cs_main);
                     mapRejectedBlocks.insert(make_pair(block.GetHash(), GetTime()));
                     return state.DoS(0, error("CheckBlock(): transaction %s conflicts with transaction lock %s",
-                                              tx.GetHash().ToString(), hashLocked.ToString()),
+                                              tx->GetHash().ToString(), hashLocked.ToString()),
                                      REJECT_INVALID, "conflict-tx-lock");
                 }
             }

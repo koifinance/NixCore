@@ -145,7 +145,8 @@ UniValue ghostnode(const JSONRPCRequest& req) {
         }
         JSONRPCRequest JSONParams;
         JSONParams.params = newParams;
-        return ghostnodelist(JSONParams, fHelp);
+        JSONParams.fHelp = fHelp;
+        return ghostnodelist(JSONParams);
     }
 
     if (strCommand == "connect") {
