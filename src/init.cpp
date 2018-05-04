@@ -85,6 +85,7 @@
 #include "ghostnode/netfulfilledman.h"
 #include "ghostnode/instantx.h"
 #include "ghostnode/spork.h"
+#include "ghostnode/flat-database.h"
 
 #if ENABLE_ZMQ
 #include <zmq/zmqnotificationinterface.h>
