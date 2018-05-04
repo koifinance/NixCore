@@ -127,6 +127,7 @@ private:
 
     //! keeps track of whether Unlock has run a thorough check before
     bool fDecryptionThoroughlyChecked;
+    bool fOnlyMixingAllowed;
 
 protected:
     bool SetCrypted();
@@ -143,7 +144,7 @@ public:
     }
 
     bool IsCrypted() const { return fUseCrypto; }
-    bool IsLocked() const;
+    bool IsLocked(bool fForMixing = false) const;
     virtual bool Lock();
 
     virtual bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);

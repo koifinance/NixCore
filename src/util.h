@@ -49,7 +49,7 @@ public:
 extern bool fGhostNode;
 extern bool fLiteMode;
 extern bool nWalletBackups;
-
+extern std::string strMiscWarning;
 extern bool fPrintToConsole;
 extern bool fPrintToDebugLog;
 
@@ -116,6 +116,8 @@ static inline bool LogAcceptCategory(uint32_t category)
 {
     return (logCategories.load(std::memory_order_relaxed) & category) != 0;
 }
+const boost::filesystem::path &GetBackupsDir();
+boost::filesystem::path GetGhostnodeConfigFile();
 
 /** Returns a string with the log categories. */
 std::string ListLogCategories();

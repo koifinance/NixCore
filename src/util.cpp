@@ -116,6 +116,42 @@ void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAF
     }
 }
 
+static boost::filesystem::path backupsDirCached;
+static CCriticalSection csBackupsDirCached;
+
+const boost::filesystem::path &GetBackupsDir()
+{
+    namespace fs = boost::filesystem;
+
+    LOCK(csBackupsDirCached);
+
+    fs::path &backupsDir = backupsDirCached;
+
+    if (!backupsDir.empty())
+    return backupsDir;
+
+    if (gArgs.mapArgs.count("-walletbackupsdir")) {
+        backupsDir = fs::absolute(gArgs.mapArgs["-walletbackupsdir"]);
+        // Path must exist
+        if (fs::is_directory(backupsDir)) return backupsDir;
+        // Fallback to default path if it doesn't
+        LogPrintf("%s: Warning: incorrect parameter -walletbackupsdir, path must exist! Using default path.\n", __func__);
+        strMiscWarning = _("Warning: incorrect parameter -walletbackupsdir, path must exist! Using default path.");
+    }
+    // Default path
+    backupsDir = GetDataDir() / "backups";
+
+    return backupsDir;
+}
+
+boost::filesystem::path GetGhostnodeConfigFile()
+{
+    boost::filesystem::path pathConfigFile(gArgs.GetArg("-ghostnodeconf", "ghostnode.conf"));
+    if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
+    LogPrintf("pathConfigFile=%s\n", pathConfigFile);
+    return pathConfigFile;
+}
+
 // Singleton for wrapping OpenSSL setup/teardown.
 class CInit
 {
