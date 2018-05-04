@@ -1923,13 +1923,13 @@ bool AppInitMain()
     if (fGhostNode) {
         LogPrintf("ghostnode:\n");
 
-        if (!GetArg("-ghostnodeaddr", "").empty()) {
+        if (!gArgs.GetArg("-ghostnodeaddr", "").empty()) {
             // Hot Ghostnode (either local or remote) should get its address in
             // CActiveGhostnode::ManageState() automatically and no longer relies on Ghostnodeaddr.
             return InitError(_("ghostnodeaddr option is deprecated. Please use ghostnode.conf to manage your remote ghostnodes."));
         }
 
-        std::string strGhostnodePrivKey = GetArg("-ghostnodeprivkey", "");
+        std::string strGhostnodePrivKey = gArgs.GetArg("-ghostnodeprivkey", "");
         if (!strGhostnodePrivKey.empty()) {
             if (!darkSendSigner.GetKeysFromSecret(strGhostnodePrivKey, activeGhostnode.keyGhostnode,
                                                   activeGhostnode.pubKeyGhostnode))
@@ -1944,7 +1944,7 @@ bool AppInitMain()
 
     LogPrintf("Using Ghostnode config file %s\n", GetGhostnodeConfigFile().string());
 
-    if (GetBoolArg("-zoinconflock", true) && pwalletMain && (ghostnodeConfig.getCount() > 0)) {
+    if (gArgs.GetBoolArg("-ghostnodeconflock", true) && pwalletMain && (ghostnodeConfig.getCount() > 0)) {
         LOCK(pwalletMain->cs_wallet);
         LogPrintf("Locking Ghostnodes:\n");
         uint256 mnTxHash;
@@ -1965,7 +1965,7 @@ bool AppInitMain()
     }
 
 
-    nLiquidityProvider = GetArg("-liquidityprovider", nLiquidityProvider);
+    nLiquidityProvider = gArgs.GetArg("-liquidityprovider", nLiquidityProvider);
     nLiquidityProvider = std::min(std::max(nLiquidityProvider, 0), 100);
     darkSendPool.SetMinBlockSpacing(nLiquidityProvider * 15);
 
@@ -1974,7 +1974,7 @@ bool AppInitMain()
     fEnableInstantSend = false;
 
     //lite mode disables all Ghostnode and Darksend related functionality
-    fLiteMode = GetBoolArg("-litemode", false);
+    fLiteMode = gArgs.GetBoolArg("-litemode", false);
     if (fGhostNode && fLiteMode) {
         return InitError("You can not start a ghostnode in litemode");
     }
