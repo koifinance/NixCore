@@ -224,6 +224,9 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 // Setting the target to > than 550MB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
+//Ghostnode
+bool GetBlockHash(uint256& hashRet, int nBlockHeight = -1);
+CAmount GetGhostnodePayment(int nHeight, CAmount blockValue);
 /** 
  * Process an incoming block. This only returns after the best known valid
  * block is made active. Note that it does not, however, guarantee that the

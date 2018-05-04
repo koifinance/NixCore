@@ -422,6 +422,13 @@ struct CMutableTransaction
         }
         return false;
     }
+
+    std::string ToString() const;
+
+    friend bool operator!=(const CMutableTransaction& a, const CMutableTransaction& b)
+    {
+        return !(a == b);
+    }
 };
 
 typedef std::shared_ptr<const CTransaction> CTransactionRef;
