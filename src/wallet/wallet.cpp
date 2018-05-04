@@ -4409,6 +4409,39 @@ void CMerkleTx::SetMerkleBranch(const CBlockIndex* pindex, int posInBlock)
     nIndex = posInBlock;
 }
 
+int CMerkleTx::GetDepthInMainChain(const CBlockIndex *&pindexRet, bool enableIX) const {
+    int nResult;
+
+    if (hashUnset())
+        nResult = 0;
+    else {
+        AssertLockHeld(cs_main);
+
+        // Find the block it claims to be in
+        BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
+        if (mi == mapBlockIndex.end())
+            nResult = 0;
+        else {
+            CBlockIndex *pindex = (*mi).second;
+            if (!pindex || !chainActive.Contains(pindex))
+                nResult = 0;
+            else {
+                pindexRet = pindex;
+                nResult = ((nIndex == -1) ? (-1) : 1) * (chainActive.Height() - pindex->nHeight + 1);
+
+                if (nResult == 0 && !mempool.exists(GetHash()))
+                    return -1; // Not in chain, not in mempool
+            }
+        }
+    }
+
+    if (enableIX && nResult < 6 && instantsend.IsLockedInstantSendTransaction(GetHash()))
+        return nInstantSendDepth + nResult;
+
+    return nResult;
+}
+
+
 int CMerkleTx::GetDepthInMainChain(const CBlockIndex* &pindexRet) const
 {
     if (hashUnset())
@@ -8920,7 +8953,7 @@ bool CWallet::SelectCoinsGrouppedByAddresses(std::vector <CompactTallyItem> &vec
             if (fAnonymizable) {
                 // ignore collaterals
                 if (IsCollateralAmount(wtx.tx->vout[i].nValue)) continue;
-                if (fZoiNode && wtx.tx->vout[i].nValue == GHOSTNODE_COIN_REQUIRED * COIN) continue;
+                if (fGhostNode && wtx.tx->vout[i].nValue == GHOSTNODE_COIN_REQUIRED * COIN) continue;
                 // ignore outputs that are 10 times smaller then the smallest denomination
                 // otherwise they will just lead to higher fee / lower priority
                 if (wtx.tx->vout[i].nValue <= vecPrivateSendDenominations.back() / 10) continue;
