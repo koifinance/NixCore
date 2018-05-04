@@ -3065,7 +3065,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                         // This would be against the purpose of the all-inclusive feature.
                         // So instead we raise the change and deduct from the recipient.
                         if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust()) {
-                            CAmount nDust = newTxOut.GetDustThreshold(::minRelayTxFee) - newTxOut.nValue;
+                            CAmount nDust = GetDustThreshold(newTxOut, ::minRelayTxFee) - newTxOut.nValue;
                             newTxOut.nValue += nDust; // raise change until no more dust
                             for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
                             {
