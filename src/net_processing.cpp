@@ -30,6 +30,17 @@
 #include <utilmoneystr.h>
 #include <utilstrencodings.h>
 
+#include "ghostnode/activeghostnode.h"
+#include "ghostnode/darksend.h"
+#include "ghostnode/ghostnode-payments.h"
+#include "ghostnode/ghostnode-sync.h"
+#include "ghostnode/ghostnodeman.h"
+#include "ghostnode/ghostnodeconfig.h"
+#include "ghostnode/netfulfilledman.h"
+#include "ghostnode/instantx.h"
+#include "ghostnode/spork.h"
+#include "ghostnode/flat-database.h"
+
 #if defined(NDEBUG)
 # error "NIX cannot be compiled without assertions."
 #endif
@@ -988,6 +999,37 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:
         return mapBlockIndex.count(inv.hash);
+
+    // Ghostnode Related Inventory Messages
+    case MSG_TXLOCK_REQUEST:
+        return instantsend.AlreadyHave(inv.hash);
+
+    case MSG_TXLOCK_VOTE:
+        return instantsend.AlreadyHave(inv.hash);
+
+    case MSG_SPORK:
+        return mapSporks.count(inv.hash);
+
+    case MSG_GHOSTNODE_PAYMENT_VOTE:
+        return mnpayments.mapGhostnodePaymentVotes.count(inv.hash);
+
+    case MSG_GHOSTNODE_PAYMENT_BLOCK:
+    {
+        BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
+        return mi != mapBlockIndex.end() && mnpayments.mapGhostnodeBlocks.find(mi->second->nHeight) != mnpayments.mapGhostnodeBlocks.end();
+    }
+
+    case MSG_GHOSTNODE_ANNOUNCE:
+        return mnodeman.mapSeenGhostnodeBroadcast.count(inv.hash) && !mnodeman.IsMnbRecoveryRequested(inv.hash);
+
+    case MSG_GHOSTNODE_PING:
+        return mnodeman.mapSeenGhostnodePing.count(inv.hash);
+
+    case MSG_DSTX:
+        return mapDarksendBroadcastTxes.count(inv.hash);
+
+    case MSG_GHOSTNODE_VERIFY:
+        return mnodeman.mapSeenGhostnodeVerification.count(inv.hash);
     }
     // Don't know what it is, just say we already got one
     return true;
@@ -1216,6 +1258,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                     push = true;
                 }
             }
+
             if (!push) {
                 vNotFound.push_back(inv);
             }

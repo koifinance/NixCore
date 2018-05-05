@@ -6,7 +6,7 @@
 #include "darksend.h"
 #include "validation.h"
 #include "spork.h"
-
+#include "netmessagemaker.h"
 #include <boost/lexical_cast.hpp>
 
 class CSporkMessage;
@@ -65,7 +65,8 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
 
         while(it != mapSporksActive.end()) {
-            g_connman->PushMessage(pfrom, NetMsgType::SPORK);
+            const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
+            g_connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::SPORK, it->second));
             it++;
         }
     }
@@ -96,7 +97,8 @@ void CSporkManager::ExecuteSpork(int nSporkID, int nValue)
 
         LogPrintf("CSporkManager::ExecuteSpork -- Reconsider Last %d Blocks\n", nValue);
 
-        ReprocessBlocks(nValue);
+        //TODO: check if this is needed for our case
+        //ReprocessBlocks(nValue);
         nTimeExecuted = GetTime();
     }
 }

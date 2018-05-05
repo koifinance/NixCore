@@ -48,7 +48,7 @@ public:
 
 extern bool fGhostNode;
 extern bool fLiteMode;
-extern bool nWalletBackups;
+extern int nWalletBackups;
 extern std::string strMiscWarning;
 extern bool fPrintToConsole;
 extern bool fPrintToDebugLog;
