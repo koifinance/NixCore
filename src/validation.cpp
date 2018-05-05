@@ -86,6 +86,26 @@ CAmount GetGhostnodePayment(int nHeight, CAmount blockValue) {
     return ret;
 }
 
+
+int GetInputAge(const CTxIn &txin) {
+    CCoinsView viewDummy;
+    CCoinsViewCache view(&viewDummy);
+    {
+        LOCK(mempool.cs);
+        CCoinsViewMemPool viewMempool(pcoinsTip->getBase(), mempool);
+        view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
+
+        const Coin &coin = view.AccessCoin(txin.prevout);
+
+        if (coin != nullptr) {
+            if (coin.nHeight < 0) return 0;
+            return chainActive.Height() - coin.nHeight + 1;
+        } else {
+            return -1;
+        }
+    }
+}
+
 /**
  * Global state
  */

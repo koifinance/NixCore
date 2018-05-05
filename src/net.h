@@ -315,6 +315,9 @@ public:
 
     void WakeMessageHandler();
     void RelayInv(CInv &inv, const int minProtoVersion = MIN_PEER_PROTO_VERSION);
+    std::vector<CNode*> vNodes;
+    mutable CCriticalSection cs_vNodes;
+    CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, bool fConnectToGhostnode = false);
 private:
     struct ListenSocket {
         SOCKET socket;
@@ -343,7 +346,6 @@ private:
     CNode* FindNode(const CService& addr);
 
     bool AttemptToEvictConnection();
-    CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, bool fConnectToGhostnode = false);
     bool IsWhitelistedRange(const CNetAddr &addr);
 
     void DeleteNode(CNode* pnode);
@@ -398,9 +400,7 @@ private:
     CCriticalSection cs_vOneShots;
     std::vector<std::string> vAddedNodes GUARDED_BY(cs_vAddedNodes);
     CCriticalSection cs_vAddedNodes;
-    std::vector<CNode*> vNodes;
     std::list<CNode*> vNodesDisconnected;
-    mutable CCriticalSection cs_vNodes;
     std::atomic<NodeId> nLastNodeId;
 
     /** Services this instance offers */

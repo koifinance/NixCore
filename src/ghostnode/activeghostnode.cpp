@@ -8,16 +8,15 @@
 #include "ghostnode-sync.h"
 #include "ghostnodeman.h"
 #include "protocol.h"
-
-extern CWallet *pwalletMain;
+#include "boost/foreach.hpp"
 
 // Keep track of the active Ghostnode
 CActiveGhostnode activeGhostnode;
 
 void CActiveGhostnode::ManageState() {
-    LogPrint("ghostnode", "CActiveGhostnode::ManageState -- Start\n");
+    LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- Start\n");
     if (!fGhostNode) {
-        LogPrint("ghostnode", "CActiveGhostnode::ManageState -- Not a ghostnode, returning\n");
+        LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- Not a ghostnode, returning\n");
         return;
     }
 
@@ -31,7 +30,7 @@ void CActiveGhostnode::ManageState() {
         nState = ACTIVE_GHOSTNODE_INITIAL;
     }
 
-    LogPrint("ghostnode", "CActiveGhostnode::ManageState -- status = %s, type = %s, pinger enabled = %d\n",
+    LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- status = %s, type = %s, pinger enabled = %d\n",
              GetStatus(), GetTypeString(), fPingerEnabled);
 
     if (eType == GHOSTNODE_UNKNOWN) {
@@ -106,7 +105,7 @@ std::string CActiveGhostnode::GetTypeString() const {
 
 bool CActiveGhostnode::SendGhostnodePing() {
     if (!fPingerEnabled) {
-        LogPrint("ghostnode",
+        LogPrintf("ghostnode",
                  "CActiveGhostnode::SendGhostnodePing -- %s: ghostnode ping service is disabled, skipping...\n",
                  GetStateString());
         return false;
@@ -140,7 +139,7 @@ bool CActiveGhostnode::SendGhostnodePing() {
 }
 
 void CActiveGhostnode::ManageStateInitial() {
-    LogPrint("ghostnode", "CActiveGhostnode::ManageStateInitial -- status = %s, type = %s, pinger enabled = %d\n",
+    LogPrintf("ghostnode", "CActiveGhostnode::ManageStateInitial -- status = %s, type = %s, pinger enabled = %d\n",
              GetStatus(), GetTypeString(), fPingerEnabled);
 
     // Check that our local network configuration is correct
@@ -154,20 +153,20 @@ void CActiveGhostnode::ManageStateInitial() {
 
     bool fFoundLocal = false;
     {
-        LOCK(cs_vNodes);
+        LOCK(g_connman->cs_vNodes);
 
         // First try to find whatever local address is specified by externalip option
         fFoundLocal = GetLocal(service) && CGhostnode::IsValidNetAddr(service);
         if (!fFoundLocal) {
             // nothing and no live connections, can't do anything for now
-            if (vNodes.empty()) {
+            if (g_connman->vNodes.empty()) {
                 nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
                 strNotCapableReason = "Can't detect valid external address. Will retry when there are some connections available.";
                 LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
                 return;
             }
             // We have some peers, let's try to find our local address from one of them
-            BOOST_FOREACH(CNode * pnode, vNodes)
+            BOOST_FOREACH(CNode * pnode, g_connman->vNodes)
             {
                 if (pnode->fSuccessfullyConnected && pnode->addr.IsIPv4()) {
                     fFoundLocal = GetLocal(service, &pnode->addr) && CGhostnode::IsValidNetAddr(service);
@@ -203,7 +202,7 @@ void CActiveGhostnode::ManageStateInitial() {
 
     LogPrintf("CActiveGhostnode::ManageStateInitial -- Checking inbound connection to '%s'\n", service.ToString());
     //TODO
-    if (!ConnectNode(CAddress(service, NODE_NETWORK), NULL, false, true)) {
+    if (!g_connman->ConnectNode(CAddress(service, NODE_NETWORK), NULL, false, true)) {
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
         strNotCapableReason = "Could not connect to " + service.ToString();
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
@@ -214,17 +213,17 @@ void CActiveGhostnode::ManageStateInitial() {
     eType = GHOSTNODE_REMOTE;
 
     // Check if wallet funds are available
-    if (!pwalletMain) {
+    if (!vpwallets.front()) {
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet not available\n", GetStateString());
         return;
     }
 
-    if (pwalletMain->IsLocked()) {
+    if (vpwallets.front()->IsLocked()) {
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet is locked\n", GetStateString());
         return;
     }
 
-    if (pwalletMain->GetBalance() < GHOSTNODE_COIN_REQUIRED * COIN) {
+    if (vpwallets.front()->GetBalance() < GHOSTNODE_COIN_REQUIRED * COIN) {
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet balance is < 40000 NIX\n", GetStateString());
         return;
     }
@@ -235,16 +234,16 @@ void CActiveGhostnode::ManageStateInitial() {
 
     // If collateral is found switch to LOCAL mode
 
-    if (pwalletMain->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
+    if (vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
         eType = GHOSTNODE_LOCAL;
     }
 
-    LogPrint("ghostnode", "CActiveGhostnode::ManageStateInitial -- End status = %s, type = %s, pinger enabled = %d\n",
+    LogPrintf("ghostnode", "CActiveGhostnode::ManageStateInitial -- End status = %s, type = %s, pinger enabled = %d\n",
              GetStatus(), GetTypeString(), fPingerEnabled);
 }
 
 void CActiveGhostnode::ManageStateRemote() {
-    LogPrint("ghostnode",
+    LogPrintf("ghostnode",
              "CActiveGhostnode::ManageStateRemote -- Start status = %s, type = %s, pinger enabled = %d, pubKeyGhostnode.GetID() = %s\n",
              GetStatus(), fPingerEnabled, GetTypeString(), pubKeyGhostnode.GetID().ToString());
 
@@ -286,7 +285,7 @@ void CActiveGhostnode::ManageStateRemote() {
 }
 
 void CActiveGhostnode::ManageStateLocal() {
-    LogPrint("ghostnode", "CActiveGhostnode::ManageStateLocal -- status = %s, type = %s, pinger enabled = %d\n",
+    LogPrintf("ghostnode", "CActiveGhostnode::ManageStateLocal -- status = %s, type = %s, pinger enabled = %d\n",
              GetStatus(), GetTypeString(), fPingerEnabled);
     if (nState == ACTIVE_GHOSTNODE_STARTED) {
         return;
@@ -296,7 +295,7 @@ void CActiveGhostnode::ManageStateLocal() {
     CPubKey pubKeyCollateral;
     CKey keyCollateral;
 
-    if (pwalletMain->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
+    if (vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
         int nInputAge = GetInputAge(vin);
         if (nInputAge < Params().GetConsensus().nGhostnodeMinimumConfirmations) {
             nState = ACTIVE_GHOSTNODE_INPUT_TOO_NEW;
@@ -306,8 +305,8 @@ void CActiveGhostnode::ManageStateLocal() {
         }
 
         {
-            LOCK(pwalletMain->cs_wallet);
-            pwalletMain->LockCoin(vin.prevout);
+            LOCK(vpwallets.front()->cs_wallet);
+            vpwallets.front()->LockCoin(vin.prevout);
         }
 
         CGhostnodeBroadcast mnb;

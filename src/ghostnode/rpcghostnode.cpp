@@ -155,7 +155,15 @@ UniValue ghostnode(const JSONRPCRequest& req) {
 
         std::string strAddress = params[1].get_str();
 
-        if (g_connman->AddNode(strAddress))
+        int port = Params().GetDefaultPort();
+        CService addr;
+        if (!Lookup(strAddress.c_str(), addr, port, false)) {
+            return InitError(strprintf(_("rpcghostnode ghostnode(): Invalid ghostnode: '%s'"), strAddress));
+        }
+
+        CNode *pnode = g_connman->ConnectNode(CAddress(addr, NODE_NETWORK), NULL, false, true);
+
+        if (!pnode)
             throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to ghostnode %s", strAddress));
 
         return "successfully connected";

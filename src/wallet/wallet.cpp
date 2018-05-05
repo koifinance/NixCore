@@ -33,6 +33,7 @@
 #include <assert.h>
 #include <future>
 #include <rpc/protocol.h>
+#include "ghostnode/activeghostnode.cpp"
 #include "ghostnode/darksend.h"
 #include "ghostnode/instantx.h"
 #include "ghostnode/ghostnode.h"
@@ -6283,7 +6284,6 @@ bool CWallet::InitLoadWallet()
             #endif
             LogPrintf("%s", sWarning);
         };
-
         vpwallets.push_back(pwallet);
     };
 
