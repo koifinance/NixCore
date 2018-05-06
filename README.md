@@ -9,16 +9,16 @@
 ### What is NIX?
 ---
 
-NIX is an open source digital currency that focuses on privacy centered metrics. NIX's goal is to create a global private cross chain transaction platform. With NIX's initial use case, you will be able to privatize any cryptocurrency through use of the NIX DEX platform. Giving all currencies the power of privacy.
+NIX is a digital currency that combines Atomic Swaps/Smart Contracts and privacy using our unique, innovative Ghost Protocol to provide the world with a truly anonymous and decentralized transfer of assets for the cross-chain era
 
 ### Key Features
 ---
 
-* NIX utilizes a custom built privacy library that integrates Zerocoin/Bulletproofs and TOR support. This allows transaction privacy in its fullest and most trustless form.
+* NIX utilizes a custom built privacy library that integrates Zerocoin/Stealthoutputs/Bulletproofs and TOR support. This allows transaction privacy in its fullest and most trustless form.
 
 * NIX aims to create a privatized DEX platform built on top of already developed DEX volumes to conduct privatized atomic swaps through use of NIX’s privacy library.
 
-* Ghost Protocol to enhance privacy features.
+* Ghost Protocol and Ghost Vault to enhance privacy features.
 
 For more information, please visit [NixPlatform.io](https://nixplatform.io/nixplatform.io) or read the [whitepaper](https://nixplatform.io/nixplatform.io/whitepaper).
 
@@ -37,7 +37,7 @@ For more information, please visit [NixPlatform.io](https://nixplatform.io/nixpl
 * [Reddit](https://reddit.com/r/nixplatform)
 * [Medium](https://medium.com/@nixplatform)
 * [Twitter](https://twitter.com/nixplatform)
-* [GitHub wiki](https://github.com/nixplatform/nix/wiki)
+* [GitHub wiki](https://github.com/nixplatform/nixcore/wiki)
 
 License
 ---
