@@ -17,13 +17,14 @@
 #include "net.h"
 #include "base58.h"
 #include "netbase.h"
+#include "wallet/rpcwallet.h"
 
 #include <fstream>
 #include <iomanip>
 #include <univalue.h>
 #include <boost/foreach.hpp>
 
-void EnsureWalletIsUnlocked();
+//void EnsureWalletIsUnlocked();
 
 UniValue privatesend(const UniValue &params, bool fHelp) {
     if (fHelp || params.size() != 1)
@@ -42,7 +43,7 @@ UniValue privatesend(const UniValue &params, bool fHelp) {
             if(vpwallets.front() == NULL)
                 return "rpcghostnode(): Error loading wallet";
             LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked();
+            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
         if (fGhostNode)
@@ -244,7 +245,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
 
         {
             LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked();
+            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
         if (activeGhostnode.nState != ACTIVE_GHOSTNODE_STARTED) {
@@ -261,7 +262,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
 
         {
             LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked();
+            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
         std::string strAlias = params[1].get_str();
@@ -306,7 +307,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
     if (strCommand == "start-all" || strCommand == "start-missing" || strCommand == "start-disabled") {
         {
             LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked();
+            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
         if ((strCommand == "start-missing" || strCommand == "start-disabled") &&
@@ -638,7 +639,7 @@ UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
 
         {
             LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked();
+            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
         bool fFound = false;
@@ -688,7 +689,7 @@ UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
 
         {
             LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked();
+            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
         std::vector <CGhostnodeConfig::CGhostnodeEntry> mnEntries;

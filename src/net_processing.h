@@ -81,6 +81,12 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats);
 /** Increase a node's misbehavior score. */
 void Misbehaving(NodeId nodeid, int howmuch);
 
-static void RelayTransaction(const CTransaction& tx, CConnman* connman);
-
+static void RelayTransaction(const CTransaction& tx, CConnman* connman)
+{
+    CInv inv(MSG_TX, tx.GetHash());
+    connman->ForEachNode([&inv](CNode* pnode)
+    {
+        pnode->PushInventory(inv);
+    });
+}
 #endif // BITCOIN_NET_PROCESSING_H

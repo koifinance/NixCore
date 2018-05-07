@@ -318,6 +318,13 @@ public:
     std::vector<CNode*> vNodes;
     mutable CCriticalSection cs_vNodes;
     CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, bool fConnectToGhostnode = false);
+    CNode* FindNode(const CNetAddr& ip);
+    CNode* FindNode(const CSubNet& subNet);
+    CNode* FindNode(const std::string& addrName);
+    CNode* FindNode(const CService& addr);
+    std::vector<CNode *> CopyNodeVector();
+    void ReleaseNodeVector(const std::vector<CNode *> &vecNodes);
+    CAddrMan addrman;
 private:
     struct ListenSocket {
         SOCKET socket;
@@ -339,11 +346,6 @@ private:
     void ThreadDNSAddressSeed();
 
     uint64_t CalculateKeyedNetGroup(const CAddress& ad) const;
-
-    CNode* FindNode(const CNetAddr& ip);
-    CNode* FindNode(const CSubNet& subNet);
-    CNode* FindNode(const std::string& addrName);
-    CNode* FindNode(const CService& addr);
 
     bool AttemptToEvictConnection();
     bool IsWhitelistedRange(const CNetAddr &addr);
@@ -395,7 +397,6 @@ private:
     CCriticalSection cs_setBanned;
     bool setBannedIsDirty;
     bool fAddressesInitialized;
-    CAddrMan addrman;
     std::deque<std::string> vOneShots;
     CCriticalSection cs_vOneShots;
     std::vector<std::string> vAddedNodes GUARDED_BY(cs_vAddedNodes);

@@ -1972,7 +1972,7 @@ bool AppInitMain()
 
     fEnablePrivateSend = false;
 
-    fEnableInstantSend = false;
+    //fEnableInstantSend = false;
 
     //lite mode disables all Ghostnode and Darksend related functionality
     fLiteMode = gArgs.GetBoolArg("-litemode", false);

@@ -228,6 +228,8 @@ static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 bool GetBlockHash(uint256& hashRet, int nBlockHeight = -1);
 CAmount GetGhostnodePayment(int nHeight, CAmount blockValue);
 int GetInputAge(const CTxIn &txin);
+int GetUTXOHeight(const COutPoint &outpoint);
+bool GetUTXOCoin(const COutPoint& outpoint, Coin& coin);
 /** 
  * Process an incoming block. This only returns after the best known valid
  * block is made active. Note that it does not, however, guarantee that the

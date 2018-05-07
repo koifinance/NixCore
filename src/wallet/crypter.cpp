@@ -153,7 +153,7 @@ bool CCryptoKeyStore::SetCrypted()
     return true;
 }
 
-bool CCryptoKeyStore::IsLocked() const
+bool CCryptoKeyStore::IsLocked(bool fForMixing) const
 {
     if (!IsCrypted()) {
         return false;

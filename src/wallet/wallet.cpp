@@ -2379,7 +2379,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                     if (found && fGhostNode) found = pcoin->tx->vout[i].nValue != GHOSTNODE_COIN_REQUIRED * COIN; // do not use Hot MN funds
                 } else if (nCoinType == ONLY_40000) {
                     LogPrintf("nCoinType = ONLY_1000\n");
-                    LogPrintf("pcoin->vout[i].nValue = %s\n", pcoin->vout[i].nValue);
+                    LogPrintf("pcoin->vout[i].nValue = %s\n", pcoin->tx->vout[i].nValue);
                     found = pcoin->tx->vout[i].nValue == GHOSTNODE_COIN_REQUIRED * COIN;
                 } else if (nCoinType == ONLY_PRIVATESEND_COLLATERAL) {
                     found = IsCollateralAmount(pcoin->tx->vout[i].nValue);
@@ -2676,13 +2676,13 @@ bool CWallet::SelectCoins(const std::vector<COutput>& vAvailableCoins, const CAm
             BOOST_FOREACH(const COutput &out, vCoins)
             {
                 //make sure it's the denom we're looking for, round the amount up to smallest denom
-                if (out.tx->vout[out.i].nValue == nDenom && nValueRet + nDenom < nTargetValue + nSmallestDenom) {
+                if (out.tx->tx->vout[out.i].nValue == nDenom && nValueRet + nDenom < nTargetValue + nSmallestDenom) {
                     CTxIn txin = CTxIn(out.tx->GetHash(), out.i);
                     int nRounds = GetInputPrivateSendRounds(txin);
                     // make sure it's actually anonymized
                     if (nRounds < nPrivateSendRounds) continue;
                     nValueRet += nDenom;
-                    setCoinsRet.insert(make_pair(out.tx, out.i));
+                    setCoinsRet.insert(CInputCoin(out.tx, out.i));
                 }
             }
         }
@@ -2848,7 +2848,7 @@ OutputType CWallet::TransactionChangeType(OutputType change_type, const std::vec
 }
 
 bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, AvailableCoinsType nCoinType, bool sign)
+                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, AvailableCoinsType nCoinType, bool fUseInstantSend)
 {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
@@ -3036,7 +3036,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                         CScript scriptChange;
 
                         // coin control: send change to custom address
-                        if (coin_control && !boost::get<CNoDestination>(&coin_control.destChange))
+                        if (!boost::get<CNoDestination>(&coin_control.destChange))
                             scriptChange = GetScriptForDestination(coin_control.destChange);
 
                             // no coin control: send change to newly generated address
@@ -8488,8 +8488,8 @@ CAmount CWalletTx::GetAnonymizedCredit(bool fUseCache) const {
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    for (unsigned int i = 0; i < vout.size(); i++) {
-        const CTxOut &txout = vout[i];
+    for (unsigned int i = 0; i < tx->vout.size(); i++) {
+        const CTxOut &txout = tx->vout[i];
         const CTxIn txin = CTxIn(hashTx, i);
 
         if (pwallet->IsSpent(hashTx, i) || !pwallet->IsDenominated(txin)) continue;
@@ -8561,8 +8561,10 @@ int CWallet::GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const
         std::map<uint256, CMutableTransaction>::const_iterator mdwi = mDenomWtxes.find(hash);
         if (mdwi == mDenomWtxes.end()) {
             // not known yet, let's add it
-            LogPrint("privatesend", "GetRealInputPrivateSendRounds INSERTING %s\n", hash.ToString());
-            mDenomWtxes[hash] = CMutableTransaction(*wtx);
+            //LogPrint("privatesend", "GetRealInputPrivateSendRounds INSERTING %s\n", hash.ToString());
+            LogPrintf("privatesend GetRealInputPrivateSendRounds UPDATED \n");
+            CMutableTransaction txHash = *wtx->tx;
+            mDenomWtxes[hash] = txHash;
         } else if(mDenomWtxes[hash].vout[nout].nRounds != -10) {
             // found and it's not an initial value, just return it
             return mDenomWtxes[hash].vout[nout].nRounds;
@@ -8570,41 +8572,44 @@ int CWallet::GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const
 
 
         // bounds check
-        if (nout >= wtx->vout.size()) {
+        if (nout >= wtx->tx->vout.size()) {
             // should never actually hit this
-            LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, -4);
+            //LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, -4);
+            LogPrintf("privatesend GetRealInputPrivateSendRounds UPDATED \n");
             return -4;
         }
 
-        if (IsCollateralAmount(wtx->vout[nout].nValue)) {
+        if (IsCollateralAmount(wtx->tx->vout[nout].nValue)) {
             mDenomWtxes[hash].vout[nout].nRounds = -3;
-            LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            //LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            LogPrintf("privatesend GetRealInputPrivateSendRounds UPDATED \n");
             return mDenomWtxes[hash].vout[nout].nRounds;
         }
 
         //make sure the final output is non-denominate
-        if (!IsDenominatedAmount(wtx->vout[nout].nValue)) { //NOT DENOM
+        if (!IsDenominatedAmount(wtx->tx->vout[nout].nValue)) { //NOT DENOM
             mDenomWtxes[hash].vout[nout].nRounds = -2;
-            LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            //LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            LogPrintf("privatesend GetRealInputPrivateSendRounds UPDATED \n");
             return mDenomWtxes[hash].vout[nout].nRounds;
         }
 
         bool fAllDenoms = true;
-        BOOST_FOREACH(CTxOut out, wtx->vout) {
+        BOOST_FOREACH(CTxOut out, wtx->tx->vout) {
             fAllDenoms = fAllDenoms && IsDenominatedAmount(out.nValue);
         }
 
         // this one is denominated but there is another non-denominated output found in the same tx
         if (!fAllDenoms) {
             mDenomWtxes[hash].vout[nout].nRounds = 0;
-            LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            LogPrintf("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
             return mDenomWtxes[hash].vout[nout].nRounds;
         }
 
         int nShortest = -10; // an initial value, should be no way to get this by calculations
         bool fDenomFound = false;
         // only denoms here so let's look up
-        BOOST_FOREACH(CTxIn txinNext, wtx->vin) {
+        BOOST_FOREACH(CTxIn txinNext, wtx->tx->vin) {
             if (IsMine(txinNext)) {
                 int n = GetRealInputPrivateSendRounds(txinNext, nRounds + 1);
                 // denom found, find the shortest chain or initially assign nShortest with the first found value
@@ -8617,7 +8622,7 @@ int CWallet::GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const
         mDenomWtxes[hash].vout[nout].nRounds = fDenomFound
                                                ? (nShortest >= 15 ? 16 : nShortest + 1) // good, we a +1 to the shortest one but only 16 rounds max allowed
                                                : 0;            // too bad, we are the fist one in that chain
-        LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+        LogPrintf("privatesend", "GetRealInputPrivateSendRounds UPDATED %s \n", hash.ToString());
         return mDenomWtxes[hash].vout[nout].nRounds;
     }
 
@@ -8639,8 +8644,8 @@ bool CWallet::IsDenominated(const CTxIn &txin) const {
     map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
     if (mi != mapWallet.end()) {
         const CWalletTx &prev = (*mi).second;
-        if (txin.prevout.n < prev.vout.size()) {
-            return IsDenominatedAmount(prev.vout[txin.prevout.n].nValue);
+        if (txin.prevout.n < prev.tx->vout.size()) {
+            return IsDenominatedAmount(prev.tx->vout[txin.prevout.n].nValue);
         }
     }
 
@@ -8663,13 +8668,13 @@ int CWallet::CountInputsWithAmount(CAmount nInputAmount) {
             if (pcoin->IsTrusted()) {
                 int nDepth = pcoin->GetDepthInMainChain(false);
 
-                for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
-                    COutput out = COutput(pcoin, i, nDepth, true, true);
+                for (unsigned int i = 0; i < pcoin->tx->vout.size(); i++) {
+                    COutput out = COutput(pcoin, i, nDepth, true, true, true);
                     CTxIn txin = CTxIn(out.tx->GetHash(), out.i);
 
-                    if (out.tx->vout[out.i].nValue != nInputAmount) continue;
-                    if (!IsDenominatedAmount(pcoin->vout[i].nValue)) continue;
-                    if (IsSpent(out.tx->GetHash(), i) || IsMine(pcoin->vout[i]) != ISMINE_SPENDABLE ||
+                    if (out.tx->tx->vout[out.i].nValue != nInputAmount) continue;
+                    if (!IsDenominatedAmount(pcoin->tx->vout[i].nValue)) continue;
+                    if (IsSpent(out.tx->GetHash(), i) || IsMine(pcoin->tx->vout[i]) != ISMINE_SPENDABLE ||
                         !IsDenominated(txin))
                         continue;
 
@@ -8847,7 +8852,7 @@ bool CWallet::SelectCoinsByDenominations(int nDenom, CAmount nValueMin, CAmount 
     BOOST_FOREACH(const COutput &out, vCoins)
     {
         // ghostnode-like input should not be selected by AvailableCoins now anyway
-        if (nValueRet + out.tx->vout[out.i].nValue <= nValueMax) {
+        if (nValueRet + out.tx->tx->vout[out.i].nValue <= nValueMax) {
 
             CTxIn txin = CTxIn(out.tx->GetHash(), out.i);
 
@@ -8856,7 +8861,7 @@ bool CWallet::SelectCoinsByDenominations(int nDenom, CAmount nValueMin, CAmount 
             if (nRounds < nPrivateSendRoundsMin) continue;
 
             BOOST_FOREACH(int nBit, vecBits) {
-                if (out.tx->vout[out.i].nValue == vecPrivateSendDenominations[nBit]) {
+                if (out.tx->tx->vout[out.i].nValue == vecPrivateSendDenominations[nBit]) {
                     if (nValueRet >= nValueMin) {
                         //randomly reduce the max amount we'll submit (for anonymity)
                         nValueMax -= insecureRand(nValueMax/5);
@@ -8921,12 +8926,12 @@ bool CWallet::SelectCoinsGrouppedByAddresses(std::vector <CompactTallyItem> &vec
     if (fAnonymizable) {
         if(fSkipDenominated && fAnonymizableTallyCachedNonDenom) {
             vecTallyRet = vecAnonymizableTallyCachedNonDenom;
-            LogPrint("selectcoins", "SelectCoinsGrouppedByAddresses - using cache for non-denom inputs\n");
+            LogPrintf("selectcoins SelectCoinsGrouppedByAddresses - using cache for non-denom inputs\n");
             return vecTallyRet.size() > 0;
         }
         if(!fSkipDenominated && fAnonymizableTallyCached) {
             vecTallyRet = vecAnonymizableTallyCached;
-            LogPrint("selectcoins", "SelectCoinsGrouppedByAddresses - using cache for all inputs\n");
+            LogPrintf("selectcoins SelectCoinsGrouppedByAddresses - using cache for all inputs\n");
             return vecTallyRet.size() > 0;
         }
     }
@@ -8993,39 +8998,7 @@ bool CWallet::SelectCoinsGrouppedByAddresses(std::vector <CompactTallyItem> &vec
     std::string strMessage = "SelectCoinsGrouppedByAddresses - vecTallyRet:\n";
     BOOST_FOREACH(CompactTallyItem & item, vecTallyRet)
         strMessage += strprintf("  %s %f\n", item.address.ToString().c_str(), float(item.nAmount) / COIN);
-    LogPrint("selectcoins", "%s", strMessage);
+    LogPrintf("selectcoins %s \n", strMessage);
 
     return vecTallyRet.size() > 0;
-}
-
-int CMerkleTx::GetDepthInMainChain(const CBlockIndex *&pindexRet, bool enableIX) const {
-    int nResult;
-
-    if (hashUnset())
-        nResult = 0;
-    else {
-        AssertLockHeld(cs_main);
-
-        // Find the block it claims to be in
-        BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
-        if (mi == mapBlockIndex.end())
-            nResult = 0;
-        else {
-            CBlockIndex *pindex = (*mi).second;
-            if (!pindex || !chainActive.Contains(pindex))
-                nResult = 0;
-            else {
-                pindexRet = pindex;
-                nResult = ((nIndex == -1) ? (-1) : 1) * (chainActive.Height() - pindex->nHeight + 1);
-
-                if (nResult == 0 && !mempool.exists(GetHash()))
-                    return -1; // Not in chain, not in mempool
-            }
-        }
-    }
-
-    if (enableIX && nResult < 6 && instantsend.IsLockedInstantSendTransaction(GetHash()))
-        return nInstantSendDepth + nResult;
-
-    return nResult;
 }

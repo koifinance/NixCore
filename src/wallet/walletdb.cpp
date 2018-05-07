@@ -19,6 +19,7 @@
 #include <atomic>
 
 #include <boost/thread.hpp>
+#include <boost/foreach.hpp>
 
 //
 // CWalletDB
@@ -1153,7 +1154,8 @@ bool AutoBackupWallet (CWallet* wallet, std::string strWalletFile, std::string& 
         {
             // ... opened wallet
             LOCK2(cs_main, wallet->cs_wallet);
-            strWalletFile = wallet->strWalletFile;
+            //TODO: create a walletbackup
+            //strWalletFile = wallet->strWalletFile;
             fs::path backupFile = backupsDir / (strWalletFile + dateTimeStr);
 
             // Update nKeysLeftSinceAutoBackup using current pool size

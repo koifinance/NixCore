@@ -7,7 +7,6 @@
 #include "wallet/coincontrol.h"
 #include "consensus/validation.h"
 #include "darksend.h"
-//#include "governance.h"
 #include "init.h"
 #include "instantx.h"
 #include "ghostnode-payments.h"
@@ -18,6 +17,7 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "net_processing.h"
+#include "netmessagemaker.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -58,10 +58,10 @@ void CDarksendPool::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataS
         }
 
         int nDenom;
-        CTransaction txCollateral;
+        CTransactionRef txCollateral;
         vRecv >> nDenom >> txCollateral;
 
-        LogPrintf("privatesend", "DSACCEPT -- nDenom %d (%s)  txCollateral %s", nDenom, GetDenominationsToString(nDenom), txCollateral.ToString());
+        LogPrintf("privatesend", "DSACCEPT -- nDenom %d (%s)  txCollateral %s", nDenom, GetDenominationsToString(nDenom), txCollateral->ToString());
 
         CGhostnode *pmn = mnodeman.Find(activeGhostnode.vin);
         if (pmn == NULL) {
@@ -77,9 +77,8 @@ void CDarksendPool::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataS
         }
 
         PoolMessage nMessageID = MSG_NOERR;
-
-        bool fResult = nSessionID == 0 ? CreateNewSession(nDenom, txCollateral, nMessageID)
-                                       : AddUserToExistingSession(nDenom, txCollateral, nMessageID);
+        bool fResult = nSessionID == 0 ? CreateNewSession(nDenom, *txCollateral, nMessageID)
+                                       : AddUserToExistingSession(nDenom, *txCollateral, nMessageID);
         if (fResult) {
             LogPrintf("DSACCEPT -- is compatible, please submit!\n");
             PushStatus(pfrom, STATUS_ACCEPTED, nMessageID);
@@ -189,7 +188,7 @@ void CDarksendPool::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataS
         CDarkSendEntry entry;
         vRecv >> entry;
 
-        LogPrintf("privatesend", "DSVIN -- txCollateral %s", entry.txCollateral.ToString());
+        LogPrintf("privatesend", "DSVIN -- txCollateral %s", entry.txCollateral->ToString());
 
         //do we have the same denominations as the current session?
         if (!IsOutputsCompatibleWithSessionDenom(entry.vecTxDSOut)) {
@@ -379,7 +378,7 @@ void CDarksendPool::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataS
         }
 
         int nMsgSessionID;
-        CTransaction txNew;
+        CTransactionRef txNew;
         vRecv >> nMsgSessionID >> txNew;
 
         if (nSessionID != nMsgSessionID) {
@@ -387,10 +386,10 @@ void CDarksendPool::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataS
             return;
         }
 
-        LogPrintf("privatesend", "DSFINALTX -- txNew %s", txNew.ToString());
+        LogPrintf("privatesend", "DSFINALTX -- txNew %s", txNew->ToString());
 
         //check to see if input is spent already? (and probably not confirmed)
-        SignFinalTransaction(txNew, pfrom);
+        SignFinalTransaction(*txNew, pfrom);
 
     } else if (strCommand == NetMsgType::DSCOMPLETE) {
 
@@ -691,21 +690,22 @@ void CDarksendPool::ChargeFees() {
     //we don't need to charge collateral for every offence.
     if (GetRandInt(100) > 33) return;
 
-    std::vector <CTransaction> vecOffendersCollaterals;
+    std::vector <CTransactionRef> vecOffendersCollaterals;
 
     if (nState == POOL_STATE_ACCEPTING_ENTRIES) {
-        BOOST_FOREACH(
-        const CTransaction &txCollateral, vecSessionCollaterals) {
+        BOOST_FOREACH(const CTransaction &txCollateral, vecSessionCollaterals) {
             bool fFound = false;
-            BOOST_FOREACH(
-            const CDarkSendEntry &entry, vecEntries)
-            if (entry.txCollateral == txCollateral)
-                fFound = true;
+            BOOST_FOREACH(const CDarkSendEntry &entry, vecEntries){
+                CTransactionRef txCollateralRef(&txCollateral);
+                if (entry.txCollateral == txCollateralRef)
+                    fFound = true;
+            }
 
             // This queue entry didn't send us the promised transaction
             if (!fFound) {
                 LogPrintf("CDarksendPool::ChargeFees -- found uncooperative node (didn't send transaction), found offence\n");
-                vecOffendersCollaterals.push_back(txCollateral);
+                CTransactionRef txCollateralRef(&txCollateral);
+                vecOffendersCollaterals.push_back(txCollateralRef);
             }
         }
     }
@@ -738,20 +738,20 @@ void CDarksendPool::ChargeFees() {
 
     if (nState == POOL_STATE_ACCEPTING_ENTRIES || nState == POOL_STATE_SIGNING) {
         LogPrintf("CDarksendPool::ChargeFees -- found uncooperative node (didn't %s transaction), charging fees: %s\n",
-                  (nState == POOL_STATE_SIGNING) ? "sign" : "send", vecOffendersCollaterals[0].ToString());
+                  (nState == POOL_STATE_SIGNING) ? "sign" : "send", vecOffendersCollaterals[0]->ToString());
 
         LOCK(cs_main);
 
         CValidationState state;
         bool fMissingInputs;
 
-        CTransactionRef txRef(&vecOffendersCollaterals[0]);
+        //CTransactionRef txRef(&vecOffendersCollaterals[0]);
 
-        if (!AcceptToMemoryPool(mempool, state, txRef, &fMissingInputs, nullptr, false, 0)) {
+        if (!AcceptToMemoryPool(mempool, state, vecOffendersCollaterals[0], &fMissingInputs, nullptr, false, 0)) {
             // should never really happen
             LogPrintf("CDarksendPool::ChargeFees -- ERROR: AcceptToMemoryPool failed!\n");
         } else {
-            RelayTransaction(vecOffendersCollaterals[0], g_connman);
+            RelayTransaction(*vecOffendersCollaterals[0], g_connman.get());
         }
     }
 }
@@ -787,7 +787,7 @@ void CDarksendPool::ChargeRandomFees() {
             // should never really happen
             LogPrintf("CDarksendPool::ChargeRandomFees -- ERROR: AcceptToMemoryPool failed!\n");
         } else {
-            RelayTransaction(txCollateral);
+            RelayTransaction(txCollateral, g_connman.get());
         }
     }
 }
@@ -979,7 +979,7 @@ bool CDarksendPool::AddEntry(const CDarkSendEntry &entryNew, PoolMessage &nMessa
         }
     }
 
-    if (!IsCollateralValid(entryNew.txCollateral)) {
+    if (!IsCollateralValid(*entryNew.txCollateral)) {
         LogPrintf("privatesend", "CDarksendPool::AddEntry -- collateral not valid!\n");
         nMessageIDRet = ERR_INVALID_COLLATERAL;
         return false;
@@ -1133,16 +1133,19 @@ bool CDarksendPool::SendDenominate(const std::vector <CTxIn> &vecTxIn, const std
 
         mempool.PrioritiseTransaction(tx.GetHash(), 0.1 * COIN);
         TRY_LOCK(cs_main, lockMain);
-        if (!lockMain || !AcceptToMemoryPool(mempool, validationState, CTransaction(tx), true, false, NULL, false, true, true)) {
+
+        const CTransaction txTemp(tx);
+        CTransactionRef txRef(&txTemp);
+        if (!lockMain || !AcceptToMemoryPool(mempool, validationState, txRef, nullptr, nullptr, false, 0)) {
             LogPrintf("CDarksendPool::SendDenominate -- AcceptToMemoryPool() failed! tx=%s", tx.ToString());
             UnlockCoins();
             SetNull();
             return false;
         }
     }
-
+    CTransaction txMyCollateralTX(txMyCollateral);
     // store our entry for later use
-    CDarkSendEntry entry(vecTxIn, vecTxOut, txMyCollateral);
+    CDarkSendEntry entry(vecTxIn, vecTxOut, CTransactionRef(&txMyCollateralTX));
     vecEntries.push_back(entry);
     RelayIn(entry);
     nTimeLastSuccessfulStep = GetTimeMillis();
@@ -1275,7 +1278,9 @@ bool CDarksendPool::SignFinalTransaction(const CTransaction &finalTransactionNew
 
     // push all of our signatures to the Ghostnode
     LogPrintf("CDarksendPool::SignFinalTransaction -- pushing sigs to the ghostnode, finalMutableTransaction=%s", finalMutableTransaction.ToString());
-    pnode->PushMessage(NetMsgType::DSSIGNFINALTX, sigs);
+
+    const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+    g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSSIGNFINALTX, sigs));
     SetState(POOL_STATE_SIGNING);
     nTimeLastSuccessfulStep = GetTimeMillis();
 
@@ -1547,8 +1552,8 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
 
             CNode *pnodeFound = NULL;
             {
-                LOCK(cs_vNodes);
-                pnodeFound = FindNode(pmn->addr);
+                LOCK(g_connman->cs_vNodes);
+                pnodeFound = g_connman->FindNode(pmn->addr);
                 if (pnodeFound) {
                     if (pnodeFound->fDisconnect) {
                         continue;
@@ -1560,12 +1565,14 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
 
             LogPrintf("CDarksendPool::DoAutomaticDenominating -- attempt to connect to ghostnode from queue, addr=%s\n", pmn->addr.ToString());
             // connect to Ghostnode and submit the queue request
-            CNode *pnode = (pnodeFound && pnodeFound->fGhostnode) ? pnodeFound : ConnectNode(CAddress(pmn->addr, NODE_NETWORK), NULL, false, true);
+
+            CNode *pnode = (pnodeFound && pnodeFound->fGhostnode) ? pnodeFound : g_connman->ConnectNode(CAddress(pmn->addr, NODE_NETWORK), NULL, false, true);
             if (pnode) {
                 pSubmittedToGhostnode = pmn;
                 nSessionDenom = dsq.nDenom;
 
-                pnode->PushMessage(NetMsgType::DSACCEPT, nSessionDenom, txMyCollateral);
+                const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+                g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSACCEPT, nSessionDenom, txMyCollateral));
                 LogPrintf("CDarksendPool::DoAutomaticDenominating -- connected (from queue), sending DSACCEPT: nSessionDenom: %d (%s), addr=%s\n",
                           nSessionDenom, GetDenominationsToString(nSessionDenom), pnode->addr.ToString());
                 strAutoDenomResult = _("Mixing in progress...");
@@ -1619,8 +1626,8 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
 
         CNode *pnodeFound = NULL;
         {
-            LOCK(cs_vNodes);
-            pnodeFound = FindNode(pmn->addr);
+            LOCK(g_connman->cs_vNodes);
+            pnodeFound = g_connman->FindNode(pmn->addr);
             if (pnodeFound) {
                 if (pnodeFound->fDisconnect) {
                     nTries++;
@@ -1632,7 +1639,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
         }
 
         LogPrintf("CDarksendPool::DoAutomaticDenominating -- attempt %d connection to Ghostnode %s\n", nTries, pmn->addr.ToString());
-        CNode *pnode = (pnodeFound && pnodeFound->fGhostnode) ? pnodeFound : ConnectNode(CAddress(pmn->addr, NODE_NETWORK), NULL, false, true);
+        CNode *pnode = (pnodeFound && pnodeFound->fGhostnode) ? pnodeFound : g_connman->ConnectNode(CAddress(pmn->addr, NODE_NETWORK), NULL, false, true);
         if (pnode) {
             LogPrintf("CDarksendPool::DoAutomaticDenominating -- connected, addr=%s\n", pmn->addr.ToString());
             pSubmittedToGhostnode = pmn;
@@ -1644,7 +1651,8 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
                 nSessionDenom = GetDenominationsByAmounts(vecAmounts);
             }
 
-            pnode->PushMessage(NetMsgType::DSACCEPT, nSessionDenom, txMyCollateral);
+            const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+            g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSACCEPT, nSessionDenom, txMyCollateral));
             LogPrintf("CDarksendPool::DoAutomaticDenominating -- connected, sending DSACCEPT, nSessionDenom: %d (%s)\n",
                       nSessionDenom, GetDenominationsToString(nSessionDenom));
             strAutoDenomResult = _("Mixing in progress...");
@@ -1758,7 +1766,7 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
             std::vector<COutput>::iterator it2 = vCoins.begin();
             while (it2 != vCoins.end()) {
                 // we have matching inputs
-                if ((*it2).tx->vout[(*it2).i].nValue == nValueDenom) {
+                if ((*it2).tx->tx->vout[(*it2).i].nValue == nValueDenom) {
                     // add new input in resulting vector
                     vecTxInRet.push_back(*it);
                     // remove corresponting items from initial vectors
@@ -1884,7 +1892,8 @@ bool CDarksendPool::MakeCollateralAmounts(const CompactTallyItem &tallyItem) {
     LogPrintf("CDarksendPool::MakeCollateralAmounts -- txid=%s\n", wtx.GetHash().GetHex());
 
     // use the same nCachedLastSuccessBlock as for DS mixinx to prevent race
-    if (!vpwallets.front()->CommitTransaction(wtx, reservekeyChange)) {
+    CValidationState state;
+    if (!vpwallets.front()->CommitTransaction(wtx, reservekeyChange, g_connman.get(), state)) {
         LogPrintf("CDarksendPool::MakeCollateralAmounts -- CommitTransaction failed!\n");
         return false;
     }
@@ -2023,8 +2032,8 @@ bool CDarksendPool::CreateDenominated(const CompactTallyItem &tallyItem, bool fC
 
     // TODO: keep reservekeyDenom here
     reservekeyCollateral.KeepKey();
-
-    if (!vpwallets.front()->CommitTransaction(wtx, reservekeyChange)) {
+    CValidationState state;
+    if (!vpwallets.front()->CommitTransaction(wtx, reservekeyChange, g_connman.get(), state)) {
         LogPrintf("CDarksendPool::CreateDenominated -- CommitTransaction failed!\n");
         return false;
     }
@@ -2317,7 +2326,8 @@ bool CDarkSendSigner::IsVinAssociatedWithPubkey(const CTxIn &txin, const CPubKey
 
     CTransaction tx;
     uint256 hash;
-    if (GetTransaction(txin.prevout.hash, tx, Params().GetConsensus(), hash, true)) {
+    CTransactionRef txRef(&tx);
+    if (GetTransaction(txin.prevout.hash, txRef, Params().GetConsensus(), hash, true)) {
         BOOST_FOREACH(CTxOut out, tx.vout)
         if (out.nValue == GHOSTNODE_COIN_REQUIRED * COIN && out.scriptPubKey == payee) return true;
     }
@@ -2408,12 +2418,14 @@ bool CDarksendQueue::CheckSignature(const CPubKey &pubKeyGhostnode) {
 }
 
 bool CDarksendQueue::Relay() {
-    std::vector < CNode * > vNodesCopy = CopyNodeVector();
+    std::vector < CNode * > vNodesCopy = g_connman->CopyNodeVector();
     BOOST_FOREACH(CNode * pnode, vNodesCopy)
-        if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION)
-            pnode->PushMessage(NetMsgType::DSQUEUE, (*this));
+        if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION){
+            const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+            g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSQUEUE, *this));
+    }
 
-    ReleaseNodeVector(vNodesCopy);
+    g_connman->ReleaseNodeVector(vNodesCopy);
     return true;
 }
 
@@ -2443,39 +2455,45 @@ bool CDarksendBroadcastTx::CheckSignature(const CPubKey &pubKeyGhostnode) {
 }
 
 void CDarksendPool::RelayFinalTransaction(const CTransaction &txFinal) {
-    LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode * pnode, vNodes)
-        if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION)
-            pnode->PushMessage(NetMsgType::DSFINALTX, nSessionID, txFinal);
+    LOCK(g_connman->cs_vNodes);
+    BOOST_FOREACH(CNode * pnode, g_connman->vNodes)
+        if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION){
+            const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+            g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSFINALTX, nSessionID, txFinal));
+        }
 }
 
 void CDarksendPool::RelayIn(const CDarkSendEntry &entry) {
     if (!pSubmittedToGhostnode) return;
 
-    CNode *pnode = FindNode(pSubmittedToGhostnode->addr);
+    CNode *pnode = g_connman->FindNode(pSubmittedToGhostnode->addr);
     if (pnode != NULL) {
         LogPrintf("CDarksendPool::RelayIn -- found master, relaying message to %s\n", pnode->addr.ToString());
-        pnode->PushMessage(NetMsgType::DSVIN, entry);
+        const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+        g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSVIN, entry));
     }
 }
 
 void CDarksendPool::PushStatus(CNode *pnode, PoolStatusUpdate nStatusUpdate, PoolMessage nMessageID) {
     if (!pnode) return;
-    pnode->PushMessage(NetMsgType::DSSTATUSUPDATE, nSessionID, (int) nState, (int) vecEntries.size(), (int) nStatusUpdate, (int) nMessageID);
+    const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+    g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSSTATUSUPDATE, nSessionID, (int) nState, (int) vecEntries.size(), (int) nStatusUpdate, (int) nMessageID));
 }
 
 void CDarksendPool::RelayStatus(PoolStatusUpdate nStatusUpdate, PoolMessage nMessageID) {
-    LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode * pnode, vNodes)
+    LOCK(g_connman->cs_vNodes);
+    BOOST_FOREACH(CNode * pnode, g_connman->vNodes)
         if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION)
             PushStatus(pnode, nStatusUpdate, nMessageID);
 }
 
 void CDarksendPool::RelayCompletedTransaction(PoolMessage nMessageID) {
-    LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode * pnode, vNodes)
-        if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION)
-            pnode->PushMessage(NetMsgType::DSCOMPLETE, nSessionID, (int) nMessageID);
+    LOCK(g_connman->cs_vNodes);
+    BOOST_FOREACH(CNode * pnode, g_connman->vNodes)
+        if (pnode->nVersion >= MIN_PRIVATESEND_PEER_PROTO_VERSION){
+            const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+            g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::DSCOMPLETE, nSessionID, (int) nMessageID));
+        }
 }
 
 void CDarksendPool::SetState(PoolState nStateNew) {

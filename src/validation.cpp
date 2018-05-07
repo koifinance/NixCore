@@ -94,15 +94,73 @@ int GetInputAge(const CTxIn &txin) {
         LOCK(mempool.cs);
         CCoinsViewMemPool viewMempool(pcoinsTip->getBase(), mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
-
         const Coin &coin = view.AccessCoin(txin.prevout);
-
-
         if (coin.nHeight <= 0) return 0;
-
         return chainActive.Height() - coin.nHeight + 1;
-
     }
+}
+
+int GetUTXOHeight(const COutPoint &outpoint) {
+    LOCK(cs_main);
+    Coin coin;
+    if (!pcoinsTip->GetCoin(outpoint, coin) ||
+        coin.out.IsNull()) {
+        return -1;
+    }
+    return coin.nHeight;
+}
+
+/*
+bool DisconnectBlocks(int blocks) {
+    LOCK(cs_main);
+
+    CValidationState state;
+    const CChainParams &chainparams = Params();
+
+    LogPrintf("DisconnectBlocks -- Got command to replay %d blocks\n", blocks);
+    for (int i = 0; i < blocks; i++) {
+        if (!DisconnectTip(state, chainparams) || !state.IsValid()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ReprocessBlocks(int nBlocks) {
+    LOCK(cs_main);
+
+    std::map<uint256, int64_t>::iterator it = mapRejectedBlocks.begin();
+    while (it != mapRejectedBlocks.end()) {
+        //use a window twice as large as is usual for the nBlocks we want to reset
+        if ((*it).second > GetTime() - (nBlocks * 60 * 5)) {
+            BlockMap::iterator mi = mapBlockIndex.find((*it).first);
+            if (mi != mapBlockIndex.end() && (*mi).second) {
+
+                CBlockIndex *pindex = (*mi).second;
+                LogPrintf("ReprocessBlocks -- %s\n", (*it).first.ToString());
+
+                CValidationState state;
+                ReconsiderBlock(state, pindex);
+            }
+        }
+        ++it;
+    }
+
+    DisconnectBlocks(nBlocks);
+
+    CValidationState state;
+    ActivateBestChain(state, Params());
+}
+*/
+
+bool GetUTXOCoin(const COutPoint& outpoint, Coin& coin)
+{
+    LOCK(cs_main);
+    if (!pcoinsTip->GetCoin(outpoint, coin))
+        return false;
+    if (coin.IsSpent())
+        return false;
+    return true;
 }
 
 /**

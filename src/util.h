@@ -52,6 +52,7 @@ extern int nWalletBackups;
 extern std::string strMiscWarning;
 extern bool fPrintToConsole;
 extern bool fPrintToDebugLog;
+extern bool fDebug;
 
 extern bool fLogTimestamps;
 extern bool fLogTimeMicros;

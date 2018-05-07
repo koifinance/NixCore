@@ -12,6 +12,7 @@
 #include "ghostnode-sync.h"
 #include "ghostnodeman.h"
 #include "util.h"
+#include "netbase.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -164,7 +165,7 @@ void CGhostnode::Check(bool fForce) {
     if (!fForce && (GetTime() - nTimeLastChecked < GHOSTNODE_CHECK_SECONDS)) return;
     nTimeLastChecked = GetTime();
 
-    LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state\n", vin.prevout.ToStringShort(), GetStateString());
+    LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state\n", vin.prevout.ToStringShort(), GetStateString());
 
     //once spent, stop doing the checks
     if (IsOutpointSpent()) return;
@@ -174,12 +175,12 @@ void CGhostnode::Check(bool fForce) {
         TRY_LOCK(cs_main, lockMain);
         if (!lockMain) return;
 
-        CCoins coins;
-        if (!pcoinsTip->GetCoins(vin.prevout.hash, coins) ||
-            (unsigned int) vin.prevout.n >= coins.vout.size() ||
-            coins.vout[vin.prevout.n].IsNull()) {
+        Coin coin;
+        if (!pcoinsTip->GetCoin(vin.prevout, coin) ||
+            /*(unsigned int) vin.prevout.n >= coin.out || */
+            coin.out.IsNull()) {
             nActiveState = GHOSTNODE_OUTPOINT_SPENT;
-            LogPrint("ghostnode", "CGhostnode::Check -- Failed to find Ghostnode UTXO, ghostnode=%s\n", vin.prevout.ToStringShort());
+            LogPrintf("ghostnode", "CGhostnode::Check -- Failed to find Ghostnode UTXO, ghostnode=%s\n", vin.prevout.ToStringShort());
             return;
         }
 
@@ -212,7 +213,7 @@ void CGhostnode::Check(bool fForce) {
     if (fRequireUpdate) {
         nActiveState = GHOSTNODE_UPDATE_REQUIRED;
         if (nActiveStatePrev != nActiveState) {
-            LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
+            LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
         }
         return;
     }
@@ -223,7 +224,7 @@ void CGhostnode::Check(bool fForce) {
     if (fWaitForPing && !fOurGhostnode) {
         // ...but if it was already expired before the initial check - return right away
         if (IsExpired() || IsWatchdogExpired() || IsNewStartRequired()) {
-            LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state, waiting for ping\n", vin.prevout.ToStringShort(), GetStateString());
+            LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state, waiting for ping\n", vin.prevout.ToStringShort(), GetStateString());
             return;
         }
     }
@@ -234,7 +235,7 @@ void CGhostnode::Check(bool fForce) {
         if (!IsPingedWithin(GHOSTNODE_NEW_START_REQUIRED_SECONDS)) {
             nActiveState = GHOSTNODE_NEW_START_REQUIRED;
             if (nActiveStatePrev != nActiveState) {
-                LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
+                LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -242,13 +243,13 @@ void CGhostnode::Check(bool fForce) {
         bool fWatchdogActive = ghostnodeSync.IsSynced() && mnodeman.IsWatchdogActive();
         bool fWatchdogExpired = (fWatchdogActive && ((GetTime() - nTimeLastWatchdogVote) > GHOSTNODE_WATCHDOG_MAX_SECONDS));
 
-//        LogPrint("ghostnode", "CGhostnode::Check -- outpoint=%s, nTimeLastWatchdogVote=%d, GetTime()=%d, fWatchdogExpired=%d\n",
+//        LogPrintf("ghostnode", "CGhostnode::Check -- outpoint=%s, nTimeLastWatchdogVote=%d, GetTime()=%d, fWatchdogExpired=%d\n",
 //                vin.prevout.ToStringShort(), nTimeLastWatchdogVote, GetTime(), fWatchdogExpired);
 
         if (fWatchdogExpired) {
             nActiveState = GHOSTNODE_WATCHDOG_EXPIRED;
             if (nActiveStatePrev != nActiveState) {
-                LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
+                LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -256,7 +257,7 @@ void CGhostnode::Check(bool fForce) {
         if (!IsPingedWithin(GHOSTNODE_EXPIRATION_SECONDS)) {
             nActiveState = GHOSTNODE_EXPIRED;
             if (nActiveStatePrev != nActiveState) {
-                LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
+                LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -265,14 +266,14 @@ void CGhostnode::Check(bool fForce) {
     if (lastPing.sigTime - sigTime < GHOSTNODE_MIN_MNP_SECONDS) {
         nActiveState = GHOSTNODE_PRE_ENABLED;
         if (nActiveStatePrev != nActiveState) {
-            LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
+            LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
         }
         return;
     }
 
     nActiveState = GHOSTNODE_ENABLED; // OK
     if (nActiveStatePrev != nActiveState) {
-        LogPrint("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
+        LogPrintf("ghostnode", "CGhostnode::Check -- Ghostnode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
     }
 }
 
@@ -398,7 +399,7 @@ void CGhostnode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanB
     const CBlockIndex *BlockReading = pindex;
 
     CScript mnpayee = GetScriptForDestination(pubKeyCollateralAddress.GetID());
-    LogPrint("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s\n", vin.prevout.ToStringShort());
+    LogPrintf("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s\n", vin.prevout.ToStringShort());
 
     LOCK(cs_mapGhostnodeBlocks);
 
@@ -415,13 +416,13 @@ void CGhostnode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanB
                 continue;
             }
 
-            CAmount nGhostnodePayment = GetGhostnodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
+            CAmount nGhostnodePayment = GetGhostnodePayment(BlockReading->nHeight, block.vtx[0]->GetValueOut());
 
-            BOOST_FOREACH(CTxOut txout, block.vtx[0].vout)
+            BOOST_FOREACH(CTxOut txout, block.vtx[0]->vout)
             if (mnpayee == txout.scriptPubKey && nGhostnodePayment == txout.nValue) {
                 nBlockLastPaid = BlockReading->nHeight;
                 nTimeLastPaid = BlockReading->nTime;
-                LogPrint("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
+                LogPrintf("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
                 return;
             }
         }
@@ -435,7 +436,7 @@ void CGhostnode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanB
 
     // Last payment for this ghostnode wasn't found in latest mnpayments blocks
     // or it was found in mnpayments blocks but wasn't found in the blockchain.
-    // LogPrint("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s -- keeping old %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
+    // LogPrintf("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s -- keeping old %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
 }
 
 bool CGhostnodeBroadcast::Create(std::string strService, std::string strKeyGhostnode, std::string strTxHash, std::string strOutputIndex, std::string &strErrorRet, CGhostnodeBroadcast &mnbRet, bool fOffline) {
@@ -459,34 +460,39 @@ bool CGhostnodeBroadcast::Create(std::string strService, std::string strKeyGhost
         return false;
     }
 
-    if (!pwalletMain->GetGhostnodeVinAndKeys(txin, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex)) {
+    if (!vpwallets.front()->GetGhostnodeVinAndKeys(txin, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex)) {
         strErrorRet = strprintf("Could not allocate txin %s:%s for ghostnode %s", strTxHash, strOutputIndex, strService);
         LogPrintf("CGhostnodeBroadcast::Create -- %s\n", strErrorRet);
         return false;
     }
 
-    CService service = CService(strService);
+
+    CService addr;
     int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
+    if (!Lookup(strService.c_str(), addr, mainnetDefaultPort, false)) {
+        return InitError(strprintf(_("CGhostnodeBroadcast Create(): Invalid ghostnode broadcast: '%s'"), strService));
+    }
+
     if (Params().NetworkIDString() == CBaseChainParams::MAIN) {
-        if (service.GetPort() != mainnetDefaultPort) {
-            strErrorRet = strprintf("Invalid port %u for ghostnode %s, only %d is supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort);
+        if (addr.GetPort() != mainnetDefaultPort) {
+            strErrorRet = strprintf("Invalid port %u for ghostnode %s, only %d is supported on mainnet.", addr.GetPort(), strService, mainnetDefaultPort);
             LogPrintf("CGhostnodeBroadcast::Create -- %s\n", strErrorRet);
             return false;
         }
-    } else if (service.GetPort() == mainnetDefaultPort) {
-        strErrorRet = strprintf("Invalid port %u for ghostnode %s, %d is the only supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort);
+    } else if (addr.GetPort() == mainnetDefaultPort) {
+        strErrorRet = strprintf("Invalid port %u for ghostnode %s, %d is the only supported on mainnet.", addr.GetPort(), strService, mainnetDefaultPort);
         LogPrintf("CGhostnodeBroadcast::Create -- %s\n", strErrorRet);
         return false;
     }
 
-    return Create(txin, CService(strService), keyCollateralAddressNew, pubKeyCollateralAddressNew, keyGhostnodeNew, pubKeyGhostnodeNew, strErrorRet, mnbRet);
+    return Create(txin, addr, keyCollateralAddressNew, pubKeyCollateralAddressNew, keyGhostnodeNew, pubKeyGhostnodeNew, strErrorRet, mnbRet);
 }
 
 bool CGhostnodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyGhostnodeNew, CPubKey pubKeyGhostnodeNew, std::string &strErrorRet, CGhostnodeBroadcast &mnbRet) {
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
 
-    LogPrint("ghostnode", "CGhostnodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyGhostnodeNew.GetID() = %s\n",
+    LogPrintf("ghostnode", "CGhostnodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyGhostnodeNew.GetID() = %s\n",
              CBitcoinAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
              pubKeyGhostnodeNew.GetID().ToString());
 
@@ -646,23 +652,33 @@ bool CGhostnodeBroadcast::CheckOutpoint(int &nDos) {
         TRY_LOCK(cs_main, lockMain);
         if (!lockMain) {
             // not mnb fault, let it to be checked again later
-            LogPrint("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Failed to aquire lock, addr=%s", addr.ToString());
+            LogPrintf("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Failed to aquire lock, addr=%s", addr.ToString());
             mnodeman.mapSeenGhostnodeBroadcast.erase(GetHash());
             return false;
         }
 
+        /*
         CCoins coins;
         if (!pcoinsTip->GetCoins(vin.prevout.hash, coins) ||
             (unsigned int) vin.prevout.n >= coins.vout.size() ||
             coins.vout[vin.prevout.n].IsNull()) {
-            LogPrint("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Failed to find Ghostnode UTXO, ghostnode=%s\n", vin.prevout.ToStringShort());
+            LogPrintf("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Failed to find Ghostnode UTXO, ghostnode=%s\n", vin.prevout.ToStringShort());
             return false;
         }
-        if (coins.vout[vin.prevout.n].nValue != GHOSTNODE_COIN_REQUIRED * COIN) {
-            LogPrint("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Ghostnode UTXO should have 25000 ZOI, ghostnode=%s\n", vin.prevout.ToStringShort());
+        */
+
+        Coin coin;
+        if (!pcoinsTip->GetCoin(vin.prevout, coin) ||
+            /*(unsigned int) vin.prevout.n >= coin.out || */
+            coin.out.IsNull()) {
+            LogPrintf("ghostnode", "CGhostnode::Check -- Failed to find Ghostnode UTXO, ghostnode=%s\n", vin.prevout.ToStringShort());
             return false;
         }
-        if (chainActive.Height() - coins.nHeight + 1 < Params().GetConsensus().nGhostnodeMinimumConfirmations) {
+        if (coin.out.nValue != GHOSTNODE_COIN_REQUIRED * COIN) {
+            LogPrintf("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Failed to find Ghostnode UTXO, ghostnode=%s\n", vin.prevout.ToStringShort());
+            return false;
+        }
+        if (chainActive.Height() - coin.nHeight + 1 < Params().GetConsensus().nGhostnodeMinimumConfirmations) {
             LogPrintf("CGhostnodeBroadcast::CheckOutpoint -- Ghostnode UTXO must have at least %d confirmations, ghostnode=%s\n",
                       Params().GetConsensus().nGhostnodeMinimumConfirmations, vin.prevout.ToStringShort());
             // maybe we miss few blocks, let this mnb to be checked again later
@@ -671,7 +687,7 @@ bool CGhostnodeBroadcast::CheckOutpoint(int &nDos) {
         }
     }
 
-    LogPrint("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Ghostnode UTXO verified\n");
+    LogPrintf("ghostnode", "CGhostnodeBroadcast::CheckOutpoint -- Ghostnode UTXO verified\n");
 
     // make sure the vout that was signed is related to the transaction that spawned the Ghostnode
     //  - this is expensive, so it's only done once per Ghostnode
@@ -684,7 +700,7 @@ bool CGhostnodeBroadcast::CheckOutpoint(int &nDos) {
     // verify that sig time is legit in past
     // should be at least not earlier than block when 25000 ZOI tx got nGhostnodeMinimumConfirmations
     uint256 hashBlock = uint256();
-    CTransaction tx2;
+    CTransactionRef tx2;
     GetTransaction(vin.prevout.hash, tx2, Params().GetConsensus(), hashBlock, true);
     {
         LOCK(cs_main);
@@ -735,7 +751,7 @@ bool CGhostnodeBroadcast::CheckSignature(int &nDos) {
                  pubKeyCollateralAddress.GetID().ToString() + pubKeyGhostnode.GetID().ToString() +
                  boost::lexical_cast<std::string>(nProtocolVersion);
 
-    LogPrint("ghostnode", "CGhostnodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", strMessage, CBitcoinAddress(pubKeyCollateralAddress.GetID()).ToString(), EncodeBase64(&vchSig[0], vchSig.size()));
+    LogPrintf("ghostnode", "CGhostnodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", strMessage, CBitcoinAddress(pubKeyCollateralAddress.GetID()).ToString(), EncodeBase64(&vchSig[0], vchSig.size()));
 
     if (!darkSendSigner.VerifyMessage(pubKeyCollateralAddress, vchSig, strMessage, strError)) {
         LogPrintf("CGhostnodeBroadcast::CheckSignature -- Got bad Ghostnode announce signature, error: %s\n", strError);
@@ -749,7 +765,7 @@ bool CGhostnodeBroadcast::CheckSignature(int &nDos) {
 void CGhostnodeBroadcast::RelayGhostNode() {
     LogPrintf("CGhostnodeBroadcast::RelayGhostNode\n");
     CInv inv(MSG_GHOSTNODE_ANNOUNCE, GetHash());
-    RelayInv(inv);
+    g_connman->RelayInv(inv);
 }
 
 CGhostnodePing::CGhostnodePing(CTxIn &vinNew) {
@@ -810,13 +826,13 @@ bool CGhostnodePing::SimpleCheck(int &nDos) {
         AssertLockHeld(cs_main);
         BlockMap::iterator mi = mapBlockIndex.find(blockHash);
         if (mi == mapBlockIndex.end()) {
-            LogPrint("ghostnode", "CGhostnodePing::SimpleCheck -- Ghostnode ping is invalid, unknown block hash: ghostnode=%s blockHash=%s\n", vin.prevout.ToStringShort(), blockHash.ToString());
+            LogPrintf("ghostnode", "CGhostnodePing::SimpleCheck -- Ghostnode ping is invalid, unknown block hash: ghostnode=%s blockHash=%s\n", vin.prevout.ToStringShort(), blockHash.ToString());
             // maybe we stuck or forked so we shouldn't ban this node, just fail to accept this ping
             // TODO: or should we also request this block?
             return false;
         }
     }
-    LogPrint("ghostnode", "CGhostnodePing::SimpleCheck -- Ghostnode ping verified: ghostnode=%s  blockHash=%s  sigTime=%d\n", vin.prevout.ToStringShort(), blockHash.ToString(), sigTime);
+    LogPrintf("ghostnode", "CGhostnodePing::SimpleCheck -- Ghostnode ping verified: ghostnode=%s  blockHash=%s  sigTime=%d\n", vin.prevout.ToStringShort(), blockHash.ToString(), sigTime);
     return true;
 }
 
@@ -829,18 +845,18 @@ bool CGhostnodePing::CheckAndUpdate(CGhostnode *pmn, bool fFromNewBroadcast, int
     }
 
     if (pmn == NULL) {
-        LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- Couldn't find Ghostnode entry, ghostnode=%s\n", vin.prevout.ToStringShort());
+        LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- Couldn't find Ghostnode entry, ghostnode=%s\n", vin.prevout.ToStringShort());
         return false;
     }
 
     if (!fFromNewBroadcast) {
         if (pmn->IsUpdateRequired()) {
-            LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- ghostnode protocol is outdated, ghostnode=%s\n", vin.prevout.ToStringShort());
+            LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- ghostnode protocol is outdated, ghostnode=%s\n", vin.prevout.ToStringShort());
             return false;
         }
 
         if (pmn->IsNewStartRequired()) {
-            LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- ghostnode is completely expired, new start is required, ghostnode=%s\n", vin.prevout.ToStringShort());
+            LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- ghostnode is completely expired, new start is required, ghostnode=%s\n", vin.prevout.ToStringShort());
             return false;
         }
     }
@@ -855,13 +871,13 @@ bool CGhostnodePing::CheckAndUpdate(CGhostnode *pmn, bool fFromNewBroadcast, int
         }
     }
 
-    LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- New ping: ghostnode=%s  blockHash=%s  sigTime=%d\n", vin.prevout.ToStringShort(), blockHash.ToString(), sigTime);
+    LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- New ping: ghostnode=%s  blockHash=%s  sigTime=%d\n", vin.prevout.ToStringShort(), blockHash.ToString(), sigTime);
 
     // LogPrintf("mnping - Found corresponding mn for vin: %s\n", vin.prevout.ToStringShort());
     // update only if there is no known ping for this ghostnode or
     // last ping was more then GHOSTNODE_MIN_MNP_SECONDS-60 ago comparing to this one
     if (pmn->IsPingedWithin(GHOSTNODE_MIN_MNP_SECONDS - 60, sigTime)) {
-        LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- Ghostnode ping arrived too early, ghostnode=%s\n", vin.prevout.ToStringShort());
+        LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- Ghostnode ping arrived too early, ghostnode=%s\n", vin.prevout.ToStringShort());
         //nDos = 1; //disable, this is happening frequently and causing banned peers
         return false;
     }
@@ -874,12 +890,12 @@ bool CGhostnodePing::CheckAndUpdate(CGhostnode *pmn, bool fFromNewBroadcast, int
     // (NOTE: assuming that GHOSTNODE_EXPIRATION_SECONDS/2 should be enough to finish mn list sync)
     if (!ghostnodeSync.IsGhostnodeListSynced() && !pmn->IsPingedWithin(GHOSTNODE_EXPIRATION_SECONDS / 2)) {
         // let's bump sync timeout
-        LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- bumping sync timeout, ghostnode=%s\n", vin.prevout.ToStringShort());
+        LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- bumping sync timeout, ghostnode=%s\n", vin.prevout.ToStringShort());
         ghostnodeSync.AddedGhostnodeList();
     }
 
     // let's store this ping as the last one
-    LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- Ghostnode ping accepted, ghostnode=%s\n", vin.prevout.ToStringShort());
+    LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- Ghostnode ping accepted, ghostnode=%s\n", vin.prevout.ToStringShort());
     pmn->lastPing = *this;
 
     // and update ghostnodeman.mapSeenGhostnodeBroadcast.lastPing which is probably outdated
@@ -892,7 +908,7 @@ bool CGhostnodePing::CheckAndUpdate(CGhostnode *pmn, bool fFromNewBroadcast, int
     pmn->Check(true); // force update, ignoring cache
     if (!pmn->IsEnabled()) return false;
 
-    LogPrint("ghostnode", "CGhostnodePing::CheckAndUpdate -- Ghostnode ping acceepted and relayed, ghostnode=%s\n", vin.prevout.ToStringShort());
+    LogPrintf("ghostnode", "CGhostnodePing::CheckAndUpdate -- Ghostnode ping acceepted and relayed, ghostnode=%s\n", vin.prevout.ToStringShort());
     Relay();
 
     return true;
@@ -900,49 +916,11 @@ bool CGhostnodePing::CheckAndUpdate(CGhostnode *pmn, bool fFromNewBroadcast, int
 
 void CGhostnodePing::Relay() {
     CInv inv(MSG_GHOSTNODE_PING, GetHash());
-    RelayInv(inv);
+    g_connman->RelayInv(inv);
 }
-
-//void CGhostnode::AddGovernanceVote(uint256 nGovernanceObjectHash)
-//{
-//    if(mapGovernanceObjectsVotedOn.count(nGovernanceObjectHash)) {
-//        mapGovernanceObjectsVotedOn[nGovernanceObjectHash]++;
-//    } else {
-//        mapGovernanceObjectsVotedOn.insert(std::make_pair(nGovernanceObjectHash, 1));
-//    }
-//}
-
-//void CGhostnode::RemoveGovernanceObject(uint256 nGovernanceObjectHash)
-//{
-//    std::map<uint256, int>::iterator it = mapGovernanceObjectsVotedOn.find(nGovernanceObjectHash);
-//    if(it == mapGovernanceObjectsVotedOn.end()) {
-//        return;
-//    }
-//    mapGovernanceObjectsVotedOn.erase(it);
-//}
 
 void CGhostnode::UpdateWatchdogVoteTime() {
     LOCK(cs);
     nTimeLastWatchdogVote = GetTime();
 }
 
-/**
-*   FLAG GOVERNANCE ITEMS AS DIRTY
-*
-*   - When ghostnode come and go on the network, we must flag the items they voted on to recalc it's cached flags
-*
-*/
-//void CGhostnode::FlagGovernanceItemsAsDirty()
-//{
-//    std::vector<uint256> vecDirty;
-//    {
-//        std::map<uint256, int>::iterator it = mapGovernanceObjectsVotedOn.begin();
-//        while(it != mapGovernanceObjectsVotedOn.end()) {
-//            vecDirty.push_back(it->first);
-//            ++it;
-//        }
-//    }
-//    for(size_t i = 0; i < vecDirty.size(); ++i) {
-//        ghostnodeman.AddDirtyGovernanceObjectHash(vecDirty[i]);
-//    }
-//}

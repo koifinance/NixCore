@@ -25,8 +25,8 @@ For more information, please visit [NixPlatform.io](https://nixplatform.io/nixpl
 
 ### Guides & Documentation
 
-* [White Paper](https://nixplatform.io/whitepaper)
-* [NIX Service Nodes](https://nixplatform.io/servicenodes)
+* [White Paper](https://nixplatform.io/docs/NIX-Platform-Whitepaper.pdf)
+* [NIX Ghost Nodes](https://nixplatform.io/ghostnodes)
 
 
 ### Links & Resources

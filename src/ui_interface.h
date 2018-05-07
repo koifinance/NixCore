@@ -111,6 +111,9 @@ public:
 
     /** Banlist did change. */
     boost::signals2::signal<void (void)> BannedListChanged;
+
+    /** Ghostnode sync data. */
+    boost::signals2::signal<void (int count, double nSyncProgress)> NotifyAdditionalDataSyncProgressChanged;
 };
 
 /** Show warning message **/

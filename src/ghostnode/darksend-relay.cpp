@@ -5,6 +5,7 @@
 
 #include "darksend.h"
 #include "darksend-relay.h"
+#include "netmessagemaker.h"
 
 
 CDarkSendRelay::CDarkSendRelay()
@@ -108,10 +109,11 @@ void CDarkSendRelay::RelayThroughNode(int nRank)
 
     if(pmn != NULL){
         //printf("RelayThroughNode %s\n", pmn->addr.ToString().c_str());
-        CNode* pnode = ConnectNode((CAddress)pmn->addr, NULL);
+        CNode* pnode = g_connman->ConnectNode(CAddress(pmn->addr, NODE_NETWORK), NULL, false, false);
         if(pnode) {
             //printf("Connected\n");
-            pnode->PushMessage("dsr", (*this));
+            const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+            g_connman->PushMessage(pnode, msgMaker.Make("dsr", (*this)));
             return;
         }
     } else {
