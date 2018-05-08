@@ -3692,9 +3692,9 @@ UniValue spendzerocoin(const JSONRPCRequest& request) {
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    if (request.fHelp || request.params.size() > 1)
+    if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
-                "spendzerocoin <amount>(1,5,10,50,100,500,1000,5000)\n"
+                "spendzerocoin <amount>(1,5,10,50,100,500,1000,5000) <spendtoaddress>(optional) \n"
                 + HelpRequiringPassphrase(pwalletMain));
 
 
@@ -3726,7 +3726,19 @@ UniValue spendzerocoin(const JSONRPCRequest& request) {
         denomination = libzerocoin::ZQ_FIVE_THOUSAND;
         nAmount = AmountFromValue(request.params[0]);
     } else {
-        throw runtime_error("spendzerocoin <amount>(1,5,10,50,100,500,1000,5000)\n");
+        throw runtime_error("spendzerocoin <amount>(1,5,10,50,100,500,1000,5000) <spendtoaddress>(optional)\n");
+    }
+
+    CBitcoinAddress address = NULL;
+    string toKey = "";
+    if (request.params.size() > 1){
+        // Address
+        toKey = request.params[1].get_str();
+        address = CBitcoinAddress(request.params[1].get_str());
+
+        if(!IsStealthAddress(toKey))
+            if (!address.IsValid())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "rpcwallet spendzerocoin(): Invalid toKey address");
     }
 
     if (pwalletMain->IsLocked())
@@ -3740,7 +3752,7 @@ UniValue spendzerocoin(const JSONRPCRequest& request) {
     CBigNum zcSelectedValue;
     bool zcSelectedIsUsed;
 
-    string strError = pwalletMain->SpendZerocoin(nAmount, denomination, wtx, coinSerial, txHash, zcSelectedValue,
+    string strError = pwalletMain->SpendZerocoin(toKey, nAmount, denomination, wtx, coinSerial, txHash, zcSelectedValue,
                                                  zcSelectedIsUsed);
 
     if (strError != "")

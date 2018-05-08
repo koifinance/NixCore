@@ -384,10 +384,11 @@ bool ExtractStealthPrefix(const char *pPrefix, uint32_t &nPrefix)
     return true;
 };
 
-/*
+
 int MakeStealthData(const std::string &sNarration, stealth_prefix prefix, const CKey &sShared, const CPubKey &pkEphem,
     std::vector<uint8_t> &vData, uint32_t &nStealthPrefix, std::string &sError)
 {
+    /*
     std::vector<uint8_t> vchNarr;
     if (sNarration.length() > 0)
     {
@@ -424,10 +425,10 @@ int MakeStealthData(const std::string &sNarration, stealth_prefix prefix, const 
         memcpy(&vData[o], &vchNarr[0], vchNarr.size());
         o += vchNarr.size();
     };
-
+    */
     return 0;
 };
-*/
+
 int PrepareStealthOutput(const CStealthAddress &sx, const std::string &sNarration,
     CScript &scriptPubKey, std::vector<uint8_t> &vData, std::string &sError)
 {
