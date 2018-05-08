@@ -651,7 +651,8 @@ void CDarksendPool::CommitFinalTransaction() {
 
     // create and sign ghostnode dstx transaction
     if (!mapDarksendBroadcastTxes.count(hashTx)) {
-        CDarksendBroadcastTx dstx(finalTransaction, activeGhostnode.vin, GetAdjustedTime());
+        CTransactionRef tempRef(&finalTransaction);
+        CDarksendBroadcastTx dstx(tempRef, activeGhostnode.vin, GetAdjustedTime());
         dstx.Sign();
         mapDarksendBroadcastTxes.insert(std::make_pair(hashTx, dstx));
     }
@@ -2432,7 +2433,7 @@ bool CDarksendQueue::Relay() {
 bool CDarksendBroadcastTx::Sign() {
     if (!fGhostNode) return false;
 
-    std::string strMessage = tx.GetHash().ToString() + boost::lexical_cast<std::string>(sigTime);
+    std::string strMessage = tx->GetHash().ToString() + boost::lexical_cast<std::string>(sigTime);
 
     if (!darkSendSigner.SignMessage(strMessage, vchSig, activeGhostnode.keyGhostnode)) {
         LogPrintf("CDarksendBroadcastTx::Sign -- SignMessage() failed\n");
@@ -2443,7 +2444,7 @@ bool CDarksendBroadcastTx::Sign() {
 }
 
 bool CDarksendBroadcastTx::CheckSignature(const CPubKey &pubKeyGhostnode) {
-    std::string strMessage = tx.GetHash().ToString() + boost::lexical_cast<std::string>(sigTime);
+    std::string strMessage = tx->GetHash().ToString() + boost::lexical_cast<std::string>(sigTime);
     std::string strError = "";
 
     if (!darkSendSigner.VerifyMessage(pubKeyGhostnode, vchSig, strMessage, strError)) {

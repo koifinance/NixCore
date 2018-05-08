@@ -108,7 +108,7 @@ public:
     void SyncTransaction(const CTransaction& tx, const CBlock* pblock);
 };
 
-class CTxLockRequest : public CTransaction
+class CTxLockRequest : public CMutableTransaction
 {
 private:
     static const int TIMEOUT_SECONDS        = 5 * 60;
@@ -120,11 +120,11 @@ public:
     static const int WARN_MANY_INPUTS       = 100;
 
     CTxLockRequest() :
-        CTransaction(),
+        CMutableTransaction(),
         nTimeCreated(GetTime())
         {}
     CTxLockRequest(const CTransaction& tx) :
-        CTransaction(tx),
+        CMutableTransaction(tx),
         nTimeCreated(GetTime())
         {}
 

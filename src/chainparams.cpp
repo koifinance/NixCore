@@ -143,8 +143,8 @@ public:
         vSeeds.emplace_back("sf.nixplatform.io");
         vSeeds.emplace_back("ldn.nixplatform.io");
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,53);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,1);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
@@ -164,7 +164,7 @@ public:
         bech32Prefixes[SECRET_KEY].assign           ("nx","nx"+2);
         bech32Prefixes[EXT_PUBLIC_KEY].assign       ("nen","nen"+3);
         bech32Prefixes[EXT_SECRET_KEY].assign       ("nex","nex"+3);
-        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ps"+2);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ng","ng"+2);
         bech32Prefixes[EXT_KEY_HASH].assign         ("nek","nek"+3);
         bech32Prefixes[EXT_ACC_HASH].assign         ("nea","nea"+3);
 

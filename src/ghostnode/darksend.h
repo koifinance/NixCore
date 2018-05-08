@@ -203,19 +203,19 @@ public:
 class CDarksendBroadcastTx
 {
 public:
-    CTransaction tx;
+    CTransactionRef tx;
     CTxIn vin;
     std::vector<unsigned char> vchSig;
     int64_t sigTime;
 
     CDarksendBroadcastTx() :
-        tx(CTransaction()),
+        tx(MakeTransactionRef()),
         vin(CTxIn()),
         vchSig(std::vector<unsigned char>()),
         sigTime(0)
         {}
 
-    CDarksendBroadcastTx(CTransaction tx, CTxIn vin, int64_t sigTime) :
+    CDarksendBroadcastTx(CTransactionRef tx, CTxIn vin, int64_t sigTime) :
         tx(tx),
         vin(vin),
         vchSig(std::vector<unsigned char>()),

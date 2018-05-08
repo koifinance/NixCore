@@ -1276,7 +1276,8 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                     if(instantsend.GetTxLockRequest(inv.hash, txLockRequest)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << txLockRequest;
+                        txLockRequest.Serialize(ss);
+                        //ss << txLockRequest;
                         const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
                         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::TXLOCKREQUEST, ss));
                         pushed = true;
@@ -2294,16 +2295,14 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         if(strCommand == NetMsgType::TX) {
             vRecv >> ptx;
         } else if(strCommand == NetMsgType::TXLOCKREQUEST) {
-            vRecv >> txLockRequest;
-            CTransaction temp = txLockRequest;
-            CTransactionRef tempRef(&temp);
-            ptx = tempRef;
+            txLockRequest.Unserialize(vRecv);
+            CTransaction tempTX(txLockRequest);
+            CTransactionRef temp(&tempTX);
+            ptx = temp;
             nInvType = MSG_TXLOCK_REQUEST;
         } else if (strCommand == NetMsgType::DSTX) {
             vRecv >> dstx;
-            CTransaction temp = (dstx.tx);
-            CTransactionRef tempRef(&temp);
-            ptx = tempRef;
+            ptx = dstx.tx;
             nInvType = MSG_DSTX;
         }
 
