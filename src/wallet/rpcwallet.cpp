@@ -4459,16 +4459,16 @@ static const CRPCCommand commands[] =
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
     // NIX ghost functions
-    { "NIX Ghost",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
-    { "NIX Ghost",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
-    { "NIX Ghost",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
-    { "NIX Ghost",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
-    { "NIX Ghost",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
-    { "NIX Ghost",             "listmintzerocoins",        &listmintzerocoins,        {} },
-    { "NIX Ghost",             "listpubcoins",             &listpubcoins,             {} },
-    { "NIX Ghost",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
-    { "NIX Ghost",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
-    { "NIX Ghost",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
+    { "NIX Ghost Protocol",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
+    { "NIX Ghost Protocol",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
+    { "NIX Ghost Protocol",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
+    { "NIX Ghost Protocol",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
+    { "NIX Ghost Protocol",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
+    { "NIX Ghost Protocol",             "listmintzerocoins",        &listmintzerocoins,        {} },
+    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
+    { "NIX Ghost Protocol",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
+    { "NIX Ghost Protocol",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
+    { "NIX Ghost Protocol",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
 
 
     //NIX TOR routing functions
