@@ -138,6 +138,8 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x08c5e972b54a741384839612b104c3085161cc86c9f49ec2c79a9caa2072f117"));
         assert(genesis.hashMerkleRoot == uint256S("0xb112aed2be4b9d02a1d6a1465fa1416bb0e5a907e1ea21d08ee2469a1146eaaa"));
 
+        //To test, test.nix.io
+        vSeeds.emplace_back("165.227.221.45");
 
         vSeeds.emplace_back("ny.nixplatform.io");
         vSeeds.emplace_back("sf.nixplatform.io");
