@@ -5071,7 +5071,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
 
             CScript scriptChange;
 
-            //On empty key input, creates and send to stealthkey default
+            //On empty key input, creates and send to stealthkey default - UI should require toKey input
             if(toKey == ""){
                 CEKAStealthKey akStealth;
                 if (0 != this->NewStealthKeyFromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32)){
@@ -5080,8 +5080,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
                 }
                 CStealthAddress sxAddr;
                 akStealth.SetSxAddr(sxAddr);
-                scriptChange = GetScriptForDestination(sxAddr.GetSpendKeyID());
-
+                scriptChange = GetScriptForDestination(sxAddr);
                 // Reserve a new key pair from key pool
                 //CPubKey vchPubKey;
                 //assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
@@ -5089,7 +5088,8 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
             }
             //Check if output key is a stealth address
             else if(IsStealthAddress(toKey)){
-                //TODO: send to stealth address input
+                CTxDestination sxAddr = DecodeDestination(toKey);
+                scriptChange = GetScriptForDestination(sxAddr);
             }
             //If not, send to normal address
             else
