@@ -111,7 +111,7 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 2; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
+        consensus.nGhostnodePaymentsStartBlock = 720; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -236,7 +236,7 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000002e9e7b00e1f6dc5123a04aad68dd0f0968d8c7aa45f6640795c37b1"); //1135275
 
-        consensus.nGhostnodePaymentsStartBlock = 2;
+        consensus.nGhostnodePaymentsStartBlock = 720;
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 
@@ -345,6 +345,18 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = Consensus::BIP9Deployment::ALWAYS_ACTIVE;
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
 
+
+        // ghostnode params
+        consensus.nGhostnodePaymentsStartBlock = 720; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
+
+        nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
+
+        nPoolMaxTransactions = 3;
+        nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
+        strSporkPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
+        strGhostnodePaymentsPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
+
+
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
 
@@ -409,15 +421,15 @@ public:
             0
         };
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,53);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,1);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
 
         base58Prefixes[PUBKEY_ADDRESS_256] = {0x39};
         base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
-        base58Prefixes[STEALTH_ADDRESS]    = {0x14};
+        base58Prefixes[STEALTH_ADDRESS]    = {0x0c}; // G
         base58Prefixes[EXT_KEY_HASH]       = {0x4b}; // X
         base58Prefixes[EXT_ACC_HASH]       = {0x17}; // A
         base58Prefixes[EXT_PUBLIC_KEY_BTC] = {0x04, 0x88, 0xB2, 0x1E}; // xpub
@@ -430,7 +442,7 @@ public:
         bech32Prefixes[SECRET_KEY].assign           ("nx","nx"+2);
         bech32Prefixes[EXT_PUBLIC_KEY].assign       ("nen","nen"+3);
         bech32Prefixes[EXT_SECRET_KEY].assign       ("nex","nex"+3);
-        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ps"+2);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ng","ng"+2);
         bech32Prefixes[EXT_KEY_HASH].assign         ("nek","nek"+3);
         bech32Prefixes[EXT_ACC_HASH].assign         ("nea","nea"+3);
 

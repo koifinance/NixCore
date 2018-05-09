@@ -4,6 +4,7 @@ addressindex.cpp
 addressindex.h
 addrman.cpp
 addrman.h
+airdropaddresses.h
 amount.h
 arith_uint256.cpp
 arith_uint256.h
@@ -32,6 +33,7 @@ coins.h
 compat.h
 compressor.cpp
 compressor.h
+consensus/airdropaddresses.h
 core_io.h
 core_memusage.h
 core_read.cpp

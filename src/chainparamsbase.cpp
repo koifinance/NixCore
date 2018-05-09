@@ -66,6 +66,8 @@ static std::unique_ptr<CBaseChainParams> globalChainBaseParams;
 
 const CBaseChainParams& BaseParams()
 {
+    if(!globalChainBaseParams)
+        SelectBaseParams(ChainNameFromCommandLine());
     assert(globalChainBaseParams);
     return *globalChainBaseParams;
 }

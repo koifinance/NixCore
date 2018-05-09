@@ -34,6 +34,8 @@
 #include "ghostnode/ghostnode-payments.h"
 #include "ghostnode/ghostnode-sync.h"
 
+#include "consensus/airdropaddresses.h"
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // BitcoinMiner
@@ -137,6 +139,35 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
+    // To airdrop
+    if (nHeight == 1) {
+
+        //Split 38m into 1000 unique addresses for faster tx processing
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/1000;
+        //Subtract 38m from block
+        coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+
+        CScript AIRDROP_SCRIPT;
+        std::string addresses;
+
+        //Draw from mainnet addresses
+        if (!fTestNet) {
+            for(int i = 0; i < 1000; i++){
+                addresses = airdrop_addresses[i];
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+            }
+        }
+        //Draw from testnet addresses
+        else{
+            for(int i = 0; i < 1000; i++){
+                addresses = airdrop_addresses[i];
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+            }
+        }
+    }
+
     // To devs
     if (nHeight >= 2) {
 
@@ -159,8 +190,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         coinbaseTx.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_1_SCRIPT.begin(), FOUNDER_1_SCRIPT.end())));
         coinbaseTx.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_2_SCRIPT.begin(), FOUNDER_2_SCRIPT.end())));
     }
-
-    CAmount blockReward = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
     if (nHeight >= chainparams.GetConsensus().nGhostnodePaymentsStartBlock) {
         CAmount ghostnodePayment = GetGhostnodePayment(nHeight, blockReward);

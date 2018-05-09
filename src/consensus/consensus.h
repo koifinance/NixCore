@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <amount.h>
 
 /** The maximum allowed size for a serialized block, in bytes (only for buffer size limits) */
 static const unsigned int MAX_BLOCK_SERIALIZED_SIZE = 4000000;
@@ -19,9 +20,9 @@ static const int64_t MAX_BLOCK_SIGOPS_COST = 80000;
 static const int COINBASE_MATURITY = 500;
 
 /** Ghostnode block percent */
-static const int64_t GHOSTNODE_REWARD = 0.28;
+static const double GHOSTNODE_REWARD = 0.28;
 /** Development block percent */
-static const int64_t DEVELOPMENT_REWARD = 0.07;
+static const double DEVELOPMENT_REWARD = 0.07;
 
 static const int WITNESS_SCALE_FACTOR = 4;
 

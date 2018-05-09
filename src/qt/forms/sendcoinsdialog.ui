@@ -1269,7 +1269,7 @@
   <customwidget>
    <class>BitcoinAmountField</class>
    <extends>QLineEdit</extends>
-   <header>qt/bitcoinamountfield.h</header>
+   <header>qt/nixamountfield.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
