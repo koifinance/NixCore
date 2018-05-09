@@ -131,15 +131,16 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     assert(pindexPrev != nullptr);
     nHeight = pindexPrev->nHeight + 1;
 
+    CAmount blockReward = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    coinbaseTx.vout[0].nValue = blockReward;
 
-    CAmount blockReward = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
     // To airdrop
     if (nHeight == 1) {
@@ -148,14 +149,14 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/1000;
         //Subtract 38m from block
         coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-
         CScript AIRDROP_SCRIPT;
         std::string addresses;
 
+        buildMapAirdropAddresses();
         //Draw from mainnet addresses
         if (!fTestNet) {
             for(int i = 0; i < 1000; i++){
-                addresses = airdrop_addresses[i];
+                addresses = mapAirdropAddresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
                 coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
@@ -163,7 +164,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         //Draw from testnet addresses
         else{
             for(int i = 0; i < 1000; i++){
-                addresses = airdrop_addresses[i];
+                addresses = mapAirdropAddresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
                 coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
@@ -175,29 +176,31 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
         coinbaseTx.vout[0].nValue -= DEVELOPMENT_REWARD * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
-        CScript FOUNDER_1_SCRIPT;
-        CScript FOUNDER_2_SCRIPT;
+        CScript DEV_1_SCRIPT;
+        CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8"));
-            FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ"));
 
         }
         else {
-            FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
-            FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
         }
 
         // And give it to the dev fund
-        coinbaseTx.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_1_SCRIPT.begin(), FOUNDER_1_SCRIPT.end())));
-        coinbaseTx.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(FOUNDER_2_SCRIPT.begin(), FOUNDER_2_SCRIPT.end())));
+        coinbaseTx.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+        coinbaseTx.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
     }
+
 
     if (nHeight >= chainparams.GetConsensus().nGhostnodePaymentsStartBlock) {
         CAmount ghostnodePayment = GetGhostnodePayment(nHeight, blockReward);
         coinbaseTx.vout[0].nValue -= ghostnodePayment;
         FillBlockPayments(coinbaseTx, nHeight, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
+
 
     // Add dummy coinbase tx as first transaction
     pblock->vtx.emplace_back();

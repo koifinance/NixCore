@@ -252,7 +252,6 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-
     // To airdrop
     if (nHeight == 1) {
 
@@ -265,8 +264,9 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript AIRDROP_SCRIPT;
         std::string addresses;
 
+        buildMapAirdropAddresses();
         for(int i = 0; i < 1000; i++){
-            addresses = airdrop_addresses[i];
+            addresses = mapAirdropAddresses[i];
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
@@ -286,25 +286,25 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         bool found_1 = false;
         bool found_2 = false;
 
-        CScript FOUNDER_1_SCRIPT;
-        CScript FOUNDER_2_SCRIPT;
+        CScript DEV_1_SCRIPT;
+        CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8"));
-            FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ"));
         }
         else {
-            FOUNDER_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
-            FOUNDER_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
         }
         //7% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
             //5% for first address
-            if (output.scriptPubKey == FOUNDER_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
             //2% for second address
-            if (output.scriptPubKey == FOUNDER_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_2 = true;
             }
         }

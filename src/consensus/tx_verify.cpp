@@ -222,7 +222,6 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
     for (unsigned int i = 0; i < tx.vin.size(); ++i) {
         const COutPoint &prevout = tx.vin[i].prevout;
         const Coin& coin = inputs.AccessCoin(prevout);
-        LogPrintf("CHECKTX: %s, %d \n", CBitcoinAddress(tx.vout[i].scriptPubKey).ToString(), tx.vout[i].nValue);
         assert(!coin.IsSpent());
 
         // If prev is coinbase, check that it's matured

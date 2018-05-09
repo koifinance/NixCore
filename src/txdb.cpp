@@ -293,9 +293,9 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
                 pindexNew->nTx            = diskindex.nTx;
 
                 //zerocoin
-                //pindexNew->mapZerocoinSupply = diskindex.mapZerocoinSupply;
-                //pindexNew->vMintDenominationsInBlock = diskindex.vMintDenominationsInBlock;
-
+                pindexNew->accumulatorChanges = diskindex.accumulatorChanges;
+                pindexNew->mintedPubCoins     = diskindex.mintedPubCoins;
+                pindexNew->spentSerials       = diskindex.spentSerials;
 
                 if (!CheckProofOfWork(pindexNew->GetBlockPoWHash(), pindexNew->nBits, consensusParams))
                     return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());

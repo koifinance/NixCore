@@ -3,6 +3,7 @@
 
 #endif // AIRDROPADDRESSES_H
 
+static map<int, std::string> mapAirdropAddresses;
 
 const char * airdrop_addresses[1002] = {
 
@@ -1010,3 +1011,8 @@ const char * airdrop_addresses[1002] = {
 
 };
 
+void buildMapAirdropAddresses() {
+    for (int i=0; i<1000; i++) {
+        mapAirdropAddresses.insert(make_pair(i, (airdrop_addresses[i])));
+    }
+};

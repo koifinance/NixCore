@@ -88,6 +88,7 @@ CAmount GetGhostnodePayment(int nHeight, CAmount blockValue) {
 
 
 int GetInputAge(const CTxIn &txin) {
+    LogPrintf("\n GETINPUT \n");
     CCoinsView viewDummy;
     CCoinsViewCache view(&viewDummy);
     {
@@ -101,6 +102,7 @@ int GetInputAge(const CTxIn &txin) {
 }
 
 int GetUTXOHeight(const COutPoint &outpoint) {
+        LogPrintf("\n GETUTXO \n");
     LOCK(cs_main);
     Coin coin;
     if (!pcoinsTip->GetCoin(outpoint, coin) ||
@@ -155,6 +157,7 @@ void ReprocessBlocks(int nBlocks) {
 
 bool GetUTXOCoin(const COutPoint& outpoint, Coin& coin)
 {
+        LogPrintf("\n GETUTXOCOIN \n");
     LOCK(cs_main);
     if (!pcoinsTip->GetCoin(outpoint, coin))
         return false;
@@ -629,7 +632,7 @@ static bool CheckInputsFromMempoolAndCache(const CTransaction& tx, CValidationSt
     // and when we actually call through to CheckInputs
     LOCK(pool.cs);
 
-    assert(!tx.IsCoinBase() || !tx.IsZerocoinSpend());
+    assert(!tx.IsCoinBase() && !tx.IsZerocoinSpend());
     for (const CTxIn& txin : tx.vin) {
         const Coin& coin = view.AccessCoin(txin.prevout);
 
@@ -1436,7 +1439,7 @@ void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState 
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight)
 {
     // mark inputs spent
-    if (!tx.IsCoinBase() || !tx.IsZerocoinSpend()) {
+    if (!tx.IsCoinBase() && !tx.IsZerocoinSpend()) {
         txundo.vprevout.reserve(tx.vin.size());
         for (const CTxIn &txin : tx.vin) {
             txundo.vprevout.emplace_back();
@@ -1496,7 +1499,7 @@ void InitScriptExecutionCache() {
  */
 bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks)
 {
-    if (!tx.IsCoinBase() || !tx.IsZerocoinSpend())
+    if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
     {
         if (pvChecks)
             pvChecks->reserve(tx.vin.size());
@@ -2050,7 +2053,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
         nInputs += tx.vin.size();
 
-        if (!tx.IsCoinBase() || !tx.IsZerocoinSpend())
+        if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
         {
             CAmount txfee = 0;
             if (!Consensus::CheckTxInputs(tx, state, view, pindex->nHeight, txfee)) {
@@ -2086,7 +2089,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                              REJECT_INVALID, "bad-blk-sigops");
 
         txdata.emplace_back(tx);
-        if (!tx.IsCoinBase() || !tx.IsZerocoinSpend())
+        if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
         {
             std::vector<CScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
