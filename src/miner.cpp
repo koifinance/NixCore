@@ -34,8 +34,6 @@
 #include "ghostnode/ghostnode-payments.h"
 #include "ghostnode/ghostnode-sync.h"
 
-#include "consensus/airdropaddresses.h"
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // BitcoinMiner
