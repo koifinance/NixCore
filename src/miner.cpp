@@ -152,11 +152,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CScript AIRDROP_SCRIPT;
         std::string addresses;
 
-        buildMapAirdropAddresses();
         //Draw from mainnet addresses
         if (!fTestNet) {
             for(int i = 0; i < 1000; i++){
-                addresses = mapAirdropAddresses[i];
+                addresses = airdrop_addresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
                 coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
