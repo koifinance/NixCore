@@ -33,7 +33,7 @@
 #include <assert.h>
 #include <future>
 #include <rpc/protocol.h>
-#include "ghostnode/activeghostnode.cpp"
+#include "ghostnode/activeghostnode.h"
 #include "ghostnode/darksend.h"
 #include "ghostnode/instantx.h"
 #include "ghostnode/ghostnode.h"
