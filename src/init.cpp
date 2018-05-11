@@ -122,14 +122,12 @@ namespace fs = boost::filesystem;
 extern const char tor_git_revision[];
 const char tor_git_revision[] = "";
 
-#if defined (__cplusplus)
+
 extern "C" {
-#endif
     int tor_main(int argc, char *argv[]);
     void tor_cleanup(void);
-#if defined (__cplusplus)
 }
-#endif
+
 
 static char *convert_str(const std::string &s) {
     char *pc = new char[s.size()+1];
