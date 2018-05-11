@@ -210,9 +210,9 @@ bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
     //
     //    Cannot handle this later, because bitcoin:// will cause Qt to see the part after // as host,
     //    which will lower-case it (and thus invalidate the address).
-    if(uri.startsWith("NIX://", Qt::CaseInsensitive))
+    if(uri.startsWith("nix://", Qt::CaseInsensitive))
     {
-        uri.replace(0, 10, "NIX:");
+        uri.replace(0, 10, "nix:");
     }
     QUrl uriInstance(uri);
     return parseBitcoinURI(uriInstance, out);
@@ -220,7 +220,7 @@ bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 
 QString formatBitcoinURI(const SendCoinsRecipient &info)
 {
-    QString ret = QString("NIX:%1").arg(info.address);
+    QString ret = QString("nix:%1").arg(info.address);
     int paramCount = 0;
 
     if (info.amount)
@@ -615,15 +615,15 @@ fs::path static StartupShortcutPath()
 {
     std::string chain = ChainNameFromCommandLine();
     if (chain == CBaseChainParams::MAIN)
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "NIX.lnk";
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "nix.lnk";
     if (chain == CBaseChainParams::TESTNET) // Remove this special case when CBaseChainParams::TESTNET = "testnet4"
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "NIX (testnet).lnk";
-    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("NIX (%s).lnk", chain);
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "nix (testnet).lnk";
+    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("nix (%s).lnk", chain);
 }
 
 bool GetStartOnSystemStartup()
 {
-    // check for NIX*.lnk
+    // check for nix*.lnk
     return fs::exists(StartupShortcutPath());
 }
 
@@ -713,8 +713,8 @@ fs::path static GetAutostartFilePath()
 {
     std::string chain = ChainNameFromCommandLine();
     if (chain == CBaseChainParams::MAIN)
-        return GetAutostartDir() / "NIX.desktop";
-    return GetAutostartDir() / strprintf("NIX-%s.lnk", chain);
+        return GetAutostartDir() / "nix.desktop";
+    return GetAutostartDir() / strprintf("nix-%s.lnk", chain);
 }
 
 bool GetStartOnSystemStartup()
@@ -758,9 +758,9 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
         if (chain == CBaseChainParams::MAIN)
-            optionFile << "Name=NIX\n";
+            optionFile << "Name=nix\n";
         else
-            optionFile << strprintf("Name=NIX (%s)\n", chain);
+            optionFile << strprintf("Name=nix (%s)\n", chain);
         optionFile << "Exec=" << pszExePath << strprintf(" -min -testnet=%d -regtest=%d\n", gArgs.GetBoolArg("-testnet", false), gArgs.GetBoolArg("-regtest", false));
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";
