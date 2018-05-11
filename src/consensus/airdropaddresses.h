@@ -1,11 +1,7 @@
 #ifndef AIRDROPADDRESSES_H
 #define AIRDROPADDRESSES_H
 
-#endif // AIRDROPADDRESSES_H
-
-static map<int, std::string> mapAirdropAddresses;
-
-const char * airdrop_addresses[1002] = {
+static const char * airdrop_addresses[1002] = {
 
     "NU1ALnzFkgfFs4YpBS9vqMD9kXCShP9Lqb",
     "NWyyobaRNWBbsukKyUj9SVuSNkYndGK6zp",
@@ -1011,8 +1007,5 @@ const char * airdrop_addresses[1002] = {
 
 };
 
-void buildMapAirdropAddresses() {
-    for (int i=0; i<1000; i++) {
-        mapAirdropAddresses.insert(make_pair(i, (airdrop_addresses[i])));
-    }
-};
+
+#endif // AIRDROPADDRESSES_H

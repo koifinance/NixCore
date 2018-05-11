@@ -903,7 +903,8 @@ void RunTor(){
     std::transform(argv.begin(), argv.end(), std::back_inserter(argv_c),
             convert_str);
 
-    tor_main(argv_c.size(), &argv_c[0]);
+    //TODO: linking error for linux&windows, order in makefile
+    //tor_main(argv_c.size(), &argv_c[0]);
 
 }
 

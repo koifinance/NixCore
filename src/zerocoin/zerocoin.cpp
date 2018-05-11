@@ -264,9 +264,8 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript AIRDROP_SCRIPT;
         std::string addresses;
 
-        buildMapAirdropAddresses();
         for(int i = 0; i < 1000; i++){
-            addresses = mapAirdropAddresses[i];
+            addresses = airdrop_addresses[i];
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
@@ -290,8 +289,8 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("ZEQHowk7caz2DDuDsoGwcg3VeF3rvk28V8"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("ZMcH1qLoiGgsPFqA9BAfdb5UVvLfkejhAZ"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NgfWM4nPF8CsgcFdWz11M5ciUji1auwxVc"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NfV4EArGZb8DTtNTHSV9f1mZbW6ZCcZ24Y"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
