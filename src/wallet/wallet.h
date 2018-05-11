@@ -249,8 +249,7 @@ public:
     bool InMempool() const;
     bool IsTrusted() const;
 
-    bool IsCoinBase() const {return false;};
-    bool IsCoinStake() const {return false;};
+    bool IsCoinBase() const {return false;}
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
