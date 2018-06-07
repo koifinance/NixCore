@@ -16,6 +16,7 @@ class ClientModel;
 class PlatformStyle;
 class SendCoinsEntry;
 class SendCoinsRecipient;
+class UniValue;
 
 namespace Ui {
     class SendCoinsDialog;
@@ -68,6 +69,7 @@ private:
     void processSendCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
     void minimizeFeeSection(bool fMinimize);
     void updateFeeMinimizedLabel();
+
     // Update the passed in CCoinControl with state from the GUI
     void updateCoinControlState(CCoinControl& ctrl);
 
@@ -90,6 +92,7 @@ private Q_SLOTS:
     void coinControlClipboardBytes();
     void coinControlClipboardLowOutput();
     void coinControlClipboardChange();
+    void cbxTypeFromChanged(int);
     void setMinimumFee();
     void updateFeeSectionControls();
     void updateMinFeeLabel();

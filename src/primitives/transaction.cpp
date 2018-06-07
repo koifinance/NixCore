@@ -64,6 +64,46 @@ uint256 CTxOut::GetHash() const
     return SerializeHash(*this);
 }
 
+
+void CTxOutBase::SetValue(int64_t value)
+{
+    // convenience function intended for use with CTxOutStandard only
+    assert(nVersion == OUTPUT_STANDARD);
+    ((CTxOutStandard*) this)->nValue = value;
+}
+
+CAmount CTxOutBase::GetValue() const
+{
+    assert(nVersion == OUTPUT_STANDARD);
+    return ((CTxOutStandard*) this)->nValue;
+}
+
+std::string CTxOutBase::ToString() const
+{
+    switch (nVersion)
+    {
+        case OUTPUT_STANDARD:
+            {
+            CTxOutStandard *so = (CTxOutStandard*)this;
+            return strprintf("CTxOutStandard(nValue=%d.%08d, scriptPubKey=%s)", so->nValue / COIN, so->nValue % COIN, HexStr(so->scriptPubKey).substr(0, 30));
+            }
+        case OUTPUT_DATA:
+            {
+            CTxOutData *dout = (CTxOutData*)this;
+            return strprintf("CTxOutData(data=%s)", HexStr(dout->vData).substr(0, 30));
+            }
+        default:
+            break;
+    };
+    return strprintf("CTxOutBase unknown version %d", nVersion);
+}
+
+CTxOutStandard::CTxOutStandard(const CAmount& nValueIn, CScript scriptPubKeyIn) : CTxOutBase(OUTPUT_STANDARD)
+{
+    nValue = nValueIn;
+    scriptPubKey = scriptPubKeyIn;
+}
+
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}
 CMutableTransaction::CMutableTransaction(const CTransaction& tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime) {}
 

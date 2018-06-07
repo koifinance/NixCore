@@ -10,6 +10,8 @@
 #include <consensus/validation.h>
 #include <validation.h>
 #include <miner.h>
+#include <ghost-address/extkey.h>
+#include <ghost-address/stealth.h>
 #include <policy/policy.h>
 #include <pubkey.h>
 #include <script/standard.h>
@@ -18,7 +20,8 @@
 #include <util.h>
 #include <utilstrencodings.h>
 
-#include <test/test_bitcoin.h>
+#include <test/test_nix.h>
+
 
 #include <memory>
 
@@ -205,7 +208,9 @@ void TestPackageSelection(const CChainParams& chainparams, CScript scriptPubKey,
 BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 {
     // Note that by default, these tests run with size accounting enabled.
-    const auto chainParams = CreateChainParams(CBaseChainParams::MAIN);
+    auto chainParams = CreateChainParams(CBaseChainParams::MAIN);
+    //SetOldParams(chainParams);
+
     const CChainParams& chainparams = *chainParams;
     CScript scriptPubKey = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
     std::unique_ptr<CBlockTemplate> pblocktemplate;
@@ -270,7 +275,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vin[0].prevout.n = 0;
     tx.vout.resize(1);
     tx.vout[0].nValue = BLOCKSUBSIDY;
-    for (unsigned int i = 0; i < 1001; ++i)
+    for (unsigned int i = 0; i < 2001; ++i)
     {
         tx.vout[0].nValue -= LOWFEE;
         hash = tx.GetHash();
@@ -372,7 +377,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         CBlockIndex* prev = chainActive.Tip();
         CBlockIndex* next = new CBlockIndex();
         next->phashBlock = new uint256(InsecureRand256());
-        pcoinsTip->SetBestBlock(next->GetBlockHash());
+        pcoinsTip->SetBestBlock(next->GetBlockHash(), prev->nHeight + 1);
         next->pprev = prev;
         next->nHeight = prev->nHeight + 1;
         next->BuildSkip();
@@ -384,7 +389,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         CBlockIndex* prev = chainActive.Tip();
         CBlockIndex* next = new CBlockIndex();
         next->phashBlock = new uint256(InsecureRand256());
-        pcoinsTip->SetBestBlock(next->GetBlockHash());
+        pcoinsTip->SetBestBlock(next->GetBlockHash(), prev->nHeight + 1);
         next->pprev = prev;
         next->nHeight = prev->nHeight + 1;
         next->BuildSkip();
@@ -414,7 +419,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     while (chainActive.Tip()->nHeight > nHeight) {
         CBlockIndex* del = chainActive.Tip();
         chainActive.SetTip(del->pprev);
-        pcoinsTip->SetBestBlock(del->pprev->GetBlockHash());
+        pcoinsTip->SetBestBlock(del->pprev->GetBlockHash(), del->pprev->nHeight);
         delete del->phashBlock;
         delete del;
     }

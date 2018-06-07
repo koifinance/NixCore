@@ -13,6 +13,7 @@
 #include <tinyformat.h>
 #include <util.h>
 #include <utilstrencodings.h>
+#include <chainparams.h>
 
 
 CAmount GetDustThreshold(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
@@ -54,8 +55,51 @@ bool IsDust(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
     return (txout.nValue < GetDustThreshold(txout, dustRelayFeeIn));
 }
 
+CAmount GetDustThreshold(const CTxOutStandard *txout, const CFeeRate& dustRelayFeeIn)
+{
+    // "Dust" is defined in terms of dustRelayFee,
+    // which has units satoshis-per-kilobyte.
+    // If you'd pay more in fees than the value of the output
+    // to spend something, then we consider it dust.
+    // A typical spendable non-segwit txout is 34 bytes big, and will
+    // need a CTxIn of at least 148 bytes to spend:
+    // so dust is a spendable txout less than
+    // 182*dustRelayFee/1000 (in satoshis).
+    // 546 satoshis at the default rate of 3000 sat/kB.
+    // A typical spendable segwit txout is 31 bytes big, and will
+    // need a CTxIn of at least 67 bytes to spend:
+    // so dust is a spendable txout less than
+    // 98*dustRelayFee/1000 (in satoshis).
+    // 294 satoshis at the default rate of 3000 sat/kB.
+    if (txout->scriptPubKey.IsUnspendable())
+        return 0;
+
+    size_t nSize = GetSerializeSize(*txout, SER_DISK, 0);
+    int witnessversion = 0;
+    std::vector<unsigned char> witnessprogram;
+
+    if (txout->scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
+        // sum the sizes of the parts of a transaction input
+        // with 75% segwit discount applied to the script size.
+        nSize += (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4);
+    } else {
+        nSize += (32 + 4 + 1 + 107 + 4); // the 148 mentioned above
+    }
+
+    return dustRelayFeeIn.GetFee(nSize);
+}
+
+bool IsDust(const CTxOutBase *txout, const CFeeRate& dustRelayFee)
+{
+    if (txout->IsType(OUTPUT_STANDARD))
+        return (((CTxOutStandard*)txout)->nValue < GetDustThreshold((CTxOutStandard*)txout, minRelayTxFee));
+    return false;
+};
+
 bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled)
 {
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+
     std::vector<std::vector<unsigned char> > vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
@@ -81,7 +125,7 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool w
 
 bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnessEnabled)
 {
-    if (tx.nVersion > CTransaction::MAX_STANDARD_VERSION || tx.nVersion < 1) {
+    if (!tx.IsNIXVersion() && (tx.nVersion > CTransaction::MAX_STANDARD_VERSION || tx.nVersion < 1)) {
         reason = "version";
         return false;
     }
@@ -98,13 +142,6 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
 
     for (const CTxIn& txin : tx.vin)
     {
-        //TODO: possible increase of zerocoin spend script size for scaling(reduce proof size and increase limit)
-        if (txin.scriptSig.IsZerocoinSpend() && txin.scriptSig.size() > MAX_STANDARD_TX_WEIGHT) {
-            reason = "scriptsig-size";
-            return false;
-        }
-        if (txin.scriptSig.IsZerocoinSpend())
-            continue;
         // Biggest 'standard' txin is a 15-of-15 P2SH multisig with compressed
         // keys (remember the 520 byte limit on redeemScript size). That works
         // out to a (15*(33+1))+3=513 byte redeemScript, 513+1+15*(73+1)+3=1627
@@ -112,18 +149,26 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
         // future-proofing. That's also enough to spend a 20-of-20
         // CHECKMULTISIG scriptPubKey, though such a scriptPubKey is not
         // considered standard.
-        if (txin.scriptSig.size() > 1650) {
+        if (txin.scriptSig.size() > 1650 && !txin.scriptSig.IsZerocoinSpend()) {
             reason = "scriptsig-size";
             return false;
         }
-        if (!txin.scriptSig.IsPushOnly()) {
-            reason = "scriptsig-not-pushonly";
+        if (txin.scriptSig.IsZerocoinSpend() && txin.scriptSig.size() > 50000) {
+            reason = "scriptsig-size";
             return false;
         }
+        if (!txin.scriptSig.IsZerocoinSpend()) {
+            if (!txin.scriptSig.IsPushOnly()) {
+                reason = "scriptsig-not-pushonly";
+                return false;
+            }
+        }
+
     }
 
     unsigned int nDataOut = 0;
     txnouttype whichType;
+
     for (const CTxOut& txout : tx.vout) {
         if (!::IsStandard(txout.scriptPubKey, whichType, witnessEnabled)) {
             reason = "scriptpubkey";
@@ -136,6 +181,28 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
             reason = "bare-multisig";
             return false;
         } else if (IsDust(txout, ::dustRelayFee)) {
+            reason = "dust";
+            return false;
+        }
+    }
+
+    for (const auto txout : tx.vpout) {
+        const CTxOutBase *p = txout.get();
+
+        if (!p->IsType(OUTPUT_STANDARD))
+            continue;
+
+        if (!::IsStandard(*p->GetPScriptPubKey(), whichType, witnessEnabled)) {
+            reason = "scriptpubkey";
+            return false;
+        }
+
+        if (whichType == TX_NULL_DATA)
+            nDataOut++;
+        else if ((whichType == TX_MULTISIG) && (!fIsBareMultisigStd)) {
+            reason = "bare-multisig";
+            return false;
+        } else if (IsDust(p, ::dustRelayFee)) {
             reason = "dust";
             return false;
         }
@@ -171,31 +238,42 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
     if (tx.IsCoinBase() || tx.IsZerocoinSpend())
         return true; // Coinbases don't use vin normally
 
-    for (unsigned int i = 0; i < tx.vin.size(); i++)
-    {
-        const CTxOut& prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
 
-        std::vector<std::vector<unsigned char> > vSolutions;
-        txnouttype whichType;
-        // get the scriptPubKey corresponding to this input:
-        const CScript& prevScript = prev.scriptPubKey;
-        if (!Solver(prevScript, whichType, vSolutions))
-            return false;
-
-        if (whichType == TX_SCRIPTHASH)
+        for (unsigned int i = 0; i < tx.vin.size(); i++)
         {
-            std::vector<std::vector<unsigned char> > stack;
-            // convert the scriptSig into a stack, so we can inspect the redeemScript
-            if (!EvalScript(stack, tx.vin[i].scriptSig, SCRIPT_VERIFY_NONE, BaseSignatureChecker(), SIGVERSION_BASE))
+
+            const Coin& coin = mapInputs.AccessCoin(tx.vin[i].prevout);
+            const CTxOut& prev = coin.out;
+
+            if (coin.nType != OUTPUT_STANDARD)
                 return false;
-            if (stack.empty())
+
+            txnouttype whichType;
+            // get the scriptPubKey corresponding to this input:
+            const CScript& prevScript = prev.scriptPubKey;
+
+            //if (!Solver(prevScript, whichType, vSolutions))
+            if (!::IsStandard(prevScript, whichType, true))
                 return false;
-            CScript subscript(stack.back().begin(), stack.back().end());
-            if (subscript.GetSigOpCount(true) > MAX_P2SH_SIGOPS) {
-                return false;
-            }
-        }
-    }
+
+            if (whichType == TX_SCRIPTHASH)
+            {
+                if (tx.vin[i].scriptWitness.stack.size() < 1)
+                    return false;
+                if (tx.vin[i].scriptWitness.stack.back().size() > MAX_STANDARD_P2WSH_SCRIPT_SIZE)
+                    return false;
+                size_t sizeWitnessStack = tx.vin[i].scriptWitness.stack.size() - 1;
+                if (sizeWitnessStack > MAX_STANDARD_P2WSH_STACK_ITEMS)
+                    return false;
+                for (unsigned int j = 0; j < sizeWitnessStack; j++)
+                {
+                    if (tx.vin[i].scriptWitness.stack[j].size() > MAX_STANDARD_P2WSH_STACK_ITEM_SIZE)
+                        return false;
+                }
+            };
+        };
+
+        return true;
 
     return true;
 }
@@ -212,18 +290,28 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
         if (tx.vin[i].scriptWitness.IsNull())
             continue;
 
+        CScript prevScript;
         const CTxOut &prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
 
         // get the scriptPubKey corresponding to this input:
-        CScript prevScript = prev.scriptPubKey;
+        prevScript = prev.scriptPubKey;
 
-        if (prevScript.IsPayToScriptHash()) {
+        if (prevScript.IsPayToScriptHashAny()) {
             std::vector <std::vector<unsigned char> > stack;
+
             // If the scriptPubKey is P2SH, we try to extract the redeemScript casually by converting the scriptSig
             // into a stack. We do not check IsPushOnly nor compare the hash as these will be done later anyway.
             // If the check fails at this stage, we know that this txid must be a bad one.
-            if (!EvalScript(stack, tx.vin[i].scriptSig, SCRIPT_VERIFY_NONE, BaseSignatureChecker(), SIGVERSION_BASE))
-                return false;
+
+            if (!tx.IsNIXVersion())
+            {
+                if (!EvalScript(stack, tx.vin[i].scriptSig, SCRIPT_VERIFY_NONE, BaseSignatureChecker(), SIGVERSION_BASE))
+                    return false;
+            } else
+            {
+                stack = tx.vin[i].scriptWitness.stack;
+            };
+
             if (stack.empty())
                 return false;
             prevScript = CScript(stack.back().begin(), stack.back().end());
@@ -233,19 +321,24 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
         std::vector<unsigned char> witnessprogram;
 
         // Non-witness program must not be associated with any witness
-        if (!prevScript.IsWitnessProgram(witnessversion, witnessprogram))
+        if (!tx.IsNIXVersion()
+            && !prevScript.IsWitnessProgram(witnessversion, witnessprogram))
             return false;
 
         // Check P2WSH standard limits
         if (witnessversion == 0 && witnessprogram.size() == 32) {
+
             if (tx.vin[i].scriptWitness.stack.back().size() > MAX_STANDARD_P2WSH_SCRIPT_SIZE)
                 return false;
             size_t sizeWitnessStack = tx.vin[i].scriptWitness.stack.size() - 1;
+
             if (sizeWitnessStack > MAX_STANDARD_P2WSH_STACK_ITEMS)
                 return false;
             for (unsigned int j = 0; j < sizeWitnessStack; j++) {
                 if (tx.vin[i].scriptWitness.stack[j].size() > MAX_STANDARD_P2WSH_STACK_ITEM_SIZE)
+                {
                     return false;
+                }
             }
         }
     }

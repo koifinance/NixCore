@@ -5,8 +5,8 @@
 
 #include <script/standard.h>
 
-#include <stealth-address/extkey.h>
-#include <stealth-address/stealth.h>
+#include <ghost-address/extkey.h>
+#include <ghost-address/stealth.h>
 #include <pubkey.h>
 #include <script/script.h>
 #include <util.h>

@@ -17,6 +17,7 @@
 class ClientModel;
 class PlatformStyle;
 class RPCTimerInterface;
+class WalletFrame;
 
 namespace Ui {
     class RPCConsole;
@@ -36,9 +37,9 @@ public:
     explicit RPCConsole(const PlatformStyle *platformStyle, QWidget *parent);
     ~RPCConsole();
 
-    static bool RPCParseCommandLine(std::string &strResult, const std::string &strCommand, bool fExecute, std::string * const pstrFilteredOut = nullptr);
-    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, std::string * const pstrFilteredOut = nullptr) {
-        return RPCParseCommandLine(strResult, strCommand, true, pstrFilteredOut);
+    static bool RPCParseCommandLine(std::string &strResult, const std::string &strCommand, bool fExecute, std::string * const pstrFilteredOut = nullptr, std::string *pwalletName = nullptr);
+    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, std::string * const pstrFilteredOut = nullptr, std::string *pwalletName = nullptr) {
+        return RPCParseCommandLine(strResult, strCommand, true, pstrFilteredOut, pwalletName);
     }
 
     void setClientModel(ClientModel *model);
@@ -120,7 +121,7 @@ public Q_SLOTS:
 Q_SIGNALS:
     // For RPC command executor
     void stopExecutor();
-    void cmdRequest(const QString &command);
+    void cmdRequest(const QString &command, const QString &wallet);
 
 private:
     void startExecutor();
@@ -138,6 +139,7 @@ private:
 
     };
 
+    WalletFrame *walletFrame;
     Ui::RPCConsole *ui;
     ClientModel *clientModel;
     QStringList history;

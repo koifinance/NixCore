@@ -6,8 +6,8 @@
 #include <script/ismine.h>
 
 #include <key.h>
-#include <stealth-address/extkey.h>
-#include <stealth-address/stealth.h>
+#include <ghost-address/extkey.h>
+#include <ghost-address/stealth.h>
 #include <keystore.h>
 #include <script/script.h>
 #include <script/standard.h>

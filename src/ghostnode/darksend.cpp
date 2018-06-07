@@ -1257,7 +1257,8 @@ bool CDarksendPool::SignFinalTransaction(const CTransaction &finalTransactionNew
                 const CKeyStore &keystore = *vpwallets.front();
 
                 LogPrintf("privatesend", "CDarksendPool::SignFinalTransaction -- Signing my input %i\n", nMyInputIndex);
-                CAmount amount;
+                //CAmount amount;
+                std::vector<uint8_t> amount(8);
                 if (!SignSignature(keystore, prevPubKey, finalMutableTransaction, nMyInputIndex, amount, int(SIGHASH_ALL | SIGHASH_ANYONECANPAY))) { // changes scriptSig
                     LogPrintf("privatesend", "CDarksendPool::SignFinalTransaction -- Unable to sign my own transaction!\n");
                     // not sure what to do here, it will timeout...?

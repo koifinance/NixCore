@@ -47,6 +47,25 @@ std::string StringForFeeReason(FeeReason reason) {
     return reason_string->second;
 }
 
+bool StringFromFeeMode(FeeEstimateMode fee_estimate_mode, std::string& mode_string) {
+    switch(fee_estimate_mode)
+    {
+        case FeeEstimateMode::ECONOMICAL:
+            mode_string = "ECONOMICAL";
+            break;
+        case FeeEstimateMode::CONSERVATIVE:
+            mode_string = "CONSERVATIVE";
+            break;
+        case FeeEstimateMode::UNSET:
+            mode_string = "UNSET";
+            break;
+        default:
+            return false;
+    }
+    return true;
+}
+
+
 bool FeeModeFromString(const std::string& mode_string, FeeEstimateMode& fee_estimate_mode) {
     static const std::map<std::string, FeeEstimateMode> fee_modes = {
         {"UNSET", FeeEstimateMode::UNSET},

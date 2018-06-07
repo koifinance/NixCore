@@ -43,6 +43,7 @@ public:
     std::string strMethod;
     UniValue params;
     bool fHelp;
+    bool fSkipBlock = false;
     std::string URI;
     std::string authUser;
 
@@ -124,6 +125,7 @@ void RPCUnsetTimerInterface(RPCTimerInterface *iface);
  * Overrides previous timer <name> (if any).
  */
 void RPCRunLater(const std::string& name, std::function<void(void)> func, int64_t nSeconds);
+void RPCRunLaterErase(const std::string &name);
 
 typedef UniValue(*rpcfn_type)(const JSONRPCRequest& jsonRequest);
 
@@ -203,5 +205,10 @@ std::string JSONRPCExecBatch(const JSONRPCRequest& jreq, const UniValue& vReq);
 
 // Retrieves any serialization flags requested in command line argument
 int RPCSerializationFlags();
+
+// Retrieves any serialization flags requested in command line argument
+int RPCSerializationFlags();
+
+void PushTime(UniValue &o, const char *name, int64_t nTime);
 
 #endif // BITCOIN_RPCSERVER_H

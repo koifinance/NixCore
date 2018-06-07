@@ -99,7 +99,7 @@ bool static IsCompressedPubKey(const valtype &vchPubKey) {
  * Where R and S are not negative (their first byte has its highest bit not set), and not
  * excessively padded (do not start with a 0 byte, unless an otherwise negative number follows,
  * in which case a single 0 byte is necessary and even required).
- * 
+ *
  * See https://bitcointalk.org/index.php?topic=8392.msg127623#msg127623
  *
  * This function is consensus-critical since BIP66.
@@ -139,7 +139,7 @@ bool static IsValidSignatureEncoding(const std::vector<unsigned char> &sig) {
     // Verify that the length of the signature matches the sum of the length
     // of the elements.
     if ((size_t)(lenR + lenS + 7) != sig.size()) return false;
- 
+
     // Check whether the R element is an integer.
     if (sig[2] != 0x02) return false;
 
@@ -276,7 +276,6 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
         while (pc < pend)
         {
             bool fExec = !count(vfExec.begin(), vfExec.end(), false);
-
             //
             // Read instruction
             //
@@ -424,7 +423,9 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                 }
 
                 case OP_NOP1: case OP_NOP4: case OP_NOP5:
-                case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
+                case OP_NOP6: case OP_NOP7: case OP_NOP8:
+                //case OP_NOP9:
+                case OP_NOP10:
                 {
                     if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
                         return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
@@ -491,7 +492,6 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     return set_error(serror, SCRIPT_ERR_OP_RETURN);
                 }
                 break;
-
 
                 //
                 // Stack ops
@@ -715,6 +715,8 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                         return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
                     valtype& vch1 = stacktop(-2);
                     valtype& vch2 = stacktop(-1);
+
+
                     bool fEqual = (vch1 == vch2);
                     // OP_NOTEQUAL is disabled because it would be too easy to say
                     // something like n != 1 and have some wiseguy pass in 1 with extra
@@ -733,7 +735,6 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     }
                 }
                 break;
-
 
                 //
                 // Numeric
@@ -865,7 +866,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     popstack(stack);
                     stack.push_back(vchHash);
                 }
-                break;                                   
+                break;
 
                 case OP_CODESEPARATOR:
                 {
@@ -896,6 +897,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                         //serror is set
                         return false;
                     }
+
                     bool fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
 
                     if (!fSuccess && (flags & SCRIPT_VERIFY_NULLFAIL) && vchSig.size())
@@ -1116,7 +1118,12 @@ public:
             // Do not lock-in the txout payee at other indices as txin
             ::Serialize(s, CTxOut());
         else
-            ::Serialize(s, txTo.vout[nOutput]);
+        {
+            if (txTo.IsNIXVersion())
+                ::Serialize(s, *(txTo.vpout[nOutput].get()));
+            else
+                ::Serialize(s, txTo.vout[nOutput]);
+        }
     }
 
     /** Serialize txTo */
@@ -1129,8 +1136,9 @@ public:
         ::WriteCompactSize(s, nInputs);
         for (unsigned int nInput = 0; nInput < nInputs; nInput++)
              SerializeInput(s, nInput);
-        // Serialize vout
-        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn+1 : txTo.vout.size());
+
+        // Serialize vpout
+        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn+1 : txTo.GetNumVOuts());
         ::WriteCompactSize(s, nOutputs);
         for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
              SerializeOutput(s, nOutput);
@@ -1157,8 +1165,16 @@ uint256 GetSequenceHash(const CTransaction& txTo) {
 
 uint256 GetOutputsHash(const CTransaction& txTo) {
     CHashWriter ss(SER_GETHASH, 0);
-    for (const auto& txout : txTo.vout) {
-        ss << txout;
+
+    if (txTo.IsNIXVersion())
+    {
+        for (unsigned int n = 0; n < txTo.vpout.size(); n++)
+            ss << *txTo.vpout[n];
+    } else
+    {
+        for (const auto& txout : txTo.vout) {
+            ss << txout;
+        }
     }
     return ss.GetHash();
 }
@@ -1176,11 +1192,12 @@ PrecomputedTransactionData::PrecomputedTransactionData(const CTransaction& txTo)
     }
 }
 
-uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
+uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType, const std::vector<uint8_t>& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
 {
     assert(nIn < txTo.vin.size());
 
-    if (sigversion == SIGVERSION_WITNESS_V0) {
+    if (sigversion == SIGVERSION_WITNESS_V0
+        || txTo.IsNIXVersion()) {
         uint256 hashPrevouts;
         uint256 hashSequence;
         uint256 hashOutputs;
@@ -1194,12 +1211,15 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
             hashSequence = cacheready ? cache->hashSequence : GetSequenceHash(txTo);
         }
 
-
         if ((nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) {
             hashOutputs = cacheready ? cache->hashOutputs : GetOutputsHash(txTo);
-        } else if ((nHashType & 0x1f) == SIGHASH_SINGLE && nIn < txTo.vout.size()) {
+        } else if ((nHashType & 0x1f) == SIGHASH_SINGLE && nIn < txTo.GetNumVOuts()) {
             CHashWriter ss(SER_GETHASH, 0);
-            ss << txTo.vout[nIn];
+
+            if (txTo.IsNIXVersion())
+                ss << *(txTo.vpout[nIn].get());
+            else
+                ss << txTo.vout[nIn];
             hashOutputs = ss.GetHash();
         }
 
@@ -1214,7 +1234,11 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
         // may already be contain in hashSequence.
         ss << txTo.vin[nIn].prevout;
         ss << scriptCode;
-        ss << amount;
+
+        //ss << amount;
+        if (amount.size() > 0)
+            ss.write((const char*)&amount[0], amount.size()); // Make unit tests still pass, same as << CAmount when amount.size() == 8
+
         ss << txTo.vin[nIn].nSequence;
         // Outputs (none/one/all, depending on flags)
         ss << hashOutputs;
@@ -1230,7 +1254,7 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
 
     // Check for invalid use of SIGHASH_SINGLE
     if ((nHashType & 0x1f) == SIGHASH_SINGLE) {
-        if (nIn >= txTo.vout.size()) {
+        if (nIn >= txTo.GetNumVOuts()) {
             //  nOut out of range
             return one;
         }
@@ -1421,14 +1445,28 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
     }
 
     std::vector<std::vector<unsigned char> > stack, stackCopy;
-    if (!EvalScript(stack, scriptSig, flags, checker, SIGVERSION_BASE, serror))
-        // serror is set
-        return false;
+    if (checker.IsNIXVersion())
+    {
+        assert(witness);
+        if (scriptSig.size() != 0) {
+            // The scriptSig must be _exactly_ CScript(), otherwise we reintroduce malleability.
+            return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED);
+        }
+        stack = witness->stack;
+    } else
+    {
+        if (!EvalScript(stack, scriptSig, flags, checker, SIGVERSION_BASE, serror))
+            // serror is set
+            return false;
+    };
+
     if (flags & SCRIPT_VERIFY_P2SH)
         stackCopy = stack;
+
     if (!EvalScript(stack, scriptPubKey, flags, checker, SIGVERSION_BASE, serror))
         // serror is set
         return false;
+
     if (stack.empty())
         return set_error(serror, SCRIPT_ERR_EVAL_FALSE);
     if (CastToBool(stack.back()) == false)
@@ -1453,8 +1491,10 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
         }
     }
 
+    bool fIsP2SH = checker.IsNIXVersion() ? scriptPubKey.IsPayToScriptHashAny() : scriptPubKey.IsPayToScriptHash();
     // Additional validation for spend-to-script-hash transactions:
-    if ((flags & SCRIPT_VERIFY_P2SH) && scriptPubKey.IsPayToScriptHash())
+    if ((flags & SCRIPT_VERIFY_P2SH)
+        && fIsP2SH)
     {
         // scriptSig must be literals-only or validation fails
         if (!scriptSig.IsPushOnly())
@@ -1517,6 +1557,8 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
         // that WITNESS implies P2SH. Otherwise, going from WITNESS->P2SH+WITNESS would be
         // possible, which is not a softfork.
         assert((flags & SCRIPT_VERIFY_P2SH) != 0);
+
+        if (!checker.IsNIXVersion())
         if (!hadWitness && !witness->IsNull()) {
             return set_error(serror, SCRIPT_ERR_WITNESS_UNEXPECTED);
         }
@@ -1571,3 +1613,28 @@ size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey,
 
     return 0;
 }
+
+bool IsSpendScriptP2PKH(const CScript &script)
+{
+    CScript::const_iterator pc = script.begin();
+    CScript::const_iterator pend = script.end();
+
+    opcodetype opcode;
+    valtype vchPushValue;
+
+    bool fFoundOp = false;
+    while (pc < pend)
+    {
+        if (!script.GetOp(pc, opcode, vchPushValue))
+            break;
+
+        if (!fFoundOp
+            && opcode == OP_ELSE)
+        {
+            size_t ofs = pc - script.begin();
+            return script.MatchPayToPublicKeyHash(ofs);
+        };
+    };
+
+    return false;
+};

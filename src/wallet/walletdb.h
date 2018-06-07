@@ -16,9 +16,9 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <stealth-address/types.h>
-#include <stealth-address/stealth.h>
-#include <stealth-address/extkey.h>
+#include <ghost-address/types.h>
+#include <ghost-address/stealth.h>
+#include <ghost-address/extkey.h>
 
 /**
  * Overview of wallet database classes:
@@ -139,47 +139,6 @@ public:
     }
 };
 
-class CStealthAddressIndexed
-{
-public:
-    CStealthAddressIndexed() {};
-
-    CStealthAddressIndexed(std::vector<uint8_t> &addrRaw_) : addrRaw(addrRaw_) {};
-    std::vector<uint8_t> addrRaw;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream &s, Operation ser_action)
-    {
-        READWRITE(addrRaw);
-    }
-};
-
-class CStealthKeyMetadata
-{
-// Used to get secret for keys created by stealth transaction with wallet locked
-public:
-    CStealthKeyMetadata() {}
-
-    CStealthKeyMetadata(CPubKey pkEphem_, CPubKey pkScan_)
-    {
-        pkEphem = pkEphem_;
-        pkScan = pkScan_;
-    }
-
-    CPubKey pkEphem;
-    CPubKey pkScan;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream &s, Operation ser_action)
-    {
-        READWRITE(pkEphem);
-        READWRITE(pkScan);
-    }
-
-};
-
 /** Access to the wallet database.
  * This should really be named CWalletDBBatch, as it represents a single transaction at the
  * database. It will be committed when the object goes out of scope.
@@ -187,7 +146,7 @@ public:
  */
 class CWalletDB
 {
-private:
+protected:
     template <typename K, typename T>
     bool WriteIC(const K& key, const T& value, bool fOverwrite = true)
     {
@@ -422,58 +381,10 @@ public:
     bool EraseCoinSpendSerialEntry(const CZerocoinSpendEntry& zerocoinSpend);
     bool WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
     bool ReadZerocoinAccumulator(libzerocoin::Accumulator& accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
-    // bool EraseZerocoinAccumulator(libzerocoin::Accumulator& accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
 
     bool ReadCalculatedZCBlock(int& height);
     bool WriteCalculatedZCBlock(int height);
 
-    bool WriteStealthKeyMeta(const CKeyID &keyId, const CStealthKeyMetadata &sxKeyMeta);
-    bool EraseStealthKeyMeta(const CKeyID &keyId);
-
-    bool WriteStealthAddress(const CStealthAddress &sxAddr);
-    bool ReadStealthAddress(CStealthAddress &sxAddr);
-    bool EraseStealthAddress(const CStealthAddress &sxAddr);
-
-
-
-    bool ReadNamedExtKeyId(const std::string &name, CKeyID &identifier, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteNamedExtKeyId(const std::string &name, const CKeyID &identifier);
-
-    bool ReadExtKey(const CKeyID &identifier, CStoredExtKey &ek32, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteExtKey(const CKeyID &identifier, const CStoredExtKey &ek32);
-
-    bool ReadExtAccount(const CKeyID &identifier, CExtKeyAccount &ekAcc, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteExtAccount(const CKeyID &identifier, const CExtKeyAccount &ekAcc);
-
-    bool ReadExtKeyPack(const CKeyID &identifier, const uint32_t nPack, std::vector<CEKAKeyPack> &ekPak, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteExtKeyPack(const CKeyID &identifier, const uint32_t nPack, const std::vector<CEKAKeyPack> &ekPak);
-
-    bool ReadExtStealthKeyPack(const CKeyID &identifier, const uint32_t nPack, std::vector<CEKAStealthKeyPack> &aksPak, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteExtStealthKeyPack(const CKeyID &identifier, const uint32_t nPack, const std::vector<CEKAStealthKeyPack> &aksPak);
-
-    bool ReadExtStealthKeyChildPack(const CKeyID &identifier, const uint32_t nPack, std::vector<CEKASCKeyPack> &asckPak, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteExtStealthKeyChildPack(const CKeyID &identifier, const uint32_t nPack, const std::vector<CEKASCKeyPack> &asckPak);
-
-    bool ReadFlag(const std::string &name, int32_t &nValue, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteFlag(const std::string &name, int32_t nValue);
-
-
-    bool ReadExtKeyIndex(uint32_t id, CKeyID &identifier, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteExtKeyIndex(uint32_t id, const CKeyID &identifier);
-
-
-    bool ReadStealthAddressIndex(uint32_t id, CStealthAddressIndexed &sxi, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteStealthAddressIndex(uint32_t id, const CStealthAddressIndexed &sxi);
-
-    bool ReadStealthAddressIndexReverse(const uint160 &hash, uint32_t &id, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteStealthAddressIndexReverse(const uint160 &hash, uint32_t id);
-
-    bool ReadStealthAddressLink(const CKeyID &keyId, uint32_t &id, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteStealthAddressLink(const CKeyID &keyId, uint32_t id);
-
-    bool WriteAddressBookEntry(const std::string &sKey, const CAddressBookData &data);
-    bool EraseAddressBookEntry(const std::string &sKey);
-private:
     CDB batch;
     CWalletDBWrapper& m_dbw;
 };

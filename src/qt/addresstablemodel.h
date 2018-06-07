@@ -26,14 +26,9 @@ public:
     explicit AddressTableModel(CWallet *wallet, WalletModel *parent = 0);
     ~AddressTableModel();
 
-    enum AddressType {
-         Other = 0,
-         Stealth = 1
-     };
     enum ColumnIndex {
         Label = 0,   /**< User specified label */
-        Address = 1,  /**< Bitcoin address */
-        Stealth_Address=2
+        Address = 1  /**< Bitcoin address */
     };
 
     enum RoleIndex {
@@ -48,6 +43,13 @@ public:
         DUPLICATE_ADDRESS,      /**< Address already in address book */
         WALLET_UNLOCK_FAILURE,  /**< Wallet could not be unlocked to create new receiving address */
         KEY_GENERATION_FAILURE  /**< Generating a new public key for a receiving address failed */
+    };
+
+    enum AddrType {
+        ADDR_STANDARD,
+        ADDR_STEALTH,
+        ADDR_EXT,
+        ADDR_STANDARD256,
     };
 
     static const QString Send;      /**< Specifies send address */
@@ -68,7 +70,7 @@ public:
     /* Add an address to the model.
        Returns the added address on success, and an empty string otherwise.
      */
-    QString addRow(const QString &type, const QString &label, const QString &address, const OutputType address_type, int addressType = 0);
+    QString addRow(const QString &type, const QString &label, const QString &address, const OutputType address_type, AddrType addrType = ADDR_STANDARD);
 
     /* Look up label for address in address book, if not found return empty string.
      */
@@ -90,6 +92,7 @@ private:
 
     /** Notify listeners that data changed. */
     void emitDataChanged(int index);
+    void warningBox(QString msg);
 
 public Q_SLOTS:
     /* Update address list from core.

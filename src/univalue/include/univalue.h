@@ -73,7 +73,11 @@ public:
     void getObjMap(std::map<std::string,UniValue>& kv) const;
     bool checkObject(const std::map<std::string,UniValue::VType>& memberTypes) const;
     const UniValue& operator[](const std::string& key) const;
-    const UniValue& operator[](size_t index) const;
+    const UniValue& operator[](size_t idx) const;
+
+    UniValue& get(const std::string& key);
+    UniValue& get(size_t idx);
+
     bool exists(const std::string& key) const { size_t i; return findKey(key, i); }
 
     bool isNull() const { return (typ == VNULL); }
@@ -86,6 +90,9 @@ public:
     bool isObject() const { return (typ == VOBJ); }
 
     bool push_back(const UniValue& val);
+    bool insert(size_t pos, const UniValue& val_);
+    bool erase(size_t from, size_t to);
+
     bool push_back(const std::string& val_) {
         UniValue tmpVal(VSTR, val_);
         return push_back(tmpVal);

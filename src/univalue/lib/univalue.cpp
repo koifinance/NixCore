@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <sstream>
 #include <stdlib.h>
+#include <stdexcept>
 
 #include "univalue.h"
 
@@ -116,6 +117,31 @@ bool UniValue::push_back(const UniValue& val_)
     return true;
 }
 
+bool UniValue::insert(size_t pos, const UniValue& val_)
+{
+    if (typ != VARR)
+        return false;
+
+    if (pos >= values.size())
+        values.push_back(val_);
+    else
+        values.insert(values.begin() + pos, val_);
+    return true;
+}
+
+bool UniValue::erase(size_t from, size_t to)
+{
+    if (typ != VARR)
+        return false;
+
+    if (from >= values.size() || to > values.size()
+        || from > to)
+        return false;
+
+    values.erase(values.begin() + from, values.begin() + to);
+    return true;
+}
+
 bool UniValue::push_backV(const std::vector<UniValue>& vec)
 {
     if (typ != VARR)
@@ -201,22 +227,44 @@ const UniValue& UniValue::operator[](const std::string& key) const
     if (typ != VOBJ)
         return NullUniValue;
 
-    size_t index = 0;
-    if (!findKey(key, index))
+    size_t idx = 0;
+    if (!findKey(key, idx))
         return NullUniValue;
 
-    return values.at(index);
+    return values.at(idx);
 }
 
-const UniValue& UniValue::operator[](size_t index) const
+const UniValue& UniValue::operator[](size_t idx) const
 {
     if (typ != VOBJ && typ != VARR)
         return NullUniValue;
-    if (index >= values.size())
+    if (idx >= values.size())
         return NullUniValue;
 
-    return values.at(index);
+    return values.at(idx);
 }
+
+UniValue& UniValue::get(const std::string& key)
+{
+    if (typ != VOBJ)
+        throw std::runtime_error("Not an object.");
+
+    size_t idx;
+    if (!findKey(key, idx))
+        throw std::runtime_error("Key not found.");
+
+    return values.at(idx);
+};
+
+UniValue& UniValue::get(size_t idx)
+{
+    if (typ != VOBJ && typ != VARR)
+        throw std::runtime_error("Not an object or array.");
+    if (idx >= values.size())
+        throw std::runtime_error("Index out of range.");
+
+    return values.at(idx);
+};
 
 const char *uvTypeName(UniValue::VType t)
 {
@@ -241,4 +289,3 @@ const UniValue& find_value(const UniValue& obj, const std::string& name)
 
     return NullUniValue;
 }
-

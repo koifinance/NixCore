@@ -1,6 +1,6 @@
 #include <qt/test/wallettests.h>
 
-#include <qt/bitcoinamountfield.h>
+#include <qt/nixamountfield.h>
 #include <qt/callback.h>
 #include <qt/optionsmodel.h>
 #include <qt/platformstyle.h>
@@ -10,7 +10,7 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
-#include <test/test_bitcoin.h>
+#include <test/test_nix.h>
 #include <validation.h>
 #include <wallet/wallet.h>
 #include <qt/overviewpage.h>

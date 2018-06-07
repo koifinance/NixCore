@@ -26,6 +26,8 @@
 
 //void EnsureWalletIsUnlocked();
 
+UniValue ghostnodelist(const JSONRPCRequest &req);
+
 UniValue privatesend(const UniValue &params, bool fHelp) {
     if (fHelp || params.size() != 1)
         throw std::runtime_error(

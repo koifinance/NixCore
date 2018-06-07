@@ -9,7 +9,7 @@
 #include <uint256.h>
 #include <util.h>
 #include <utilstrencodings.h>
-#include <test/test_bitcoin.h>
+#include <test/test_nix.h>
 
 #include <string>
 #include <vector>
@@ -92,7 +92,7 @@ void RunTest(const TestVector &test) {
     CExtKey key;
     CExtPubKey pubkey;
     key.SetMaster(seed.data(), seed.size());
-    pubkey = key.Neuter();
+    pubkey = key.Neutered();
     for (const TestDerivation &derive : test.vDerive) {
         unsigned char data[74];
         key.Encode(data);
@@ -100,10 +100,12 @@ void RunTest(const TestVector &test) {
 
         // Test private key
         CBitcoinExtKey b58key; b58key.SetKey(key);
+
         BOOST_CHECK(b58key.ToString() == derive.prv);
 
         CBitcoinExtKey b58keyDecodeCheck(derive.prv);
         CExtKey checkKey = b58keyDecodeCheck.GetKey();
+
         assert(checkKey == key); //ensure a base58 decoded key also matches
 
         // Test public key
@@ -117,7 +119,7 @@ void RunTest(const TestVector &test) {
         // Derive new keys
         CExtKey keyNew;
         BOOST_CHECK(key.Derive(keyNew, derive.nChild));
-        CExtPubKey pubkeyNew = keyNew.Neuter();
+        CExtPubKey pubkeyNew = keyNew.Neutered();
         if (!(derive.nChild & 0x80000000)) {
             // Compare with public derivation
             CExtPubKey pubkeyNew2;
@@ -133,7 +135,7 @@ void RunTest(const TestVector &test) {
 
         CDataStream ssPriv(SER_DISK, CLIENT_VERSION);
         ssPriv << keyNew;
-        BOOST_CHECK(ssPriv.size() == 75);
+        BOOST_CHECK(ssPriv.size() == 74);
 
         CExtPubKey pubCheck;
         CExtKey privCheck;

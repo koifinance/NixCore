@@ -7,13 +7,16 @@
 
 #include <qt/paymentrequestplus.h>
 #include <qt/walletmodeltransaction.h>
+#include <amount.h>
 
 #include <support/allocators/secure.h>
+
 
 #include <map>
 #include <vector>
 
 #include <QObject>
+#include <QMessageBox>
 
 enum OutputType : int;
 
@@ -28,13 +31,18 @@ class CCoinControl;
 class CKeyID;
 class COutPoint;
 class COutput;
+class CCoinControlEntry;
 class CPubKey;
 class CWallet;
 class uint256;
+class CHDWallet;
+class UniValue;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
 QT_END_NAMESPACE
+
+extern void LockWallet(CWallet* pWallet);
 
 class SendCoinsRecipient
 {
@@ -53,6 +61,8 @@ public:
     CAmount amount;
     // If from a payment request, this is used for storing the memo
     QString message;
+
+    QString narration;
 
     // If from a payment request, paymentRequest.IsInitialized() will be true
     PaymentRequestPlus paymentRequest;
@@ -123,7 +133,7 @@ public:
     {
         Unencrypted,  // !wallet->IsCrypted()
         Locked,       // wallet->IsCrypted() && wallet->IsLocked()
-        Unlocked      // wallet->IsCrypted() && !wallet->IsLocked()
+        Unlocked,     // wallet->IsCrypted() && !wallet->IsLocked()
     };
 
     OptionsModel *getOptionsModel();
@@ -192,11 +202,13 @@ public:
     UnlockContext requestUnlock();
 
     bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
+    bool havePrivKey(const CKeyID &address) const;
+    bool ownAddress(const CTxDestination &dest) const;
     bool IsSpendable(const CTxDestination& dest) const;
     bool getPrivKey(const CKeyID &address, CKey& vchPrivKeyOut) const;
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
     bool isSpent(const COutPoint& outpoint) const;
-    void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
+    void listCoins(std::map<QString, std::vector<CCoinControlEntry> >& mapCoins, OutputTypes nType) const;
 
     bool isLockedCoin(uint256 hash, unsigned int n) const;
     void lockCoin(COutPoint& output);
@@ -217,6 +229,15 @@ public:
     bool hdEnabled() const;
 
     OutputType getDefaultAddressType() const;
+
+    void lockWallet();
+    CHDWallet *getNIXWallet() const;
+    CAmount getReserveBalance();
+
+    void checkBalanceChanged();
+
+    bool tryCallRpc(const QString &sCommand, UniValue &rv) const;
+    void warningBox(QString heading, QString msg) const;
 
     int getDefaultConfirmTarget() const;
 
@@ -247,7 +268,8 @@ private:
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged();
+
+    QMessageBox mbDevice;
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
@@ -263,7 +285,7 @@ Q_SIGNALS:
     void requireUnlock();
 
     // Fired when a message should be reported to the user
-    void message(const QString &title, const QString &message, unsigned int style);
+    void message(const QString &title, const QString &message, unsigned int style) const;
 
     // Coins sent: from wallet, to recipient, in (serialized) transaction:
     void coinsSent(CWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
@@ -285,6 +307,13 @@ public Q_SLOTS:
     void updateWatchOnlyFlag(bool fHaveWatchonly);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged();
+
+
+    void reserveBalanceChanged(CAmount nReserveBalanceNew);
+
+    // Waiting for hardware device
+    void waitingForDevice(bool fCompleted);
+
 };
 
 #endif // BITCOIN_QT_WALLETMODEL_H

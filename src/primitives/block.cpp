@@ -42,8 +42,10 @@ std::string CBlock::ToString() const
 }
 
 void CBlock::ZerocoinClean() const {
+    /*
     if (zerocoinTxInfo != NULL)
         delete zerocoinTxInfo;
     zerocoinTxInfo = NULL;
+    */
 }
 

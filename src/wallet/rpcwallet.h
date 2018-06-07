@@ -8,10 +8,13 @@
 #include <string>
 
 class CRPCTable;
+class UniValue;
+class CWalletTx;
 class CWallet;
 class JSONRPCRequest;
 
 void RegisterWalletRPCCommands(CRPCTable &t);
+void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry, bool fFilterMode=false);
 
 /**
  * Figures out what wallet, if any, to use for a JSONRPCRequest.

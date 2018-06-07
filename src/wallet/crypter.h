@@ -119,8 +119,6 @@ class CCryptoKeyStore : public CBasicKeyStore
     friend class CWallet;
 private:
 
-    CKeyingMaterial vMasterKey;
-
     //! if fUseCrypto is true, mapKeys must be empty
     //! if fUseCrypto is false, vMasterKey must be empty
     std::atomic<bool> fUseCrypto;
@@ -130,6 +128,8 @@ private:
     bool fOnlyMixingAllowed;
 
 protected:
+
+    CKeyingMaterial vMasterKey;
     bool SetCrypted();
 
     //! will encrypt previously unencrypted keys

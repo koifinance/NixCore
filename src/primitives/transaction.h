@@ -14,6 +14,41 @@
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 
+static const uint8_t NIX_TXN_VERSION = 0x0D;
+
+enum OutputTypes
+{
+    OUTPUT_NULL             = 0, // marker for CCoinsView (0.14)
+    OUTPUT_STANDARD         = 1,
+    OUTPUT_ZEROCOIN         = 2,
+    OUTPUT_DATA             = 3,
+};
+
+enum TransactionTypes
+{
+    TXN_STANDARD            = 0,
+    TXN_COINBASE            = 1,
+    TXN_ZEROCOIN            = 2,
+};
+
+enum DataOutputTypes
+{
+    DO_NULL                 = 0, // reserved
+    DO_NARR_PLAIN           = 1,
+    DO_NARR_CRYPT           = 2,
+    DO_STEALTH              = 3,
+    DO_STEALTH_PREFIX       = 4,
+    DO_FEE                  = 5,
+    DO_FUND_MSG             = 6,
+};
+
+
+inline bool IsNIXTxVersion(int nVersion)
+{
+    //return (nVersion & 0xFF) >= NIX_TXN_VERSION;
+    return true;
+}
+
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
 {
@@ -65,6 +100,7 @@ public:
     COutPoint prevout;
     CScript scriptSig;
     uint32_t nSequence;
+    CScriptWitness scriptData;
     CScriptWitness scriptWitness; //! Only serialized through CTransaction
     CScript prevPubKey;
 
@@ -130,6 +166,162 @@ public:
     }
 
     std::string ToString() const;
+};
+
+class CTxOutStandard;
+class CTxOutData;
+
+class CTxOutBase
+{
+public:
+    CTxOutBase(uint8_t v) : nVersion(v) {};
+    uint8_t nVersion;
+
+    template<typename Stream>
+    void Serialize(Stream &s) const
+    {
+        switch (nVersion)
+        {
+            case OUTPUT_STANDARD:
+                s << *((CTxOutStandard*) this);
+                break;
+            case OUTPUT_DATA:
+                s << *((CTxOutData*) this);
+                break;
+            default:
+                assert(false);
+        };
+    };
+
+    template<typename Stream>
+    void Unserialize(Stream &s)
+    {
+        switch (nVersion)
+        {
+            case OUTPUT_STANDARD:
+                s >> *((CTxOutStandard*) this);
+                break;
+            case OUTPUT_DATA:
+                s >> *((CTxOutData*) this);
+                break;
+            default:
+                assert(false);
+        };
+    }
+
+    uint8_t GetType() const
+    {
+        return nVersion;
+    }
+
+    bool IsType(uint8_t nType) const
+    {
+        return nVersion == nType;
+    }
+
+    bool IsStandardOutput() const
+    {
+        return nVersion == OUTPUT_STANDARD;
+    };
+
+    const CTxOutStandard *GetStandardOutput() const
+    {
+        assert(nVersion == OUTPUT_STANDARD);
+        return (CTxOutStandard*)this;
+    };
+
+    virtual bool IsEmpty() const { return false;}
+
+    void SetValue(CAmount value);
+
+    virtual CAmount GetValue() const;
+
+    virtual bool PutValue(std::vector<uint8_t> &vchAmount) const { return false; }
+
+    virtual bool GetScriptPubKey(CScript &scriptPubKey_) const { return false; }
+    virtual const CScript *GetPScriptPubKey() const { return nullptr; }
+
+    std::string ToString() const;
+};
+
+typedef std::shared_ptr<CTxOutBase> CTxOutBaseRef;
+#define OUTPUT_PTR std::shared_ptr
+#define MAKE_OUTPUT std::make_shared
+
+typedef OUTPUT_PTR<CTxOutBase> CTxOutBaseRef;
+
+class CTxOutStandard : public CTxOutBase
+{
+public:
+    CTxOutStandard() : CTxOutBase(OUTPUT_STANDARD) {};
+    CTxOutStandard(const CAmount& nValueIn, CScript scriptPubKeyIn);
+
+    CAmount nValue;
+    CScript scriptPubKey;
+
+    template<typename Stream>
+    void Serialize(Stream &s) const
+    {
+        s << nValue;
+        s << *(CScriptBase*)(&scriptPubKey);
+    };
+
+    template<typename Stream>
+    void Unserialize(Stream &s)
+    {
+        s >> nValue;
+        s >> *(CScriptBase*)(&scriptPubKey);
+    };
+
+
+    virtual bool IsEmpty() const
+    {
+        return (nValue == 0 && scriptPubKey.empty());
+    }
+
+    bool PutValue(std::vector<uint8_t> &vchAmount) const override
+    {
+        vchAmount.resize(8);
+        memcpy(&vchAmount[0], &nValue, 8);
+        return true;
+    };
+
+    CAmount GetValue() const override
+    {
+        return nValue;
+    };
+
+    bool GetScriptPubKey(CScript &scriptPubKey_) const override
+    {
+        scriptPubKey_ = scriptPubKey;
+        return true;
+    };
+
+    virtual const CScript *GetPScriptPubKey() const override
+    {
+        return &scriptPubKey;
+    };
+};
+
+class CTxOutData : public CTxOutBase
+{
+public:
+    CTxOutData() : CTxOutBase(OUTPUT_DATA) {}
+    CTxOutData(const std::vector<uint8_t> &vData_) : CTxOutBase(OUTPUT_DATA), vData(vData_) {}
+
+    std::vector<uint8_t> vData;
+
+    template<typename Stream>
+    void Serialize(Stream &s) const
+    {
+        s << vData;
+    }
+
+    template<typename Stream>
+    void Unserialize(Stream &s)
+    {
+        s >> vData;
+    }
 };
 
 /** An output of a transaction.  It contains the public key that the next input
@@ -299,6 +491,7 @@ public:
     // structure, including the hash.
     const std::vector<CTxIn> vin;
     const std::vector<CTxOut> vout;
+    const std::vector<CTxOutBaseRef> vpout;
     const int32_t nVersion;
     const uint32_t nLockTime;
 
@@ -342,6 +535,10 @@ public:
     // GetValueIn() is a method on CCoinsViewCache, because
     // inputs must be known to compute value in.
 
+    size_t GetNumVOuts() const
+    {
+        return vpout.size();
+    }
     /**
      * Get the total transaction size in bytes, including witness data.
      * "Total Size" defined in BIP141 and BIP144.
@@ -390,6 +587,10 @@ public:
         }
         return false;
     }
+
+    bool IsNIXVersion() const {
+        return IsNIXTxVersion(nVersion);
+    }
 };
 
 /** A mutable version of CTransaction. */
@@ -397,6 +598,7 @@ struct CMutableTransaction
 {
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
+    std::vector<CTxOutBaseRef> vpout;
     int32_t nVersion;
     uint32_t nLockTime;
 
@@ -423,6 +625,12 @@ struct CMutableTransaction
      * fly, as opposed to GetHash() in CTransaction, which uses a cached result.
      */
     uint256 GetHash() const;
+
+
+    size_t GetNumVOuts() const
+    {
+        return vpout.size();
+    }
 
     friend bool operator==(const CMutableTransaction& a, const CMutableTransaction& b)
     {

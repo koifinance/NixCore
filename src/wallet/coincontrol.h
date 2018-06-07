@@ -12,10 +12,22 @@
 
 #include <boost/optional.hpp>
 
+class CCoinControlEntry
+{
+public:
+    COutPoint op;
+    int nType;
+    int nDepth;
+    CAmount nValue;
+    CScript scriptPubKey;
+    int64_t nTxTime;
+};
+
 /** Coin Control Features. */
 class CCoinControl
 {
 public:
+    CScript scriptChange;
     //! Custom change destination, if not set an address is generated
     CTxDestination destChange;
     //! Custom change type, ignored if destChange is set, defaults to g_change_type
@@ -26,6 +38,8 @@ public:
     bool fAllowWatchOnly;
     //! Override automatic min/max checks on fee, m_feerate must be set if true
     bool fOverrideFeeRate;
+    int nCoinType;
+
     //! Override the default payTxFee if set
     boost::optional<CFeeRate> m_feerate;
     //! Override the default confirmation target if set
@@ -34,6 +48,9 @@ public:
     bool signalRbf;
     //! Fee estimation mode to control arguments to estimateSmartFee
     FeeEstimateMode m_fee_mode;
+    mutable bool fHaveAnonOutputs = false;
+    mutable bool fNeedHardwareKey = false;
+    CAmount m_extrafee;
 
     CCoinControl()
     {
@@ -49,9 +66,12 @@ public:
         setSelected.clear();
         m_feerate.reset();
         fOverrideFeeRate = false;
+        nCoinType = OUTPUT_STANDARD;
         m_confirm_target.reset();
         signalRbf = fWalletRbf;
         m_fee_mode = FeeEstimateMode::UNSET;
+        fHaveAnonOutputs = false;
+        m_extrafee = 0;
     }
 
     bool HasSelected() const
@@ -84,7 +104,12 @@ public:
         vOutpoints.assign(setSelected.begin(), setSelected.end());
     }
 
-private:
+    size_t NumSelected()
+    {
+        return setSelected.size();
+    }
+
+//private:
     std::set<COutPoint> setSelected;
 };
 

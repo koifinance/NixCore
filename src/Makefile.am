@@ -174,6 +174,7 @@ NIX_CORE_H = \
   rpc/protocol.h \
   rpc/safemode.h \
   rpc/server.h \
+  rpc/rpcutil.h \
   rpc/register.h \
   rpc/util.h \
   scheduler.h \
@@ -181,13 +182,30 @@ NIX_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/ismine.h \
-  stealth-address/lz4.h \
-  stealth-address/extkey.h \
-  stealth-address/keystore.h \
-  stealth-address/keyutil.h \
-  stealth-address/mnemonic.h \
-  stealth-address/stealth.h \
-  stealth-address/xxhash.h \
+  ghost-address/lz4.h \
+  ghost-address/extkey.h \
+  ghost-address/keystore.h \
+  ghost-address/keyutil.h \
+  ghost-address/mnemonic.h \
+  ghost-address/stealth.h \
+  ghost-address/xxhash.h \
+  ghost-address/smsg/db.h \
+  ghost-address/smsg/crypter.h \
+  ghost-address/smsg/smessage.h \
+  ghost-address/smsg/rpcsmessage.h \
+  ghost-address/key/wordlists/chinese_simplified.h \
+  ghost-address/key/wordlists/chinese_traditional.h \
+  ghost-address/key/wordlists/english.h \
+  ghost-address/key/wordlists/french.h \
+  ghost-address/key/wordlists/japanese.h \
+  ghost-address/key/wordlists/spanish.h \
+  ghost-address/key/wordlists/italian.h \
+  ghost-address/key/wordlists/korean.h \
+  ghost-address/smsg/crypter.h \
+  ghost-address/smsg/keystore.h \
+  ghost-address/smsg/db.h \
+  ghost-address/smsg/smessage.h \
+  ghost-address/smsg/rpcsmessage.h \
   streams.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
@@ -218,8 +236,11 @@ NIX_CORE_H = \
   wallet/fees.h \
   wallet/init.h \
   wallet/rpcwallet.h \
+  wallet/hd/rpchdwallet.h \
   wallet/wallet.h \
+  wallet/hd/hdwallet.h \
   wallet/walletdb.h \
+  wallet/hd/hdwalletdb.h \
   wallet/walletutil.h \
   warnings.h \
   zerocoin/zerocoin.h \
@@ -267,10 +288,12 @@ libnix_server_a_SOURCES = \
   rpc/blockchain.cpp \
   rpc/mining.cpp \
   rpc/misc.cpp \
+  rpc/mnemonic.cpp \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
   rpc/safemode.cpp \
   rpc/server.cpp \
+  rpc/rpcutil.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \
@@ -335,6 +358,9 @@ libnix_wallet_a_SOURCES = \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
   wallet/walletdb.cpp \
+  wallet/hd/rpchdwallet.cpp \
+  wallet/hd/hdwallet.cpp \
+  wallet/hd/hdwalletdb.cpp \
   wallet/walletutil.cpp \
   $(NIX_CORE_H)
 
@@ -443,13 +469,18 @@ libnix_common_a_SOURCES = \
   script/standard.cpp \
   unilib/uninorms.cpp \
   unilib/utf8.cpp \
-  stealth-address/lz4.c \
-  stealth-address/extkey.cpp \
-  stealth-address/keystore.cpp \
-  stealth-address/keyutil.cpp \
-  stealth-address/mnemonic.cpp \
-  stealth-address/stealth.cpp \
-  stealth-address/xxhash.c \
+  ghost-address/lz4.c \
+  ghost-address/extkey.cpp \
+  ghost-address/keystore.cpp \
+  ghost-address/keyutil.cpp \
+  ghost-address/mnemonic.cpp \
+  ghost-address/stealth.cpp \
+  ghost-address/xxhash.c \
+  ghost-address/smsg/crypter.cpp \
+  ghost-address/smsg/keystore.cpp \
+  ghost-address/smsg/db.cpp \
+  ghost-address/smsg/smessage.cpp \
+  ghost-address/smsg/rpcsmessage.cpp \
   warnings.cpp \
   $(NIX_CORE_H)
 
