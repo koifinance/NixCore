@@ -24,6 +24,10 @@ class CScheduler;
 class CTxMemPool;
 enum class MemPoolRemovalReason;
 
+namespace smsg {
+class SecureMessage;
+}
+
 // These functions dispatch to one or all registered wallets
 
 /** Register a wallet to receive updates from core */
@@ -115,10 +119,12 @@ protected:
     /**
      * Notifies listeners that a block which builds directly on our current tip
      * has been received and connected to the headers tree, though not validated yet */
-    virtual void NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock>& block) {};
+    virtual void NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock>& block) {}
     friend void ::RegisterValidationInterface(CValidationInterface*);
     friend void ::UnregisterValidationInterface(CValidationInterface*);
     friend void ::UnregisterAllValidationInterfaces();
+    virtual void NewSecureMessage(const smsg::SecureMessage *psmsg, const uint160 &hash) {}
+    virtual void TransactionAddedToWallet(const std::string &sWalletName, const CTransactionRef& tx) {}
 };
 
 struct MainSignalsInstance;
@@ -157,6 +163,9 @@ public:
     void Broadcast(int64_t nBestBlockTime, CConnman* connman);
     void BlockChecked(const CBlock&, const CValidationState&);
     void NewPoWValidBlock(const CBlockIndex *, const std::shared_ptr<const CBlock>&);
+    void NewSecureMessage(const smsg::SecureMessage *psmsg, const uint160 &hash);
+    void TransactionAddedToWallet(const std::string &sWalletName, const CTransactionRef& tx);
+
 };
 
 CMainSignals& GetMainSignals();

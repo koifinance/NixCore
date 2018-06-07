@@ -17,6 +17,7 @@
 #include <qt/signverifymessagedialog.h>
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
+#include <qt/transactionrecord.h>
 #include <qt/walletmodel.h>
 
 #include <ui_interface.h>
@@ -100,7 +101,7 @@ void WalletView::setBitcoinGUI(BitcoinGUI *gui)
         // Pass through transaction notifications
         connect(this, SIGNAL(incomingTransaction(QString,int,CAmount,QString,QString,QString)), gui, SLOT(incomingTransaction(QString,int,CAmount,QString,QString,QString)));
 
-        // Connect HD enabled state signal 
+        // Connect HD enabled state signal
         connect(this, SIGNAL(hdEnabledStatusChanged(int)), gui, SLOT(setHDStatus(int)));
     }
 }
@@ -165,6 +166,7 @@ void WalletView::processNewTransaction(const QModelIndex& parent, int start, int
     QModelIndex index = ttm->index(start, 0, parent);
     QString address = ttm->data(index, TransactionTableModel::AddressRole).toString();
     QString label = ttm->data(index, TransactionTableModel::LabelRole).toString();
+
 
     Q_EMIT incomingTransaction(date, walletModel->getOptionsModel()->getDisplayUnit(), amount, type, address, label);
 }
@@ -235,6 +237,7 @@ void WalletView::encryptWallet(bool status)
 {
     if(!walletModel)
         return;
+
     AskPassphraseDialog dlg(status ? AskPassphraseDialog::Encrypt : AskPassphraseDialog::Decrypt, this);
     dlg.setModel(walletModel);
     dlg.exec();
@@ -268,18 +271,26 @@ void WalletView::changePassphrase()
     dlg.exec();
 }
 
-void WalletView::unlockWallet()
+void WalletView::unlockWallet(bool iconClicked)
 {
     if(!walletModel)
         return;
     // Unlock wallet when requested by wallet model
     if (walletModel->getEncryptionStatus() == WalletModel::Locked)
     {
-        AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+        AskPassphraseDialog dlg(
+            iconClicked ? AskPassphraseDialog::UnlockManual : AskPassphraseDialog::Unlock, this);
         dlg.setModel(walletModel);
         dlg.exec();
     }
 }
+
+void WalletView::lockWallet()
+{
+    if(!walletModel)
+        return;
+    walletModel->lockWallet();
+};
 
 void WalletView::usedSendingAddresses()
 {

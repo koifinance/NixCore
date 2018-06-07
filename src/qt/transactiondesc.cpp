@@ -17,9 +17,19 @@
 #include <util.h>
 #include <wallet/db.h>
 #include <wallet/wallet.h>
+#include <wallet/hd/hdwallet.h>
+
+#include <univalue.h>
+#include <rpc/server.h>
+#include <rpc/client.h>
 
 #include <stdint.h>
 #include <string>
+
+#include <QUrl>
+
+
+extern UniValue gettransaction(const JSONRPCRequest& request);
 
 QString TransactionDesc::FormatTxStatus(const CWalletTx& wtx)
 {
@@ -248,6 +258,11 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         if (r.first == "Message")
             strHTML += "<br><b>" + tr("Message") + ":</b><br>" + GUIUtil::HtmlEscape(r.second, true) + "<br>";
 
+    std::string sKey = strprintf("n%d", rec->getOutputIndex());
+    mapValue_t::iterator mvi = wtx.mapValue.find(sKey);
+    if (mvi != wtx.mapValue.end())
+        strHTML += "<br><b>" + tr("Narration") + ":</b><br>" + GUIUtil::HtmlEscape(mvi->second, true) + "<br>";
+
     //
     // PaymentRequest info:
     //
@@ -282,33 +297,45 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
             if(wallet->IsMine(txout))
                 strHTML += "<b>" + tr("Credit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(unit, wallet->GetCredit(txout, ISMINE_ALL)) + "<br>";
 
+        for (const auto &txout : wtx.tx->vpout)
+            if(wallet->IsMine(txout.get()))
+                strHTML += "<b>" + tr("Credit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(unit, wallet->GetCredit(txout.get(), ISMINE_ALL)) + "<br>";
+
         strHTML += "<br><b>" + tr("Transaction") + ":</b><br>";
         strHTML += GUIUtil::HtmlEscape(wtx.tx->ToString(), true);
 
         strHTML += "<br><b>" + tr("Inputs") + ":</b>";
         strHTML += "<ul>";
 
-        for (const CTxIn& txin : wtx.tx->vin)
+        CCoinsViewCache view(pcoinsTip.get());
+        for (const auto &txin : wtx.tx->vin)
         {
             COutPoint prevout = txin.prevout;
 
             Coin prev;
-            if(pcoinsTip->GetCoin(prevout, prev))
+            if (view.GetCoin(prevout, prev))
             {
+                if (prev.IsSpent())
+                    continue;
+                strHTML += "<li>";
+                CTxDestination address;
+
+                const CScript *pScript = &prev.out.scriptPubKey;
+                CAmount nValue = prev.out.nValue;
+
+                if (ExtractDestination(*pScript, address))
                 {
-                    strHTML += "<li>";
-                    const CTxOut &vout = prev.out;
-                    CTxDestination address;
-                    if (ExtractDestination(vout.scriptPubKey, address))
-                    {
-                        if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].name.empty())
-                            strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address].name) + " ";
-                        strHTML += QString::fromStdString(EncodeDestination(address));
-                    }
-                    strHTML = strHTML + " " + tr("Amount") + "=" + BitcoinUnits::formatHtmlWithUnit(unit, vout.nValue);
-                    strHTML = strHTML + " IsMine=" + (wallet->IsMine(vout) & ISMINE_SPENDABLE ? tr("true") : tr("false")) + "</li>";
-                    strHTML = strHTML + " IsWatchOnly=" + (wallet->IsMine(vout) & ISMINE_WATCH_ONLY ? tr("true") : tr("false")) + "</li>";
-                }
+                    if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].name.empty())
+                        strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address].name) + " ";
+                    strHTML += QString::fromStdString(CBitcoinAddress(address).ToString());
+                };
+
+                if (prev.nType == OUTPUT_STANDARD)
+                    strHTML = strHTML + " " + tr("Amount") + "=" + BitcoinUnits::formatHtmlWithUnit(unit, nValue);
+                else
+                    strHTML = strHTML + " " + tr("Amount") + "=" + "Blinded";
+                strHTML = strHTML + " IsMine=" + (::IsMine(*wallet, *pScript) & ISMINE_SPENDABLE ? tr("true") : tr("false")) + "</li>";
+                strHTML = strHTML + " IsWatchOnly=" + (::IsMine(*wallet, *pScript) & ISMINE_WATCH_ONLY ? tr("true") : tr("false")) + "</li>";
             }
         }
 
@@ -318,3 +345,65 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     strHTML += "</font></html>";
     return strHTML;
 }
+
+
+QString TransactionDesc::toHTML(CHDWallet *wallet, CTransactionRecord &rtx, TransactionRecord *rec, int unit)
+{
+    QString strHTML;
+
+    strHTML.reserve(4000);
+    strHTML += "<html><font face='verdana, arial, helvetica, sans-serif'>";
+
+    int64_t nTime = rtx.GetTxTime();
+
+    //strHTML += "<b>" + tr("Status") + ":</b> " + FormatTxStatus(wtx);
+    int nRequests = wallet->GetRequestCount(rec->hash, rtx);
+    if (nRequests != -1)
+    {
+        if (nRequests == 0)
+            strHTML += tr(", has not been successfully broadcast yet");
+        else if (nRequests > 0)
+            strHTML += tr(", broadcast through %n node(s)", "", nRequests);
+    }
+    strHTML += "<br>";
+
+    strHTML += "<b>" + tr("Date") + ":</b> " + (nTime ? GUIUtil::dateTimeStr(nTime) : "") + "<br>";
+    strHTML += "<b>" + tr("Transaction ID") + ":</b> " + rec->getTxID() + "<br>";
+
+
+    JSONRPCRequest request;
+    QByteArray encodedName = QUrl::toPercentEncoding(QString::fromStdString(wallet->GetName()));
+    request.URI = "/wallet/"+std::string(encodedName.constData(), encodedName.length());
+    request.fHelp = false;
+    request.fSkipBlock = true;
+    UniValue params(UniValue::VARR);
+    params.push_back(rec->getTxID().toStdString());
+    request.params = params;
+    UniValue rv = gettransaction(request);
+
+    if (!rv["hex"].isNull())
+        strHTML += "<b>" + tr("Transaction total size") + ":</b> " + QString::number(rv["hex"].get_str().length() / 2) + " bytes<br>";
+
+    strHTML += "<b>" + tr("Confirmations") + ":</b> " + QString::number(rv["confirmations"].get_int()) + "<br>";
+
+    if (!rv["blockhash"].isNull())
+    {
+        strHTML += "<b>" + tr("Block hash") + ":</b> " + QString::fromStdString(rv["blockhash"].get_str()) + "<br>";
+        strHTML += "<b>" + tr("Block index") + ":</b> " + QString::number(rv["blockindex"].get_int()) + "<br>";
+        strHTML += "<b>" + tr("Block time") + ":</b> " + GUIUtil::dateTimeStr(rv["blocktime"].get_int()) + "<br>";
+    };
+
+    strHTML += "<b>Details:</b><br>";
+    strHTML += "<p>";
+
+    std::string sDetails = rv["details"].write(1);
+    nix::ReplaceStrInPlace(sDetails, "\n", "<br>");
+    strHTML += QString::fromStdString(sDetails);
+
+    strHTML += "</p>";
+
+
+    strHTML += "</font></html>";
+    return strHTML;
+};
+

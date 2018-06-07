@@ -18,7 +18,9 @@
 #include <script/script_error.h>
 #include <sync.h>
 #include <versionbits.h>
-
+#include <spentindex.h>
+#include <addressindex.h>
+#include <timestampindex.h>
 #include <algorithm>
 #include <exception>
 #include <map>
@@ -372,6 +374,9 @@ bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp = null
 class CScriptCheck
 {
 private:
+    CScript scriptPubKey;
+    CAmount amount;
+    std::vector<uint8_t> vchAmount;
     CTxOut m_tx_out;
     const CTransaction *ptxTo;
     unsigned int nIn;
@@ -379,16 +384,34 @@ private:
     bool cacheStore;
     ScriptError error;
     PrecomputedTransactionData *txdata;
-
 public:
-    CScriptCheck(): ptxTo(nullptr), nIn(0), nFlags(0), cacheStore(false), error(SCRIPT_ERR_UNKNOWN_ERROR) {}
+    CScriptCheck(const CScript& scriptPubKeyIn, const std::vector<uint8_t> &vchAmountIn, const CTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) :
+        scriptPubKey(scriptPubKeyIn), vchAmount(vchAmountIn),
+        ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) { }
+
+    CScriptCheck(const CScript& scriptPubKeyIn, const CAmount amountIn, const CTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) :
+        scriptPubKey(scriptPubKeyIn), amount(amountIn),
+        ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn)
+        {
+            vchAmount.resize(8);
+            memcpy(&vchAmount[0], &amountIn, 8);
+        };
+    CScriptCheck(): amount(0), ptxTo(nullptr), nIn(0), nFlags(0), cacheStore(false), error(SCRIPT_ERR_UNKNOWN_ERROR) {}
     CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) :
-        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) { }
+        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn)
+    {
+        vchAmount.resize(8);
+        memcpy(&vchAmount[0], &m_tx_out.nValue, 8);
+        scriptPubKey = m_tx_out.scriptPubKey;
+    };
 
     bool operator()();
 
     void swap(CScriptCheck &check) {
         std::swap(ptxTo, check.ptxTo);
+        std::swap(scriptPubKey, check.scriptPubKey);
+        std::swap(amount, check.amount);
+        std::swap(vchAmount, check.vchAmount);
         std::swap(m_tx_out, check.m_tx_out);
         std::swap(nIn, check.nIn);
         std::swap(nFlags, check.nFlags);
@@ -399,6 +422,16 @@ public:
 
     ScriptError GetScriptError() const { return error; }
 };
+
+/** Functions for insight block explorer */
+bool GetTimestampIndex(const unsigned int &high, const unsigned int &low, const bool fActiveOnly, std::vector<std::pair<uint256, unsigned int> > &hashes);
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+bool HashOnchainActive(const uint256 &hash);
+bool GetAddressIndex(uint256 addressHash, int type,
+                     std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex,
+                     int start = 0, int end = 0);
+bool GetAddressUnspent(uint256 addressHash, int type,
+                       std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &unspentOutputs);
 
 /** Initializes the script-execution cache */
 void InitScriptExecutionCache();

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>642</width>
+    <width>647</width>
     <height>342</height>
    </rect>
   </property>
@@ -73,7 +73,7 @@
                </size>
               </property>
               <property name="toolTip">
-               <string>The displayed information may be out of date. Your wallet automatically synchronizes with the Bitcoin network after a connection is established, but this process has not completed yet.</string>
+               <string>The displayed information may be out of date. Your wallet automatically synchronizes with the NIX network after a connection is established, but this process has not completed yet.</string>
               </property>
               <property name="text">
                <string/>
@@ -422,7 +422,7 @@
        <item>
         <widget class="QCheckBox" name="checkboxEnabledTor">
          <property name="text">
-          <string>Enable TOR</string>
+          <string>Conceal IP Networking</string>
          </property>
         </widget>
        </item>
@@ -466,7 +466,7 @@
                </size>
               </property>
               <property name="toolTip">
-               <string>The displayed information may be out of date. Your wallet automatically synchronizes with the Bitcoin network after a connection is established, but this process has not completed yet.</string>
+               <string>The displayed information may be out of date. Your wallet automatically synchronizes with the NIX network after a connection is established, but this process has not completed yet.</string>
               </property>
               <property name="text">
                <string/>

@@ -132,7 +132,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 BTC</string>
+          <string notr="true">0.00 NIX</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -212,7 +212,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 BTC</string>
+          <string notr="true">0.00 NIX</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -257,7 +257,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 BTC</string>
+          <string notr="true">0.00 NIX</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -292,7 +292,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 BTC</string>
+          <string notr="true">0.00 NIX</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -319,10 +319,29 @@
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayoutPanel" stretch="0,0,0,0,0">
+       <layout class="QHBoxLayout" name="horizontalLayoutPanel" stretch="0,0,0,0,0,0">
         <property name="spacing">
          <number>14</number>
         </property>
+        <item>
+         <widget class="QComboBox" name="cbxType">
+          <item>
+           <property name="text">
+            <string>Standard</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Blind</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Anon</string>
+           </property>
+          </item>
+         </widget>
+        </item>
         <item>
          <widget class="QPushButton" name="pushButtonSelectAll">
           <property name="sizePolicy">
@@ -419,6 +438,9 @@
       <property name="text">
        <string>Amount</string>
       </property>
+      <property name="textAlignment">
+       <set>AlignTrailing|AlignVCenter</set>
+      </property>
      </column>
      <column>
       <property name="text">
@@ -441,6 +463,9 @@
       </property>
       <property name="toolTip">
        <string>Confirmed</string>
+      </property>
+      <property name="textAlignment">
+       <set>AlignTrailing|AlignVCenter</set>
       </property>
      </column>
      <column>

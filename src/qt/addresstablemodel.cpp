@@ -9,8 +9,14 @@
 
 #include <base58.h>
 #include <wallet/wallet.h>
+#include <wallet/hd/hdwallet.h>
+#include <wallet/hd/rpchdwallet.h>
+#include <rpc/rpcutil.h>
+#include <util.h>
+#include <univalue.h>
 
 
+#include <QMessageBox>
 #include <QFont>
 #include <QDebug>
 
@@ -82,14 +88,16 @@ public:
             LOCK(wallet->cs_wallet);
             for (const std::pair<CTxDestination, CAddressBookData>& item : wallet->mapAddressBook)
             {
-                const CTxDestination& address = item.first;
-                bool fMine = IsMine(*wallet, address);
+                const CBitcoinAddress address(item.first, item.second.fBech32);
+                bool fMine = IsMine(*wallet, item.first);
                 AddressTableEntry::Type addressType = translateTransactionType(
                         QString::fromStdString(item.second.purpose), fMine);
                 const std::string& strName = item.second.name;
+
                 cachedAddressTable.append(AddressTableEntry(addressType,
                                   QString::fromStdString(strName),
-                                  QString::fromStdString(EncodeDestination(address))));
+                                  //QString::fromStdString(EncodeDestination(address))));
+                                  QString::fromStdString(address.ToString())));
             }
         }
         // qLowerBound() and qUpperBound() require our cachedAddressTable list to be sorted in asc order
@@ -341,7 +349,7 @@ void AddressTableModel::updateEntry(const QString &address,
     priv->updateEntry(address, label, isMine, purpose, status);
 }
 
-QString AddressTableModel::addRow(const QString &type, const QString &label, const QString &address, const OutputType address_type, int addressType)
+QString AddressTableModel::addRow(const QString &type, const QString &label, const QString &address, const OutputType address_type, AddrType addrType)
 {
     std::string strLabel = label.toStdString();
     std::string strAddress = address.toStdString();
@@ -368,24 +376,40 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     else if(type == Receive)
     {
         // Generate a new address to associate with given label
-        CPubKey newKey;
-        if(!wallet->GetKeyFromPool(newKey))
+
+        QString sCommand;
+        switch (addrType)
         {
-            WalletModel::UnlockContext ctx(walletModel->requestUnlock());
-            if(!ctx.isValid())
-            {
-                // Unlock wallet failed or was cancelled
-                editStatus = WALLET_UNLOCK_FAILURE;
-                return QString();
-            }
-            if(!wallet->GetKeyFromPool(newKey))
-            {
-                editStatus = KEY_GENERATION_FAILURE;
-                return QString();
-            }
-        }
-        wallet->LearnRelatedScripts(newKey, address_type);
-        strAddress = EncodeDestination(GetDestinationForKey(newKey, address_type));
+            case ADDR_STEALTH:
+                sCommand = "getnewstealthaddress ";
+                sCommand += "\""+label+ "\" ";
+                sCommand += " 0 ";
+                sCommand += " 0 ";
+                sCommand += (address_type == OUTPUT_TYPE_BECH32) ? " true " : " false ";
+                break;
+            case ADDR_EXT:
+                sCommand = "getnewextaddress ";
+                sCommand += "\""+label+ "\" ";
+                sCommand += " \"\" ";
+                sCommand += (address_type == OUTPUT_TYPE_BECH32) ? " true " : " false ";
+                break;
+            default:
+                sCommand = "getnewaddress ";
+                sCommand += "\""+label+ "\" ";
+                sCommand += (address_type == OUTPUT_TYPE_BECH32) ? " true " : " false ";
+                sCommand += " false ";
+                sCommand += (addrType == ADDR_STANDARD256) ? " true " : " false ";
+                break;
+        };
+
+        // "account", "bech32", "hardened", "256bit"
+
+
+
+        UniValue rv;
+        if (!walletModel->tryCallRpc(sCommand, rv))
+            return QString();
+        return QString::fromStdString(rv.get_str());
     }
     else
     {
@@ -451,4 +475,14 @@ int AddressTableModel::lookupAddress(const QString &address) const
 void AddressTableModel::emitDataChanged(int idx)
 {
     Q_EMIT dataChanged(index(idx, 0, QModelIndex()), index(idx, columns.length()-1, QModelIndex()));
+}
+
+void AddressTableModel::warningBox(QString msg)
+{
+    qWarning() << msg;
+    QPair<QString, CClientUIInterface::MessageBoxFlags> msgParams;
+    msgParams.second = CClientUIInterface::MSG_WARNING;
+    msgParams.first = msg;
+
+    Q_EMIT walletModel->message(tr("Address Table"), msgParams.first, msgParams.second);
 }

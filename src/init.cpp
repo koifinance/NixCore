@@ -46,6 +46,7 @@
 #include <validationinterface.h>
 #ifdef ENABLE_WALLET
 #include <wallet/init.h>
+#include <wallet/hd/hdwallet.h>
 #endif
 #include <warnings.h>
 #include <stdint.h>
@@ -464,7 +465,8 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-maxuploadtarget=<n>", strprintf(_("Tries to keep outbound traffic under the given target (in MiB per 24h), 0 = no limit (default: %d)"), DEFAULT_MAX_UPLOAD_TARGET));
 
 #ifdef ENABLE_WALLET
-    strUsage += GetWalletHelpString(showDebug);
+     strUsage += CHDWallet::GetWalletHelpString(showDebug);
+    //strUsage += GetWalletHelpString(showDebug);
 #endif
 
 #if ENABLE_ZMQ
@@ -1400,6 +1402,7 @@ bool AppInitMain()
     RegisterAllCoreRPCCommands(tableRPC);
 #ifdef ENABLE_WALLET
     RegisterWalletRPC(tableRPC);
+    RegisterHDWalletRPCCommands(tableRPC);
 #endif
 
     /* Start the RPC server already.  It will be started in "warmup" mode
@@ -1768,8 +1771,10 @@ bool AppInitMain()
 
     // ********************************************************* Step 8: load wallet
 #ifdef ENABLE_WALLET
-    if (!OpenWallets())
-        return false;
+    if (!CHDWallet::InitLoadWallet())
+        return InitError(_("Load HD wallet failed. Exiting."));
+    //if (!OpenWallets())
+     //   return false;
 #else
     LogPrintf("No wallet support compiled in!\n");
 #endif

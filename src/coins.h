@@ -14,6 +14,9 @@
 #include <serialize.h>
 #include <uint256.h>
 
+#include <addressindex.h>
+#include <spentindex.h>
+
 #include <assert.h>
 #include <stdint.h>
 
@@ -33,14 +36,31 @@ public:
     CTxOut out;
 
     //! whether containing transaction was a coinbase
-    unsigned int fCoinBase : 1;
+    uint32_t fCoinBase : 1;
 
     //! at which height this containing transaction was included in the active block chain
     uint32_t nHeight : 31;
 
+    uint8_t nType = OUTPUT_STANDARD;
+
     //! construct a Coin from a CTxOut and height/coinbase information.
     Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn) {}
     Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn) : out(outIn), fCoinBase(fCoinBaseIn),nHeight(nHeightIn) {}
+
+    bool Matches(CTxOutBase *txo) const
+    {
+        if (!txo->IsType(nType))
+            return false;
+
+        if (out.scriptPubKey != *txo->GetPScriptPubKey())
+            return false;
+
+        if (nType == OUTPUT_STANDARD
+            && out.nValue != txo->GetValue())
+            return false;
+
+        return true;
+    };
 
     void Clear() {
         out.SetNull();
@@ -50,6 +70,7 @@ public:
 
     //! empty constructor
     Coin() : fCoinBase(false), nHeight(0) { }
+
 
     bool IsCoinBase() const {
         return fCoinBase;
@@ -61,6 +82,7 @@ public:
         uint32_t code = nHeight * 2 + fCoinBase;
         ::Serialize(s, VARINT(code));
         ::Serialize(s, CTxOutCompressor(REF(out)));
+        ::Serialize(s, nType);
     }
 
     template<typename Stream>
@@ -70,6 +92,7 @@ public:
         nHeight = code >> 1;
         fCoinBase = code & 1;
         ::Unserialize(s, REF(CTxOutCompressor(out)));
+        ::Unserialize(s, nType);
     }
 
     bool IsSpent() const {
@@ -194,23 +217,33 @@ public:
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) override;
     CCoinsViewCursor *Cursor() const override;
     size_t EstimateSize() const override;
-    CCoinsView* getBase(){return base;}
+    CCoinsView* GetBase() {return base;}
 };
 
 
 /** CCoinsView that adds a memory cache for transactions to another CCoinsView */
 class CCoinsViewCache : public CCoinsViewBacked
 {
-protected:
+public:
+//protected:
+
     /**
      * Make mutable so that we can "fill the cache" even from Get-methods
-     * declared as "const".  
+     * declared as "const".
      */
     mutable uint256 hashBlock;
+    mutable int nBlockHeight = 0;
     mutable CCoinsMap cacheCoins;
 
     /* Cached dynamic memory usage for the inner Coin objects. */
     mutable size_t cachedCoinsUsage;
+
+    mutable std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    mutable std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
+    mutable std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
+
+    mutable bool fForceDisconnect = false; // disconnect even if rct mismatch
+
 
 public:
     CCoinsViewCache(CCoinsView *baseIn);
@@ -224,7 +257,7 @@ public:
     bool GetCoin(const COutPoint &outpoint, Coin &coin) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
     uint256 GetBestBlock() const override;
-    void SetBestBlock(const uint256 &hashBlock);
+    void SetBestBlock(const uint256 &hashBlock, int height);
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) override;
     CCoinsViewCursor* Cursor() const override {
         throw std::logic_error("CCoinsViewCache cursor iteration not supported.");
@@ -281,7 +314,7 @@ public:
     //! Calculate the size of the cache (in bytes)
     size_t DynamicMemoryUsage() const;
 
-    /** 
+    /**
      * Amount of bitcoins coming in to a transaction
      * Note that lightweight clients may not know anything besides the hash of previous transactions,
      * so may not be able to calculate this.

@@ -146,7 +146,7 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
 bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 {
     // return if URI is not valid or is no bitcoin: URI
-    if(!uri.isValid() || uri.scheme() != QString("NIX"))
+    if(!uri.isValid() || uri.scheme() != QString("nix"))
         return false;
 
     SendCoinsRecipient rv;
@@ -421,12 +421,12 @@ bool openBitcoinConf()
 
     /* Create the file */
     boost::filesystem::ofstream configFile(pathConfig, std::ios_base::app);
-    
+
     if (!configFile.good())
         return false;
-    
+
     configFile.close();
-    
+
     /* Open bitcoin.conf with the associated application */
     return QDesktopServices::openUrl(QUrl::fromLocalFile(boostPathToQString(pathConfig)));
 }
@@ -596,7 +596,7 @@ void TableViewLastColumnResizingFixer::on_geometriesChanged()
  * Initializes all internal variables and prepares the
  * the resize modes of the last 2 columns of the table and
  */
-TableViewLastColumnResizingFixer::TableViewLastColumnResizingFixer(QTableView* table, int lastColMinimumWidth, int allColsMinimumWidth, QObject *parent) :
+TableViewLastColumnResizingFixer::TableViewLastColumnResizingFixer(QTableView* table, int lastColMinimumWidth, int allColsMinimumWidth, QObject *parent, int resizeColumnOffset) :
     QObject(parent),
     tableView(table),
     lastColumnMinimumWidth(lastColMinimumWidth),
@@ -604,7 +604,7 @@ TableViewLastColumnResizingFixer::TableViewLastColumnResizingFixer(QTableView* t
 {
     columnCount = tableView->horizontalHeader()->count();
     lastColumnIndex = columnCount - 1;
-    secondToLastColumnIndex = columnCount - 2;
+    secondToLastColumnIndex = columnCount - resizeColumnOffset;
     tableView->horizontalHeader()->setMinimumSectionSize(allColumnsMinimumWidth);
     setViewHeaderResizeMode(secondToLastColumnIndex, QHeaderView::Interactive);
     setViewHeaderResizeMode(lastColumnIndex, QHeaderView::Interactive);
@@ -615,15 +615,15 @@ fs::path static StartupShortcutPath()
 {
     std::string chain = ChainNameFromCommandLine();
     if (chain == CBaseChainParams::MAIN)
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "nix.lnk";
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "NIX.lnk";
     if (chain == CBaseChainParams::TESTNET) // Remove this special case when CBaseChainParams::TESTNET = "testnet4"
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "nix (testnet).lnk";
-    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("nix (%s).lnk", chain);
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "NIX (testnet).lnk";
+    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("NIX (%s).lnk", chain);
 }
 
 bool GetStartOnSystemStartup()
 {
-    // check for nix*.lnk
+    // check for Bitcoin*.lnk
     return fs::exists(StartupShortcutPath());
 }
 
@@ -758,9 +758,9 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
         if (chain == CBaseChainParams::MAIN)
-            optionFile << "Name=nix\n";
+            optionFile << "Name=NIX\n";
         else
-            optionFile << strprintf("Name=nix (%s)\n", chain);
+            optionFile << strprintf("Name=NIX (%s)\n", chain);
         optionFile << "Exec=" << pszExePath << strprintf(" -min -testnet=%d -regtest=%d\n", gArgs.GetBoolArg("-testnet", false), gArgs.GetBoolArg("-regtest", false));
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";
@@ -785,7 +785,7 @@ LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef
     if (listSnapshot == nullptr) {
         return nullptr;
     }
-    
+
     // loop through the list of startup items and try to find the bitcoin app
     for(int i = 0; i < CFArrayGetCount(listSnapshot); i++) {
         LSSharedFileListItemRef item = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(listSnapshot, i);
@@ -813,7 +813,7 @@ LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef
             CFRelease(currentItemURL);
         }
     }
-    
+
     CFRelease(listSnapshot);
     return nullptr;
 }
@@ -824,7 +824,7 @@ bool GetStartOnSystemStartup()
     if (bitcoinAppUrl == nullptr) {
         return false;
     }
-    
+
     LSSharedFileListRef loginItems = LSSharedFileListCreate(nullptr, kLSSharedFileListSessionLoginItems, nullptr);
     LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, bitcoinAppUrl);
 
@@ -838,7 +838,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
     if (bitcoinAppUrl == nullptr) {
         return false;
     }
-    
+
     LSSharedFileListRef loginItems = LSSharedFileListCreate(nullptr, kLSSharedFileListSessionLoginItems, nullptr);
     LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, bitcoinAppUrl);
 
@@ -850,7 +850,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         // remove item
         LSSharedFileListItemRemove(loginItems, foundItem);
     }
-    
+
     CFRelease(bitcoinAppUrl);
     return true;
 }
@@ -923,6 +923,9 @@ QString formatServicesStr(quint64 mask)
                 break;
             case NODE_XTHIN:
                 strList.append("XTHIN");
+                break;
+            case NODE_SMSG:
+                strList.append("SMSG");
                 break;
             default:
                 strList.append(QString("%1[%2]").arg("UNKNOWN").arg(check));
@@ -1011,7 +1014,7 @@ void ClickableLabel::mouseReleaseEvent(QMouseEvent *event)
 {
     Q_EMIT clicked(event->pos());
 }
-    
+
 void ClickableProgressBar::mouseReleaseEvent(QMouseEvent *event)
 {
     Q_EMIT clicked(event->pos());

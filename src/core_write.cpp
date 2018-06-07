@@ -15,6 +15,15 @@
 #include <util.h>
 #include <utilmoneystr.h>
 #include <utilstrencodings.h>
+#include <spentindex.h>
+
+//extern bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+bool (*pCoreWriteGetSpentIndex)(CSpentIndexKey &key, CSpentIndexValue &value) = nullptr; // HACK, alternative is to move GetSpentIndex into common lib
+
+void SetCoreWriteGetSpentIndex(bool (*function)(CSpentIndexKey&, CSpentIndexValue&))
+{
+    pCoreWriteGetSpentIndex = function;
+};
 
 UniValue ValueFromAmount(const CAmount& amount)
 {
@@ -154,9 +163,54 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
     out.pushKV("addresses", a);
 }
 
+void OutputToJSON(uint256 &txid, int i,
+    const CTxOutBase *baseOut, UniValue &entry)
+{
+    bool fCanSpend = false;
+    switch (baseOut->GetType())
+    {
+        case OUTPUT_STANDARD:
+            {
+            fCanSpend = true;
+            entry.push_back(Pair("type", "standard"));
+            CTxOutStandard *s = (CTxOutStandard*) baseOut;
+            entry.push_back(Pair("value", ValueFromAmount(s->nValue)));
+            entry.push_back(Pair("valueSat", s->nValue));
+            UniValue o(UniValue::VOBJ);
+            ScriptPubKeyToUniv(s->scriptPubKey, o, true);
+            entry.push_back(Pair("scriptPubKey", o));
+            }
+            break;
+        case OUTPUT_DATA:
+            {
+            CTxOutData *s = (CTxOutData*) baseOut;
+            entry.push_back(Pair("type", "data"));
+            entry.push_back(Pair("data_hex", HexStr(s->vData.begin(), s->vData.end())));
+            }
+            break;
+        default:
+            entry.push_back(Pair("type", "unknown"));
+            break;
+    };
+
+    if (fCanSpend)
+    {
+        // Add spent information if spentindex is enabled
+        CSpentIndexValue spentInfo;
+        CSpentIndexKey spentKey(txid, i);
+        if (pCoreWriteGetSpentIndex && pCoreWriteGetSpentIndex(spentKey, spentInfo))
+        {
+            entry.push_back(Pair("spentTxId", spentInfo.txid.GetHex()));
+            entry.push_back(Pair("spentIndex", (int)spentInfo.inputIndex));
+            entry.push_back(Pair("spentHeight", spentInfo.blockHeight));
+        };
+    };
+};
+
 void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry, bool include_hex, int serialize_flags)
 {
-    entry.pushKV("txid", tx.GetHash().GetHex());
+    uint256 txid = tx.GetHash();
+    entry.pushKV("txid", txid.GetHex());
     entry.pushKV("hash", tx.GetWitnessHash().GetHex());
     entry.pushKV("version", tx.nVersion);
     entry.pushKV("size", (int)::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
@@ -167,7 +221,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
     for (unsigned int i = 0; i < tx.vin.size(); i++) {
         const CTxIn& txin = tx.vin[i];
         UniValue in(UniValue::VOBJ);
-        if (tx.IsCoinBase())
+        if (tx.IsCoinBase() || tx.IsZerocoinSpend())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
         else {
             in.pushKV("txid", txin.prevout.hash.GetHex());
@@ -190,6 +244,15 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
     entry.pushKV("vin", vin);
 
     UniValue vout(UniValue::VARR);
+    for (unsigned int i = 0; i < tx.vpout.size(); i++)
+    {
+        UniValue out(UniValue::VOBJ);
+        out.push_back(Pair("n", (int64_t)i));
+        OutputToJSON(txid, i, tx.vpout[i].get(), out);
+        vout.push_back(out);
+    }
+
+    if (!tx.IsNIXVersion())
     for (unsigned int i = 0; i < tx.vout.size(); i++) {
         const CTxOut& txout = tx.vout[i];
 
@@ -203,6 +266,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         out.pushKV("scriptPubKey", o);
         vout.push_back(out);
     }
+
     entry.pushKV("vout", vout);
 
     if (!hashBlock.IsNull())
@@ -212,3 +276,4 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         entry.pushKV("hex", EncodeHexTx(tx, serialize_flags)); // the hex-encoded transaction. used the name "hex" to be consistent with the verbose output of "getrawtransaction".
     }
 }
+

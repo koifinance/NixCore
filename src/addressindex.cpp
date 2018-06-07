@@ -10,11 +10,6 @@
 
 bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8_t> &hashBytes)
 {
-    CScript tmpScript;
-    if (HasIsCoinstakeOp(*pScript)
-        && GetNonCoinstakeScriptPath(*pScript, tmpScript))
-        return ExtractIndexInfo(&tmpScript, scriptType, hashBytes);
-
     scriptType = ADDR_INDT_UNKNOWN;
     if (pScript->IsPayToPublicKeyHash())
     {

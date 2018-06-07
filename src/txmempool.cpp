@@ -31,6 +31,7 @@ CTxMemPoolEntry::CTxMemPoolEntry(const CTransactionRef& _tx, const CAmount& _nFe
     nSizeWithDescendants = GetTxSize();
     nModFeesWithDescendants = nFee;
 
+
     feeDelta = 0;
 
     nCountWithAncestors = 1;
@@ -284,7 +285,7 @@ void CTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove, b
         // should be a bit faster.
         // However, if we happen to be in the middle of processing a reorg, then
         // the mempool can be in an inconsistent state.  In this case, the set
-        // of ancestors reachable via mapLinks will be the same as the set of 
+        // of ancestors reachable via mapLinks will be the same as the set of
         // ancestors whose packages include this transaction, because when we
         // add a new transaction to the mempool in addUnchecked(), we assume it
         // has no children, and in the case of a reorg where that assumption is
@@ -416,12 +417,176 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     return true;
 }
 
+void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+
+    if (!tx.IsNIXVersion())
+        return;
+
+    std::vector<CMempoolAddressDeltaKey> inserted;
+
+    uint256 txhash = tx.GetHash();
+    for (unsigned int j = 0; j < tx.vin.size(); j++)
+    {
+        const CTxIn input = tx.vin[j];
+
+        const Coin &coin = view.AccessCoin(input.prevout);
+
+        // prevout should only ever be OUTPUT_STANDARD
+        assert(coin.nType == OUTPUT_STANDARD);
+
+        std::vector<uint8_t> hashBytes;
+        const CScript *pScript = &coin.out.scriptPubKey;
+        int scriptType = 0;
+        CAmount nValue = coin.out.nValue;
+
+        if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
+            || scriptType == 0)
+            continue;
+
+        CMempoolAddressDeltaKey key(scriptType, uint256(hashBytes.data(), hashBytes.size()), txhash, j, 1);
+        CMempoolAddressDelta delta(entry.GetTime(), nValue * -1, input.prevout.hash, input.prevout.n);
+        mapAddress.insert(std::make_pair(key, delta));
+        inserted.push_back(key);
+    };
+
+    for (unsigned int k = 0; k < tx.vpout.size(); k++)
+    {
+        const CTxOutBase *out = tx.vpout[k].get();
+
+        if (!out->IsType(OUTPUT_STANDARD))
+            continue;
+
+        const CScript *pScript;
+        if (!(pScript = out->GetPScriptPubKey()))
+        {
+            LogPrintf("ERROR: %s - expected script pointer.\n", __func__);
+            continue;
+        };
+        CAmount nValue = out->IsType(OUTPUT_STANDARD) ? out->GetValue() : 0;
+
+        std::vector<uint8_t> hashBytes;
+        int scriptType = 0;
+        if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
+            || scriptType == 0)
+            continue;
+
+        CMempoolAddressDeltaKey key(scriptType, uint256(hashBytes.data(), hashBytes.size()), txhash, k, 0);
+        mapAddress.insert(std::make_pair(key, CMempoolAddressDelta(entry.GetTime(), nValue)));
+        inserted.push_back(key);
+    };
+
+    mapAddressInserted.insert(std::make_pair(txhash, inserted));
+}
+
+bool CTxMemPool::getAddressIndex(std::vector<std::pair<uint256, int> > &addresses,
+                                 std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> > &results)
+{
+    LOCK(cs);
+    for (std::vector<std::pair<uint256, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+        addressDeltaMap::iterator ait = mapAddress.lower_bound(CMempoolAddressDeltaKey((*it).second, (*it).first));
+        while (ait != mapAddress.end() && (*ait).first.addressBytes == (*it).first && (*ait).first.type == (*it).second) {
+            results.push_back(*ait);
+            ait++;
+        }
+    }
+    return true;
+}
+
+bool CTxMemPool::removeAddressIndex(const uint256 txhash)
+{
+    LOCK(cs);
+    addressDeltaMapInserted::iterator it = mapAddressInserted.find(txhash);
+
+    if (it != mapAddressInserted.end()) {
+        std::vector<CMempoolAddressDeltaKey> keys = (*it).second;
+        for (std::vector<CMempoolAddressDeltaKey>::iterator mit = keys.begin(); mit != keys.end(); mit++) {
+            mapAddress.erase(*mit);
+        }
+        mapAddressInserted.erase(it);
+    }
+
+    return true;
+}
+
+void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view)
+{
+    LOCK(cs);
+
+    const CTransaction& tx = entry.GetTx();
+
+    std::vector<CSpentIndexKey> inserted;
+
+    uint256 txhash = tx.GetHash();
+    for (unsigned int j = 0; j < tx.vin.size(); j++)
+    {
+        const CTxIn input = tx.vin[j];
+
+        const Coin &coin = view.AccessCoin(input.prevout);
+        assert(coin.nType == OUTPUT_STANDARD);
+
+        std::vector<uint8_t> hashBytes;
+        const CScript *pScript = &coin.out.scriptPubKey;
+        int scriptType = 0;
+        CAmount nValue = coin.out.nValue;
+
+        if (!ExtractIndexInfo(pScript, scriptType, hashBytes))
+            continue;
+
+        uint256 addressHash;
+        if (scriptType != 0)
+            addressHash = uint256(hashBytes.data(), hashBytes.size());
+
+        CSpentIndexKey key = CSpentIndexKey(input.prevout.hash, input.prevout.n);
+        CSpentIndexValue value = CSpentIndexValue(txhash, j, -1, nValue, scriptType, addressHash);
+
+        mapSpent.insert(std::make_pair(key, value));
+        inserted.push_back(key);
+    };
+
+    mapSpentInserted.insert(std::make_pair(txhash, inserted));
+}
+
+bool CTxMemPool::getSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
+{
+    LOCK(cs);
+    mapSpentIndex::iterator it;
+
+    it = mapSpent.find(key);
+    if (it != mapSpent.end()) {
+        value = it->second;
+        return true;
+    }
+    return false;
+}
+
+bool CTxMemPool::removeSpentIndex(const uint256 txhash)
+{
+    LOCK(cs);
+    mapSpentIndexInserted::iterator it = mapSpentInserted.find(txhash);
+
+    if (it != mapSpentInserted.end()) {
+        std::vector<CSpentIndexKey> keys = (*it).second;
+        for (std::vector<CSpentIndexKey>::iterator mit = keys.begin(); mit != keys.end(); mit++) {
+            mapSpent.erase(*mit);
+        }
+        mapSpentInserted.erase(it);
+    }
+
+    return true;
+}
+
 void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
 {
     NotifyEntryRemoved(it->GetSharedTx(), reason);
     const uint256 hash = it->GetTx().GetHash();
     for (const CTxIn& txin : it->GetTx().vin)
+    {
+
         mapNextTx.erase(txin.prevout);
+    }
 
     if (vTxHashes.size() > 1) {
         vTxHashes[it->vTxHashesIdx] = std::move(vTxHashes.back());
@@ -439,6 +604,8 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     mapTx.erase(it);
     nTransactionsUpdated++;
     if (minerPolicyEstimator) {minerPolicyEstimator->removeTx(hash, false);}
+    removeAddressIndex(hash);
+    removeSpentIndex(hash);
 }
 
 // Calculates descendants of entry that are not already in setDescendants, and adds to
@@ -484,7 +651,8 @@ void CTxMemPool::removeRecursive(const CTransaction &origTx, MemPoolRemovalReaso
             // be sure to remove any children that are in the pool. This can
             // happen during chain re-orgs if origTx isn't re-accepted into
             // the mempool for any reason.
-            for (unsigned int i = 0; i < origTx.vout.size(); i++) {
+
+            for (unsigned int i = 0; i < origTx.GetNumVOuts(); i++) {
                 auto it = mapNextTx.find(COutPoint(origTx.GetHash(), i));
                 if (it == mapNextTx.end())
                     continue;
@@ -543,7 +711,8 @@ void CTxMemPool::removeConflicts(const CTransaction &tx)
 {
     // Remove transactions which depend on inputs of tx, recursively
     LOCK(cs);
-    for (const CTxIn &txin : tx.vin) {
+    for (const auto &txin : tx.vin) {
+
         auto it = mapNextTx.find(txin.prevout);
         if (it != mapNextTx.end()) {
             const CTransaction &txConflict = *it->second;
@@ -652,7 +821,8 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
             indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
             if (it2 != mapTx.end()) {
                 const CTransaction& tx2 = it2->GetTx();
-                assert(tx2.vout.size() > txin.prevout.n && !tx2.vout[txin.prevout.n].IsNull());
+                assert(tx2.vpout.size() > txin.prevout.n && tx2.vpout[txin.prevout.n] != nullptr
+                        && (tx2.vpout[txin.prevout.n]->IsStandardOutput()));
                 fDependsWait = true;
                 if (setParentCheck.insert(it2).second) {
                     parentSizes += it2->GetTxSize();
@@ -881,8 +1051,10 @@ void CTxMemPool::ClearPrioritisation(const uint256 hash)
 bool CTxMemPool::HasNoInputsOf(const CTransaction &tx) const
 {
     for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
         if (exists(tx.vin[i].prevout.hash))
             return false;
+    }
     return true;
 }
 
@@ -894,6 +1066,20 @@ bool CCoinsViewMemPool::GetCoin(const COutPoint &outpoint, Coin &coin) const {
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
     CTransactionRef ptx = mempool.get(outpoint.hash);
     if (ptx) {
+
+        if (ptx->IsNIXVersion())
+        {
+            if (outpoint.n < ptx->vpout.size())
+            {
+                const CTxOutBase *out = ptx->vpout[outpoint.n].get();
+                CTxOut txout(0, *out->GetPScriptPubKey());
+                if (out->IsType(OUTPUT_STANDARD))
+                    txout.nValue = out->GetValue();
+                coin = Coin(txout, MEMPOOL_HEIGHT, false);
+                return true;
+            };
+            return false;
+        };
         if (outpoint.n < ptx->vout.size()) {
             coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
             return true;

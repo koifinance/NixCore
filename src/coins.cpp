@@ -8,6 +8,7 @@
 #include <random.h>
 
 bool CCoinsView::GetCoin(const COutPoint &outpoint, Coin &coin) const { return false; }
+
 uint256 CCoinsView::GetBestBlock() const { return uint256(); }
 std::vector<uint256> CCoinsView::GetHeadBlocks() const { return std::vector<uint256>(); }
 bool CCoinsView::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) { return false; }
@@ -31,7 +32,7 @@ size_t CCoinsViewBacked::EstimateSize() const { return base->EstimateSize(); }
 
 SaltedOutpointHasher::SaltedOutpointHasher() : k0(GetRand(std::numeric_limits<uint64_t>::max())), k1(GetRand(std::numeric_limits<uint64_t>::max())) {}
 
-CCoinsViewCache::CCoinsViewCache(CCoinsView *baseIn) : CCoinsViewBacked(baseIn), cachedCoinsUsage(0) {}
+CCoinsViewCache::CCoinsViewCache(CCoinsView *baseIn) : CCoinsViewBacked(baseIn), cachedCoinsUsage(0) { }
 
 size_t CCoinsViewCache::DynamicMemoryUsage() const {
     return memusage::DynamicUsage(cacheCoins) + cachedCoinsUsage;
@@ -82,11 +83,34 @@ void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possi
     it->second.coin = std::move(coin);
     it->second.flags |= CCoinsCacheEntry::DIRTY | (fresh ? CCoinsCacheEntry::FRESH : 0);
     cachedCoinsUsage += it->second.coin.DynamicMemoryUsage();
+
 }
 
 void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool check) {
-    bool fCoinbase = tx.IsCoinBase();
+    bool fCoinbase = tx.IsCoinBase() || tx.IsZerocoinSpend();
     const uint256& txid = tx.GetHash();
+
+    if (tx.IsNIXVersion())
+    {
+        for (size_t i = 0; i < tx.vpout.size(); ++i)
+        {
+            const CTxOutBase *out = tx.vpout[i].get();
+            bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
+            Coin coin;
+            if (out->IsType(OUTPUT_STANDARD))
+            {
+                CTxOut txout(out->GetValue(), *out->GetPScriptPubKey());
+                coin = Coin(txout, nHeight, fCoinbase);
+            } else
+            {
+                continue; // Data or anon
+            };
+
+            cache.AddCoin(COutPoint(txid, i), std::move(coin), overwrite);
+        };
+        return;
+    };
+
     for (size_t i = 0; i < tx.vout.size(); ++i) {
         bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
         // Always set the possible_overwrite flag to AddCoin for coinbase txn, in order to correctly
@@ -138,8 +162,9 @@ uint256 CCoinsViewCache::GetBestBlock() const {
     return hashBlock;
 }
 
-void CCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn) {
+void CCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn, int height) {
     hashBlock = hashBlockIn;
+    nBlockHeight = height;
 }
 
 bool CCoinsViewCache::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlockIn) {
@@ -220,9 +245,10 @@ unsigned int CCoinsViewCache::GetCacheSize() const {
     return cacheCoins.size();
 }
 
+
 CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
 {
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase() || tx.IsZerocoinSpend())
         return 0;
 
     CAmount nResult = 0;
@@ -234,7 +260,7 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
 
 bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
 {
-    if (!tx.IsCoinBase()) {
+    if (!tx.IsCoinBase() && !tx.IsZerocoinSpend()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
             if (!HaveCoin(tx.vin[i].prevout)) {
                 return false;

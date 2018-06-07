@@ -115,6 +115,7 @@ void ReceiveCoinsDialog::clear()
     ui->reqAmount->clear();
     ui->reqLabel->setText("");
     ui->reqMessage->setText("");
+    ui->cbxAddressType->setCurrentIndex(ui->cbxAddressType->findText("Standard"));
     updateDisplayUnit();
 }
 
@@ -143,12 +144,32 @@ void ReceiveCoinsDialog::on_receiveButton_clicked()
 
     QString address;
     QString label = ui->reqLabel->text();
-    /* Generate new receiving address */
+
+    /* Generate new receiving address
     OutputType address_type = model->getDefaultAddressType();
     if (address_type != OUTPUT_TYPE_LEGACY) {
         address_type = ui->useBech32->isChecked() ? OUTPUT_TYPE_BECH32 : OUTPUT_TYPE_P2SH_SEGWIT;
     }
-    address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "", address_type);
+    */
+    OutputType address_type = ui->useBech32->isChecked() ? OUTPUT_TYPE_BECH32 : OUTPUT_TYPE_LEGACY;
+
+    /* Generate new receiving address */
+    AddressTableModel::AddrType addrType = AddressTableModel::ADDR_STANDARD;
+
+    if (ui->cbxAddressType->currentText() == "Stealth")
+        addrType = AddressTableModel::ADDR_STEALTH;
+    else
+    if (ui->cbxAddressType->currentText() == "Extended")
+        addrType = AddressTableModel::ADDR_EXT;
+    else
+    if (ui->cbxAddressType->currentText() == "Standard 256bit")
+        addrType = AddressTableModel::ADDR_STANDARD256;
+
+    address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "", address_type, addrType);
+
+    if (address == "")
+        return;
+
     SendCoinsRecipient info(address, label,
         ui->reqAmount->value(), ui->reqMessage->text());
     ReceiveRequestDialog *dialog = new ReceiveRequestDialog(this);

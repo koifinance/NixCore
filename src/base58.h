@@ -16,8 +16,8 @@
 
 #include <chainparams.h>
 #include <key.h>
-#include <stealth-address/extkey.h>
-#include <stealth-address/stealth.h>
+#include <ghost-address/extkey.h>
+#include <ghost-address/stealth.h>
 #include <pubkey.h>
 #include <script/script.h>
 #include <script/standard.h>
@@ -134,6 +134,13 @@ public:
     bool GetKeyID(CKeyID &keyID, CChainParams::Base58Type prefix) const;
     bool GetIndexKey(uint256 &hashBytes, int &type) const;
     bool IsScript() const;
+
+    uint8_t getVersion()
+    {
+        if (vchVersion.size() > 0)
+            return vchVersion[0];
+        return 0;
+    };
 };
 
 /**

@@ -2670,6 +2670,11 @@ ServiceFlags CConnman::GetLocalServices() const
     return nLocalServices;
 }
 
+void CConnman::SetLocalServices(ServiceFlags f)
+{
+    nLocalServices = f;
+}
+
 void CConnman::SetBestHeight(int height)
 {
     nBestHeight.store(height, std::memory_order_release);

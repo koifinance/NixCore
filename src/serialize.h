@@ -78,6 +78,11 @@ template<typename Stream> inline void ser_writedata32(Stream &s, uint32_t obj)
     obj = htole32(obj);
     s.write((char*)&obj, 4);
 }
+template<typename Stream> inline void ser_writedata32be(Stream &s, uint32_t obj)
+{
+    obj = htobe32(obj);
+    s.write((char*)&obj, 4);
+}
 template<typename Stream> inline void ser_writedata64(Stream &s, uint64_t obj)
 {
     obj = htole64(obj);
@@ -100,6 +105,12 @@ template<typename Stream> inline uint32_t ser_readdata32(Stream &s)
     uint32_t obj;
     s.read((char*)&obj, 4);
     return le32toh(obj);
+}
+template<typename Stream> inline uint32_t ser_readdata32be(Stream &s)
+{
+    uint32_t obj;
+    s.read((char*)&obj, 4);
+    return be32toh(obj);
 }
 template<typename Stream> inline uint64_t ser_readdata64(Stream &s)
 {
@@ -131,6 +142,7 @@ inline float ser_uint32_to_float(uint32_t y)
     tmp.y = y;
     return tmp.x;
 }
+
 
 
 /////////////////////////////////////////////////////////////////
@@ -350,6 +362,55 @@ I ReadVarInt(Stream& is)
             return n;
         }
     }
+}
+
+inline int PutVarInt(std::vector<uint8_t> &v, uint64_t i)
+{
+    uint8_t b = i & 0x7F;
+    while ((i = i >> 7) > 0)
+    {
+        v.push_back(b | 0x80);
+        b = i & 0x7F;
+    };
+    v.push_back(b);
+    return i; // 0 == success
+}
+
+inline int PutVarInt(uint8_t *p, uint64_t i)
+{
+    int nBytes = 0;
+    uint8_t b = i & 0x7F;
+    while ((i = i >> 7) > 0)
+    {
+        *p++ = b | 0x80;
+        b = i & 0x7F;
+        nBytes++;
+    };
+    *p++ = b;
+    nBytes++;
+    return nBytes;
+}
+
+inline int GetVarInt(const std::vector<uint8_t> &v, size_t ofs, uint64_t &i, size_t &nB)
+{
+    size_t ml = v.size() - ofs;
+    if (ml <= 0)
+        return 0;
+
+    const uint8_t *p = &v[ofs];
+
+    nB = 0;
+    i = p[nB++] & 0x7F;
+
+    while (p[nB-1] & 0x80)
+    {
+        if (nB >= ml)
+            return 1;
+        i += ((uint64_t(p[nB]& 0x7F)) << (7*nB));
+        nB++;
+    };
+
+    return 0; // 0 == success
 }
 
 #define FLATDATA(obj) REF(CFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))

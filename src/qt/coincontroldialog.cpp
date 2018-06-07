@@ -20,6 +20,7 @@
 #include <validation.h> // For mempool
 #include <wallet/fees.h>
 #include <wallet/wallet.h>
+#include <wallet/hd/hdwallet.h>
 
 #include <QApplication>
 #include <QCheckBox>
@@ -104,6 +105,8 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *_platformStyle, QWidge
     connect(ui->radioTreeMode, SIGNAL(toggled(bool)), this, SLOT(radioTreeMode(bool)));
     connect(ui->radioListMode, SIGNAL(toggled(bool)), this, SLOT(radioListMode(bool)));
 
+    connect(ui->cbxType, SIGNAL(currentIndexChanged(int)), this, SLOT(cbxTypeChanged(int)));
+
     // click on checkbox
     connect(ui->treeWidget, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(viewItemChanged(QTreeWidgetItem*, int)));
 
@@ -143,6 +146,7 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *_platformStyle, QWidge
         ui->radioTreeMode->click();
     if (settings.contains("nCoinControlSortColumn") && settings.contains("nCoinControlSortOrder"))
         sortView(settings.value("nCoinControlSortColumn").toInt(), ((Qt::SortOrder)settings.value("nCoinControlSortOrder").toInt()));
+
 }
 
 CoinControlDialog::~CoinControlDialog()
@@ -370,6 +374,17 @@ void CoinControlDialog::radioListMode(bool checked)
         updateView();
 }
 
+void CoinControlDialog::cbxTypeChanged(int index)
+{
+    if (model)
+    {
+        coinControl()->nCoinType = index+1;
+        coinControl()->UnSelectAll();
+        CoinControlDialog::updateLabels(model, this);
+        updateView();
+    };
+}
+
 // checkbox clicked by user
 void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
 {
@@ -446,47 +461,83 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     std::vector<COutPoint> vCoinControl;
     std::vector<COutput>   vOutputs;
     coinControl()->ListSelected(vCoinControl);
-    model->getOutputs(vCoinControl, vOutputs);
 
-    for (const COutput& out : vOutputs) {
-        // unselect already spent, very unlikely scenario, this could happen
-        // when selected are spent elsewhere, like rpc or another computer
-        uint256 txhash = out.tx->GetHash();
-        COutPoint outpt(txhash, out.i);
-        if (model->isSpent(outpt))
+    if (coinControl()->nCoinType != OUTPUT_STANDARD)
+    {
+        CHDWallet *phdw = model->getNIXWallet();
+
+        for (const auto &op : vCoinControl)
         {
-            coinControl()->UnSelect(outpt);
-            continue;
-        }
+            MapRecords_t::const_iterator mri = phdw->mapRecords.find(op.hash);
+            if (mri == phdw->mapRecords.end())
+                continue;
 
-        // Quantity
-        nQuantity++;
+            const COutputRecord *oR = mri->second.GetOutput(op.n);
 
-        // Amount
-        nAmount += out.tx->tx->vout[out.i].nValue;
+            if (!oR)
+                continue;
 
-        // Bytes
-        CTxDestination address;
-        int witnessversion = 0;
-        std::vector<unsigned char> witnessprogram;
-        if (out.tx->tx->vout[out.i].scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram))
-        {
-            nBytesInputs += (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4);
-            fWitness = true;
-        }
-        else if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, address))
-        {
-            CPubKey pubkey;
-            CKeyID *keyid = boost::get<CKeyID>(&address);
-            if (keyid && model->getPubKey(*keyid, pubkey))
+            nQuantity++;
+
+            nAmount += oR->nValue;
+        };
+    } else
+    {
+        model->getOutputs(vCoinControl, vOutputs);
+
+        for (const COutput& out : vOutputs) {
+            // unselect already spent, very unlikely scenario, this could happen
+            // when selected are spent elsewhere, like rpc or another computer
+            uint256 txhash = out.tx->GetHash();
+            COutPoint outpt(txhash, out.i);
+            if (model->isSpent(outpt))
             {
-                nBytesInputs += (pubkey.IsCompressed() ? 148 : 180);
+                coinControl()->UnSelect(outpt);
+                continue;
             }
-            else
-                nBytesInputs += 148; // in all error cases, simply assume 148 here
+
+            if (out.tx->tx->vpout[out.i]->GetType() != OUTPUT_STANDARD)
+                continue;
+
+            // Quantity
+            nQuantity++;
+
+
+            // Amount
+            CAmount nOutputValue = out.tx->tx->vpout[out.i]->GetValue();
+            nAmount += nOutputValue;
+
+            // Bytes
+            CTxDestination address;
+            int witnessversion = 0;
+            std::vector<unsigned char> witnessprogram;
+
+
+            const CScript *pScriptPubKey = out.tx->tx->vpout[out.i]->GetPScriptPubKey();
+
+            if (!pScriptPubKey)
+            {
+                nBytesInputs += 148;
+            } else
+            if (pScriptPubKey->IsWitnessProgram(witnessversion, witnessprogram))
+            {
+                nBytesInputs += (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4);
+                fWitness = true;
+            }
+            else if(ExtractDestination(*pScriptPubKey, address))
+            {
+                CPubKey pubkey;
+                CKeyID *keyid = boost::get<CKeyID>(&address);
+                if (keyid && model->getPubKey(*keyid, pubkey))
+                {
+                    nBytesInputs += (pubkey.IsCompressed() ? 148 : 180);
+                }
+                else
+                    nBytesInputs += 148; // in all error cases, simply assume 148 here
+            }
+            else nBytesInputs += 148;
         }
-        else nBytesInputs += 148;
-    }
+    };
 
     // calculation
     if (nQuantity > 0)
@@ -620,10 +671,14 @@ void CoinControlDialog::updateView()
 
     int nDisplayUnit = model->getOptionsModel()->getDisplayUnit();
 
-    std::map<QString, std::vector<COutput> > mapCoins;
-    model->listCoins(mapCoins);
+    std::map<QString, std::vector<CCoinControlEntry> > mapCoins;
 
-    for (const std::pair<QString, std::vector<COutput>>& coins : mapCoins) {
+    QString sType = ui->cbxType->currentText().toLower();
+
+    model->listCoins(mapCoins, OUTPUT_STANDARD);
+
+    for (const auto &coins : mapCoins)
+    {
         CCoinControlWidgetItem *itemWalletAddress = new CCoinControlWidgetItem();
         itemWalletAddress->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
         QString sWalletAddress = coins.first;
@@ -648,8 +703,9 @@ void CoinControlDialog::updateView()
 
         CAmount nSum = 0;
         int nChildren = 0;
-        for (const COutput& out : coins.second) {
-            nSum += out.tx->tx->vout[out.i].nValue;
+        for (const CCoinControlEntry& out : coins.second)
+        {
+            nSum += out.nValue;
             nChildren++;
 
             CCoinControlWidgetItem *itemOutput;
@@ -661,7 +717,7 @@ void CoinControlDialog::updateView()
             // address
             CTxDestination outputAddress;
             QString sAddress = "";
-            if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, outputAddress))
+            if(ExtractDestination(out.scriptPubKey, outputAddress))
             {
                 sAddress = QString::fromStdString(EncodeDestination(outputAddress));
 
@@ -686,35 +742,36 @@ void CoinControlDialog::updateView()
             }
 
             // amount
-            itemOutput->setText(COLUMN_AMOUNT, BitcoinUnits::format(nDisplayUnit, out.tx->tx->vout[out.i].nValue));
-            itemOutput->setData(COLUMN_AMOUNT, Qt::UserRole, QVariant((qlonglong)out.tx->tx->vout[out.i].nValue)); // padding so that sorting works correctly
+            itemOutput->setText(COLUMN_AMOUNT, BitcoinUnits::format(nDisplayUnit, out.nValue));
+            itemOutput->setData(COLUMN_AMOUNT, Qt::UserRole, QVariant((qlonglong)out.nValue)); // padding so that sorting works correctly
+            itemOutput->setTextAlignment(COLUMN_AMOUNT, Qt::AlignRight);
 
             // date
-            itemOutput->setText(COLUMN_DATE, GUIUtil::dateTimeStr(out.tx->GetTxTime()));
-            itemOutput->setData(COLUMN_DATE, Qt::UserRole, QVariant((qlonglong)out.tx->GetTxTime()));
+            itemOutput->setText(COLUMN_DATE, GUIUtil::dateTimeStr(out.nTxTime));
+            itemOutput->setData(COLUMN_DATE, Qt::UserRole, QVariant((qlonglong)out.nTxTime));
 
             // confirmations
             itemOutput->setText(COLUMN_CONFIRMATIONS, QString::number(out.nDepth));
             itemOutput->setData(COLUMN_CONFIRMATIONS, Qt::UserRole, QVariant((qlonglong)out.nDepth));
+            itemOutput->setTextAlignment(COLUMN_CONFIRMATIONS, Qt::AlignRight);
 
             // transaction hash
-            uint256 txhash = out.tx->GetHash();
+            uint256 txhash = out.op.hash;
             itemOutput->setText(COLUMN_TXHASH, QString::fromStdString(txhash.GetHex()));
 
             // vout index
-            itemOutput->setText(COLUMN_VOUT_INDEX, QString::number(out.i));
+            itemOutput->setText(COLUMN_VOUT_INDEX, QString::number(out.op.n));
 
              // disable locked coins
-            if (model->isLockedCoin(txhash, out.i))
+            if (model->isLockedCoin(txhash, out.op.n))
             {
-                COutPoint outpt(txhash, out.i);
-                coinControl()->UnSelect(outpt); // just to be sure
+                coinControl()->UnSelect(out.op); // just to be sure
                 itemOutput->setDisabled(true);
                 itemOutput->setIcon(COLUMN_CHECKBOX, platformStyle->SingleColorIcon(":/icons/lock_closed"));
-            }
+            };
 
             // set checkbox
-            if (coinControl()->IsSelected(COutPoint(txhash, out.i)))
+            if (coinControl()->IsSelected(out.op))
                 itemOutput->setCheckState(COLUMN_CHECKBOX, Qt::Checked);
         }
 
@@ -724,8 +781,10 @@ void CoinControlDialog::updateView()
             itemWalletAddress->setText(COLUMN_CHECKBOX, "(" + QString::number(nChildren) + ")");
             itemWalletAddress->setText(COLUMN_AMOUNT, BitcoinUnits::format(nDisplayUnit, nSum));
             itemWalletAddress->setData(COLUMN_AMOUNT, Qt::UserRole, QVariant((qlonglong)nSum));
+            itemWalletAddress->setTextAlignment(COLUMN_AMOUNT, Qt::AlignRight);
         }
     }
+
 
     // expand all partially selected
     if (treeMode)
