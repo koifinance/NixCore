@@ -28,7 +28,7 @@ UniValue CallRPC(std::string args, std::string wallet)
             && (c == ' ' || c == '\t'))
         {
             if (s.empty()) continue; // trim whitespace
-            vArgs.push_back(part::TrimQuotes(s));
+            vArgs.push_back(nix::TrimQuotes(s));
             s.clear();
             continue;
         };
@@ -39,7 +39,7 @@ UniValue CallRPC(std::string args, std::string wallet)
         s.push_back(c);
     };
     if (!s.empty())
-        vArgs.push_back(part::TrimQuotes(s));
+        vArgs.push_back(nix::TrimQuotes(s));
 
 
     std::string strMethod = vArgs[0];
