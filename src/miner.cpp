@@ -244,8 +244,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NgfWM4nPF8CsgcFdWz11M5ciUji1auwxVc"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NfV4EArGZb8DTtNTHSV9f1mZbW6ZCcZ24Y"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc"));
 
         }
         else {

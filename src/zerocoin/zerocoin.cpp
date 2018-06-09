@@ -298,8 +298,8 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NgfWM4nPF8CsgcFdWz11M5ciUji1auwxVc"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NfV4EArGZb8DTtNTHSV9f1mZbW6ZCcZ24Y"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
@@ -344,8 +344,16 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         int total_payment_tx = 0;
         CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
 
+        /*
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
             if (ghostnodePayment == output.nValue) {
+                total_payment_tx = total_payment_tx + 1;
+            }
+        }
+        */
+        for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
+        {
+            if (tx.vpout[idx]->GetValue() == ghostnodePayment){
                 total_payment_tx = total_payment_tx + 1;
             }
         }
