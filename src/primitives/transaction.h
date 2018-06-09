@@ -14,14 +14,14 @@
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 
-static const uint8_t NIX_TXN_VERSION = 0x01;
+static const uint8_t NIX_TXN_VERSION = 0x02;
 
 enum OutputTypes
 {
     OUTPUT_NULL             = 0, // marker for CCoinsView (0.14)
-    OUTPUT_STANDARD         = 1,
-    OUTPUT_ZEROCOIN         = 2,
+    OUTPUT_STANDARD         = 2,
     OUTPUT_DATA             = 3,
+    OUTPUT_ZEROCOIN         = 4,
 };
 
 enum TransactionTypes
@@ -383,6 +383,35 @@ public:
     }
     std::string ToString() const;
     uint256 GetHash() const;
+
+
+    bool IsEmpty() const
+    {
+        return (nValue == 0 && scriptPubKey.empty());
+    }
+
+    bool PutValue(std::vector<uint8_t> &vchAmount) const
+    {
+        vchAmount.resize(8);
+        memcpy(&vchAmount[0], &nValue, 8);
+        return true;
+    }
+
+    CAmount GetValue() const
+    {
+        return nValue;
+    }
+
+    bool GetScriptPubKey(CScript &scriptPubKey_) const
+    {
+        scriptPubKey_ = scriptPubKey;
+        return true;
+    }
+
+    const CScript *GetPScriptPubKey() const
+    {
+        return &scriptPubKey;
+    }
 };
 
 struct CMutableTransaction;

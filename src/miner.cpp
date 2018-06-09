@@ -173,17 +173,17 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
+    coinbaseTx.nVersion = NIX_TXN_VERSION;
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
-    coinbaseTx.vout.resize(1);
-    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = blockReward;
-    /*
+    //coinbaseTx.vout.resize(1);
+    //coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
+    //coinbaseTx.vout[0].nValue = blockReward;
+
     coinbaseTx.vpout.resize(1);
     OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
     txout->nValue = blockReward;
     txout->scriptPubKey = scriptPubKeyIn;
-
     if(nHeight == 1)
         txout->nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     else if (nHeight > 1)
@@ -192,8 +192,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CAmount ghostnodePayment = GetGhostnodePayment(nHeight, blockReward);
         txout->nValue -= ghostnodePayment;
     }
-    coinbaseTx.vpout.push_back(txout);
-    */
+    coinbaseTx.vpout[0] = txout;
+
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
 
 
@@ -204,7 +204,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         //Split 38m into 1000 unique addresses for faster tx processing
         CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/1000;
         //Subtract 38m from block
-        coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+        //coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
         CScript AIRDROP_SCRIPT;
         std::string addresses;
@@ -239,7 +239,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     if (nHeight >= 2) {
 
         //coinbaseTx.vout[0].nValue -= DEVELOPMENT_REWARD * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-        txout->nValue -= DEVELOPMENT_REWARD * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
         CScript DEV_1_SCRIPT;
         CScript DEV_2_SCRIPT;
@@ -276,6 +275,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         FillBlockPayments(coinbaseTx, nHeight, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
 
+    //LogPrintf("\n %s ", coinbaseTx.ToString());
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
     pblocktemplate->vTxFees[0] = -nFees;

@@ -169,8 +169,14 @@ void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHe
         payee = GetScriptForDestination(winningNode->pubKeyCollateralAddress.GetID());
         LogPrintf("payee=%s\n", winningNode->ToString());
     }
+
     txoutGhostnodeRet = CTxOut(ghostnodePayment, payee);
-    txNew.vout.push_back(txoutGhostnodeRet);
+    //txNew.vout.push_back(txoutGhostnodeRet);
+
+    OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
+    txout->nValue = ghostnodePayment;
+    txout->scriptPubKey = payee;
+    txNew.vpout.push_back(txout);
 
     CTxDestination address1;
     ExtractDestination(payee, address1);

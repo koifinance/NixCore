@@ -268,8 +268,17 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             addresses = airdrop_addresses[i];
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
-            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+            /*
+            BOOST_FOREACH(const CTxOutBase &output, tx.vpout) {
                 if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
+                    found_1 = true;
+                    break;
+                }
+            }
+            */
+            for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
+            {
+                if (*tx.vpout[idx]->GetPScriptPubKey() == AIRDROP_SCRIPT && tx.vpout[idx]->GetValue() == (int64_t)(airdropValuePerAddress)){
                     found_1 = true;
                     break;
                 }
@@ -297,13 +306,26 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
         }
         //7% development fee total
+        /*
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
+
             //5% for first address
             if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
             //2% for second address
             if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                found_2 = true;
+            }
+
+        }
+        */
+        for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
+        {
+            if (*tx.vpout[idx]->GetPScriptPubKey() == DEV_1_SCRIPT && tx.vpout[idx]->GetValue() == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))){
+                found_1 = true;
+            }
+            if (*tx.vpout[idx]->GetPScriptPubKey() == DEV_2_SCRIPT && tx.vpout[idx]->GetValue() == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))){
                 found_2 = true;
             }
         }

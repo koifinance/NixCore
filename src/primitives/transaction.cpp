@@ -116,16 +116,20 @@ uint256 CMutableTransaction::GetHash() const
 std::string CMutableTransaction::ToString() const
 {
     std::string str;
-    str += strprintf("CMutableTransaction(hash=%s, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%u)\n",
-                     GetHash().ToString().substr(0,10),
-                     nVersion,
-                     vin.size(),
-                     vout.size(),
-                     nLockTime);
-    for (unsigned int i = 0; i < vin.size(); i++)
-        str += "    " + vin[i].ToString() + "\n";
-    for (unsigned int i = 0; i < vout.size(); i++)
-        str += "    " + vout[i].ToString() + "\n";
+    str += strprintf("CTransaction(hash=%s, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%u)\n",
+        GetHash().ToString().substr(0,10),
+        nVersion,
+        vin.size(),
+        vpout.size(),
+        nLockTime);
+    for (const auto& tx_in : vin)
+        str += "    " + tx_in.ToString() + "\n";
+    for (const auto& tx_in : vin)
+        str += "    " + tx_in.scriptWitness.ToString() + "\n";
+    for (const auto& tx_out : vout)
+        str += "    " + tx_out.ToString() + "\n";
+    for (unsigned int i = 0; i < vpout.size(); i++)
+        str += "    " + vpout[i]->ToString() + "\n";
     return str;
 }
 
@@ -183,7 +187,7 @@ std::string CTransaction::ToString() const
         GetHash().ToString().substr(0,10),
         nVersion,
         vin.size(),
-        (nVersion & 0xFF) < NIX_TXN_VERSION ? vout.size() : vpout.size(),
+        vpout.size(),
         nLockTime);
     for (const auto& tx_in : vin)
         str += "    " + tx_in.ToString() + "\n";
