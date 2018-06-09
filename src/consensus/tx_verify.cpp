@@ -106,16 +106,25 @@ bool SequenceLocks(const CTransaction &tx, int flags, std::vector<int>* prevHeig
 }
 
 unsigned int GetLegacySigOpCount(const CTransaction& tx)
-{
+{  
     unsigned int nSigOps = 0;
-    for (const auto& txin : tx.vin)
+    if (!tx.IsNIXVersion())
     {
-        nSigOps += txin.scriptSig.GetSigOpCount(false);
+        for (const auto& txin : tx.vin)
+        {
+            nSigOps += txin.scriptSig.GetSigOpCount(false);
+        }
+        for (const auto& txout : tx.vout)
+        {
+            nSigOps += txout.scriptPubKey.GetSigOpCount(false);
+        }
     }
-    for (const auto& txout : tx.vout)
+    for (const auto &txout : tx.vpout)
     {
-        nSigOps += txout.scriptPubKey.GetSigOpCount(false);
-    }
+        const CScript *pScriptPubKey = txout->GetPScriptPubKey();
+        if (pScriptPubKey)
+            nSigOps += pScriptPubKey->GetSigOpCount(false);
+    };
     return nSigOps;
 }
 
@@ -130,7 +139,7 @@ unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& in
         const Coin& coin = inputs.AccessCoin(tx.vin[i].prevout);
         assert(!coin.IsSpent());
         const CTxOut &prevout = coin.out;
-        if (prevout.scriptPubKey.IsPayToScriptHash())
+        if (prevout.scriptPubKey.IsPayToScriptHashAny())
             nSigOps += prevout.scriptPubKey.GetSigOpCount(tx.vin[i].scriptSig);
     }
     return nSigOps;
@@ -157,6 +166,130 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
     return nSigOps;
 }
 
+bool CheckValue(CValidationState &state, CAmount nValue, CAmount &nValueOut)
+{
+    if (nValue < 0)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
+    if (nValue > MAX_MONEY)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
+    nValueOut += nValue;
+
+    return true;
+}
+
+bool CheckStandardOutput(CValidationState &state, const Consensus::Params& consensusParams, const CTxOutStandard *p, CAmount &nValueOut)
+{
+    if (!CheckValue(state, p->nValue, nValueOut))
+        return false;
+
+    return true;
+}
+
+bool CheckDataOutput(CValidationState &state, const CTxOutData *p)
+{
+    if (p->vData.size() < 1)
+        return state.DoS(100, false, REJECT_INVALID, "bad-output-data-size");
+
+    const size_t MAX_DATA_OUTPUT_SIZE = 34 + 5 + 34; // DO_STEALTH 33, DO_STEALTH_PREFIX 4, DO_NARR_CRYPT (max 32 bytes)
+    if (p->vData.size() > MAX_DATA_OUTPUT_SIZE)
+        return state.DoS(100, false, REJECT_INVALID, "bad-output-data-size");
+
+    return true;
+}
+
+bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 hashTx, bool isVerifyDB, bool fCheckDuplicateInputs, int nHeight, bool isCheckWallet, CZerocoinTxInfo *zerocoinTxInfo)
+{
+    // Basic checks that don't depend on any context
+    if (tx.vin.empty())
+        return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
+
+    // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
+    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
+
+    if (tx.IsNIXVersion())
+    {
+        const Consensus::Params& consensusParams = Params().GetConsensus();
+        if (tx.vpout.empty() && nHeight > 0)
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-vpout-empty");
+        if (!tx.vout.empty())
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-not-empty");
+
+        size_t nStandardOutputs = 0;
+        CAmount nValueOut = 0;
+        size_t nDataOutputs = 0;
+        for (const auto &txout : tx.vpout)
+        {
+            switch (txout->nVersion)
+            {
+                case OUTPUT_STANDARD:
+                    if (!CheckStandardOutput(state, consensusParams, (CTxOutStandard*) txout.get(), nValueOut))
+                        return false;
+                    nStandardOutputs++;
+                    break;
+                case OUTPUT_DATA:
+                    if (!CheckDataOutput(state, (CTxOutData*) txout.get()))
+                        return false;
+                    nDataOutputs++;
+                    break;
+                default:
+                    return state.DoS(100, false, REJECT_INVALID, "bad-txns-unknown-output-version");
+            };
+
+            if (!MoneyRange(nValueOut))
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
+        };
+
+        if (nDataOutputs > 1 + nStandardOutputs) // extra 1 for ct fee output
+            return state.DoS(100, false, REJECT_INVALID, "too-many-data-outputs");
+    } else
+    {
+        if (tx.vout.empty())
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
+
+        // Check for negative or overflow output values
+        CAmount nValueOut = 0;
+        for (const auto& txout : tx.vout)
+        {
+            if (txout.nValue < 0)
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
+            if (txout.nValue > MAX_MONEY)
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
+            nValueOut += txout.nValue;
+            if (!MoneyRange(nValueOut))
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
+        }
+    };
+
+    // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
+    if (fCheckDuplicateInputs) {
+        std::set<COutPoint> vInOutPoints;
+        for (const auto& txin : tx.vin)
+        {
+            if (!vInOutPoints.insert(txin.prevout).second)
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
+        };
+    }
+
+    if (tx.IsCoinBase())
+    {
+        if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
+            return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
+        if (!CheckDevFundInputs(tx, state, nHeight, false))
+            return false;
+    }
+    else
+    {
+        for (const auto& txin : tx.vin)
+            if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend())
+                return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
+        if (!CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
+                    return false;
+    }
+
+    return true;
+}
+/*
 bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 hashTx, bool isVerifyDB, bool fCheckDuplicateInputs, int nHeight, bool isCheckWallet, CZerocoinTxInfo *zerocoinTxInfo)
 {
     // Basic checks that don't depend on any context
@@ -209,7 +342,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
 
     return true;
 }
-
+*/
 bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, CAmount& txfee)
 {
     // are the actual inputs available?

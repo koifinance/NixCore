@@ -14,7 +14,7 @@
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 
-static const uint8_t NIX_TXN_VERSION = 0x0D;
+static const uint8_t NIX_TXN_VERSION = 0x01;
 
 enum OutputTypes
 {

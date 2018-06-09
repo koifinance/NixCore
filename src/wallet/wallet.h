@@ -871,6 +871,7 @@ class WalletRescanReserver; //forward declarations for ScanForWalletTransactions
  */
 class CWallet : public CCryptoKeyStore, public CValidationInterface
 {
+friend class CHDWallet;
 private:
     static std::atomic<bool> fFlushScheduled;
     std::atomic<bool> fAbortRescan;

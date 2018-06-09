@@ -109,6 +109,7 @@ endif
 NIX_CORE_H = \
   addrdb.h \
   addrman.h \
+  addressindex.h \
   base58.h \
   bech32.h \
   bloom.h \
@@ -264,6 +265,7 @@ libnix_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libnix_server_a_SOURCES = \
   addrdb.cpp \
   addrman.cpp \
+  addressindex.cpp \
   bloom.cpp \
   blockencodings.cpp \
   chain.cpp \

@@ -1402,7 +1402,7 @@ std::map<CTxDestination, CAmount> CHDWallet::GetAddressBalances()
 
             for (unsigned int i = 0; i < pcoin->tx->GetNumVOuts(); i++)
             {
-                const auto &txout = pcoin->tx->vpout[i];
+                const auto &txout = pcoin->tx->vout[i];
                 if (!txout->IsType(OUTPUT_STANDARD))
                     continue;
                 if (!IsMine(txout.get()))
@@ -1477,8 +1477,8 @@ std::set< std::set<CTxDestination> > CHDWallet::GetAddressGroupings()
                 if (mi != mapWallet.end())
                 {
                     const CWalletTx &prev = mi->second;
-                    if (txin.prevout.n < prev.tx->vpout.size())
-                        pScript = prev.tx->vpout[txin.prevout.n]->GetPScriptPubKey();
+                    if (txin.prevout.n < prev.tx->vout.size())
+                        pScript = prev.tx->vout[txin.prevout.n]->GetPScriptPubKey();
                 } else
                 if ((mri = mapRecords.find(txin.prevout.hash)) != mapRecords.end())
                 {
@@ -1501,7 +1501,7 @@ std::set< std::set<CTxDestination> > CHDWallet::GetAddressGroupings()
             // group change with input addresses
             if (any_mine)
             {
-                for (const auto txout : pcoin->tx->vpout)
+                for (const auto txout : pcoin->tx->vout)
                 {
                     if (IsChange(txout.get()))
                     {
@@ -1523,7 +1523,7 @@ std::set< std::set<CTxDestination> > CHDWallet::GetAddressGroupings()
         }
 
         // group lone addrs by themselves
-        for (const auto txout : pcoin->tx->vpout)
+        for (const auto txout : pcoin->tx->vout)
         {
             if (IsMine(txout.get()))
             {
@@ -1583,8 +1583,8 @@ isminetype CHDWallet::IsMine(const CTxIn& txin) const
     if (mi != mapWallet.end())
     {
         const CWalletTx &prev = (*mi).second;
-        if (txin.prevout.n < prev.tx->vpout.size())
-            return IsMine(prev.tx->vpout[txin.prevout.n].get());
+        if (txin.prevout.n < prev.tx->vout.size())
+            return IsMine(prev.tx->vout[txin.prevout.n].get());
     };
 
     MapRecords_t::const_iterator mri = mapRecords.find(txin.prevout.hash);
@@ -1729,7 +1729,7 @@ isminetype CHDWallet::IsMine(const CTxOutBase *txout) const
 
 bool CHDWallet::IsMine(const CTransaction &tx) const
 {
-    for (const auto txout : tx.vpout)
+    for (const auto txout : tx.vout)
         if (IsMine(txout.get()))
             return true;
     return false;
@@ -1750,9 +1750,9 @@ CAmount CHDWallet::GetDebit(const CTxIn &txin, const isminefilter &filter) const
         if (mi != mapWallet.end())
         {
             const CWalletTx &prev = (*mi).second;
-            if (txin.prevout.n < prev.tx->vpout.size())
-                if (IsMine(prev.tx->vpout[txin.prevout.n].get()) & filter)
-                    return prev.tx->vpout[txin.prevout.n]->GetValue();
+            if (txin.prevout.n < prev.tx->vout.size())
+                if (IsMine(prev.tx->vout[txin.prevout.n].get()) & filter)
+                    return prev.tx->vout[txin.prevout.n]->GetValue();
         };
 
         MapRecords_t::const_iterator mri = mapRecords.find(txin.prevout.hash);
@@ -1797,9 +1797,9 @@ CAmount CHDWallet::GetDebit(CHDWalletDB *pwdb, const CTransactionRecord &rtx, co
         if (mi != mapWallet.end())
         {
             const CWalletTx &prev = (*mi).second;
-            if (pPrevout->n < prev.tx->vpout.size())
-                if (IsMine(prev.tx->vpout[pPrevout->n].get()) & filter)
-                    nDebit += prev.tx->vpout[pPrevout->n]->GetValue();
+            if (pPrevout->n < prev.tx->vout.size())
+                if (IsMine(prev.tx->vout[pPrevout->n].get()) & filter)
+                    nDebit += prev.tx->vout[pPrevout->n]->GetValue();
         } else
         if ((mri = mapRecords.find(pPrevout->hash)) != mapRecords.end())
         {
@@ -1835,7 +1835,7 @@ CAmount CHDWallet::GetCredit(const CTransaction &tx, const isminefilter &filter)
 {
     CAmount nCredit = 0;
 
-    for (const auto txout : tx.vpout)
+    for (const auto txout : tx.vout)
     {
         nCredit += GetCredit(txout.get(), filter);
         if (!MoneyRange(nCredit))
@@ -1848,7 +1848,7 @@ void CHDWallet::GetCredit(const CTransaction &tx, CAmount &nSpendable, CAmount &
 {
     nSpendable = 0;
     nWatchOnly = 0;
-    for (const auto txout : tx.vpout)
+    for (const auto txout : tx.vout)
     {
         if (!txout->IsType(OUTPUT_STANDARD))
             continue;
@@ -1876,7 +1876,7 @@ CAmount CHDWallet::GetOutputValue(const COutPoint &op, bool fAllowTXIndex)
     {
         CWalletTx *pcoin = &itw->second;
         if (pcoin->tx->GetNumVOuts() > op.n)
-            return pcoin->tx->vpout[op.n]->GetValue();
+            return pcoin->tx->vout[op.n]->GetValue();
         return 0;
     };
 
@@ -1892,7 +1892,7 @@ CAmount CHDWallet::GetOutputValue(const COutPoint &op, bool fAllowTXIndex)
             return 0;
         };
         if (stx.tx->GetNumVOuts() > op.n)
-            return stx.tx->vpout[op.n]->GetValue();
+            return stx.tx->vout[op.n]->GetValue();
         return 0;
     };
 
@@ -1901,7 +1901,7 @@ CAmount CHDWallet::GetOutputValue(const COutPoint &op, bool fAllowTXIndex)
     if (GetTransaction(op.hash, txOut, Params().GetConsensus(), hashBlock, true))
     {
         if (txOut->GetNumVOuts() > op.n)
-            return txOut->vpout[op.n]->GetValue();
+            return txOut->vout[op.n]->GetValue();
         return 0;
     };
 
@@ -1973,7 +1973,7 @@ bool CHDWallet::IsTrusted(const uint256 &txhash, const uint256 &blockhash, int n
         if (parent == nullptr)
             return false;
 
-        const CTxOutBase *parentOut = parent->tx->vpout[txin.prevout.n].get();
+        const CTxOutBase *parentOut = parent->tx->vout[txin.prevout.n].get();
         if (IsMine(parentOut) != ISMINE_SPENDABLE)
             return false;
     };
@@ -2058,7 +2058,7 @@ CAmount CHDWallet::GetLegacyBalance(const isminefilter& filter, int minDepth, co
         // treat change outputs specially, as part of the amount debited.
         CAmount debit = wtx.GetDebit(filter);
         const bool outgoing = debit > 0;
-        for (const auto &out : wtx.tx->vpout) {
+        for (const auto &out : wtx.tx->vout) {
             if (outgoing && IsChange(out.get())) {
                 debit -= out->GetValue();
             } else if (IsMine(out.get()) & filter && depth >= minDepth && (!account || *account == GetAccountName(*out->GetPScriptPubKey()))) {
@@ -2178,7 +2178,7 @@ CAmount CHDWallet::GetAvailableBalance(const CCoinControl* coinControl) const
     AvailableCoins(vCoins, true, coinControl);
     for (const COutput& out : vCoins) {
         if (out.fSpendable) {
-            balance += out.tx->tx->vpout[out.i]->GetValue();
+            balance += out.tx->tx->vout[out.i]->GetValue();
         }
     }
     return balance;
@@ -2748,7 +2748,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
         for (;;)
         {
             txNew.vin.clear();
-            txNew.vpout.clear();
+            txNew.vout.clear();
             wtx.fFromMe = true;
 
             CAmount nValueToSelect = nValue;
@@ -2826,7 +2826,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
                 OUTPUT_PTR<CTxOutData> outFee = MAKE_OUTPUT<CTxOutData>();
                 outFee->vData.push_back(DO_FEE);
                 outFee->vData.resize(9); // More bytes than varint fee could use
-                txNew.vpout.push_back(outFee);
+                txNew.vout.push_back(outFee);
             };
 
             bool fFirst = true;
@@ -2851,8 +2851,8 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
                 };
 
 
-                r.n = txNew.vpout.size();
-                txNew.vpout.push_back(txbout);
+                r.n = txNew.vout.size();
+                txNew.vout.push_back(txbout);
             };
 
 
@@ -2860,7 +2860,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
             int nIn = 0;
             for (const auto &coin : setCoins)
             {
-                //const CScript& scriptPubKey = coin.first->tx->vpout[coin.second]->GetStandardOutput()->scriptPubKey;
+                //const CScript& scriptPubKey = coin.first->tx->vout[coin.second]->GetStandardOutput()->scriptPubKey;
                 const CScript& scriptPubKey = *coin.txoutBase->GetPScriptPubKey();
                 SignatureData sigdata;
 
@@ -2923,7 +2923,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
                 {
                     auto &r = vecSend[nChangePosInOut];
                     CAmount extraFeePaid = nFeeRet - nFeeNeeded;
-                    CTxOutBaseRef c = txNew.vpout[r.n];
+                    CTxOutBaseRef c = txNew.vout[r.n];
                     c->SetValue(c->GetValue() + extraFeePaid);
                     r.nAmount = c->GetValue();
 
@@ -2949,7 +2949,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
                 auto &r = vecSend[nChangePosInOut];
                 CAmount additionalFeeNeeded = nFeeNeeded - nFeeRet;
 
-                CTxOutBaseRef c = txNew.vpout[r.n];
+                CTxOutBaseRef c = txNew.vout[r.n];
                 // Only reduce change if remaining amount is still a large enough output.
                 if (c->GetValue() >= MIN_FINAL_CHANGE + additionalFeeNeeded)
                 {
@@ -2973,7 +2973,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
 
         if (!fOnlyStandardOutputs)
         {
-            std::vector<uint8_t> &vData = ((CTxOutData*)txNew.vpout[0].get())->vData;
+            std::vector<uint8_t> &vData = ((CTxOutData*)txNew.vout[0].get())->vData;
             vData.resize(1);
             if (0 != PutVarInt(vData, nFeeRet))
                 return errorN(1, "%s: PutVarInt %d failed\n", __func__, nFeeRet);
@@ -4400,13 +4400,7 @@ void CHDWallet::GetScriptForMining(CScript &script)
     {
         wdb.TxnAbort();
     };
-    CBitcoinAddress ba(newKey.GetID());
-    //if(!GetScriptForAddress(script, ba))
-        //return errorN(1, "GetScriptForMining failed.");
-    LogPrintf("ADDRESS %s \n" ,ba.ToString());
-    GetScriptForAddress(script, ba);
-    //script = rKey;
-    //script->reserveScript = CScript() << ToByteVector(newKey) << OP_CHECKSIG;
+    script = GetScriptForDestination(newKey.GetID());
 }
 
 int CHDWallet::ExtKeyLoadMaster()
@@ -5993,9 +5987,9 @@ bool CHDWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& 
     std::vector<CTempRecipient> vecSend;
 
     // Turn the txout set into a CRecipient vector
-    for (size_t idx = 0; idx < tx.vpout.size(); idx++)
+    for (size_t idx = 0; idx < tx.vout.size(); idx++)
     {
-        const auto &txOut = tx.vpout[idx];
+        const auto &txOut = tx.vout[idx];
 
         if (txOut->IsType(OUTPUT_STANDARD))
         {
@@ -6033,13 +6027,13 @@ bool CHDWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& 
         return false;
 
     if (nChangePosInOut != -1)
-        tx.vpout.insert(tx.vpout.begin() + nChangePosInOut, wtx.tx->vpout[nChangePosInOut]);
+        tx.vout.insert(tx.vout.begin() + nChangePosInOut, wtx.tx->vout[nChangePosInOut]);
 
     // Copy output sizes from new transaction; they may have had the fee subtracted from them
-    for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
+    for (unsigned int idx = 0; idx < tx.vout.size(); idx++)
     {
-        if (tx.vpout[idx]->IsType(OUTPUT_STANDARD))
-            tx.vpout[idx]->SetValue(wtx.tx->vpout[idx]->GetValue());
+        if (tx.vout[idx]->IsType(OUTPUT_STANDARD))
+            tx.vout[idx]->SetValue(wtx.tx->vout[idx]->GetValue());
     };
 
     // Add new txins (keeping original txin scriptSig/order)
@@ -6074,10 +6068,10 @@ bool CHDWallet::SignTransaction(CMutableTransaction &tx)
         MapWallet_t::const_iterator mi = mapWallet.find(input.prevout.hash);
         if (mi != mapWallet.end())
         {
-            if (input.prevout.n >= mi->second.tx->vpout.size())
+            if (input.prevout.n >= mi->second.tx->vout.size())
                 return false;
 
-            const auto &txOut = mi->second.tx->vpout[input.prevout.n];
+            const auto &txOut = mi->second.tx->vout[input.prevout.n];
             assert(txOut->IsType(OUTPUT_STANDARD));
 
             txOut->GetScriptPubKey(scriptPubKey);
@@ -6889,7 +6883,7 @@ bool CHDWallet::FindStealthTransactions(const CTransaction& tx, mapValue_t& mapN
 
     // A data output always applies to the preceding output
     int32_t nOutputId = -1;
-    for (const auto &txout : tx.vpout)
+    for (const auto &txout : tx.vout)
     {
         nOutputId++;
         if (txout->nVersion != OUTPUT_DATA)
@@ -6905,7 +6899,7 @@ bool CHDWallet::FindStealthTransactions(const CTransaction& tx, mapValue_t& mapN
         };
 
         std::string sNarr;
-        if (CheckForStealthAndNarration(tx.vpout[nOutputId-1].get(), txd, sNarr) < 0)
+        if (CheckForStealthAndNarration(tx.vout[nOutputId-1].get(), txd, sNarr) < 0)
             LogPrintf("%s: txn %s, malformed data output %d.\n",  __func__, tx.GetHash().ToString(), nOutputId);
 
         if (sNarr.length() > 0)
@@ -6926,15 +6920,15 @@ bool CHDWallet::ScanForOwnedOutputs(const CTransaction &tx, size_t &nCT, size_t 
     mapNarr.clear();
 
     int32_t nOutputId = -1;
-    for (const auto &txout : tx.vpout)
+    for (const auto &txout : tx.vout)
     {
         nOutputId++;
         if (txout->IsType(OUTPUT_STANDARD))
         {
-            if (nOutputId < (int)tx.vpout.size()-1
-                && tx.vpout[nOutputId+1]->IsType(OUTPUT_DATA))
+            if (nOutputId < (int)tx.vout.size()-1
+                && tx.vout[nOutputId+1]->IsType(OUTPUT_DATA))
             {
-                CTxOutData *txd = (CTxOutData*) tx.vpout[nOutputId+1].get();
+                CTxOutData *txd = (CTxOutData*) tx.vout[nOutputId+1].get();
 
                 std::string sNarr;
                 if (CheckForStealthAndNarration(txout.get(), txd, sNarr) < 0)
@@ -7000,8 +6994,8 @@ bool CHDWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBloc
             if (miw != mapWallet.end())
             {
                 const CWalletTx &prev = miw->second;
-                if (txin.prevout.n < prev.tx->vpout.size()
-                    && IsMine(prev.tx->vpout[txin.prevout.n].get()) & ISMINE_ALL)
+                if (txin.prevout.n < prev.tx->vout.size()
+                    && IsMine(prev.tx->vout[txin.prevout.n].get()) & ISMINE_ALL)
                 {
                     fIsFromMe = true;
                     break; // only need one match
@@ -7299,9 +7293,9 @@ bool CHDWallet::AddToRecord(CTransactionRecord &rtxIn, const CTransaction &tx,
         //stx.vBlinds.clear();
     };
 
-    for (size_t i = 0; i < tx.vpout.size(); ++i)
+    for (size_t i = 0; i < tx.vout.size(); ++i)
     {
-        const auto &txout = tx.vpout[i];
+        const auto &txout = tx.vout[i];
 
         COutputRecord rout;
         COutputRecord *pout = rtx.GetOutput(i);
@@ -7322,10 +7316,10 @@ bool CHDWallet::AddToRecord(CTransactionRecord &rtxIn, const CTransaction &tx,
             case OUTPUT_STANDARD:
                 {
                 CTxOutData *pdata = nullptr;
-                if (i < tx.vpout.size()-1)
+                if (i < tx.vout.size()-1)
                 {
-                    if (tx.vpout[i+1]->nVersion == OUTPUT_DATA)
-                        pdata = (CTxOutData*)tx.vpout[i+1].get();
+                    if (tx.vout[i+1]->nVersion == OUTPUT_DATA)
+                        pdata = (CTxOutData*)tx.vout[i+1].get();
                 };
 
                 if (OwnStandardOut((CTxOutStandard*)txout.get(), pdata, *pout, fUpdated)
@@ -7549,11 +7543,11 @@ void CHDWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, con
             continue;
         }
 
-        for (unsigned int i = 0; i < wtx.tx->vpout.size(); i++)
+        for (unsigned int i = 0; i < wtx.tx->vout.size(); i++)
         {
-            if (!wtx.tx->vpout[i]->IsStandardOutput())
+            if (!wtx.tx->vout[i]->IsStandardOutput())
                 continue;
-            const CTxOutStandard *txout = wtx.tx->vpout[i]->GetStandardOutput();
+            const CTxOutStandard *txout = wtx.tx->vout[i]->GetStandardOutput();
 
             if (txout->nValue < nMinimumAmount || txout->nValue > nMaximumAmount)
                 continue;
@@ -7716,7 +7710,7 @@ bool CHDWallet::SelectCoins(const std::vector<COutput>& vAvailableCoins, const C
         {
             const CWalletTx *pcoin = &it->second;
             // Clearly invalid input, fail
-            if (pcoin->tx->vpout.size() <= outpoint.n)
+            if (pcoin->tx->vout.size() <= outpoint.n)
                 return false;
             CInputCoin ic(pcoin, outpoint.n);
             nValueRet += ic.GetValue();
@@ -7728,7 +7722,7 @@ bool CHDWallet::SelectCoins(const std::vector<COutput>& vAvailableCoins, const C
             {
                 const CWalletTx *pcoin = &it->second;
                 // Clearly invalid input, fail
-                if (pcoin->tx->vpout.size() <= outpoint.n)
+                if (pcoin->tx->vout.size() <= outpoint.n)
                     return false;
                 CInputCoin ic(pcoin, outpoint.n);
                 nValueRet += ic.GetValue();

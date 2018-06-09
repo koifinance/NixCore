@@ -106,6 +106,92 @@ UniValue getnetworkhashps(const JSONRPCRequest& request)
     return GetNetworkHashPS(!request.params[0].isNull() ? request.params[0].get_int() : 120, !request.params[1].isNull() ? request.params[1].get_int() : -1);
 }
 
+bool ImportOutputs(CBlockTemplate *pblocktemplate, int nHeight)
+{
+    LogPrint(BCLog::HDWALLET, "%s, nHeight %d\n", __func__, nHeight);
+
+    CBlock *pblock = &pblocktemplate->block;
+    if (pblock->vtx.size() < 1)
+        return error("%s: Malformed block.", __func__);
+
+    fs::path fPath = GetDataDir() / "genesisOutputs.txt";
+
+    if (!fs::exists(fPath))
+        return error("%s: File not found 'genesisOutputs.txt'.", __func__);
+
+    const int nMaxOutputsPerTxn = 80;
+    FILE *fp;
+    errno = 0;
+    if (!(fp = fopen(fPath.string().c_str(), "rb")))
+        return error("%s - Can't open file, strerror: %s.", __func__, strerror(errno));
+
+    CMutableTransaction txn;
+    txn.nVersion = NIX_TXN_VERSION;
+    //txn.SetType(TXN_COINBASE);
+    txn.nLockTime = 0;
+    txn.vin.push_back(CTxIn()); // null prevout
+
+    // scriptsig len must be > 2
+    const char *s = "import";
+    txn.vin[0].scriptSig = CScript() << std::vector<unsigned char>((const unsigned char*)s, (const unsigned char*)s + strlen(s));
+
+    int nOutput = 0, nAdded = 0;
+    char cLine[512];
+    char *pAddress, *pAmount;
+
+    while (fgets(cLine, 512, fp))
+    {
+        cLine[511] = '\0'; // safety
+        size_t len = strlen(cLine);
+        while (isspace(cLine[len-1]) && len>0)
+            cLine[len-1] = '\0', len--;
+
+        if (!(pAddress = strtok(cLine, ","))
+                || !(pAmount = strtok(nullptr, ",")))
+            continue;
+
+        nOutput++;
+        if (nOutput <= nMaxOutputsPerTxn * (nHeight-1))
+            continue;
+
+        errno = 0;
+        uint64_t amount = strtoull(pAmount, nullptr, 10);
+        if (errno || !MoneyRange(amount))
+        {
+            LogPrintf("Warning: %s - Skipping invalid amount: %s, %s\n", __func__, pAmount, strerror(errno));
+            continue;
+        };
+
+        std::string addrStr(pAddress);
+        CBitcoinAddress addr(addrStr);
+
+        CKeyID id;
+        if (!addr.IsValid() || !addr.GetKeyID(id))
+        {
+            LogPrintf("Warning: %s - Skipping invalid address: %s\n", __func__, pAddress);
+            continue;
+        };
+
+        CScript script = CScript() << OP_DUP << OP_HASH160 << ToByteVector(id) << OP_EQUALVERIFY << OP_CHECKSIG;
+        OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
+        txout->nValue = amount;
+        txout->scriptPubKey = script;
+        txn.vpout.push_back(txout);
+
+        nAdded++;
+        if (nAdded >= nMaxOutputsPerTxn)
+            break;
+    };
+
+    fclose(fp);
+
+    uint256 hash = txn.GetHash();
+
+    pblock->vtx.insert(pblock->vtx.begin()+1, MakeTransactionRef(txn));
+
+    return true;
+}
+
 UniValue generateBlocks(CScript &coinbaseScript, int nGenerate, uint64_t nMaxTries, bool keepScript)
 {
     static const int nInnerLoopCount = 0x10000;
@@ -124,6 +210,10 @@ UniValue generateBlocks(CScript &coinbaseScript, int nGenerate, uint64_t nMaxTri
         std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript));
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+
+        //if (!ImportOutputs(pblocktemplate.get(), nHeight+1))
+            //throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't import new outputs");
+
         CBlock *pblock = &pblocktemplate->block;
         {
             LOCK(cs_main);

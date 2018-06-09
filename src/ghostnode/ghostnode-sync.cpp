@@ -79,7 +79,7 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
         }
     }
 
-    LogPrintf("ghostnode-sync", "CGhostnodeSync::IsBlockchainSynced -- state before check: %ssynced, skipped %d times\n", fBlockchainSynced ? "" : "not ", nSkipped);
+    LogPrintf("ghostnode-sync, CGhostnodeSync::IsBlockchainSynced -- state before check: %s synced, skipped %d times\n", fBlockchainSynced ? "" : "not ", nSkipped);
 
     nTimeLastProcess = GetTime();
     nSkipped = 0;
@@ -249,7 +249,7 @@ void CGhostnodeSync::ProcessTick() {
 
     // INITIAL SYNC SETUP / LOG REPORTING
     double nSyncProgress = double(nRequestedGhostnodeAttempt + (nRequestedGhostnodeAssets - 1) * 8) / (8 * 4);
-    LogPrintf("ProcessTick", "CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d nRequestedGhostnodeAttempt %d nSyncProgress %f\n", nTick, nRequestedGhostnodeAssets, nRequestedGhostnodeAttempt, nSyncProgress);
+    LogPrintf("ProcessTick, CGhostnodeSync::ProcessTick -- nTick %d nRequestedGhostnodeAssets %d nRequestedGhostnodeAttempt %d nSyncProgress %f\n", nTick, nRequestedGhostnodeAssets, nRequestedGhostnodeAttempt, nSyncProgress);
     uiInterface.NotifyAdditionalDataSyncProgressChanged(pCurrentBlockIndex->nHeight, nSyncProgress);
 
     // RESET SYNCING INCASE OF FAILURE

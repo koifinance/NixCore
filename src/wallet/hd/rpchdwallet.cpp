@@ -4183,14 +4183,14 @@ UniValue sendtypeto(const JSONRPCRequest &request)
         return NullUniValue;
     if (request.fHelp || request.params.size() < 3 || request.params.size() > 7)
         throw std::runtime_error(
-            "sendtypeto \"typein\" \"typeout\" [{address: , amount: , narr: , subfee:},...] (\"comment\" \"comment-to\" ringsize inputs_per_sig test_fee coin_control)\n"
-            "\nSend part to multiple outputs.\n"
+            "sendtypeto \"typein\" \"typeout\" [{address: , amount: , narr: , subfee:},...] (\"comment\" \"comment-to\" inputs_per_sig test_fee coin_control)\n"
+            "\nSend NIX to multiple outputs.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
             "1. \"typein\"          (string, required) nix\n"
             "2. \"typeout\"         (string, required) nix\n"
             "3. \"outputs\"         (json, required) Array of output objects\n"
-            "    3.1 \"address\"    (string, required) The particl address to send to.\n"
+            "    3.1 \"address\"    (string, required) The NIX address to send to.\n"
             "    3.2 \"amount\"     (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "    3.x \"narr\"       (string, optional) Up to 24 character narration sent with the transaction.\n"
             "    3.x \"subfee\"     (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
@@ -4842,6 +4842,7 @@ UniValue generate(const JSONRPCRequest& request)
     }
 
     CScript coinbase_script;
+
     pwallet->GetScriptForMining(coinbase_script);
 
     // If the keypool is exhausted, no script is returned at all.  Catch this.
