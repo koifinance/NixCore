@@ -104,7 +104,7 @@ bool CDBEnv::Open(const fs::path& pathIn, bool retry)
 
     strPath = pathIn.string();
     if (!LockDirectory(pathIn, ".walletlock")) {
-        LogPrintf("Cannot obtain a lock on wallet directory %s. Another instance of nix may be using it.\n", strPath);
+        LogPrintf("Cannot obtain a lock on wallet directory %s. Another instance of particl may be using it.\n", strPath);
         return false;
     }
 
@@ -213,7 +213,7 @@ CDBEnv::VerifyResult CDBEnv::Verify(const std::string& strFile, recoverFunc_type
     return (fRecovered ? RECOVER_OK : RECOVER_FAIL);
 }
 
-bool CDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& newFilename)
+bool CDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream &ssKey, CDataStream &ssValue), std::string& newFilename)
 {
     // Recovery procedure:
     // move wallet file to walletfilename.timestamp.bak
@@ -266,7 +266,16 @@ bool CDB::Recover(const std::string& filename, void *callbackDataIn, bool (*reco
             CDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
             if (!(*recoverKVcallback)(callbackDataIn, ssKey, ssValue))
                 continue;
-        }
+
+            Dbt datKey(&row.first[0], row.first.size());
+            Dbt datValue(ssValue.data(), ssValue.size());
+            int ret2 = pdbCopy->put(ptxn, &datKey, &datValue, DB_NOOVERWRITE);
+            if (ret2 > 0)
+                fSuccess = false;
+            continue;
+
+        };
+
         Dbt datKey(&row.first[0], row.first.size());
         Dbt datValue(&row.second[0], row.second.size());
         int ret2 = pdbCopy->put(ptxn, &datKey, &datValue, DB_NOOVERWRITE);
@@ -409,7 +418,7 @@ CDB::CDB(CWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnCloseIn) : pdb
     const std::string &strFilename = dbw.strFile;
 
     bool fCreate = strchr(pszMode, 'c') != nullptr;
-    unsigned int nFlags = DB_THREAD;
+    unsigned int nFlags = DB_READ_UNCOMMITTED | DB_THREAD; // get must be called with DB_READ_UNCOMMITTED also for it to apply
     if (fCreate)
         nFlags |= DB_CREATE;
 
@@ -565,6 +574,7 @@ bool CDB::Rewrite(CWalletDBWrapper& dbw, const char* pszSkip)
                                 ssValue.clear();
                                 ssValue << CLIENT_VERSION;
                             }
+
                             Dbt datKey(ssKey.data(), ssKey.size());
                             Dbt datValue(ssValue.data(), ssValue.size());
                             int ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);

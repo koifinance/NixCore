@@ -16,6 +16,8 @@
 #include <utiltime.h>
 #include <wallet/wallet.h>
 
+#include <ghost-address/extkey.h> // recover
+
 #include <atomic>
 
 #include <boost/thread.hpp>
@@ -269,7 +271,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             CWalletTx wtx;
             ssValue >> wtx;
             CValidationState state;
-            if (!(CheckTransaction(*wtx.tx, state, wtx.GetHash(), true) && (wtx.GetHash() == hash) && state.IsValid()))
+            if (!(CheckTransaction(*wtx.tx, state, hash, true) && (wtx.GetHash() == hash) && state.IsValid()))
                 return false;
 
             // Undo serialize changes in 31600
@@ -505,6 +507,11 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 strErr = "Error reading wallet database: SetHDChain failed";
                 return false;
             }
+        } else if (strType == "luo")
+        {
+            COutPoint output;
+            ssKey >> output;
+            pwallet->LockCoin(output);
         }
     } catch (...)
     {
@@ -516,7 +523,9 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
 bool CWalletDB::IsKeyType(const std::string& strType)
 {
     return (strType== "key" || strType == "wkey" ||
-            strType == "mkey" || strType == "ckey");
+            strType == "mkey" || strType == "ckey")
+            || ((strType == "eacc" || strType == "ek32"
+                || strType == "eknm" || strType == "sxad" || strType == "espk"));
 }
 
 DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
@@ -749,6 +758,9 @@ void MaybeCompactWalletDB()
         return;
     }
 
+    // Make this thread recognisable as the wallet flushing thread
+    RenameThread("particl-wallet");
+
     for (CWalletRef pwallet : vpwallets) {
         CWalletDBWrapper& dbh = pwallet->GetDBHandle();
 
@@ -772,7 +784,7 @@ void MaybeCompactWalletDB()
 //
 // Try to (very carefully!) recover wallet file if there is a problem.
 //
-bool CWalletDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename)
+bool CWalletDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream &ssKey, CDataStream &ssValue), std::string& out_backup_filename)
 {
     return CDB::Recover(filename, callbackDataIn, recoverKVcallback, out_backup_filename);
 }
@@ -784,18 +796,31 @@ bool CWalletDB::Recover(const std::string& filename, std::string& out_backup_fil
     return CWalletDB::Recover(filename, nullptr, nullptr, out_backup_filename);
 }
 
-bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue)
+bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CDataStream &ssKey, CDataStream &ssValue)
 {
     CWallet *dummyWallet = reinterpret_cast<CWallet*>(callbackData);
     CWalletScanState dummyWss;
     std::string strType, strErr;
+
     bool fReadOK;
+    if (true)
+    {
+        try {
+            ssKey >> strType;
+        } catch (...)
+        {
+            LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
+            return false;
+        }
+        fReadOK = true;
+    } else
     {
         // Required in LoadKeyMetadata():
         LOCK(dummyWallet->cs_wallet);
         fReadOK = ReadKeyValue(dummyWallet, ssKey, ssValue,
                                dummyWss, strType, strErr);
     }
+
     if (!IsKeyType(strType) && strType != "hdchain")
         return false;
     if (!fReadOK)
@@ -803,6 +828,40 @@ bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDa
         LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
         return false;
     }
+
+    if (strType == "eacc")
+    {
+        CExtKeyAccount sea;
+        try {
+            ssValue >> sea;
+        } catch (...)
+        {
+            LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
+            return false;
+        }
+        sea.nPack = 0;
+        sea.nPackStealthKeys = 0;
+        ssValue.clear();
+        ssValue << sea;
+    };
+    if (strType == "ek32")
+    {
+        CStoredExtKey sek;
+        try {
+            ssValue >> sek;
+        } catch (...)
+        {
+            LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
+            return false;
+        }
+        if (sek.nFlags & EAF_RECEIVE_ON)
+        {
+            sek.nGenerated = 0;
+            sek.nHGenerated = 0;
+        };
+        ssValue.clear();
+        ssValue << sek;
+    };
 
     return true;
 }

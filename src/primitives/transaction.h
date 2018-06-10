@@ -437,7 +437,61 @@ template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
 
-    s >> tx.nVersion;
+    uint8_t bv;
+    tx.nVersion = 0;
+    s >> bv;
+
+    if (bv >= NIX_TXN_VERSION)
+    {
+        tx.nVersion = bv;
+
+        s >> bv;
+        tx.nVersion |= bv<<8; // TransactionTypes
+
+        s >> tx.nLockTime;
+
+        tx.vin.clear();
+        s >> tx.vin;
+
+        size_t nOutputs = ReadCompactSize(s);
+        tx.vpout.resize(nOutputs);
+        for (size_t k = 0; k < tx.vpout.size(); ++k)
+        {
+            s >> bv;
+
+            switch (bv)
+            {
+                case OUTPUT_STANDARD:
+                    tx.vpout[k] = MAKE_OUTPUT<CTxOutStandard>();
+                    break;
+                case OUTPUT_DATA:
+                    tx.vpout[k] = MAKE_OUTPUT<CTxOutData>();
+                    break;
+                default:
+                    return;
+            };
+
+            tx.vpout[k]->nVersion = bv;
+            s >> *tx.vpout[k];
+        }
+
+        if (fAllowWitness)
+        {
+            for (auto &txin : tx.vin)
+                s >> txin.scriptWitness.stack;
+        };
+        return;
+    };
+
+    tx.nVersion |= bv;
+    s >> bv;
+    tx.nVersion |= bv<<8;
+    s >> bv;
+    tx.nVersion |= bv<<16;
+    s >> bv;
+    tx.nVersion |= bv<<24;
+
+
     unsigned char flags = 0;
     tx.vin.clear();
     tx.vout.clear();
@@ -472,7 +526,34 @@ template<typename Stream, typename TxType>
 inline void SerializeTransaction(const TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
 
+    if (IsNIXTxVersion(tx.nVersion))
+    {
+        uint8_t bv = tx.nVersion & 0xFF;
+        s << bv;
+
+        bv = (tx.nVersion>>8) & 0xFF;
+        s << bv; // TransactionType
+
+        s << tx.nLockTime;
+        s << tx.vin;
+
+        WriteCompactSize(s, tx.vpout.size());
+        for (size_t k = 0; k < tx.vpout.size(); ++k)
+        {
+            s << tx.vpout[k]->nVersion;
+            s << *tx.vpout[k];
+        };
+
+        if (fAllowWitness)
+        {
+            for (auto &txin : tx.vin)
+                s << txin.scriptWitness.stack;
+        };
+        return;
+    };
+
     s << tx.nVersion;
+
     unsigned char flags = 0;
     // Consistency check
     if (fAllowWitness) {
@@ -496,8 +577,6 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
 }
-
-
 /** The basic transaction that is broadcasted on the network and contained in
  * blocks.  A transaction can contain multiple inputs and outputs.
  */
