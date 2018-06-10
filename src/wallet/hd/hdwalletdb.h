@@ -113,63 +113,6 @@ public:
 
 };
 
-class CLockedAnonOutput
-{
-// expand key for anon output received with wallet locked
-// stored in walletdb, key is pubkey hash160
-public:
-    CLockedAnonOutput() {}
-
-    CLockedAnonOutput(CPubKey pkEphem_, CPubKey pkScan_, COutPoint outpoint_)
-    {
-        pkEphem = pkEphem_;
-        pkScan = pkScan_;
-        outpoint = outpoint_;
-    }
-
-    CPubKey   pkEphem;
-    CPubKey   pkScan;
-    COutPoint outpoint;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream &s, Operation ser_action)
-    {
-        READWRITE(pkEphem);
-        READWRITE(pkScan);
-        READWRITE(outpoint);
-    }
-
-};
-
-class COwnedAnonOutput
-{
-// stored in walletdb, key is keyimage
-// TODO: store nValue?
-public:
-    COwnedAnonOutput() {};
-
-    COwnedAnonOutput(COutPoint outpoint_, bool fSpent_)
-    {
-        outpoint = outpoint_;
-        fSpent   = fSpent_;
-    };
-
-    ec_point vchImage;
-    int64_t nValue;
-
-    COutPoint outpoint;
-    bool fSpent;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream &s, Operation ser_action)
-    {
-        READWRITE(outpoint);
-        READWRITE(fSpent);
-    }
-};
-
 class CStealthAddressIndexed
 {
 public:
@@ -185,31 +128,6 @@ public:
         READWRITE(addrRaw);
     };
 };
-
-class CVoteToken
-{
-public:
-    CVoteToken() {};
-    CVoteToken(uint32_t nToken_, int nStart_, int nEnd_, int64_t nTimeAdded_) :
-        nToken(nToken_), nStart(nStart_), nEnd(nEnd_), nTimeAdded(nTimeAdded_) {};
-
-    uint32_t nToken;
-    int nStart;
-    int nEnd;
-    int64_t nTimeAdded;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream &s, Operation ser_action)
-    {
-        READWRITE(nToken);
-        READWRITE(nStart);
-        READWRITE(nEnd);
-        READWRITE(nTimeAdded);
-    };
-};
-
-
 
 /** Access to the wallet database */
 class CHDWalletDB : public CWalletDB
@@ -397,9 +315,6 @@ public:
     bool WriteAddressBookEntry(const std::string &sKey, const CAddressBookData &data);
     bool EraseAddressBookEntry(const std::string &sKey);
 
-    bool ReadVoteTokens(std::vector<CVoteToken> &vVoteTokens, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteVoteTokens(const std::vector<CVoteToken> &vVoteTokens);
-
     bool WriteTxRecord(const uint256 &hash, const CTransactionRecord &rtx);
     bool EraseTxRecord(const uint256 &hash);
 
@@ -407,16 +322,6 @@ public:
     bool ReadStoredTx(const uint256 &hash, CStoredTransaction &stx, uint32_t nFlags=DB_READ_UNCOMMITTED);
     bool WriteStoredTx(const uint256 &hash, const CStoredTransaction &stx);
     bool EraseStoredTx(const uint256 &hash);
-
-    bool ReadAnonKeyImage(const CCmpPubKey &ki, COutPoint &op, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteAnonKeyImage(const CCmpPubKey &ki, const COutPoint &op);
-    bool EraseAnonKeyImage(const CCmpPubKey &ki);
-
-
-    bool HaveLockedAnonOut(const COutPoint &op, uint32_t nFlags=DB_READ_UNCOMMITTED);
-    bool WriteLockedAnonOut(const COutPoint &op);
-    bool EraseLockedAnonOut(const COutPoint &op);
-
 
     bool ReadWalletSetting(const std::string &setting, std::string &json, uint32_t nFlags=DB_READ_UNCOMMITTED);
     bool WriteWalletSetting(const std::string &setting, const std::string &json);

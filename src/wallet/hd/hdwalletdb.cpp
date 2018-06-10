@@ -103,7 +103,6 @@ bool CHDWalletDB::WriteExtStealthKeyChildPack(const CKeyID &identifier, const ui
     return WriteIC(boost::make_tuple(std::string("ecpk"), identifier, nPack), asckPak, true);
 };
 
-
 bool CHDWalletDB::ReadFlag(const std::string &name, int32_t &nValue, uint32_t nFlags)
 {
     return batch.Read(std::make_pair(std::string("flag"), name), nValue, nFlags);
@@ -113,7 +112,6 @@ bool CHDWalletDB::WriteFlag(const std::string &name, int32_t nValue)
 {
     return WriteIC(std::make_pair(std::string("flag"), name), nValue, true);
 };
-
 
 bool CHDWalletDB::ReadExtKeyIndex(uint32_t id, CKeyID &identifier, uint32_t nFlags)
 {
@@ -125,7 +123,6 @@ bool CHDWalletDB::WriteExtKeyIndex(uint32_t id, const CKeyID &identifier)
     return WriteIC(std::make_pair(std::string("ine"), id), identifier, true);
 };
 
-
 bool CHDWalletDB::ReadStealthAddressIndex(uint32_t id, CStealthAddressIndexed &sxi, uint32_t nFlags)
 {
     return batch.Read(std::make_pair(std::string("ins"), id), sxi, nFlags);
@@ -135,7 +132,6 @@ bool CHDWalletDB::WriteStealthAddressIndex(uint32_t id, const CStealthAddressInd
 {
     return WriteIC(std::make_pair(std::string("ins"), id), sxi, true);
 };
-
 
 bool CHDWalletDB::ReadStealthAddressIndexReverse(const uint160 &hash, uint32_t &id, uint32_t nFlags)
 {
@@ -147,7 +143,6 @@ bool CHDWalletDB::WriteStealthAddressIndexReverse(const uint160 &hash, uint32_t 
     return WriteIC(std::make_pair(std::string("ris"), hash), id, true);
 };
 
-
 bool CHDWalletDB::ReadStealthAddressLink(const CKeyID &keyId, uint32_t &id, uint32_t nFlags)
 {
     return batch.Read(std::make_pair(std::string("lns"), keyId), id, nFlags);
@@ -158,7 +153,6 @@ bool CHDWalletDB::WriteStealthAddressLink(const CKeyID &keyId, uint32_t id)
     return WriteIC(std::make_pair(std::string("lns"), keyId), id, true);
 };
 
-
 bool CHDWalletDB::WriteAddressBookEntry(const std::string &sKey, const CAddressBookData &data)
 {
     return WriteIC(std::make_pair(std::string("abe"), sKey), data, true);
@@ -168,18 +162,6 @@ bool CHDWalletDB::EraseAddressBookEntry(const std::string &sKey)
 {
     return EraseIC(std::make_pair(std::string("abe"), sKey));
 };
-
-
-bool CHDWalletDB::ReadVoteTokens(std::vector<CVoteToken> &vVoteTokens, uint32_t nFlags)
-{
-    return batch.Read(std::string("votes"), vVoteTokens, nFlags);
-};
-
-bool CHDWalletDB::WriteVoteTokens(const std::vector<CVoteToken> &vVoteTokens)
-{
-    return WriteIC(std::string("votes"), vVoteTokens, true);
-};
-
 
 bool CHDWalletDB::WriteTxRecord(const uint256 &hash, const CTransactionRecord &rtx)
 {
@@ -205,40 +187,6 @@ bool CHDWalletDB::WriteStoredTx(const uint256 &hash, const CStoredTransaction &s
 bool CHDWalletDB::EraseStoredTx(const uint256 &hash)
 {
     return EraseIC(std::make_pair(std::string("stx"), hash));
-};
-
-
-bool CHDWalletDB::ReadAnonKeyImage(const CCmpPubKey &ki, COutPoint &op, uint32_t nFlags)
-{
-    return batch.Read(std::make_pair(std::string("aki"), ki), op, nFlags);
-};
-
-bool CHDWalletDB::WriteAnonKeyImage(const CCmpPubKey &ki, const COutPoint &op)
-{
-    return WriteIC(std::make_pair(std::string("aki"), ki), op, true);
-};
-
-bool CHDWalletDB::EraseAnonKeyImage(const CCmpPubKey &ki)
-{
-    return EraseIC(std::make_pair(std::string("aki"), ki));
-};
-
-
-bool CHDWalletDB::HaveLockedAnonOut(const COutPoint &op, uint32_t nFlags)
-{
-    char c;
-    return batch.Read(std::make_pair(std::string("lao"), op), c, nFlags);
-}
-
-bool CHDWalletDB::WriteLockedAnonOut(const COutPoint &op)
-{
-    char c = 't';
-    return WriteIC(std::make_pair(std::string("lao"), op), c, true);
-};
-
-bool CHDWalletDB::EraseLockedAnonOut(const COutPoint &op)
-{
-    return EraseIC(std::make_pair(std::string("lao"), op));
 };
 
 

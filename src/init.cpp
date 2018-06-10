@@ -320,6 +320,7 @@ void Shutdown()
     CloseWallets();
 #endif
     globalVerifyHandle.reset();
+    ECC_Stop_Stealth();
     ECC_Stop();
     LogPrintf("%s: done\n", __func__);
 }
@@ -1321,6 +1322,7 @@ bool AppInitSanityChecks()
     LogPrintf("Using the '%s' SHA256 implementation\n", sha256_algo);
     RandomInit();
     ECC_Start();
+    ECC_Start_Stealth();
     globalVerifyHandle.reset(new ECCVerifyHandle());
 
     // Sanity check
