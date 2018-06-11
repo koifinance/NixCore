@@ -417,7 +417,7 @@ public:
     bool GetBalances(CHDWalletBalances &bal);
     CAmount GetAvailableBalance(const CCoinControl* coinControl = nullptr) const override;
 
-    bool IsChange(const CTxOutBase *txout) const;
+    bool IsChange(const CTxOutBase *txout) const override;
 
     int GetChangeAddress(CPubKey &pk);
 

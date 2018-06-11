@@ -1306,6 +1306,7 @@ public:
     virtual CAmount GetDebit(const CTxIn& txin, const isminefilter& filter) const;
     CAmount GetCredit(const CTxOut& txout, const isminefilter& filter) const;
     virtual CAmount GetCredit(const CTxOutBase *txout, const isminefilter &filter) const { return 0;}
+    virtual bool IsChange(const CTxOutBase *txout) const {assert(false);}
     bool IsChange(const CTxOut& txout) const;
     CAmount GetChange(const CTxOut& txout) const;
     /** should probably be renamed to IsRelevantToMe */

@@ -252,6 +252,10 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
+    if(nHeight == INT_MAX && tx.vpout.size() == 1001)
+        nHeight = 1;
+    if(nHeight == INT_MAX)
+        nHeight = 2;
     // To airdrop
     if (nHeight == 1) {
 
@@ -290,7 +294,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         }
     }
 
-    if (nHeight >= 2) {
+    else if (nHeight >= 2) {
         bool found_1 = false;
         bool found_2 = false;
 

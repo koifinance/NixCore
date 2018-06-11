@@ -1578,6 +1578,7 @@ int CWalletTx::GetRequestCount() const
     return nRequests;
 }
 
+
 void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
                            std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const
 {
@@ -1592,46 +1593,96 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
     {
         CAmount nValueOut = tx->GetValueOut();
         nFee = nDebit - nValueOut;
-    }
+    };
 
     // Sent/received.
-    for (unsigned int i = 0; i < tx->vout.size(); ++i)
+    if (tx->IsNIXVersion())
     {
-        const CTxOut& txout = tx->vout[i];
-        isminetype fIsMine = pwallet->IsMine(txout);
-        // Only need to handle txouts if AT LEAST one of these is true:
-        //   1) they debit from us (sent)
-        //   2) the output is to us (received)
-        if (nDebit > 0)
+        bool fFoundChange = false;
+        for (unsigned int i = 0; i < tx->vpout.size(); ++i)
         {
-            // Don't report 'change' txouts
-            if (pwallet->IsChange(txout))
+            const CTxOutBase *txout = tx->vpout[i].get();
+            if (!txout->IsStandardOutput())
                 continue;
-        }
-        else if (!(fIsMine & filter))
-            continue;
 
-        // In either case, we need to get the destination address
-        CTxDestination address;
+            isminetype fIsMine = pwallet->IsMine(txout);
 
-        if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
+            // Only need to handle txouts if AT LEAST one of these is true:
+            //   1) they debit from us (sent)
+            //   2) the output is to us (received)
+            if (nDebit > 0)
+            {
+                // Don't report 'change' txouts
+                // Only hide one change output per txn
+                if (!fFoundChange && pwallet->IsChange(txout))
+                {
+                    fFoundChange = true;
+                    continue;
+                };
+            } else
+            if (!(fIsMine & filter))
+                continue;
+
+            // In either case, we need to get the destination address
+            const CScript &scriptPubKey = *txout->GetPScriptPubKey();
+            CTxDestination address;
+
+            if (!ExtractDestination(scriptPubKey, address) && !scriptPubKey.IsUnspendable())
+            {
+                LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+                         this->GetHash().ToString());
+                address = CNoDestination();
+            };
+
+            COutputEntry output = {address, txout->GetValue(), (int)i, fIsMine};
+
+            // If we are debited by the transaction, add the output as a "sent" entry
+            if (nDebit > 0)
+                listSent.push_back(output);
+
+
+            // If we are receiving the output, add it as a "received" entry
+            if (fIsMine & filter)
+                listReceived.push_back(output);
+        };
+    } else
+    {
+        for (unsigned int i = 0; i < tx->vout.size(); ++i)
         {
-            LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
-                     this->GetHash().ToString());
-            address = CNoDestination();
+            const CTxOut& txout = tx->vout[i];
+            isminetype fIsMine = pwallet->IsMine(txout);
+            // Only need to handle txouts if AT LEAST one of these is true:
+            //   1) they debit from us (sent)
+            //   2) the output is to us (received)
+            if (nDebit > 0)
+            {
+                // Don't report 'change' txouts
+                if (pwallet->IsChange(txout))
+                    continue;
+            }
+            else if (!(fIsMine & filter))
+                continue;
+
+            // In either case, we need to get the destination address
+            CTxDestination address;
+
+            if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
+            {
+                LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+                         this->GetHash().ToString());
+                address = CNoDestination();
+            }
+            COutputEntry output = {address, txout.nValue, (int)i, fIsMine};
+
+            // If we are debited by the transaction, add the output as a "sent" entry
+            if (nDebit > 0)
+                listSent.push_back(output);
+
+            // If we are receiving the output, add it as a "received" entry
+            if (fIsMine & filter)
+                listReceived.push_back(output);
         }
-
-        COutputEntry output = {address, txout.nValue, (int)i};
-
-        // If we are debited by the transaction, add the output as a "sent" entry
-        if (nDebit > 0)
-            listSent.push_back(output);
-
-        // If we are receiving the output, add it as a "received" entry
-        if (fIsMine & filter)
-            listReceived.push_back(output);
     }
-
 }
 
 /**
@@ -2007,9 +2058,18 @@ bool CWalletTx::IsTrusted() const
         const CWalletTx* parent = pwallet->GetWalletTx(txin.prevout.hash);
         if (parent == nullptr)
             return false;
-        const CTxOut& parentOut = parent->tx->vout[txin.prevout.n];
-        if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE)
-            return false;
+
+        if (tx->IsNIXVersion())
+        {
+            const CTxOutBase *parentOut = parent->tx->vpout[txin.prevout.n].get();
+            if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE)
+                return false;
+        } else
+        {
+            const CTxOut& parentOut = parent->tx->vout[txin.prevout.n];
+            if (pwallet->IsMine(parentOut) != ISMINE_SPENDABLE)
+                return false;
+        };
     }
     return true;
 }
@@ -4401,6 +4461,7 @@ const std::string& FormatOutputType(OutputType type)
 
 void CWallet::LearnRelatedScripts(const CPubKey& key, OutputType type)
 {
+    return;
     if (key.IsCompressed() && (type == OUTPUT_TYPE_P2SH_SEGWIT || type == OUTPUT_TYPE_BECH32)) {
         CTxDestination witdest = WitnessV0KeyHash(key.GetID());
         CScript witprog = GetScriptForDestination(witdest);
