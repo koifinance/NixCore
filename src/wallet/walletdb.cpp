@@ -271,7 +271,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             CWalletTx wtx;
             ssValue >> wtx;
             CValidationState state;
-            if (!(CheckTransaction(*wtx.tx, state, hash, true) && (wtx.GetHash() == hash) && state.IsValid()))
+            if (!(CheckTransaction(*wtx.tx, state, wtx.GetHash(), true) && (wtx.GetHash() == hash) && state.IsValid()))
                 return false;
 
             // Undo serialize changes in 31600
@@ -562,7 +562,8 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
                 break;
             else if (ret != 0)
             {
-                LogPrintf("Error reading next record from wallet database\n");
+                std::cout << "RET: " << ret;
+                LogPrintf("Error reading next record from wallet database %d \n", ret);
                 return DB_CORRUPT;
             }
 
@@ -759,7 +760,7 @@ void MaybeCompactWalletDB()
     }
 
     // Make this thread recognisable as the wallet flushing thread
-    RenameThread("particl-wallet");
+    RenameThread("nix-wallet");
 
     for (CWalletRef pwallet : vpwallets) {
         CWalletDBWrapper& dbh = pwallet->GetDBHandle();
