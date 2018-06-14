@@ -99,10 +99,11 @@ std::string CTxOutBase::ToString() const
     return strprintf("CTxOutBase unknown version %d", nVersion);
 }
 
-CTxOutStandard::CTxOutStandard(const CAmount& nValueIn, CScript scriptPubKeyIn) : CTxOutBase(OUTPUT_STANDARD)
+CTxOutStandard::CTxOutStandard(const CAmount& nValueIn, CScript scriptPubKeyIn, int nRoundsIn) : CTxOutBase(OUTPUT_STANDARD)
 {
     nValue = nValueIn;
     scriptPubKey = scriptPubKeyIn;
+    nRounds = nRoundsIn;
 }
 
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}

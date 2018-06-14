@@ -176,7 +176,7 @@ class CTxOutBase
 public:
     CTxOutBase(uint8_t v) : nVersion(v) {};
     uint8_t nVersion;
-
+    int nRounds;
     template<typename Stream>
     void Serialize(Stream &s) const
     {
@@ -253,8 +253,9 @@ typedef OUTPUT_PTR<CTxOutBase> CTxOutBaseRef;
 class CTxOutStandard : public CTxOutBase
 {
 public:
-    CTxOutStandard() : CTxOutBase(OUTPUT_STANDARD) {};
-    CTxOutStandard(const CAmount& nValueIn, CScript scriptPubKeyIn);
+
+    CTxOutStandard() : CTxOutBase(OUTPUT_STANDARD) {nRounds = -10;}
+    CTxOutStandard(const CAmount& nValueIn, CScript scriptPubKeyIn, int nRoundsIn = -10);
 
     CAmount nValue;
     CScript scriptPubKey;

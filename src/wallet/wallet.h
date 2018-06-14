@@ -1088,11 +1088,6 @@ public:
      */
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, uint64_t nMaxAncestors, std::vector<COutput> vCoins, std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet) const;
 
-    bool SelectCoinsByDenominations(int nDenom, CAmount nValueMin, CAmount nValueMax, std::vector<CTxIn>& vecTxInRet, std::vector<COutput>& vCoinsRet, CAmount& nValueRet, int nPrivateSendRoundsMin, int nPrivateSendRoundsMax);
-    bool GetCollateralTxIn(CTxIn& txinRet, CAmount& nValueRet) const;
-    bool SelectCoinsDark(CAmount nValueMin, CAmount nValueMax, std::vector<CTxIn>& vecTxInRet, CAmount& nValueRet, int nPrivateSendRoundsMin, int nPrivateSendRoundsMax) const;
-    bool SelectCoinsGrouppedByAddresses(std::vector<CompactTallyItem>& vecTallyRet, bool fSkipDenominated = true, bool fAnonymizable = true) const;
-
     virtual bool IsSpent(const uint256& hash, unsigned int n) const;
 
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
@@ -1194,17 +1189,6 @@ public:
     virtual CAmount GetAvailableBalance(const CCoinControl* coinControl = nullptr) const;
 
 
-    int GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const;
-    // respect current settings
-    int GetInputPrivateSendRounds(CTxIn txin) const;
-    bool IsDenominated(const CTxIn &txin) const;
-    bool IsDenominatedAmount(CAmount nInputAmount) const;
-    bool IsCollateralAmount(CAmount nInputAmount) const;
-    CAmount GetAnonymizableBalance(bool fSkipDenominated = false) const;
-    CAmount GetAnonymizedBalance() const;
-    CAmount GetNeedsToBeAnonymizedBalance(CAmount nMinBalance = 0) const;
-    CAmount GetDenominatedBalance(bool unconfirmed=false) const;
-
     OutputType TransactionChangeType(OutputType change_type, const std::vector<CRecipient>& vecSend);
 
     /**
@@ -1241,9 +1225,6 @@ public:
     virtual bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
                            std::string& strFailReason, const CCoinControl& coin_control, bool sign = true, AvailableCoinsType nCoinType = ALL_COINS, bool fUseInstantSend = false);
     virtual bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
-
-    bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);
-    bool ConvertList(std::vector<CTxIn> vecTxIn, std::vector<CAmount>& vecAmounts);
 
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
     bool AddAccountingEntry(const CAccountingEntry&);
