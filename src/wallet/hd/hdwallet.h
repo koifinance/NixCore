@@ -628,7 +628,7 @@ public:
 
 
     /**
-     * Add zerocoin Mint and Spend function
+     * Add zerocoin Mint and Spend functions
      */
     void ListAvailableCoinsMintCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const override;
     bool CreateZerocoinMintTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
@@ -645,6 +645,18 @@ public:
     //bool SetZerocoinBook(const CZerocoinEntry& zerocoinEntry) override;
 
     /**
+     * Add ghostnode functions
+     */
+
+    //Get 40000 NIX output and keys which can be used for the Ghostnode
+    bool GetGhostnodeVinAndKeys(CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash = "", std::string strOutputIndex = "");
+    // Extract txin information and keys from output
+    bool GetVinAndKeysFromOutput(COutput out, CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet);
+    bool HasCollateralInputs(bool fOnlyConfirmed = true) const;
+    int  CountInputsWithAmount(CAmount nInputAmount);
+    int64_t nKeysLeftSinceAutoBackup;
+
+    /**
      * Add ghost functions
      */
     bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
@@ -652,6 +664,7 @@ public:
     bool GhostModeMintTrigger(string totalAmount);
     bool GhostModeSpendTrigger(string denomination);
     bool SpendAllZerocoins();
+
 
     /**
      * Zerocoin entry changed.
@@ -685,6 +698,9 @@ int CreateOutput(OUTPUT_PTR<CTxOutBase> &txbout, CTempRecipient &r, std::string 
 bool IsHDWallet(const CKeyStore *win);
 CHDWallet *GetHDWallet(CKeyStore *win);
 const CHDWallet *GetHDWallet(const CKeyStore *win);
+
+bool CompHeight(const CZerocoinEntry & a, const CZerocoinEntry & b);
+bool CompID(const CZerocoinEntry & a, const CZerocoinEntry & b);
 
 #endif // NIX_WALLET_HDWALLET_H
 

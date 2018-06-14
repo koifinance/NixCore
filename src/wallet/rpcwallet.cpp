@@ -4307,7 +4307,7 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
         if (strError != "")
             throw JSONRPCError(RPC_WALLET_ERROR, strError);
 
-        CWalletDB walletdb(pwalletMain->GetDBHandle());
+        CHDWalletDB wdb(pwalletMain->GetDBHandle(), "r+");
         CZerocoinEntry zerocoinTx;
         zerocoinTx.IsUsed = false;
         zerocoinTx.denomination = denomination;
@@ -4318,7 +4318,7 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
         }
         zerocoinTx.randomness = newCoin.getRandomness();
         zerocoinTx.serialNumber = newCoin.getSerialNumber();
-        walletdb.WriteZerocoinEntry(zerocoinTx);
+        wdb.WriteZerocoinEntry(zerocoinTx);
 
         return pubCoin.getValue().GetHex();
     } else {
@@ -4412,8 +4412,8 @@ UniValue resetmintzerocoin(const JSONRPCRequest& request) {
 
 
     list <CZerocoinEntry> listPubcoin;
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
-    walletdb.ListPubCoin(listPubcoin);
+    CHDWalletDB wdb(pwalletMain->GetDBHandle(), "r+");
+    wdb.ListPubCoin(listPubcoin);
 
     for(const CZerocoinEntry &zerocoinItem: listPubcoin){
         if (zerocoinItem.randomness != 0 && zerocoinItem.serialNumber != 0) {
@@ -4424,7 +4424,7 @@ UniValue resetmintzerocoin(const JSONRPCRequest& request) {
             zerocoinTx.serialNumber = zerocoinItem.serialNumber;
             zerocoinTx.nHeight = -1;
             zerocoinTx.randomness = zerocoinItem.randomness;
-            walletdb.WriteZerocoinEntry(zerocoinTx);
+            wdb.WriteZerocoinEntry(zerocoinTx);
         }
     }
 
@@ -4448,8 +4448,8 @@ UniValue listmintzerocoins(const JSONRPCRequest& request) {
     CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     list <CZerocoinEntry> listPubcoin;
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
-    walletdb.ListPubCoin(listPubcoin);
+    CHDWalletDB wdb(pwalletMain->GetDBHandle(), "r+");
+    wdb.ListPubCoin(listPubcoin);
     UniValue results(UniValue::VARR);
 
     for(const CZerocoinEntry &zerocoinItem: listPubcoin) {
@@ -4486,8 +4486,8 @@ UniValue listpubcoins(const JSONRPCRequest& request) {
     CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     list <CZerocoinEntry> listPubcoin;
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
-    walletdb.ListPubCoin(listPubcoin);
+    CHDWalletDB wdb(pwalletMain->GetDBHandle(), "r+");
+    wdb.ListPubCoin(listPubcoin);
     UniValue results(UniValue::VARR);
     listPubcoin.sort(CompID);
 
@@ -4525,8 +4525,8 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
     CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     list <CZerocoinEntry> listPubcoin;
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
-    walletdb.ListPubCoin(listPubcoin);
+    CHDWalletDB wdb(pwalletMain->GetDBHandle(), "r+");
+    wdb.ListPubCoin(listPubcoin);
 
     UniValue results(UniValue::VARR);
 
@@ -4547,7 +4547,7 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
                         ? "Used (" + std::to_string(zerocoinTx.denomination) + " mint)"
                         : "New (" + std::to_string(zerocoinTx.denomination) + " mint)";
                 pwalletMain->NotifyZerocoinChanged(pwalletMain, zerocoinTx.value.GetHex(), zerocoinTx.denomination, isUsedDenomStr, CT_UPDATED);
-                walletdb.WriteZerocoinEntry(zerocoinTx);
+                wdb.WriteZerocoinEntry(zerocoinTx);
 
                 UniValue entry(UniValue::VOBJ);
                 entry.push_back(Pair("id", zerocoinTx.id));

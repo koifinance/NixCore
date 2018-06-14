@@ -213,17 +213,17 @@ void CActiveGhostnode::ManageStateInitial() {
     eType = GHOSTNODE_REMOTE;
 
     // Check if wallet funds are available
-    if (!vpwallets.front()) {
+    if (!GetHDWallet(vpwallets.front())) {
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet not available\n", GetStateString());
         return;
     }
 
-    if (vpwallets.front()->IsLocked()) {
+    if (GetHDWallet(vpwallets.front())->IsLocked()) {
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet is locked\n", GetStateString());
         return;
     }
 
-    if (vpwallets.front()->GetBalance() < GHOSTNODE_COIN_REQUIRED * COIN) {
+    if (GetHDWallet(vpwallets.front())->GetBalance() < GHOSTNODE_COIN_REQUIRED * COIN) {
         LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet balance is < 40000 NIX\n", GetStateString());
         return;
     }
@@ -234,7 +234,7 @@ void CActiveGhostnode::ManageStateInitial() {
 
     // If collateral is found switch to LOCAL mode
 
-    if (vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
+    if (GetHDWallet(vpwallets.front())->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
         eType = GHOSTNODE_LOCAL;
     }
 
@@ -295,7 +295,7 @@ void CActiveGhostnode::ManageStateLocal() {
     CPubKey pubKeyCollateral;
     CKey keyCollateral;
 
-    if (vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
+    if (GetHDWallet(vpwallets.front())->GetGhostnodeVinAndKeys(vin, pubKeyCollateral, keyCollateral)) {
         int nInputAge = GetInputAge(vin);
         if (nInputAge < Params().GetConsensus().nGhostnodeMinimumConfirmations) {
             nState = ACTIVE_GHOSTNODE_INPUT_TOO_NEW;
@@ -305,8 +305,8 @@ void CActiveGhostnode::ManageStateLocal() {
         }
 
         {
-            LOCK(vpwallets.front()->cs_wallet);
-            vpwallets.front()->LockCoin(vin.prevout);
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            GetHDWallet(vpwallets.front())->LockCoin(vin.prevout);
         }
 
         CGhostnodeBroadcast mnb;

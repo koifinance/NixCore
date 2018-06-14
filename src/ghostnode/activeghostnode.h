@@ -8,7 +8,7 @@
 
 #include "net.h"
 #include "key.h"
-#include "wallet/wallet.h"
+#include "wallet/hd/hdwallet.h"
 
 class CActiveGhostnode;
 

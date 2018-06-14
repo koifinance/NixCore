@@ -7,7 +7,7 @@
 #define DARKSEND_H
 
 #include "ghostnode.h"
-#include "wallet/wallet.h"
+#include "wallet/hd/hdwallet.h"
 #include <boost/foreach.hpp>
 
 class CDarksendPool;

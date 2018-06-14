@@ -460,7 +460,7 @@ bool CGhostnodeBroadcast::Create(std::string strService, std::string strKeyGhost
         return false;
     }
 
-    if (!vpwallets.front()->GetGhostnodeVinAndKeys(txin, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex)) {
+    if (!GetHDWallet(vpwallets.front())->GetGhostnodeVinAndKeys(txin, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex)) {
         strErrorRet = strprintf("Could not allocate txin %s:%s for ghostnode %s", strTxHash, strOutputIndex, strService);
         LogPrintf("CGhostnodeBroadcast::Create -- %s\n", strErrorRet);
         return false;

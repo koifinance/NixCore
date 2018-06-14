@@ -506,14 +506,14 @@ void CDarksendPool::SetNull() {
 //
 void CDarksendPool::UnlockCoins() {
     while (true) {
-        TRY_LOCK(vpwallets.front()->cs_wallet, lockWallet);
+        TRY_LOCK(GetHDWallet(vpwallets.front())->cs_wallet, lockWallet);
         if (!lockWallet) {
             MilliSleep(50);
             continue;
         }
         BOOST_FOREACH(COutPoint
         outpoint, vecOutPointLocked)
-        vpwallets.front()->UnlockCoin(outpoint);
+        GetHDWallet(vpwallets.front())->UnlockCoin(outpoint);
         break;
     }
 
@@ -1342,7 +1342,7 @@ bool CDarksendPool::SignFinalTransaction(const CTransaction &finalTransactionNew
                     return false;
                 }
 
-                const CKeyStore &keystore = *vpwallets.front();
+                const CKeyStore &keystore = *GetHDWallet(GetHDWallet(vpwallets.front()));
 
                 LogPrintf("privatesend", "CDarksendPool::SignFinalTransaction -- Signing my input %i\n", nMyInputIndex);
                 //CAmount amount;
@@ -1408,7 +1408,7 @@ void CDarksendPool::CompletedTransaction(PoolMessage nMessageID) {
 //
 bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
     if (!fEnablePrivateSend || fGhostNode || !pCurrentBlockIndex) return false;
-    if (!vpwallets.front() || vpwallets.front()->IsLocked(true)) return false;
+    if (!GetHDWallet(vpwallets.front()) || GetHDWallet(vpwallets.front())->IsLocked(true)) return false;
     if (nState != POOL_STATE_IDLE) return false;
 
     if (!ghostnodeSync.IsGhostnodeListSynced()) {
@@ -1421,7 +1421,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
             LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Automatic backups disabled, no mixing available.\n");
             strAutoDenomResult = _("Automatic backups disabled") + ", " + _("no mixing available.");
             fEnablePrivateSend = false; // stop mixing
-            vpwallets.front()->nKeysLeftSinceAutoBackup = 0; // no backup, no "keys since last backup"
+            GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup = 0; // no backup, no "keys since last backup"
             return false;
         case -1:
             // Automatic backup failed, nothing else we can do until user fixes the issue manually.
@@ -1439,24 +1439,24 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
             return false;
     }
 
-    if (vpwallets.front()->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_STOP) {
+    if (GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_STOP) {
         // We should never get here via mixing itself but probably smth else is still actively using keypool
-        LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Very low number of keys left: %d, no mixing available.\n", vpwallets.front()->nKeysLeftSinceAutoBackup);
-        strAutoDenomResult = strprintf(_("Very low number of keys left: %d") + ", " + _("no mixing available."), vpwallets.front()->nKeysLeftSinceAutoBackup);
+        LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Very low number of keys left: %d, no mixing available.\n", GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup);
+        strAutoDenomResult = strprintf(_("Very low number of keys left: %d") + ", " + _("no mixing available."), GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup);
         // It's getting really dangerous, stop mixing
         fEnablePrivateSend = false;
         return false;
-    } else if (vpwallets.front()->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING) {
+    } else if (GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING) {
         // Low number of keys left but it's still more or less safe to continue
-        LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Very low number of keys left: %d\n", vpwallets.front()->nKeysLeftSinceAutoBackup);
-        strAutoDenomResult = strprintf(_("Very low number of keys left: %d"), vpwallets.front()->nKeysLeftSinceAutoBackup);
+        LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Very low number of keys left: %d\n", GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup);
+        strAutoDenomResult = strprintf(_("Very low number of keys left: %d"), GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup);
 
         if (fCreateAutoBackups) {
             LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Trying to create new backup.\n");
             std::string warningString;
             std::string errorString;
 
-            if (!AutoBackupWallet(vpwallets.front(), "", warningString, errorString)) {
+            if (!AutoBackupWallet(GetHDWallet(vpwallets.front()), "", warningString, errorString)) {
                 if (!warningString.empty()) {
                     // There were some issues saving backup but yet more or less safe to continue
                     LogPrintf("CDarksendPool::DoAutomaticDenominating -- WARNING! Something went wrong on automatic backup: %s\n", warningString);
@@ -1474,7 +1474,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
         }
     }
 
-    LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Keys left since latest backup: %d\n", vpwallets.front()->nKeysLeftSinceAutoBackup);
+    LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- Keys left since latest backup: %d\n", GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup);
 
     if (GetEntriesCount() > 0) {
         strAutoDenomResult = _("Mixing in progress...");
@@ -1487,7 +1487,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
         return false;
     }
 
-    if (!fDryRun && vpwallets.front()->IsLocked(true)) {
+    if (!fDryRun && GetHDWallet(vpwallets.front())->IsLocked(true)) {
         strAutoDenomResult = _("Wallet is locked.");
         return false;
     }
@@ -1507,13 +1507,13 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
     CAmount nValueMin = vecPrivateSendDenominations.back();
 
     // if there are no confirmed DS collateral inputs yet
-    if (!vpwallets.front()->HasCollateralInputs()) {
+    if (!GetHDWallet(vpwallets.front())->HasCollateralInputs()) {
         // should have some additional amount for them
         nValueMin += PRIVATESEND_COLLATERAL * 4;
     }
 
     // including denoms but applying some restrictions
-    CAmount nBalanceNeedsAnonymized = vpwallets.front()->GetNeedsToBeAnonymizedBalance(nValueMin);
+    CAmount nBalanceNeedsAnonymized = GetHDWallet(vpwallets.front())->GetNeedsToBeAnonymizedBalance(nValueMin);
 
     // anonymizable balance is way too small
     if (nBalanceNeedsAnonymized < nValueMin) {
@@ -1523,10 +1523,10 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
     }
 
     // excluding denoms
-    CAmount nBalanceAnonimizableNonDenom = vpwallets.front()->GetAnonymizableBalance(true);
+    CAmount nBalanceAnonimizableNonDenom = GetHDWallet(vpwallets.front())->GetAnonymizableBalance(true);
     // denoms
-    CAmount nBalanceDenominatedConf = vpwallets.front()->GetDenominatedBalance();
-    CAmount nBalanceDenominatedUnconf = vpwallets.front()->GetDenominatedBalance(true);
+    CAmount nBalanceDenominatedConf = GetHDWallet(vpwallets.front())->GetDenominatedBalance();
+    CAmount nBalanceDenominatedUnconf = GetHDWallet(vpwallets.front())->GetDenominatedBalance(true);
     CAmount nBalanceDenominated = nBalanceDenominatedConf + nBalanceDenominatedUnconf;
 
     LogPrintf("privatesend", "CDarksendPool::DoAutomaticDenominating -- nValueMin: %f, nBalanceNeedsAnonymized: %f, nBalanceAnonimizableNonDenom: %f, nBalanceDenominatedConf: %f, nBalanceDenominatedUnconf: %f, nBalanceDenominated: %f\n",
@@ -1546,8 +1546,8 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
         return CreateDenominated();
 
     //check if we have the collateral sized inputs
-    if (!vpwallets.front()->HasCollateralInputs())
-        return !vpwallets.front()->HasCollateralInputs(false) && MakeCollateralAmounts();
+    if (!GetHDWallet(vpwallets.front())->HasCollateralInputs())
+        return !GetHDWallet(vpwallets.front())->HasCollateralInputs(false) && MakeCollateralAmounts();
 
     if (nSessionID) {
         strAutoDenomResult = _("Mixing in progress...");
@@ -1569,14 +1569,14 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
     //check our collateral and create new if needed
     std::string strReason;
     if (txMyCollateral == CMutableTransaction()) {
-        if (!vpwallets.front()->CreateCollateralTransaction(txMyCollateral, strReason)) {
+        if (!GetHDWallet(vpwallets.front())->CreateCollateralTransaction(txMyCollateral, strReason)) {
             LogPrintf("CDarksendPool::DoAutomaticDenominating -- create collateral error:%s\n", strReason);
             return false;
         }
     } else {
         if (!IsCollateralValid(txMyCollateral)) {
             LogPrintf("CDarksendPool::DoAutomaticDenominating -- invalid collateral, recreating...\n");
-            if (!vpwallets.front()->CreateCollateralTransaction(txMyCollateral, strReason)) {
+            if (!GetHDWallet(vpwallets.front())->CreateCollateralTransaction(txMyCollateral, strReason)) {
                 LogPrintf("CDarksendPool::DoAutomaticDenominating -- create collateral error: %s\n", strReason);
                 return false;
             }
@@ -1633,7 +1633,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
             std::vector <COutput> vCoinsTmp;
 
             // Try to match their denominations if possible, select at least 1 denominations
-            if (!vpwallets.front()->SelectCoinsByDenominations(dsq.nDenom, vecPrivateSendDenominations[vecBits.front()], nBalanceNeedsAnonymized, vecTxInTmp, vCoinsTmp, nValueInTmp, 0, nPrivateSendRounds)) {
+            if (!GetHDWallet(vpwallets.front())->SelectCoinsByDenominations(dsq.nDenom, vecPrivateSendDenominations[vecBits.front()], nBalanceNeedsAnonymized, vecTxInTmp, vCoinsTmp, nValueInTmp, 0, nPrivateSendRounds)) {
                 LogPrintf("CDarksendPool::DoAutomaticDenominating -- Couldn't match denominations %d %d (%s)\n", vecBits.front(), dsq.nDenom, GetDenominationsToString(dsq.nDenom));
                 continue;
             }
@@ -1688,7 +1688,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
     // ** find the coins we'll use
     std::vector <CTxIn> vecTxIn;
     CAmount nValueInTmp = 0;
-    if (!vpwallets.front()->SelectCoinsDark(nValueMin, nBalanceNeedsAnonymized, vecTxIn, nValueInTmp, 0, nPrivateSendRounds)) {
+    if (!GetHDWallet(vpwallets.front())->SelectCoinsDark(nValueMin, nBalanceNeedsAnonymized, vecTxIn, nValueInTmp, 0, nPrivateSendRounds)) {
         // this should never happen
         LogPrintf("CDarksendPool::DoAutomaticDenominating -- Can't mix: no compatible inputs found!\n");
         strAutoDenomResult = _("Can't mix: no compatible inputs found!");
@@ -1735,7 +1735,7 @@ bool CDarksendPool::DoAutomaticDenominating(bool fDryRun) {
             pSubmittedToGhostnode = pmn;
 
             std::vector <CAmount> vecAmounts;
-            vpwallets.front()->ConvertList(vecTxIn, vecAmounts);
+            GetHDWallet(vpwallets.front())->ConvertList(vecTxIn, vecAmounts);
             // try to get a single random denom out of vecAmounts
             while (nSessionDenom == 0) {
                 nSessionDenom = GetDenominationsByAmounts(vecAmounts);
@@ -1791,7 +1791,7 @@ bool CDarksendPool::SubmitDenominate() {
 }
 
 bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::string &strErrorRet, std::vector <CTxIn> &vecTxInRet, std::vector<OUTPUT_PTR<CTxOutStandard>> & vecTxOutRet) {
-    if (vpwallets.front()->IsLocked(true)) {
+    if (GetHDWallet(vpwallets.front())->IsLocked(true)) {
         strErrorRet = "Wallet locked, unable to create transaction!";
         return false;
     }
@@ -1809,7 +1809,7 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
     std::vector <CTxIn> vecTxIn;
     std::vector <COutput> vCoins;
     CAmount nValueIn = 0;
-    CReserveKey reservekey(vpwallets.front());
+    CReserveKey reservekey(GetHDWallet(vpwallets.front()));
 
     /*
         Select the coins we'll use
@@ -1821,7 +1821,7 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
         strErrorRet = "Incorrect session denom";
         return false;
     }
-    bool fSelected = vpwallets.front()->SelectCoinsByDenominations(nSessionDenom, vecPrivateSendDenominations[vecBits.front()], PRIVATESEND_POOL_MAX, vecTxIn, vCoins, nValueIn, nMinRounds, nMaxRounds);
+    bool fSelected = GetHDWallet(vpwallets.front())->SelectCoinsByDenominations(nSessionDenom, vecPrivateSendDenominations[vecBits.front()], PRIVATESEND_POOL_MAX, vecTxIn, vCoins, nValueIn, nMinRounds, nMaxRounds);
     if (nMinRounds >= 0 && !fSelected) {
         strErrorRet = "Can't select current denominated inputs";
         return false;
@@ -1830,10 +1830,10 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
     LogPrintf("CDarksendPool::PrepareDenominate -- max value: %f\n", (double) nValueIn / COIN);
 
     {
-        LOCK(vpwallets.front()->cs_wallet);
+        LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
         BOOST_FOREACH(CTxIn
         txin, vecTxIn) {
-            vpwallets.front()->LockCoin(txin.prevout);
+            GetHDWallet(vpwallets.front())->LockCoin(txin.prevout);
         }
     }
 
@@ -1894,19 +1894,19 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
 
     {
         // unlock unused coins
-        LOCK(vpwallets.front()->cs_wallet);
+        LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
         BOOST_FOREACH(CTxIn
         txin, vecTxIn) {
-            vpwallets.front()->UnlockCoin(txin.prevout);
+            GetHDWallet(vpwallets.front())->UnlockCoin(txin.prevout);
         }
     }
 
     if (GetDenominations(vecTxOutRet) != nSessionDenom) {
         // unlock used coins on failure
-        LOCK(vpwallets.front()->cs_wallet);
+        LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
         BOOST_FOREACH(CTxIn
         txin, vecTxInRet) {
-            vpwallets.front()->UnlockCoin(txin.prevout);
+            GetHDWallet(vpwallets.front())->UnlockCoin(txin.prevout);
         }
         strErrorRet = "Can't make current denominated outputs";
         return false;
@@ -1919,7 +1919,7 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
 // Create collaterals by looping through inputs grouped by addresses
 bool CDarksendPool::MakeCollateralAmounts() {
     std::vector <CompactTallyItem> vecTally;
-    if (!vpwallets.front()->SelectCoinsGrouppedByAddresses(vecTally, false)) {
+    if (!GetHDWallet(vpwallets.front())->SelectCoinsGrouppedByAddresses(vecTally, false)) {
         LogPrintf("privatesend", "CDarksendPool::MakeCollateralAmounts -- SelectCoinsGrouppedByAddresses can't find any inputs!\n");
         return false;
     }
@@ -1943,9 +1943,9 @@ bool CDarksendPool::MakeCollateralAmounts(const CompactTallyItem &tallyItem) {
     std::vector <CRecipient> vecSend;
 
     // make our collateral address
-    CReserveKey reservekeyCollateral(vpwallets.front());
+    CReserveKey reservekeyCollateral(GetHDWallet(vpwallets.front()));
     // make our change address
-    CReserveKey reservekeyChange(vpwallets.front());
+    CReserveKey reservekeyChange(GetHDWallet(vpwallets.front()));
 
     CScript scriptCollateral;
     CPubKey vchPubKey;
@@ -1987,7 +1987,7 @@ bool CDarksendPool::MakeCollateralAmounts(const CompactTallyItem &tallyItem) {
 
     // use the same nCachedLastSuccessBlock as for DS mixinx to prevent race
     CValidationState state;
-    if (!vpwallets.front()->CommitTransaction(wtx, reservekeyChange, g_connman.get(), state)) {
+    if (!GetHDWallet(vpwallets.front())->CommitTransaction(wtx, reservekeyChange, g_connman.get(), state)) {
         LogPrintf("CDarksendPool::MakeCollateralAmounts -- CommitTransaction failed!\n");
         return false;
     }
@@ -2000,12 +2000,12 @@ bool CDarksendPool::MakeCollateralAmounts(const CompactTallyItem &tallyItem) {
 // Create denominations by looping through inputs grouped by addresses
 bool CDarksendPool::CreateDenominated() {
     std::vector <CompactTallyItem> vecTally;
-    if (!vpwallets.front()->SelectCoinsGrouppedByAddresses(vecTally)) {
+    if (!GetHDWallet(vpwallets.front())->SelectCoinsGrouppedByAddresses(vecTally)) {
         LogPrintf("privatesend", "CDarksendPool::CreateDenominated -- SelectCoinsGrouppedByAddresses can't find any inputs!\n");
         return false;
     }
 
-    bool fCreateMixingCollaterals = !vpwallets.front()->HasCollateralInputs();
+    bool fCreateMixingCollaterals = !GetHDWallet(vpwallets.front())->HasCollateralInputs();
 
     BOOST_FOREACH(CompactTallyItem & item, vecTally)
     {
@@ -2025,7 +2025,7 @@ bool CDarksendPool::CreateDenominated(const CompactTallyItem &tallyItem, bool fC
 
     LogPrintf("CreateDenominated0 nValueLeft: %f\n", (float) nValueLeft / COIN);
     // make our collateral address
-    CReserveKey reservekeyCollateral(vpwallets.front());
+    CReserveKey reservekeyCollateral(GetHDWallet(vpwallets.front()));
 
     CScript scriptCollateral;
     CPubKey vchPubKey;
@@ -2042,7 +2042,7 @@ bool CDarksendPool::CreateDenominated(const CompactTallyItem &tallyItem, bool fC
     // ****** Add denoms ************ /
 
     // make our denom addresses
-    CReserveKey reservekeyDenom(vpwallets.front());
+    CReserveKey reservekeyDenom(GetHDWallet(vpwallets.front()));
 
     // try few times - skipping smallest denoms first if there are too much already, if failed - use them
     int nOutputsTotal = 0;
@@ -2060,7 +2060,7 @@ bool CDarksendPool::CreateDenominated(const CompactTallyItem &tallyItem, bool fC
                 if (IsDenomSkipped(nDenomValue)) continue;
 
                 // find new denoms to skip if any (ignore the largest one)
-                if (nDenomValue != vecPrivateSendDenominations[0] && vpwallets.front()->CountInputsWithAmount(nDenomValue) > DENOMS_COUNT_MAX) {
+                if (nDenomValue != vecPrivateSendDenominations[0] && GetHDWallet(vpwallets.front())->CountInputsWithAmount(nDenomValue) > DENOMS_COUNT_MAX) {
                     strAutoDenomResult = strprintf(_("Too many %f denominations, removing."), (float) nDenomValue / COIN);
                     LogPrintf("CDarksendPool::CreateDenominated -- %s\n", strAutoDenomResult);
                     vecDenominationsSkipped.push_back(nDenomValue);
@@ -2113,7 +2113,7 @@ bool CDarksendPool::CreateDenominated(const CompactTallyItem &tallyItem, bool fC
     int nChangePosRet = -1;
     std::string strFail = "";
     // make our change address
-    CReserveKey reservekeyChange(vpwallets.front());
+    CReserveKey reservekeyChange(GetHDWallet(vpwallets.front()));
     //TODO
 //    bool fSuccess = pwalletMain->CreateTransaction(vecSend, wtx, reservekeyChange, nFeeRet, nChangePosRet, strFail, &coinControl, true, ONLY_NONDENOMINATED_NOT1000IFMN);
     bool fSuccess = false;
@@ -2127,7 +2127,7 @@ bool CDarksendPool::CreateDenominated(const CompactTallyItem &tallyItem, bool fC
     // TODO: keep reservekeyDenom here
     reservekeyCollateral.KeepKey();
     CValidationState state;
-    if (!vpwallets.front()->CommitTransaction(wtx, reservekeyChange, g_connman.get(), state)) {
+    if (!GetHDWallet(vpwallets.front())->CommitTransaction(wtx, reservekeyChange, g_connman.get(), state)) {
         LogPrintf("CDarksendPool::CreateDenominated -- CommitTransaction failed!\n");
         return false;
     }

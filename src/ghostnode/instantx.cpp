@@ -429,10 +429,10 @@ void CInstantSend::UpdateLockedTransaction(const CTxLockCandidate& txLockCandida
     if(!IsLockedInstantSendTransaction(txHash)) return; // not a locked tx, do not update/notify
 
 #ifdef ENABLE_WALLET
-    if(vpwallets.front()) {
-        map<uint256, CWalletTx>::const_iterator mi = vpwallets.front()->mapWallet.find(txHash);
-        if (mi != vpwallets.front()->mapWallet.end())
-            vpwallets.front()->NotifyTransactionChanged(vpwallets.front(), txHash, CT_UPDATED);
+    if(GetHDWallet(vpwallets.front())) {
+        map<uint256, CWalletTx>::const_iterator mi = GetHDWallet(vpwallets.front())->mapWallet.find(txHash);
+        if (mi != GetHDWallet(vpwallets.front())->mapWallet.end())
+            GetHDWallet(vpwallets.front())->NotifyTransactionChanged(GetHDWallet(vpwallets.front()), txHash, CT_UPDATED);
         // bumping this to update UI
         nCompleteTXLocks++;
         // notify an external script once threshold is reached

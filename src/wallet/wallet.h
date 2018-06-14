@@ -297,9 +297,6 @@ public:
     }
 };
 
-bool CompHeight(const CZerocoinEntry & a, const CZerocoinEntry & b);
-bool CompID(const CZerocoinEntry & a, const CZerocoinEntry & b);
-
 /** Address book data */
 class CAddressBookData
 {
@@ -992,8 +989,6 @@ public:
 
     // Map from Key ID to key metadata.
     std::map<CKeyID, CKeyMetadata> mapKeyMetadata;
-    //Ghostnode
-    int64_t nKeysLeftSinceAutoBackup;
 
     // Map from Script ID to key metadata (for watch-only keys).
     std::map<CScriptID, CKeyMetadata> m_script_metadata;
@@ -1105,14 +1100,6 @@ public:
     void UnlockCoin(const COutPoint& output);
     void UnlockAllCoins();
     void ListLockedCoins(std::vector<COutPoint>& vOutpts) const;
-
-    // ghostnode
-    /// Get 40000 NIX output and keys which can be used for the Ghostnode
-    bool GetGhostnodeVinAndKeys(CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash = "", std::string strOutputIndex = "");
-    /// Extract txin information and keys from output
-    bool GetVinAndKeysFromOutput(COutput out, CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet);
-    bool HasCollateralInputs(bool fOnlyConfirmed = true) const;
-    int  CountInputsWithAmount(CAmount nInputAmount);
 
     /*
      * Rescan abort properties

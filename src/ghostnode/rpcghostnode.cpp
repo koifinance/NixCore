@@ -42,10 +42,10 @@ UniValue privatesend(const UniValue &params, bool fHelp) {
 
     if (params[0].get_str() == "start") {
         {
-            if(vpwallets.front() == NULL)
+            if(GetHDWallet(vpwallets.front()) == NULL)
                 return "rpcghostnode(): Error loading wallet";
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(vpwallets.front()));
         }
 
         if (fGhostNode)
@@ -91,9 +91,9 @@ UniValue getpoolinfo(const JSONRPCRequest& req) {
         obj.push_back(Pair("addr", darkSendPool.pSubmittedToGhostnode->addr.ToString()));
     }
 
-    if (vpwallets.front()) {
-        obj.push_back(Pair("keys_left", vpwallets.front()->nKeysLeftSinceAutoBackup));
-        obj.push_back(Pair("warnings", vpwallets.front()->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
+    if (GetHDWallet(vpwallets.front())) {
+        obj.push_back(Pair("keys_left", GetHDWallet(GetHDWallet(vpwallets.front()))->nKeysLeftSinceAutoBackup));
+        obj.push_back(Pair("warnings", GetHDWallet(GetHDWallet(vpwallets.front()))->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
                                        ? "WARNING: keypool is almost depleted!" : ""));
     }
 
@@ -234,7 +234,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
         CPubKey pubkey;
         CKey key;
 
-        if (!vpwallets.front() || !vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubkey, key))
+        if (!GetHDWallet(vpwallets.front()) || !GetHDWallet(GetHDWallet(vpwallets.front()))->GetGhostnodeVinAndKeys(vin, pubkey, key))
             throw JSONRPCError(RPC_INVALID_PARAMETER,
                                "Missing ghostnode input, please look at the documentation for instructions on ghostnode creation");
 
@@ -246,8 +246,8 @@ UniValue ghostnode(const JSONRPCRequest& req) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "You must set ghostnode=1 in the configuration");
 
         {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            LOCK(GetHDWallet(GetHDWallet(vpwallets.front()))->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(GetHDWallet(vpwallets.front())));
         }
 
         if (activeGhostnode.nState != ACTIVE_GHOSTNODE_STARTED) {
@@ -263,8 +263,8 @@ UniValue ghostnode(const JSONRPCRequest& req) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
 
         {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(vpwallets.front()));
         }
 
         std::string strAlias = params[1].get_str();
@@ -308,8 +308,8 @@ UniValue ghostnode(const JSONRPCRequest& req) {
 
     if (strCommand == "start-all" || strCommand == "start-missing" || strCommand == "start-disabled") {
         {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(vpwallets.front()));
         }
 
         if ((strCommand == "start-missing" || strCommand == "start-disabled") &&
@@ -394,7 +394,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
     if (strCommand == "outputs") {
         // Find possible candidates
         std::vector <COutput> vPossibleCoins;
-        vpwallets.front()->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_40000);
+        GetHDWallet(vpwallets.front())->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_40000);
 
         UniValue obj(UniValue::VOBJ);
         BOOST_FOREACH(COutput & out, vPossibleCoins)
@@ -640,8 +640,8 @@ UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
 
         {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(vpwallets.front()));
         }
 
         bool fFound = false;
@@ -690,8 +690,8 @@ UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wait for reindex and/or import to finish");
 
         {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(vpwallets.front()));
         }
 
         std::vector <CGhostnodeConfig::CGhostnodeEntry> mnEntries;

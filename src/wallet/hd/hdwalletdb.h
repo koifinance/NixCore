@@ -326,8 +326,28 @@ public:
     bool ReadWalletSetting(const std::string &setting, std::string &json, uint32_t nFlags=DB_READ_UNCOMMITTED);
     bool WriteWalletSetting(const std::string &setting, const std::string &json);
     bool EraseWalletSetting(const std::string &setting);
+
+
+    /**
+     *
+     * @brief CHDWALLETDB: ZEROCOIN DB
+     *
+     */
+    bool WriteZerocoinEntry(const CZerocoinEntry& zerocoin);
+    bool EraseZerocoinEntry(const CZerocoinEntry& zerocoin);
+    void ListPubCoin(std::list<CZerocoinEntry>& listPubCoin);
+    void ListCoinSpendSerial(std::list<CZerocoinSpendEntry>& listCoinSpendSerial);
+    bool WriteCoinSpendSerialEntry(const CZerocoinSpendEntry& zerocoinSpend);
+    bool EraseCoinSpendSerialEntry(const CZerocoinSpendEntry& zerocoinSpend);
+    bool WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
+    bool ReadZerocoinAccumulator(libzerocoin::Accumulator& accumulator, libzerocoin::CoinDenomination denomination, int pubcoinid);
+
+    bool ReadCalculatedZCBlock(int& height);
+    bool WriteCalculatedZCBlock(int height);
 };
 
 //void ThreadFlushHDWalletDB();
+
+bool AutoBackupWallet (CWallet* wallet, std::string strWalletFile, std::string& strBackupWarning, std::string& strBackupError);
 
 #endif // NIX_WALLET_HDWALLETDB_H
