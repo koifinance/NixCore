@@ -111,6 +111,10 @@ enum
     // Public keys in segregated witness scripts must be compressed
     //
     SCRIPT_VERIFY_WITNESS_PUBKEYTYPE = (1U << 15),
+
+    // Making OP_CODESEPARATOR and FindAndDelete fail any non-segwit scripts
+    //
+    SCRIPT_VERIFY_CONST_SCRIPTCODE = (1U << 16),
 };
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
@@ -171,6 +175,10 @@ public:
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override;
     bool CheckLockTime(const CScriptNum& nLockTime) const;
     bool CheckSequence(const CScriptNum& nSequence) const;
+
+    bool IsNIXVersion() const override{
+        return txTo && txTo->IsNIXVersion();
+    }
 };
 
 class MutableTransactionSignatureChecker : public TransactionSignatureChecker

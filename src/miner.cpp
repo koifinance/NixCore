@@ -185,7 +185,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     txout->nValue = blockReward;
     txout->scriptPubKey = scriptPubKeyIn;
     if(nHeight == 1)
-        txout->nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+        txout->nValue = nFees + (64 * COIN);
     else if (nHeight > 1)
         txout->nValue -= DEVELOPMENT_REWARD * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     if (nHeight >= chainparams.GetConsensus().nGhostnodePaymentsStartBlock) {
@@ -202,7 +202,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/1000;
+        CAmount airdropValuePerAddress = (GetBlockSubsidy(nHeight, chainparams.GetConsensus())/1000) - (64 * COIN);
         //Subtract 38m from block
         //coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 

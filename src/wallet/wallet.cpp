@@ -2513,7 +2513,7 @@ static void ApproximateBestSubset(const std::vector<CInputCoin>& vValue, const C
                 //the selection random.
                 if (nPass == 0 ? insecure_rand.randbool() : !vfIncluded[i])
                 {
-                    nTotal += vValue[i].txout.nValue;
+                    nTotal += vValue[i].GetValue();
                     vfIncluded[i] = true;
                     if (nTotal >= nTargetValue)
                     {
@@ -2523,7 +2523,7 @@ static void ApproximateBestSubset(const std::vector<CInputCoin>& vValue, const C
                             nBest = nTotal;
                             vfBest = vfIncluded;
                         }
-                        nTotal -= vValue[i].txout.nValue;
+                        nTotal -= vValue[i].GetValue();
                         vfIncluded[i] = false;
                     }
                 }
@@ -2531,6 +2531,7 @@ static void ApproximateBestSubset(const std::vector<CInputCoin>& vValue, const C
         }
     }
 }
+
 
 bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMine, const int nConfTheirs, const uint64_t nMaxAncestors, std::vector<COutput> vCoins,
                                  std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet) const
@@ -2559,21 +2560,21 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMin
             continue;
 
         int i = output.i;
-
         CInputCoin coin = CInputCoin(pcoin, i);
+        CAmount nValue = coin.GetValue();
 
-        if (coin.txout.nValue == nTargetValue)
+        if (nValue == nTargetValue)
         {
             setCoinsRet.insert(coin);
-            nValueRet += coin.txout.nValue;
+            nValueRet += nValue;
             return true;
         }
-        else if (coin.txout.nValue < nTargetValue + MIN_CHANGE)
+        else if (nValue < nTargetValue + MIN_CHANGE)
         {
             vValue.push_back(coin);
-            nTotalLower += coin.txout.nValue;
+            nTotalLower += nValue;
         }
-        else if (!coinLowestLarger || coin.txout.nValue < coinLowestLarger->txout.nValue)
+        else if (!coinLowestLarger || nValue < coinLowestLarger->GetValue())
         {
             coinLowestLarger = coin;
         }
@@ -2584,7 +2585,7 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMin
         for (const auto& input : vValue)
         {
             setCoinsRet.insert(input);
-            nValueRet += input.txout.nValue;
+            nValueRet += input.GetValue();
         }
         return true;
     }
@@ -2594,7 +2595,7 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMin
         if (!coinLowestLarger)
             return false;
         setCoinsRet.insert(coinLowestLarger.get());
-        nValueRet += coinLowestLarger->txout.nValue;
+        nValueRet += coinLowestLarger->GetValue();
         return true;
     }
 
@@ -2611,24 +2612,24 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMin
     // If we have a bigger coin and (either the stochastic approximation didn't find a good solution,
     //                                   or the next bigger coin is closer), return the bigger coin
     if (coinLowestLarger &&
-        ((nBest != nTargetValue && nBest < nTargetValue + MIN_CHANGE) || coinLowestLarger->txout.nValue <= nBest))
+        ((nBest != nTargetValue && nBest < nTargetValue + MIN_CHANGE) || coinLowestLarger->GetValue() <= nBest))
     {
         setCoinsRet.insert(coinLowestLarger.get());
-        nValueRet += coinLowestLarger->txout.nValue;
+        nValueRet += coinLowestLarger->GetValue();
     }
     else {
         for (unsigned int i = 0; i < vValue.size(); i++)
             if (vfBest[i])
             {
                 setCoinsRet.insert(vValue[i]);
-                nValueRet += vValue[i].txout.nValue;
+                nValueRet += vValue[i].GetValue();
             }
 
         if (LogAcceptCategory(BCLog::SELECTCOINS)) {
             LogPrint(BCLog::SELECTCOINS, "SelectCoins() best subset: ");
             for (unsigned int i = 0; i < vValue.size(); i++) {
                 if (vfBest[i]) {
-                    LogPrint(BCLog::SELECTCOINS, "%s ", FormatMoney(vValue[i].txout.nValue));
+                    LogPrint(BCLog::SELECTCOINS, "%s ", FormatMoney(vValue[i].GetValue()));
                 }
             }
             LogPrint(BCLog::SELECTCOINS, "total %s\n", FormatMoney(nBest));
@@ -3215,7 +3216,8 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                 SignatureData sigdata;
 
                 std::vector<uint8_t> vchAmount(8);
-                memcpy(&vchAmount[0], &coin.txout.nValue, 8);
+                CAmount nValue = coin.GetValue();
+                memcpy(&vchAmount[0], &nValue, 8);
                 if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, vchAmount, SIGHASH_ALL), scriptPubKey, sigdata))
                 {
                     strFailReason = _("Signing transaction failed");
@@ -4744,11 +4746,14 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                 // vouts to the payees
                 for(const CRecipient &recipient: vecSend)
                 {
-                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey);
-                    LogPrintf("txout:%s\n", txout.ToString());
+                    OUTPUT_PTR<CTxOutStandard> txoutstandard = MAKE_OUTPUT<CTxOutStandard>();
+                    txoutstandard->nValue = recipient.nAmount;
+                    txoutstandard->scriptPubKey = recipient.scriptPubKey;
+                    //CTxOut txout(recipient.nAmount, recipient.scriptPubKey);
+                    //LogPrintf("txout:%s\n", txout.ToString());
 
                     if (recipient.fSubtractFeeFromAmount && nFeeRet > 0) {
-                        if (txout.nValue < 0)
+                        if (txoutstandard->nValue < 0)
                             strFailReason = _("The transaction amount is too small to pay the fee");
                         else
                             strFailReason = _(
@@ -4757,7 +4762,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                         strFailReason = _("Transaction amount too small");
                     return false;
 
-                    txNew.vout.push_back(txout);
+                    txNew.vpout.push_back(txoutstandard);
                 }
 
                 // Choose coins to use
@@ -4772,7 +4777,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                 BOOST_FOREACH(CInputCoin pcoin, setCoins)
                 {
                     //CAmount nCredit = pcoin.walletTX->vout[pcoin.second].nValue;
-                    CAmount nCredit = pcoin.txout.nValue;
+                    CAmount nCredit = pcoin.txout.GetValue();
                     //The coin age after the next block (depth+1) is used instead of the current,
                     //reflecting an assumption the user would accept a bit more delay for
                     //a chance at a free transaction.
@@ -4832,20 +4837,21 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                         scriptChange = GetScriptForDestination(vchPubKey.GetID());
                     }
 
-                    CTxOut newTxOut(nChange, scriptChange);
-
+                    OUTPUT_PTR<CTxOutStandard> newTxOutStandard = MAKE_OUTPUT<CTxOutStandard>();
+                    newTxOutStandard->nValue = nChange;
+                    newTxOutStandard->scriptPubKey = scriptChange;
 
                     // We do not move dust-change to fees, because the sender would end up paying more than requested.
                     // This would be against the purpose of the all-inclusive feature.
                     // So instead we raise the change and deduct from the recipient.
-                    if (nSubtractFeeFromAmount > 0 && IsDust(newTxOut, ::minRelayTxFee)) {
-                        CAmount nDust = GetDustThreshold(newTxOut, ::minRelayTxFee) - newTxOut.nValue;
-                        newTxOut.nValue += nDust; // raise change until no more dust
+                    if (nSubtractFeeFromAmount > 0 && IsDust(newTxOutStandard, ::minRelayTxFee)) {
+                        CAmount nDust = GetDustThreshold(newTxOutStandard, ::minRelayTxFee) - newTxOutStandard->nValue;
+                        newTxOutStandard->nValue += nDust; // raise change until no more dust
                         for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
                         {
                             if (vecSend[i].fSubtractFeeFromAmount) {
-                                txNew.vout[i].nValue -= nDust;
-                                if (IsDust(txNew.vout[i], ::minRelayTxFee)) {
+                                txNew.vpout[i]->GetValue() -= nDust;
+                                if (IsDust(txNew.vpout[i], ::minRelayTxFee)) {
                                     strFailReason = _(
                                             "The transaction amount is too small to send after the fee has been deducted");
                                     return false;
@@ -4856,21 +4862,21 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                     }
                     // Never create dust outputs; if we would, just
                     // add the dust to the fee.
-                    if (IsDust(newTxOut, ::minRelayTxFee)) {
+                    if (IsDust(newTxOutStandard, ::minRelayTxFee)) {
                         nChangePosInOut = -1;
                         nFeeRet += nChange;
                         reservekey.ReturnKey();
                     } else {
                         if (nChangePosInOut == -1) {
                             // Insert change txn at random position:
-                            nChangePosInOut = GetRandInt(txNew.vout.size() + 1);
-                        } else if ((unsigned int) nChangePosInOut > txNew.vout.size()) {
+                            nChangePosInOut = GetRandInt(txNew.vpout.size() + 1);
+                        } else if ((unsigned int) nChangePosInOut > txNew.vpout.size()) {
                             strFailReason = _("Change index out of range");
                             return false;
                         }
 
-                        vector<CTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
-                        txNew.vout.insert(position, newTxOut);
+                        vector<CTxOut>::iterator position = txNew.vpout.begin() + nChangePosInOut;
+                        txNew.vpout.insert(position, newTxOutStandard);
                     }
 
                 } else
@@ -4890,10 +4896,11 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                 BOOST_FOREACH(const CInputCoin &coin, setCoins)
                 {
                     bool signSuccess;
-                    const CScript &scriptPubKey = coin.walletTX->tx->vout[coin.index].scriptPubKey;
+                    const CScript &scriptPubKey = coin.walletTX->tx->vpout[coin.index]->GetPScriptPubKey();
                     SignatureData sigdata;
                     std::vector<uint8_t> vchAmount(8);
-                    memcpy(&vchAmount[0], &coin.walletTX->tx->vout[coin.index].nValue, 8);
+                    CAmount nvval = coin.walletTX->tx->vpout[coin.index]->GetValue();
+                    memcpy(&vchAmount[0], &nvval, 8);
                     if (sign)
                         signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn,
                                                                                    vchAmount,
@@ -5047,12 +5054,15 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
             }
 
 
-            CTxOut newTxOut(nValue, scriptChange);
+            OUTPUT_PTR<CTxOutStandard> newTxOutStandard = MAKE_OUTPUT<CTxOutStandard>();
+            newTxOutStandard->nValue = nValue;
+            newTxOutStandard->scriptPubKey = scriptChange;
+
 
             // Insert change txn at random position:
-            vector<CTxOut>::iterator position = txNew.vout.begin() + GetRandInt(txNew.vout.size() + 1);
-            txNew.vout.insert(position, newTxOut);
-//            LogPrintf("txNew:%s\n", txNew.ToString());
+            vector<CTxOut>::iterator position = txNew.vpout.begin() + GetRandInt(txNew.vpout.size() + 1);
+            txNew.vpout.insert(position, newTxOutStandard);
+
             LogPrintf("txNew.GetHash():%s\n", txNew.GetHash().ToString());
 
             // Fill vin

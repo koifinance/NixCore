@@ -46,6 +46,10 @@ static const unsigned int MAX_STANDARD_P2WSH_SCRIPT_SIZE = 3600;
  * only increase the dust limit after prior releases were already not creating
  * outputs below the new threshold */
 static const unsigned int DUST_RELAY_TX_FEE = 3000;
+
+/** The minimum non-witness size for transactions we're willing to relay/mine (1 segwit input + 1 P2WPKH output = 82 bytes) */
+static const unsigned int MIN_STANDARD_TX_NONWITNESS_SIZE = 82;
+
 /**
  * Standard script verification flags that standard transactions will comply
  * with. However scripts violating these flags may still be present in valid
@@ -65,7 +69,8 @@ static constexpr unsigned int STANDARD_SCRIPT_VERIFY_FLAGS = MANDATORY_SCRIPT_VE
                                                              SCRIPT_VERIFY_LOW_S |
                                                              SCRIPT_VERIFY_WITNESS |
                                                              SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM |
-                                                             SCRIPT_VERIFY_WITNESS_PUBKEYTYPE;
+                                                             SCRIPT_VERIFY_WITNESS_PUBKEYTYPE|
+                                                             SCRIPT_VERIFY_CONST_SCRIPTCODE;
 
 /** For convenience, standard but not mandatory verify flags. */
 static constexpr unsigned int STANDARD_NOT_MANDATORY_VERIFY_FLAGS = STANDARD_SCRIPT_VERIFY_FLAGS & ~MANDATORY_SCRIPT_VERIFY_FLAGS;

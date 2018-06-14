@@ -2864,7 +2864,7 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
                 const CScript& scriptPubKey = *coin.txoutBase->GetPScriptPubKey();
                 SignatureData sigdata;
 
-                if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata))
+                if (!ProduceSignature(DummySignatureCreatorNIX(this), scriptPubKey, sigdata))
                     return errorN(1, sError, __func__, "Dummy signature failed.");
                 UpdateTransaction(txNew, nIn, sigdata);
                 nIn++;

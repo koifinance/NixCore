@@ -260,7 +260,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/1000;
+        CAmount airdropValuePerAddress = (GetBlockSubsidy(nHeight, Params().GetConsensus())/1000) - (64 * COIN);
 
         bool found_1 = false;
 

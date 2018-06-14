@@ -599,10 +599,10 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
             "\nResult:\n"
             "\"txid\"           (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("sendtoaddress", "\"PbpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\" 0.1")
-            + HelpExampleCli("sendtoaddress", "\"PbpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\" 0.1 \"donation\" \"seans outpost\"")
-            + HelpExampleCli("sendtoaddress", "\"PbpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\" 0.1 \"\" \"\" true")
-            + HelpExampleRpc("sendtoaddress", "\"PbpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\", 0.1, \"donation\", \"seans outpost\"")
+            + HelpExampleCli("sendtoaddress", "\"NLpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\" 0.1")
+            + HelpExampleCli("sendtoaddress", "\"NLpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("sendtoaddress", "\"NLpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\" 0.1 \"\" \"\" true")
+            + HelpExampleRpc("sendtoaddress", "\"NLpVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\", 0.1, \"donation\", \"seans outpost\"")
         );
 
     ObserveSafeMode();
@@ -650,8 +650,8 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         newRequest.fSkipBlock = true; // already blocked in this function
         newRequest.URI = request.URI;
         UniValue params(UniValue::VARR);
-        params.push_back("part");
-        params.push_back("part");
+        //params.push_back("nix");
+        //params.push_back("nix");
         UniValue arr(UniValue::VARR);
         UniValue out(UniValue::VOBJ);
 

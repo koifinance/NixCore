@@ -101,8 +101,6 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *_platformStyle, QWidget *p
     connect(clipboardLowOutputAction, SIGNAL(triggered()), this, SLOT(coinControlClipboardLowOutput()));
     connect(clipboardChangeAction, SIGNAL(triggered()), this, SLOT(coinControlClipboardChange()));
 
-    connect(ui->cbxTypeFrom, SIGNAL(currentIndexChanged(int)), this, SLOT(cbxTypeFromChanged(int)));
-
     ui->labelCoinControlQuantity->addAction(clipboardQuantityAction);
     ui->labelCoinControlAmount->addAction(clipboardAmountAction);
     ui->labelCoinControlFee->addAction(clipboardFeeAction);
@@ -287,13 +285,6 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     QString sCommand = "sendtypeto ";
 
-    // TODO: Translations?
-    QString sTypeFrom = ui->cbxTypeFrom->currentText();
-    QString sTypeTo = ui->cbxTypeTo->currentText();
-
-    sCommand += sTypeFrom.toLower() + " ";
-    sCommand += sTypeTo.toLower();
-
     sCommand += " [";
 
     int nRecipient = 0;
@@ -315,9 +306,7 @@ void SendCoinsDialog::on_sendButton_clicked()
         nRecipient++;
     };
 
-    int nMaxInputs = ui->spinMaxInputs->value();
-
-    sCommand += "] \"\" \"\" "+QString::number(nMaxInputs);
+    sCommand += "] 64";
 
 
     QString sCoinControl;
@@ -415,9 +404,9 @@ void SendCoinsDialog::on_sendButton_clicked()
 
         formatted.append(recipientElement);
     }
-
+    QString sType = "nix";
     QString questionString = tr("Are you sure you want to send?");
-    questionString.append("<br /><b>"+sTypeFrom+ "</b> to <b>" +sTypeTo+"</b><br /><br />%1");
+    questionString.append("<br /><b>"+ sType +"</b><br /><br />%1");
 
     if(txFee > 0)
     {
@@ -525,9 +514,6 @@ void SendCoinsDialog::clear()
     {
         ui->entries->takeAt(0)->widget()->deleteLater();
     }
-
-    ui->cbxTypeFrom->setCurrentIndex(ui->cbxTypeFrom->findText("Part"));
-    ui->cbxTypeTo->setCurrentIndex(ui->cbxTypeTo->findText("Part"));
 
     addEntry();
 
@@ -764,7 +750,7 @@ void SendCoinsDialog::useAvailableBalance(SendCoinsEntry* entry)
         coin_control = *CoinControlDialog::coinControl();
     }
 
-    QString sTypeFrom = ui->cbxTypeFrom->currentText().toLower();
+    QString sTypeFrom = "nix";
     // Calculate available amount to send.
     CAmount amount = model->getBalance(&coin_control);
     for (int i = 0; i < ui->entries->count(); ++i) {
@@ -905,12 +891,6 @@ void SendCoinsDialog::coinControlClipboardChange()
 {
     GUIUtil::setClipboard(ui->labelCoinControlChange->text().left(ui->labelCoinControlChange->text().indexOf(" ")).replace(ASYMP_UTF8, ""));
 }
-
-void SendCoinsDialog::cbxTypeFromChanged(int index)
-{
-    if (model && model->getOptionsModel()->getCoinControlFeatures())
-        CoinControlDialog::coinControl()->nCoinType = index+1;
-};
 
 // Coin Control: settings menu - coin control enabled/disabled by user
 void SendCoinsDialog::coinControlFeatureChanged(bool checked)

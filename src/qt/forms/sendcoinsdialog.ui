@@ -588,7 +588,7 @@
         <x>0</x>
         <y>0</y>
         <width>811</width>
-        <height>75</height>
+        <height>103</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1">
@@ -665,48 +665,7 @@
        <number>0</number>
       </property>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
-        <item>
-         <widget class="QComboBox" name="cbxTypeFrom">
-          <property name="toolTip">
-           <string>Balance type to send from.</string>
-          </property>
-          <item>
-           <property name="text">
-            <string>NIX</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="cbxTypeTo">
-          <property name="toolTip">
-           <string>Balance type to send to.</string>
-          </property>
-          <item>
-           <property name="text">
-            <string>NIX</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="spinMaxInputs">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="value">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       <layout class="QHBoxLayout" name="horizontalLayout_3"/>
       </item>
       <item>
        <layout class="QVBoxLayout" name="verticalLayoutFee2" stretch="0,0,0">

@@ -178,7 +178,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
     CScript subscript;
     sigdata.scriptWitness.stack.clear();
 
-    bool fIsP2SH = (whichType == TX_SCRIPTHASH || whichType == TX_SCRIPTHASH256 || whichType == TX_TIMELOCKED_SCRIPTHASH);
+    bool fIsP2SH = creator.IsNIXVersion() ? (whichType == TX_SCRIPTHASH || whichType == TX_SCRIPTHASH256 || whichType == TX_TIMELOCKED_SCRIPTHASH) : whichType == TX_SCRIPTHASH;
 
     if (solved && fIsP2SH)
     {
@@ -192,16 +192,40 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
         P2SH = true;
     }
 
-    if (solved && (whichType == TX_WITNESS_V0_KEYHASH || whichType == TX_WITNESS_V0_SCRIPTHASH))
+    if (solved && whichType == TX_WITNESS_V0_KEYHASH)
     {
-        return false;
+        if (creator.IsNIXVersion())
+            return false;
+        CScript witnessscript;
+        witnessscript << OP_DUP << OP_HASH160 << ToByteVector(result[0]) << OP_EQUALVERIFY << OP_CHECKSIG;
+        txnouttype subType;
+        solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0);
+        sigdata.scriptWitness.stack = result;
+        result.clear();
+    }
+    else if (solved && whichType == TX_WITNESS_V0_SCRIPTHASH)
+    {
+        if (creator.IsNIXVersion())
+            return false;
+        CScript witnessscript(result[0].begin(), result[0].end());
+        txnouttype subType;
+        solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0) && subType != TX_SCRIPTHASH && subType != TX_WITNESS_V0_SCRIPTHASH && subType != TX_WITNESS_V0_KEYHASH;
+        result.push_back(std::vector<unsigned char>(witnessscript.begin(), witnessscript.end()));
+        sigdata.scriptWitness.stack = result;
+        result.clear();
     }
 
     if (P2SH) {
         result.push_back(std::vector<unsigned char>(subscript.begin(), subscript.end()));
     }
 
-    sigdata.scriptWitness.stack = result;
+    if (creator.IsNIXVersion())
+    {
+        sigdata.scriptWitness.stack = result;
+    } else
+    {
+        sigdata.scriptSig = PushAll(result);
+    }
 
     ScriptError serror = SCRIPT_ERR_OK;
 
@@ -252,10 +276,19 @@ bool SignSignature(const CKeyStore &keystore, const CTransaction& txFrom, CMutab
     CScript scriptPubKey;
     std::vector<uint8_t> vchAmount;
 
-    if (!txFrom.vpout[txin.prevout.n]->PutValue(vchAmount))
-        return false;
-    if (!txFrom.vpout[txin.prevout.n]->GetScriptPubKey(scriptPubKey))
-        return false;
+    if (txFrom.IsNIXVersion())
+    {
+        if (!txFrom.vpout[txin.prevout.n]->PutValue(vchAmount))
+            return false;
+        if (!txFrom.vpout[txin.prevout.n]->GetScriptPubKey(scriptPubKey))
+            return false;
+    } else
+    {
+        const CTxOut& txout = txFrom.vout[txin.prevout.n];
+        scriptPubKey = txout.scriptPubKey;
+        vchAmount.resize(8);
+        memcpy(&vchAmount[0], &txout.nValue, 8);
+    };
 
     return SignSignature(keystore, scriptPubKey, txTo, nIn, vchAmount, nHashType);
 }
@@ -460,7 +493,7 @@ class DummySignatureCheckerNIX : public BaseSignatureChecker
 public:
     DummySignatureCheckerNIX() {}
 
-    bool IsNixVersion() const { return true; }
+    bool IsNIXVersion() const { return true; }
 
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const
     {

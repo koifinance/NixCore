@@ -3767,11 +3767,11 @@ UniValue manageaddressbook(const JSONRPCRequest &request)
 
 extern double GetDifficulty(const CBlockIndex* blockindex = nullptr);
 
-static int AddOutput(uint8_t nType, std::vector<CTempRecipient> &vecSend, const CTxDestination &address, CAmount nValue,
+static int AddOutput(std::vector<CTempRecipient> &vecSend, const CTxDestination &address, CAmount nValue,
     bool fSubtractFeeFromAmount, std::string &sNarr, std::string &sError)
 {
     CTempRecipient r;
-    r.nType = nType;
+    r.nType = OUTPUT_STANDARD;
     r.SetAmount(nValue);
     r.fSubtractFeeFromAmount = fSubtractFeeFromAmount;
     r.address = address;
@@ -3781,7 +3781,7 @@ static int AddOutput(uint8_t nType, std::vector<CTempRecipient> &vecSend, const 
     return 0;
 };
 
-static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, OutputTypes typeOut)
+static UniValue SendToInner(const JSONRPCRequest &request)
 {
     CHDWallet *pwallet = GetHDWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
@@ -3829,8 +3829,8 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
 
             CBitcoinAddress address(sAddress);
 
-            if (!address.IsValidStealthAddress())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NIX stealth address");
+            //if (!address.IsValidStealthAddress())
+                //throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NIX stealth address");
 
             if (!obj.exists("script") && !address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NIX address");
@@ -3852,7 +3852,7 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
             if (obj.exists("narr"))
                 sNarr = obj["narr"].get_str();
 
-            if (0 != AddOutput(typeOut, vecSend, address.Get(), nAmount, fSubtractFeeFromAmount, sNarr, sError))
+            if (0 != AddOutput(vecSend, address.Get(), nAmount, fSubtractFeeFromAmount, sNarr, sError))
                 throw JSONRPCError(RPC_MISC_ERROR, strprintf("AddOutput failed: %s.", sError));
 
             if (obj.exists("script"))
@@ -3866,9 +3866,6 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
                 std::vector<uint8_t> scriptData = ParseHex(sScript);
                 r.scriptPubKey = CScript(scriptData.begin(), scriptData.end());
                 r.fScriptSet = true;
-
-                if (typeOut != OUTPUT_STANDARD)
-                    throw std::runtime_error("In progress, setting script only works for standard outputs.");
             };
         };
         nCommentOfs = 1;
@@ -3879,9 +3876,9 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
         std::string sAddress = request.params[0].get_str();
         CBitcoinAddress address(sAddress);
 
-        if (!address.IsValidStealthAddress())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NIX stealth address");
-
+        //if (!address.IsValidStealthAddress())
+            //throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NIX stealth address");
+        std::cout << "ADDRESS: " << request.params[0].get_str();
         if (!address.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid NIX address");
 
@@ -3902,19 +3899,15 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Narration can range from 1 to 24 characters.");
         };
 
-        if (0 != AddOutput(typeOut, vecSend, address.Get(), nAmount, fSubtractFeeFromAmount, sNarr, sError))
+        if (0 != AddOutput(vecSend, address.Get(), nAmount, fSubtractFeeFromAmount, sNarr, sError))
             throw JSONRPCError(RPC_MISC_ERROR, strprintf("AddOutput failed: %s.", sError));
     };
 
-    switch (typeIn)
-    {
-        case OUTPUT_STANDARD:
-            if (nTotal > pwallet->GetBalance())
-                throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
-            break;
-        default:
-            throw JSONRPCError(RPC_WALLET_ERROR, strprintf("Unknown input type: %d.", typeIn));
-    };
+
+    if (nTotal > pwallet->GetBalance()){
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+    }
+
 
     // Wallet comments
     CWalletTx wtx;
@@ -4047,15 +4040,10 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
 
 
     CAmount nFeeRet = 0;
-    switch (typeIn)
-    {
-        case OUTPUT_STANDARD:
-            if (0 != pwallet->AddStandardInputs(wtx, rtx, vecSend, !fCheckFeeOnly, nFeeRet, &coincontrol, sError))
-                throw JSONRPCError(RPC_WALLET_ERROR, strprintf("AddStandardInputs failed: %s.", sError));
-            break;
-        default:
-            throw JSONRPCError(RPC_WALLET_ERROR, strprintf("Unknown input type: %d.", typeIn));
-    };
+
+    if (0 != pwallet->AddStandardInputs(wtx, rtx, vecSend, !fCheckFeeOnly, nFeeRet, &coincontrol, sError))
+        throw JSONRPCError(RPC_WALLET_ERROR, strprintf("AddStandardInputs failed: %s.", sError));
+
 
     if (fCheckFeeOnly)
     {
@@ -4105,15 +4093,10 @@ static UniValue SendToInner(const JSONRPCRequest &request, OutputTypes typeIn, O
 
     CValidationState state;
     CReserveKey reservekey(pwallet);
-    if (typeIn == OUTPUT_STANDARD && typeOut == OUTPUT_STANDARD)
-    {
-        if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state))
-            throw JSONRPCError(RPC_WALLET_ERROR, strprintf("Transaction commit failed: %s", FormatStateMessage(state)));
-    } else
-    {
-        if (!pwallet->CommitTransaction(wtx, rtx, reservekey, g_connman.get(), state))
-            throw JSONRPCError(RPC_WALLET_ERROR, strprintf("Transaction commit failed: %s", FormatStateMessage(state)));
-    };
+
+
+    if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state))
+        throw JSONRPCError(RPC_WALLET_ERROR, strprintf("Transaction commit failed: %s", FormatStateMessage(state)));
 
 
     pwallet->PostProcessTempRecipients(vecSend);
@@ -4144,7 +4127,7 @@ static std::string SendHelp(CHDWallet *pwallet, OutputTypes typeIn, OutputTypes 
 {
     std::string rv;
 
-    std::string cmd = std::string("send") + TypeToWord(typeIn) + "to" + TypeToWord(typeOut);
+    std::string cmd = std::string("send") + TypeToWord(OUTPUT_STANDARD) + "to" + TypeToWord(OUTPUT_STANDARD);
 
     rv = cmd + " \"address\" amount ( \"comment\" \"comment-to\" subtractfeefromamount \"narration\"";
     rv += ")\n";
@@ -4181,7 +4164,7 @@ UniValue sendtypeto(const JSONRPCRequest &request)
     CHDWallet *pwallet = GetHDWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
         return NullUniValue;
-    if (request.fHelp || request.params.size() < 3 || request.params.size() > 7)
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 9)
         throw std::runtime_error(
             "sendtypeto \"typein\" \"typeout\" [{address: , amount: , narr: , subfee:},...] (\"comment\" \"comment-to\" inputs_per_sig test_fee coin_control)\n"
             "\nSend NIX to multiple outputs.\n"
@@ -4220,21 +4203,21 @@ UniValue sendtypeto(const JSONRPCRequest &request)
             "\nExamples:\n"
             + HelpExampleCli("sendtypeto", "nix \"[{\\\"address\\\":\\\"NipVcjgYatnkKgveaeqhkeQBFwjqR7jKBR\\\",\\\"amount\\\":0.1}]\""));
 
-    std::string sTypeIn = request.params[0].get_str();
-    std::string sTypeOut = request.params[1].get_str();
+    //std::string sTypeIn = request.params[0].get_str();
+    //std::string sTypeOut = request.params[1].get_str();
 
-    OutputTypes typeIn = WordToType(sTypeIn);
-    OutputTypes typeOut = WordToType(sTypeOut);
+    //OutputTypes typeIn = WordToType(sTypeIn);
+    //OutputTypes typeOut = WordToType(sTypeOut);
 
-    if (typeIn == OUTPUT_NULL)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Unknown input type.");
-    if (typeOut == OUTPUT_NULL)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Unknown output type.");
+   // if (typeIn == OUTPUT_NULL)
+    //    throw JSONRPCError(RPC_INVALID_PARAMETER, "Unknown input type.");
+    //if (typeOut == OUTPUT_NULL)
+    //    throw JSONRPCError(RPC_INVALID_PARAMETER, "Unknown output type.");
 
     JSONRPCRequest req = request;
-    req.params.erase(0, 2);
+    //req.params.erase(0, 2);
 
-    return SendToInner(req, typeIn, typeOut);
+    return SendToInner(req);
 };
 
 UniValue buildscript(const JSONRPCRequest &request)
@@ -4917,6 +4900,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "filteraddresses",                  &filteraddresses,               {"offset","count","sort_code"} },
     { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
 
+    { "wallet",             "sendtypeto",                       &sendtypeto,                    {"nix","nix","outputs","comment","comment_to","inputs_per_sig","test_fee","coincontrol"} },
 
     { "wallet",             "buildscript",                      &buildscript,                   {"json"} },
     { "wallet",             "createsignaturewithwallet",        &createsignaturewithwallet,     {"hexstring","prevtx","address","sighashtype"} },
