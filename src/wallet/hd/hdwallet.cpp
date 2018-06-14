@@ -9809,7 +9809,7 @@ int CHDWallet::GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const
 
         //make sure the final output is non-denominate
         if (!IsDenominatedAmount(wtx->tx->vpout[nout]->GetValue())) { //NOT DENOM
-            mDenomWtxes[hash].vput[nout]->nRounds = -2;
+            mDenomWtxes[hash].vpout[nout]->nRounds = -2;
             //LogPrint("privatesend", "GetRealInputPrivateSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
             LogPrintf("privatesend GetRealInputPrivateSendRounds UPDATED \n");
             return mDenomWtxes[hash].vpout[nout]->nRounds;
@@ -9823,7 +9823,7 @@ int CHDWallet::GetRealInputPrivateSendRounds(CTxIn txin, int nRounds) const
         */
         for (unsigned int idx = 0; idx < wtx->tx->vpout.size(); idx++)
         {
-            AllDenoms = fAllDenoms && IsDenominatedAmount(wtx->tx->vpout[idx]->GetValue());
+            fAllDenoms = fAllDenoms && IsDenominatedAmount(wtx->tx->vpout[idx]->GetValue());
         }
 
         // this one is denominated but there is another non-denominated output found in the same tx
@@ -10135,7 +10135,7 @@ bool CHDWallet::CreateCollateralTransaction(CMutableTransaction &txCollateral, s
 
     //pay collateral charge in fees
     OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
-    txout->nValue = nValue - PRIVATESEND_COLLATERA;
+    txout->nValue = nValue - PRIVATESEND_COLLATERAL;
     txout->scriptPubKey = scriptChange;
     txCollateral.vpout.push_back(txout);
     //CAmount amount;

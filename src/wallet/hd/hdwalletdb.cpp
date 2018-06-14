@@ -211,48 +211,48 @@ bool CHDWalletDB::EraseWalletSetting(const std::string &setting)
  * @brief CHDWALLETDB: ZEROCOIN DB
  *
  */
-bool CWalletDB::WriteCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
-    return batch.Write(make_pair(string("zcserial"), zerocoinSpend.coinSerial), zerocoinSpend, true);
+bool CHDWalletDB::WriteCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
+    return WriteIC(make_pair(string("zcserial"), zerocoinSpend.coinSerial), zerocoinSpend, true);
 }
 
-bool CWalletDB::EraseCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
-    return batch.Erase(make_pair(string("zcserial"), zerocoinSpend.coinSerial));
+bool CHDWalletDB::EraseCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
+    return EraseIC(make_pair(string("zcserial"), zerocoinSpend.coinSerial));
 }
 
 bool
-CWalletDB::WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination,
+CHDWalletDB::WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination,
                                     int pubcoinid) {
-    return batch.Write(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
+    return WriteIC(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
 }
 
 bool
-CWalletDB::ReadZerocoinAccumulator(libzerocoin::Accumulator &accumulator, libzerocoin::CoinDenomination denomination,
+CHDWalletDB::ReadZerocoinAccumulator(libzerocoin::Accumulator &accumulator, libzerocoin::CoinDenomination denomination,
                                    int pubcoinid) {
     return batch.Read(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
 }
 
-bool CWalletDB::WriteZerocoinEntry(const CZerocoinEntry &zerocoin) {
-    return batch.Write(make_pair(string("zerocoin"), zerocoin.value), zerocoin, true);
+bool CHDWalletDB::WriteZerocoinEntry(const CZerocoinEntry &zerocoin) {
+    return WriteIC(make_pair(string("zerocoin"), zerocoin.value), zerocoin, true);
 }
 
-bool CWalletDB::EraseZerocoinEntry(const CZerocoinEntry &zerocoin) {
-    return batch.Erase(make_pair(string("zerocoin"), zerocoin.value));
+bool CHDWalletDB::EraseZerocoinEntry(const CZerocoinEntry &zerocoin) {
+    return EraseIC(make_pair(string("zerocoin"), zerocoin.value));
 }
 
 // Check Calculated Blocked for Zerocoin
-bool CWalletDB::ReadCalculatedZCBlock(int &height) {
+bool CHDWalletDB::ReadCalculatedZCBlock(int &height) {
     height = 0;
     return batch.Read(std::string("calculatedzcblock"), height);
 }
 
-bool CWalletDB::WriteCalculatedZCBlock(int height) {
-    return batch.Write(std::string("calculatedzcblock"), height);
+bool CHDWalletDB::WriteCalculatedZCBlock(int height) {
+    return WriteIC(std::string("calculatedzcblock"), height);
 }
 
-void CWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {
+void CHDWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {
     Dbc *pcursor = batch.GetCursor();
     if (!pcursor)
-        throw runtime_error("CWalletDB::ListPubCoin() : cannot create DB cursor");
+        throw runtime_error("CHDWalletDB::ListPubCoin() : cannot create DB cursor");
     unsigned int fFlags = DB_SET_RANGE;
     while (true) {
         // Read next record
@@ -266,7 +266,7 @@ void CWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {
             break;
         else if (ret != 0) {
             pcursor->close();
-            throw runtime_error("CWalletDB::ListPubCoin() : error scanning DB");
+            throw runtime_error("CHDWalletDB::ListPubCoin() : error scanning DB");
         }
         // Unserialize
         string strType;
@@ -282,10 +282,10 @@ void CWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {
     pcursor->close();
 }
 
-void CWalletDB::ListCoinSpendSerial(std::list <CZerocoinSpendEntry> &listCoinSpendSerial) {
+void CHDWalletDB::ListCoinSpendSerial(std::list <CZerocoinSpendEntry> &listCoinSpendSerial) {
     Dbc *pcursor = batch.GetCursor();
     if (!pcursor)
-        throw runtime_error("CWalletDB::ListCoinSpendSerial() : cannot create DB cursor");
+        throw runtime_error("CHDWalletDB::ListCoinSpendSerial() : cannot create DB cursor");
     unsigned int fFlags = DB_SET_RANGE;
     while (true) {
         // Read next record
@@ -299,7 +299,7 @@ void CWalletDB::ListCoinSpendSerial(std::list <CZerocoinSpendEntry> &listCoinSpe
             break;
         else if (ret != 0) {
             pcursor->close();
-            throw runtime_error("CWalletDB::ListCoinSpendSerial() : error scanning DB");
+            throw runtime_error("CHDWalletDB::ListCoinSpendSerial() : error scanning DB");
         }
 
         // Unserialize
