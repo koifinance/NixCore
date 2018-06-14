@@ -75,18 +75,18 @@ public:
 
 /** Holds an mixing output
  */
-class CTxDSOut : public CTxOut
+class CTxDSOut : public CTxOutStandard
 {
 public:
     int nSentTimes; //times we've sent this anonymously
 
-    CTxDSOut(const CTxOut& out) :
-        CTxOut(out),
+    CTxDSOut(const CTxOutStandard& out) :
+        CTxOutStandard(out),
         nSentTimes(0)
         {}
 
     CTxDSOut() :
-        CTxOut(),
+        CTxOutStandard(),
         nSentTimes(0)
         {}
 };
@@ -105,13 +105,17 @@ public:
         txCollateral(CTransactionRef())
         {}
 
-    CDarkSendEntry(const std::vector<CTxIn>& vecTxIn, const std::vector<CTxOut>& vecTxOut, const CTransactionRef& txCollateral) :
+    CDarkSendEntry(const std::vector<CTxIn>& vecTxIn, const std::vector<OUTPUT_PTR<CTxOutStandard>> & vecTxOut, const CTransactionRef& txCollateral) :
         txCollateral(txCollateral)
     {
         BOOST_FOREACH(CTxIn txin, vecTxIn)
             vecTxDSIn.push_back(txin);
-        BOOST_FOREACH(CTxOut txout, vecTxOut)
-            vecTxDSOut.push_back(txout);
+
+        for (unsigned int idx = 0; idx < vecTxOut.size(); idx++)
+        {
+            vecTxDSOut.push_back(*vecTxOut[idx].get());
+        }
+
     }
 
     ADD_SERIALIZE_METHODS;
@@ -394,9 +398,9 @@ private:
     /// As a client, submit part of a future mixing transaction to a Ghostnode to start the process
     bool SubmitDenominate();
     /// step 1: prepare denominated inputs and outputs
-    bool PrepareDenominate(int nMinRounds, int nMaxRounds, std::string& strErrorRet, std::vector<CTxIn>& vecTxInRet, std::vector<CTxOut>& vecTxOutRet);
+    bool PrepareDenominate(int nMinRounds, int nMaxRounds, std::string& strErrorRet, std::vector<CTxIn>& vecTxInRet, std::vector<OUTPUT_PTR<CTxOutStandard>> &vecTxOutRet);
     /// step 2: send denominated inputs and outputs prepared in step 1
-    bool SendDenominate(const std::vector<CTxIn>& vecTxIn, const std::vector<CTxOut>& vecTxOut);
+    bool SendDenominate(const std::vector<CTxIn>& vecTxIn, const std::vector<OUTPUT_PTR<CTxOutStandard>> & vecTxOut);
 
     /// Get Ghostnode updates about the progress of mixing
     bool CheckPoolStateUpdate(PoolState nStateNew, int nEntriesCountNew, PoolStatusUpdate nStatusUpdate, PoolMessage nMessageID, int nSessionIDNew=0);
@@ -409,7 +413,7 @@ private:
     /// Relay mixing Messages
     void RelayFinalTransaction(const CTransaction& txFinal);
     void RelaySignaturesAnon(std::vector<CTxIn>& vin);
-    void RelayInAnon(std::vector<CTxIn>& vin, std::vector<CTxOut>& vout);
+    void RelayInAnon(std::vector<CTxIn>& vin, std::vector<CTxOutBase>& vout);
     void RelayIn(const CDarkSendEntry& entry);
     void PushStatus(CNode* pnode, PoolStatusUpdate nStatusUpdate, PoolMessage nMessageID);
     void RelayStatus(PoolStatusUpdate nStatusUpdate, PoolMessage nMessageID = MSG_NOERR);
@@ -450,7 +454,7 @@ public:
     void ClearSkippedDenominations() { vecDenominationsSkipped.clear(); }
 
     /// Get the denominations for a list of outputs (returns a bitshifted integer)
-    int GetDenominations(const std::vector<CTxOut>& vecTxOut, bool fSingleRandomDenom = false);
+    int GetDenominations(const std::vector<OUTPUT_PTR<CTxOutStandard>>& vecTxOut, bool fSingleRandomDenom = false);
     int GetDenominations(const std::vector<CTxDSOut>& vecTxDSOut);
     std::string GetDenominationsToString(int nDenom);
     bool GetDenominationsBits(int nDenom, std::vector<int> &vecBitsRet);

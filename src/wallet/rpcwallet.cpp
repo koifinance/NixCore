@@ -4173,7 +4173,7 @@ UniValue listunspentmintzerocoins(const JSONRPCRequest& request) {
                         "Results are an array of Objects, each of which has:\n"
                         "{txid, vout, scriptPubKey, amount, confirmations}");
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
@@ -4208,8 +4208,8 @@ UniValue listunspentmintzerocoins(const JSONRPCRequest& request) {
         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
             continue;
 
-        int64_t nValue = out.tx->tx->vout[out.i].nValue;
-        const CScript &pk = out.tx->tx->vout[out.i].scriptPubKey;
+        int64_t nValue = out.tx->tx->vpout[out.i]->GetValue();
+        const CScript &pk = *out.tx->tx->vpout[out.i]->GetPScriptPubKey();
         UniValue entry(UniValue::VOBJ);
         entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
         entry.push_back(Pair("vout", out.i));
@@ -4234,7 +4234,7 @@ UniValue listunspentmintzerocoins(const JSONRPCRequest& request) {
 UniValue mintzerocoin(const JSONRPCRequest& request)
 {
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error("mintzerocoin <amount>(1,5,10,50,100,500,1000,5000)\n" + HelpRequiringPassphrase(pwalletMain));
@@ -4329,7 +4329,7 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
 
 UniValue spendzerocoin(const JSONRPCRequest& request) {
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
@@ -4403,7 +4403,7 @@ UniValue spendzerocoin(const JSONRPCRequest& request) {
 
 UniValue resetmintzerocoin(const JSONRPCRequest& request) {
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
@@ -4445,7 +4445,7 @@ UniValue listmintzerocoins(const JSONRPCRequest& request) {
         fAllStatus = request.params[0].get_bool();
     }
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     list <CZerocoinEntry> listPubcoin;
     CWalletDB walletdb(pwalletMain->GetDBHandle());
@@ -4483,7 +4483,7 @@ UniValue listpubcoins(const JSONRPCRequest& request) {
         denomination = request.params[0].get_int();
     }
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     list <CZerocoinEntry> listPubcoin;
     CWalletDB walletdb(pwalletMain->GetDBHandle());
@@ -4522,7 +4522,7 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
     bool fStatus = true;
     fStatus = request.params[1].get_bool();
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CHDWallet * pwalletMain = GetHDWalletForJSONRPCRequest(request);
 
     list <CZerocoinEntry> listPubcoin;
     CWalletDB walletdb(pwalletMain->GetDBHandle());

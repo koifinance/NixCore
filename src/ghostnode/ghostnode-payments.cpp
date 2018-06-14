@@ -457,8 +457,9 @@ bool CGhostnodeBlockPayees::IsTransactionValid(const CTransaction &txNew) {
         if (payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED) {
             hasValidPayee = true;
 
-            BOOST_FOREACH(CTxOut txout, txNew.vout) {
-                if (payee.GetPayee() == txout.scriptPubKey && nGhostnodePayment == txout.nValue) {
+            for (unsigned int idx = 0; idx < txNew.vpout.size(); idx++)
+            {
+                if (*txNew.vpout[idx]->GetPScriptPubKey() == payee.GetPayee() && txNew.vpout[idx]->GetValue() == nGhostnodePayment){
                     LogPrintf("mnpayments", "CGhostnodeBlockPayees::IsTransactionValid -- Found required payment\n");
                     return true;
                 }

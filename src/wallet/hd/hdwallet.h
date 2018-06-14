@@ -627,6 +627,39 @@ public:
     RtxOrdered_t rtxOrdered;
 
 
+    /**
+     * Add zerocoin Mint and Spend function
+     */
+    void ListAvailableCoinsMintCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const override;
+    bool CreateZerocoinMintTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
+                                       std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true) override;
+    bool CreateZerocoinMintTransaction(CScript pubCoin, int64_t nValue,
+                                       CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet, std::string& strFailReason, const CCoinControl *coinControl=NULL) override;
+    bool CreateZerocoinSpendTransaction(std::string &toKey,int64_t nValue, libzerocoin::CoinDenomination denomination,
+                                        CWalletTx& wtxNew, CReserveKey& reservekey, CBigNum& coinSerial, uint256& txHash, CBigNum& zcSelectedValue, bool& zcSelectedIsUsed,  std::string& strFailReason) override;
+    bool CommitZerocoinSpendTransaction(CWalletTx& wtxNew, CReserveKey& reservekey) override;
+    std::string MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false) override;
+    std::string SpendZerocoin(std::string &toKey, int64_t nValue, libzerocoin::CoinDenomination denomination, CWalletTx& wtxNew, CBigNum& coinSerial, uint256& txHash, CBigNum& zcSelectedValue, bool& zcSelectedIsUsed) override;
+    bool CreateZerocoinMintModel(string &stringError, string denomAmount) override;
+    bool CreateZerocoinSpendModel(string &stringError, string denomAmount) override;
+    //bool SetZerocoinBook(const CZerocoinEntry& zerocoinEntry) override;
+
+    /**
+     * Add ghost functions
+     */
+    bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
+    bool DisableGhostMode();
+    bool GhostModeMintTrigger(string totalAmount);
+    bool GhostModeSpendTrigger(string denomination);
+    bool SpendAllZerocoins();
+
+    /**
+     * Zerocoin entry changed.
+     * @note called with lock cs_wallet held.
+     */
+    boost::signals2::signal<void (CHDWallet *wallet, const std::string &pubCoin, int denomination, const std::string &isUsed, ChangeType status)> NotifyZerocoinChanged;
+    void NotifyGhostChanged(CHDWallet *wallet, const std::string &pubCoin, int denomination, const std::string &isUsed, ChangeType status);
+
 
 private:
     void ParseAddressForMetaData(const CTxDestination &addr, COutputRecord &rec);
