@@ -283,7 +283,7 @@ public:
         bech32Prefixes[SECRET_KEY].assign           ("nx","nx"+2);
         bech32Prefixes[EXT_PUBLIC_KEY].assign       ("nen","nen"+3);
         bech32Prefixes[EXT_SECRET_KEY].assign       ("nex","nex"+3);
-        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ps"+2);
+        bech32Prefixes[STEALTH_ADDRESS].assign      ("ns","ns"+2);
         bech32Prefixes[EXT_KEY_HASH].assign         ("nek","nek"+3);
         bech32Prefixes[EXT_ACC_HASH].assign         ("nea","nea"+3);
 
