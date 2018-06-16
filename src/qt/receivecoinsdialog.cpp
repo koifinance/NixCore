@@ -115,7 +115,7 @@ void ReceiveCoinsDialog::clear()
     ui->reqAmount->clear();
     ui->reqLabel->setText("");
     ui->reqMessage->setText("");
-    ui->cbxAddressType->setCurrentIndex(ui->cbxAddressType->findText("Standard"));
+    ui->cbxAddressType->setCurrentIndex(ui->cbxAddressType->findText("Standard Address"));
     updateDisplayUnit();
 }
 
@@ -156,14 +156,14 @@ void ReceiveCoinsDialog::on_receiveButton_clicked()
     /* Generate new receiving address */
     AddressTableModel::AddrType addrType = AddressTableModel::ADDR_STANDARD;
 
-    if (ui->cbxAddressType->currentText() == "Stealth")
+    if (ui->cbxAddressType->currentText() == "Ghost Address")
         addrType = AddressTableModel::ADDR_STEALTH;
-    else
-    if (ui->cbxAddressType->currentText() == "Extended")
-        addrType = AddressTableModel::ADDR_EXT;
-    else
-    if (ui->cbxAddressType->currentText() == "Standard 256bit")
-        addrType = AddressTableModel::ADDR_STANDARD256;
+    //else
+    //if (ui->cbxAddressType->currentText() == "Extended")
+    //    addrType = AddressTableModel::ADDR_EXT;
+    //else
+    //if (ui->cbxAddressType->currentText() == "Standard 256bit")
+    //    addrType = AddressTableModel::ADDR_STANDARD256;
 
     address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "", address_type, addrType);
 

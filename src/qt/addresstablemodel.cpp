@@ -22,12 +22,14 @@
 
 const QString AddressTableModel::Send = "S";
 const QString AddressTableModel::Receive = "R";
+const QString AddressTableModel::GhostProtocol = "G";
 
 struct AddressTableEntry
 {
     enum Type {
         Sending,
         Receiving,
+        Ghost_Protocol,
         Hidden /* QSortFilterProxyModel will filter these out */
     };
 
@@ -387,12 +389,6 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
                 sCommand += " 0 ";
                 sCommand += (address_type == OUTPUT_TYPE_BECH32) ? " true " : " false ";
                 break;
-            case ADDR_EXT:
-                sCommand = "getnewextaddress ";
-                sCommand += "\""+label+ "\" ";
-                sCommand += " \"\" ";
-                sCommand += (address_type == OUTPUT_TYPE_BECH32) ? " true " : " false ";
-                break;
             default:
                 sCommand = "getnewaddress ";
                 sCommand += "\""+label+ "\" ";
@@ -407,8 +403,11 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
 
 
         UniValue rv;
+
         if (!walletModel->tryCallRpc(sCommand, rv))
             return QString();
+
+
         return QString::fromStdString(rv.get_str());
     }
     else
@@ -485,4 +484,28 @@ void AddressTableModel::warningBox(QString msg)
     msgParams.first = msg;
 
     Q_EMIT walletModel->message(tr("Address Table"), msgParams.first, msgParams.second);
+}
+
+bool AddressTableModel::ghostNIX(string &stringError, string denomAmount)
+{
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet failed or was cancelled
+        return false;
+    }
+
+    return GetHDWallet(wallet)->CreateZerocoinMintModel(stringError, denomAmount);
+}
+
+bool AddressTableModel::convertGhost(string &stringError, string thirdPartyAddress, string denomAmount)
+{
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet failed or was cancelled
+        return false;
+    }
+
+    return GetHDWallet(wallet)->CreateZerocoinSpendModel(stringError, denomAmount, thirdPartyAddress);
 }

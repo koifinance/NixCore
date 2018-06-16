@@ -113,6 +113,9 @@ private:
     QAction *openAction;
     QAction *showHelpMessageAction;
     QAction *mnemonicAction;
+    QAction *ghostnodeAction;
+    QAction *ghostProtocolAction;
+    QAction *ghostProtocolMenuAction;
 
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
@@ -212,6 +215,10 @@ private Q_SLOTS:
 
     /** Manage lock state */
     void toggleLockState();
+
+    void gotoGhostnodePage();
+
+    void gotoGhostProtocolPage();
 
 #endif // ENABLE_WALLET
     /** Show configuration dialog */

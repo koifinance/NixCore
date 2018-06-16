@@ -643,7 +643,7 @@ void CDarksendPool::CreateFinalTransaction() {
 
     // BIP69 https://github.com/kristovatlas/bips/blob/master/bip-0069.mediawiki
     sort(txNew.vin.begin(), txNew.vin.end());
-    sort(txNew.vout.begin(), txNew.vout.end());
+    sort(txNew.vpout.begin(), txNew.vpout.end());
 
     finalMutableTransaction = txNew;
     LogPrintf("privatesend", "CDarksendPool::CreateFinalTransaction -- finalMutableTransaction=%s", txNew.ToString());
@@ -932,7 +932,7 @@ bool CDarksendPool::IsInputScriptSigValid(const CTxIn &txin) {
 
     if (nTxInIndex >= 0) { //might have to do this one input at a time?
         txNew.vin[nTxInIndex].scriptSig = txin.scriptSig;
-        const CAmount &amount = txNew.vout[nTxInIndex].nValue;
+        const CAmount &amount = txNew.vpout[nTxInIndex]->GetValue();
         LogPrintf("privatesend", "CDarksendPool::IsInputScriptSigValid -- verifying scriptSig %s\n", ScriptToAsmStr(txin.scriptSig).substr(0, 24));
 //        if(!VerifyScript(txNew.vin[nTxInIndex].scriptSig, sigPubKey, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, MutableTransactionSignatureChecker(&txNew, nTxInIndex, amount))) {
 //            LogPrintf("privatesend", "CDarksendPool::IsInputScriptSigValid -- VerifyScript() failed on input %d\n", nTxInIndex);
@@ -949,7 +949,7 @@ bool CDarksendPool::IsInputScriptSigValid(const CTxIn &txin) {
 
 // check to make sure the collateral provided by the client is valid
 bool CDarksendPool::IsCollateralValid(const CTransaction &txCollateral) {
-    if (txCollateral.vout.empty()) return false;
+    if (txCollateral.vpout.empty()) return false;
     if (txCollateral.nLockTime != 0) return false;
 
     CAmount nValueIn = 0;
@@ -986,8 +986,8 @@ bool CDarksendPool::IsCollateralValid(const CTransaction &txCollateral) {
         CTransactionRef txPrev;
         uint256 hash;
         if (GetTransaction(txin.prevout.hash, txPrev, Params().GetConsensus(), hash, true)) {
-            if (txPrev->vout.size() > txin.prevout.n)
-                nValueIn += txPrev->vout[txin.prevout.n].nValue;
+            if (txPrev->vpout.size() > txin.prevout.n)
+                nValueIn += txPrev->vpout[txin.prevout.n]->GetValue();
         } else {
             fMissingTx = true;
         }
@@ -1856,7 +1856,7 @@ bool CDarksendPool::PrepareDenominate(int nMinRounds, int nMaxRounds, std::strin
             std::vector<COutput>::iterator it2 = vCoins.begin();
             while (it2 != vCoins.end()) {
                 // we have matching inputs
-                if ((*it2).tx->tx->vout[(*it2).i].nValue == nValueDenom) {
+                if ((*it2).tx->tx->vpout[(*it2).i]->GetValue() == nValueDenom) {
                     // add new input in resulting vector
                     vecTxInRet.push_back(*it);
                     // remove corresponting items from initial vectors
@@ -2443,8 +2443,10 @@ bool CDarkSendSigner::IsVinAssociatedWithPubkey(const CTxIn &txin, const CPubKey
     uint256 hash;
     CTransactionRef txRef(&tx);
     if (GetTransaction(txin.prevout.hash, txRef, Params().GetConsensus(), hash, true)) {
-        BOOST_FOREACH(CTxOut out, tx.vout)
-        if (out.nValue == GHOSTNODE_COIN_REQUIRED * COIN && out.scriptPubKey == payee) return true;
+        for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
+        {
+            if (tx.vpout[idx]->GetValue() == GHOSTNODE_COIN_REQUIRED * COIN && *tx.vpout[idx]->GetPScriptPubKey() == payee) return true;
+        }
     }
 
     return false;

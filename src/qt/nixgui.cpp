@@ -17,6 +17,9 @@
 #include <qt/platformstyle.h>
 #include <qt/rpcconsole.h>
 #include <qt/utilitydialog.h>
+#include <ghostnode/ghostnode-sync.h>
+#include <qt/ghostnodelist.h>
+#include <qt/ghostprotocol.h>
 
 #ifdef ENABLE_WALLET
 #include <qt/walletframe.h>
@@ -96,6 +99,8 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
     historyAction(0),
     quitAction(0),
     sendCoinsAction(0),
+    ghostnodeAction(0),
+    ghostProtocolAction(0),
     sendCoinsMenuAction(0),
     usedSendingAddressesAction(0),
     usedReceivingAddressesAction(0),
@@ -321,9 +326,34 @@ void BitcoinGUI::createActions()
     historyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_4));
     tabGroup->addAction(historyAction);
 
+    ghostProtocolAction = new QAction(platformStyle->SingleColorIcon(":/icons/eye"), tr("&Ghost Vault"), this);
+    ghostProtocolAction->setStatusTip(tr("Your personal vault of privatized funds"));
+    ghostProtocolAction->setToolTip(ghostProtocolAction->statusTip());
+    ghostProtocolAction->setCheckable(true);
+    ghostProtocolAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
+    tabGroup->addAction(ghostProtocolAction);
+
+    ghostProtocolMenuAction = new QAction(platformStyle->TextColorIcon(":/icons/eye"), ghostProtocolAction->text(), this);
+    ghostProtocolMenuAction->setStatusTip(ghostProtocolAction->statusTip());
+    ghostProtocolMenuAction->setToolTip(ghostProtocolMenuAction->statusTip());
+
 #ifdef ENABLE_WALLET
     // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
+
+    ghostnodeAction = new QAction(platformStyle->SingleColorIcon(":/icons/about"), tr("&Ghostnodes"), this);
+    ghostnodeAction->setStatusTip(tr("Browse ghostnodes"));
+    ghostnodeAction->setToolTip(ghostnodeAction->statusTip());
+    ghostnodeAction->setCheckable(true);
+#ifdef Q_OS_MAC
+    ghostnodeAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_5));
+#else
+    ghostnodeAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
+#endif
+    tabGroup->addAction(ghostnodeAction);
+    connect(ghostnodeAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(ghostnodeAction, SIGNAL(triggered()), this, SLOT(gotoGhostnodePage()));
+
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(gotoOverviewPage()));
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -336,6 +366,8 @@ void BitcoinGUI::createActions()
     connect(receiveCoinsMenuAction, SIGNAL(triggered()), this, SLOT(gotoReceiveCoinsPage()));
     connect(historyAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(historyAction, SIGNAL(triggered()), this, SLOT(gotoHistoryPage()));
+    connect(ghostProtocolAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(ghostProtocolAction, SIGNAL(triggered()), this, SLOT(gotoGhostProtocolPage()));
 #endif // ENABLE_WALLET
 
     quitAction = new QAction(platformStyle->TextColorIcon(":/icons/quit"), tr("E&xit"), this);
@@ -476,6 +508,8 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(sendCoinsAction);
         toolbar->addAction(receiveCoinsAction);
         toolbar->addAction(historyAction);
+        toolbar->addAction(ghostnodeAction);
+        toolbar->addAction(ghostProtocolAction);
         overviewAction->setChecked(true);
     }
 }
@@ -596,6 +630,8 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     verifyMessageAction->setEnabled(enabled);
     usedSendingAddressesAction->setEnabled(enabled);
     usedReceivingAddressesAction->setEnabled(enabled);
+    ghostnodeAction->setEnabled(enabled);
+    ghostProtocolAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
 }
 
@@ -755,6 +791,18 @@ void BitcoinGUI::gotoSignMessageTab(QString addr)
     if (walletFrame) walletFrame->gotoSignMessageTab(addr);
 }
 
+void BitcoinGUI::gotoGhostnodePage()
+{
+    QSettings settings;
+    ghostnodeAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoGhostnodePage();
+}
+void BitcoinGUI::gotoGhostProtocolPage()
+{
+    QSettings settings;
+    ghostProtocolAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoGhostProtocolPage();
+}
 void BitcoinGUI::gotoVerifyMessageTab(QString addr)
 {
     if (walletFrame) walletFrame->gotoVerifyMessageTab(addr);
@@ -897,11 +945,46 @@ void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVer
         }
         prevBlocks = count;
 
+
 #ifdef ENABLE_WALLET
         if(walletFrame)
         {
             walletFrame->showOutOfSyncWarning(true);
             modalOverlay->showHide();
+        }
+#endif // ENABLE_WALLET
+
+        tooltip += QString("<br>");
+        tooltip += tr("Last received block was generated %1 ago.").arg(timeBehindText);
+        tooltip += QString("<br>");
+        tooltip += tr("Transactions after this will not yet be visible.");
+    }
+
+
+    if(!ghostnodeSync.IsBlockchainSynced())
+    {
+        QString timeBehindText = GUIUtil::formatNiceTimeOffset(secs);
+
+        progressBarLabel->setVisible(true);
+        progressBar->setFormat(tr("%1 behind").arg(timeBehindText));
+        progressBar->setMaximum(1000000000);
+        progressBar->setValue(nVerificationProgress * 1000000000.0 + 0.5);
+        progressBar->setVisible(true);
+
+        tooltip = tr("Catching up...") + QString("<br>") + tooltip;
+        if(count != prevBlocks)
+        {
+            labelBlocksIcon->setPixmap(platformStyle->SingleColorIcon(QString(
+                            ":/movies/spinner-%1").arg(spinnerFrame, 3, 10, QChar('0')))
+                                               .pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
+            spinnerFrame = (spinnerFrame + 1) % SPINNER_FRAMES;
+        }
+        prevBlocks = count;
+
+#ifdef ENABLE_WALLET
+        if(walletFrame)
+        {
+            walletFrame->showOutOfSyncWarning(true);
         }
 #endif // ENABLE_WALLET
 

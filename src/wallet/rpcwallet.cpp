@@ -4318,6 +4318,8 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
         }
         zerocoinTx.randomness = newCoin.getRandomness();
         zerocoinTx.serialNumber = newCoin.getSerialNumber();
+        const unsigned char *ecdsaSecretKey = newCoin.getEcdsaSeckey();
+        zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
         wdb.WriteZerocoinEntry(zerocoinTx);
 
         return pubCoin.getValue().GetHex();

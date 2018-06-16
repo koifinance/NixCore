@@ -1201,21 +1201,9 @@ public:
     /**
      * Add zerocoin Mint and Spend function
      */
-    virtual void ListAvailableCoinsMintCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const {return;}
-    virtual bool CreateZerocoinMintTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
-                                       std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true) {return false;}
-    virtual bool CreateZerocoinMintTransaction(CScript pubCoin, int64_t nValue,
-                                       CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet, std::string& strFailReason, const CCoinControl *coinControl=NULL) {return false;}
-    virtual bool CreateZerocoinSpendTransaction(std::string &toKey,int64_t nValue, libzerocoin::CoinDenomination denomination,
-                                        CWalletTx& wtxNew, CReserveKey& reservekey, CBigNum& coinSerial, uint256& txHash, CBigNum& zcSelectedValue, bool& zcSelectedIsUsed,  std::string& strFailReason) {return false;}
-    virtual bool CommitZerocoinSpendTransaction(CWalletTx& wtxNew, CReserveKey& reservekey) {return false;}
     std::string SendMoney(CScript scriptPubKey, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToDestination(const CTxDestination &address, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
-    virtual std::string MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false) {return "";}
-    virtual std::string SpendZerocoin(std::string &toKey, int64_t nValue, libzerocoin::CoinDenomination denomination, CWalletTx& wtxNew, CBigNum& coinSerial, uint256& txHash, CBigNum& zcSelectedValue, bool& zcSelectedIsUsed) {return "";}
-    virtual bool CreateZerocoinMintModel(string &stringError, string denomAmount) {return false;}
-    virtual bool CreateZerocoinSpendModel(string &stringError, string denomAmount) {return false;}
-    virtual bool SetZerocoinBook(const CZerocoinEntry& zerocoinEntry) {return false;}
+
 
     /**
      * Create a new transaction paying the recipients with a set of coins

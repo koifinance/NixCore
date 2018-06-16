@@ -143,6 +143,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "echojson", 9, "arg9" },
     { "rescanblockchain", 0, "start_height"},
     { "rescanblockchain", 1, "stop_height"},
+    { "sendtypeto", 0, "outputs" },
+    { "sendtypeto", 3, "test_fee" },
+    { "sendtypeto", 4, "coincontrol" },
 
     //NIX Privacy commands
     { "setmininput", 0 , "amount"},
@@ -154,7 +157,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "setmintzerocoinstatus", 1 ,""},
     { "listmintzerocoins", 0 ,""},
     { "listpubcoins", 0, ""},
-    { "getnewstealthaddress", 1 ,"label"},
+    { "getnewstealthaddress", 3, "bech32" },
+    { "getnewstealthaddress", 4, "makeV2" },
     { "importstealthaddress", 0 ,"scan_secret"},
     { "liststealthaddresses", 0, "show_secrets"},
     { "enabletor", 0 ,""},

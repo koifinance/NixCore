@@ -3940,8 +3940,6 @@ static UniValue SendToInner(const JSONRPCRequest &request)
 
     nv++;
     size_t nInputsPerSig = 64;
-    if (request.params.size() > nv)
-        nInputsPerSig = request.params[nv].get_int();
 
     bool fShowHex = false;
     bool fCheckFeeOnly = false;
@@ -4170,21 +4168,19 @@ UniValue sendtypeto(const JSONRPCRequest &request)
             "\nSend NIX to multiple outputs.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
-            "1. \"typein\"          (string, required) nix\n"
-            "2. \"typeout\"         (string, required) nix\n"
-            "3. \"outputs\"         (json, required) Array of output objects\n"
+            "1. \"outputs\"         (json, required) Array of output objects\n"
             "    3.1 \"address\"    (string, required) The NIX address to send to.\n"
             "    3.2 \"amount\"     (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "    3.x \"narr\"       (string, optional) Up to 24 character narration sent with the transaction.\n"
             "    3.x \"subfee\"     (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
             "    3.x \"script\"     (string, optional) Hex encoded script, will override the address.\n"
-            "4. \"comment\"         (string, optional) A comment used to store what the transaction is for. \n"
+            "2. \"comment\"         (string, optional) A comment used to store what the transaction is for. \n"
             "                            This is not part of the transaction, just kept in your wallet.\n"
-            "5. \"comment_to\"      (string, optional) A comment to store the name of the person or organization \n"
+            "3. \"comment_to\"      (string, optional) A comment to store the name of the person or organization \n"
             "                            to which you're sending the transaction. This is not part of the \n"
             "                            transaction, just kept in your wallet.\n"
-            "6. test_fee         (bool, optional, default=false) Only return the fee it would cost to send, txn is discarded.\n"
-            "7. coin_control     (json, optional) Coincontrol object.\n"
+            "4. test_fee         (bool, optional, default=false) Only return the fee it would cost to send, txn is discarded.\n"
+            "5. coin_control     (json, optional) Coincontrol object.\n"
             "   {\"changeaddress\": ,\n"
             "    \"inputs\": [{\"tx\":, \"n\":},...],\n"
             "    \"replaceable\": boolean,\n"
@@ -4900,7 +4896,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "filteraddresses",                  &filteraddresses,               {"offset","count","sort_code"} },
     { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
 
-    { "wallet",             "sendtypeto",                       &sendtypeto,                    {"nix","nix","outputs","comment","comment_to","inputs_per_sig","test_fee","coincontrol"} },
+    { "wallet",             "sendtypeto",                       &sendtypeto,                    {"outputs","comment","comment_to","test_fee","coincontrol"} },
 
     { "wallet",             "buildscript",                      &buildscript,                   {"json"} },
     { "wallet",             "createsignaturewithwallet",        &createsignaturewithwallet,     {"hexstring","prevtx","address","sighashtype"} },

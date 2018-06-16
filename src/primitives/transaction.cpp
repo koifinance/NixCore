@@ -9,6 +9,11 @@
 #include <tinyformat.h>
 #include <utilstrencodings.h>
 
+/** Fees smaller than this (in nitoshi) are considered zero fee (for transaction creation) */
+int64_t CTransaction::nMinTxFee = 1000000; // 0.01 nix
+/** Fees smaller than this (in nitoshi) are considered zero fee (for relaying) */
+int64_t CTransaction::nMinRelayTxFee = 1000000; // 0.01 nix
+
 std::string COutPoint::ToString() const
 {
     return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,10), n);

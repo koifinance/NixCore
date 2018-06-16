@@ -19,6 +19,8 @@
 #include <qt/transactionview.h>
 #include <qt/transactionrecord.h>
 #include <qt/walletmodel.h>
+#include <qt/ghostnodelist.h>
+#include <qt/ghostprotocol.h>
 
 #include <ui_interface.h>
 
@@ -60,10 +62,16 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     usedSendingAddressesPage = new AddressBookPage(platformStyle, AddressBookPage::ForEditing, AddressBookPage::SendingTab, this);
     usedReceivingAddressesPage = new AddressBookPage(platformStyle, AddressBookPage::ForEditing, AddressBookPage::ReceivingTab, this);
 
+    ghostnodePage = new GhostnodeList(platformStyle);
+    ghostProtocolPage = new GhostProtocol(platformStyle, GhostProtocol::ForEditing, this);
     addWidget(overviewPage);
     addWidget(transactionsPage);
     addWidget(receiveCoinsPage);
     addWidget(sendCoinsPage);
+    addWidget(ghostProtocolPage);
+
+    addWidget(ghostnodePage);
+
 
     // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
@@ -123,6 +131,8 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     overviewPage->setWalletModel(_walletModel);
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
+    ghostProtocolPage->setModel(_walletModel->getAddressTableModel());
+    ghostnodePage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
 
@@ -184,6 +194,15 @@ void WalletView::gotoHistoryPage()
 void WalletView::gotoReceiveCoinsPage()
 {
     setCurrentWidget(receiveCoinsPage);
+}
+
+void WalletView::gotoGhostnodePage()
+{
+    setCurrentWidget(ghostnodePage);
+}
+void WalletView::gotoGhostProtocolPage()
+{
+    setCurrentWidget(ghostProtocolPage);
 }
 
 void WalletView::gotoSendCoinsPage(QString addr)

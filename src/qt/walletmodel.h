@@ -133,6 +133,7 @@ public:
     {
         Unencrypted,  // !wallet->IsCrypted()
         Locked,       // wallet->IsCrypted() && wallet->IsLocked()
+        UnlockedForMixingOnly,
         Unlocked,     // wallet->IsCrypted() && !wallet->IsLocked()
     };
 

@@ -54,6 +54,7 @@ public:
 
     static const QString Send;      /**< Specifies send address */
     static const QString Receive;   /**< Specifies receive address */
+    static const QString GhostProtocol;   /**< Specifies receive address */
 
     /** @name Methods overridden from QAbstractTableModel
         @{*/
@@ -83,9 +84,11 @@ public:
 
     EditStatus getEditStatus() const { return editStatus; }
 
+    bool ghostNIX(std::string &stringError, std::string denomAmount);
+    bool convertGhost(std::string &stringError, std::string thirdPartyAddress, std::string denomAmount);
+    CWallet *wallet;
 private:
     WalletModel *walletModel;
-    CWallet *wallet;
     AddressTablePriv *priv;
     QStringList columns;
     EditStatus editStatus;

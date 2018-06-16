@@ -8676,7 +8676,7 @@ bool CHDWallet::CreateZerocoinMintModel(string &stringError, string denomAmount)
     }
 }
 
-bool CHDWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount) {
+bool CHDWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount, string toAddr) {
 
     int64_t nAmount = 0;
     libzerocoin::CoinDenomination denomination;
@@ -8718,6 +8718,8 @@ bool CHDWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount
     bool zcSelectedIsUsed;
 
     string toKey = "";
+    if(toAddr != "")
+        toKey = toAddr;
 
     stringError = SpendZerocoin(toKey, nAmount, denomination, wtx, coinSerial, txHash, zcSelectedValue, zcSelectedIsUsed);
 
@@ -8728,32 +8730,20 @@ bool CHDWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount
 
 }
 
-/**
- * @brief CWallet::CreateZerocoinMintTransaction
- * @param vecSend
- * @param wtxNew
- * @param reservekey
- * @param nFeeRet
- * @param strFailReason
- * @param coinControl
- * @return
- */
-bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, CWalletTx &wtxNew,
+bool CHDWallet::CreateZerocoinMintTransaction(vector <CTempRecipient> &vecSend, CWalletTx &wtxNew,
                                             CReserveKey &reservekey,
                                             CAmount &nFeeRet, int &nChangePosInOut, std::string &strFailReason,
                                             const CCoinControl *coinControl, bool sign) {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
     unsigned int nSubtractFeeFromAmount = 0;
-    for(const CRecipient &recipient: vecSend)
+    for(const CTempRecipient &recipient: vecSend)
     {
         if (nValue < 0 || recipient.nAmount < 0) {
             strFailReason = _("Transaction amounts must be positive");
             return false;
         }
         nValue += recipient.nAmount;
-//        if (recipient.fSubtractFeeFromAmount)
-//            nSubtractFeeFromAmount++;
     }
     if (vecSend.empty() || nValue < 0) {
         strFailReason = _("Transaction amounts must be positive");
@@ -8782,6 +8772,7 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
             while (true) {
                 nChangePosInOut = nChangePosRequest;
                 txNew.vin.clear();
+                txNew.vpout.clear();
                 txNew.vout.clear();
                 wtxNew.fFromMe = true;
 
@@ -8789,27 +8780,28 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
 
                 double dPriority = 0;
                 // vouts to the payees
-                for(const CRecipient &recipient: vecSend)
+                for(const CTempRecipient &recipient: vecSend)
                 {
-                    OUTPUT_PTR<CTxOutStandard> txoutstandard = MAKE_OUTPUT<CTxOutStandard>();
-                    txoutstandard->nValue = recipient.nAmount;
-                    txoutstandard->scriptPubKey = recipient.scriptPubKey;
-                    //CTxOut txout(recipient.nAmount, recipient.scriptPubKey);
-                    //LogPrintf("txout:%s\n", txout.ToString());
+                    OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
+                    txout->nValue = recipient.nAmount;
+                    txout->scriptPubKey = recipient.scriptPubKey;
 
-                    if (IsDust(txoutstandard.get(), ::minRelayTxFee)) {
+                    LogPrintf("txout:%s\n", txout->ToString());
+
+                    if (IsDust(txout.get(), ::minRelayTxFee)) {
                         if (recipient.fSubtractFeeFromAmount && nFeeRet > 0) {
-                            if (txoutstandard->nValue < 0)
+                            if (txout->GetValue() < 0)
                                 strFailReason = _("The transaction amount is too small to pay the fee");
                             else
                                 strFailReason = _(
-                                            "The transaction amount is too small to send after the fee has been deducted");
+                                        "The transaction amount is too small to send after the fee has been deducted");
                         } else
                             strFailReason = _("Transaction amount too small");
                         return false;
                     }
-                    txNew.vpout.push_back(txoutstandard);
+                    txNew.vpout.push_back(txout);
                 }
+
 
                 // Choose coins to use
                 set<CInputCoin> setCoins;
@@ -8823,7 +8815,7 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
                 BOOST_FOREACH(CInputCoin pcoin, setCoins)
                 {
                     //CAmount nCredit = pcoin.walletTX->vout[pcoin.second].nValue;
-                    CAmount nCredit = pcoin.txout.GetValue();
+                    CAmount nCredit = pcoin.txoutBase->GetValue();
                     //The coin age after the next block (depth+1) is used instead of the current,
                     //reflecting an assumption the user would accept a bit more delay for
                     //a chance at a free transaction.
@@ -8883,16 +8875,16 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
                         scriptChange = GetScriptForDestination(vchPubKey.GetID());
                     }
 
-                    OUTPUT_PTR<CTxOutStandard> newTxOutStandard = MAKE_OUTPUT<CTxOutStandard>();
-                    newTxOutStandard->nValue = nChange;
-                    newTxOutStandard->scriptPubKey = scriptChange;
+                    OUTPUT_PTR<CTxOutStandard> newTxOut = MAKE_OUTPUT<CTxOutStandard>();
+                    newTxOut->nValue = nChange;
+                    newTxOut->scriptPubKey = scriptChange;
 
                     // We do not move dust-change to fees, because the sender would end up paying more than requested.
                     // This would be against the purpose of the all-inclusive feature.
                     // So instead we raise the change and deduct from the recipient.
-                    if (nSubtractFeeFromAmount > 0 && IsDust(newTxOutStandard.get(), ::minRelayTxFee)) {
-                        CAmount nDust = GetDustThreshold(newTxOutStandard.get(), ::minRelayTxFee) - newTxOutStandard->nValue;
-                        newTxOutStandard->nValue += nDust; // raise change until no more dust
+                    if (nSubtractFeeFromAmount > 0 && IsDust(newTxOut.get(), ::minRelayTxFee)) {
+                        CAmount nDust = GetDustThreshold(newTxOut.get(), ::minRelayTxFee) - newTxOut->nValue;
+                        newTxOut->nValue += nDust; // raise change until no more dust
                         for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
                         {
                             if (vecSend[i].fSubtractFeeFromAmount) {
@@ -8908,21 +8900,20 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
                     }
                     // Never create dust outputs; if we would, just
                     // add the dust to the fee.
-                    if (IsDust(newTxOutStandard.get(), ::minRelayTxFee)) {
+                    if (IsDust(newTxOut.get(), ::minRelayTxFee)) {
                         nChangePosInOut = -1;
                         nFeeRet += nChange;
                         reservekey.ReturnKey();
                     } else {
                         if (nChangePosInOut == -1) {
                             // Insert change txn at random position:
-                            nChangePosInOut = GetRandInt(txNew.vpout.size() + 1);
-                        } else if ((unsigned int) nChangePosInOut > txNew.vpout.size()) {
+                            nChangePosInOut = GetRandInt(txNew.vout.size() + 1);
+                        } else if ((unsigned int) nChangePosInOut > txNew.vout.size()) {
                             strFailReason = _("Change index out of range");
                             return false;
                         }
 
-                        txNew.vpout.insert(txNew.vpout.begin() + nChangePosInOut,newTxOutStandard);
-
+                        txNew.vpout.insert(txNew.vpout.begin() + nChangePosInOut, newTxOut);
                     }
 
                 } else
@@ -8939,30 +8930,27 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
                 // Sign
                 int nIn = 0;
                 CTransaction txNewConst(txNew);
-                BOOST_FOREACH(const CInputCoin &coin, setCoins)
-                {
-                    bool signSuccess;
-                    const CScript &scriptPubKey = *coin.walletTX->tx->vpout[coin.index]->GetPScriptPubKey();
-                    SignatureData sigdata;
-                    std::vector<uint8_t> vchAmount(8);
-                    CAmount nvval = coin.walletTX->tx->vpout[coin.index]->GetValue();
-                    memcpy(&vchAmount[0], &nvval, 8);
-                    if (sign)
-                        signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn,
-                                                                                   vchAmount,
-                                                                                   SIGHASH_ALL), scriptPubKey,
-                                                       sigdata);
-                    else
-                        signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
 
-                    if (!signSuccess) {
-                        strFailReason = _("Signing transaction failed");
-                        return false;
-                    } else {
-                        UpdateTransaction(txNew, nIn, sigdata);
-                    }
+                for (const auto &coin : setCoins)
+                {
+                    //const CScript& scriptPubKey = coin.first->tx->vpout[coin.second]->GetStandardOutput()->scriptPubKey;
+                    const CScript& scriptPubKey = *coin.txoutBase->GetPScriptPubKey();
+                    SignatureData sigdata;
+
+                    std::vector<uint8_t> vchAmount(8);
+                    CAmount txoutAmount = coin.txoutBase->GetValue();
+                    memcpy(&vchAmount[0], &txoutAmount, 8);
+                    if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn,
+                                                                      vchAmount,
+                                                                      SIGHASH_ALL), scriptPubKey, sigdata))
+                        return errorN(1, strFailReason, __func__, "Zerocoin Mint signature failed.");
+                    UpdateTransaction(txNew, nIn, sigdata);
                     nIn++;
-                }
+
+                    if (IsMine(coin.txoutBase.get()) & ISMINE_HARDWARE_DEVICE)
+                        coinControl->fNeedHardwareKey = true;
+                };
+
                 unsigned int nBytes = GetVirtualTransactionSize(txNew);
                 // Remove scriptSigs if we used dummy signatures for fee calculation
                 // Remove scriptSigs to eliminate the fee calculation dummy signatures
@@ -9020,11 +9008,258 @@ bool CHDWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend
     return true;
 }
 
+/**
+ * @brief CWallet::CreateZerocoinMintTransaction
+ * @param vecSend
+ * @param wtxNew
+ * @param reservekey
+ * @param nFeeRet
+ * @param strFailReason
+ * @param coinControl
+ * @return
+ */
+/*
+bool CHDWallet::CreateZerocoinMintTransaction(vector <CTempRecipient> &vecSend, CWalletTx &wtxNew,
+                                            CReserveKey &reservekey,
+                                            CAmount &nFeeRet, int &nChangePosInOut, std::string &strFailReason,
+                                            const CCoinControl *coinControl, bool sign) {
+    nFeeRet = 0;
+    CAmount nValue;
+    size_t nSubtractFeeFromAmount;
+    bool fOnlyStandardOutputs;
+    InspectOutputs(vecSend, nValue, nSubtractFeeFromAmount, fOnlyStandardOutputs);
+    nSubtractFeeFromAmount = 0;
+    wtxNew.fTimeReceivedIsTxTime = true;
+    wtxNew.BindWallet(this);
+    wtxNew.fFromMe = true;
+    CMutableTransaction txNew;
+    txNew.nVersion = NIX_TXN_VERSION;
+    txNew.vout.clear();
+
+    // Discourage fee sniping. See CWallet::CreateTransaction
+    txNew.nLockTime = chainActive.Height();
+
+    // 1/10 chance of random time further back to increase privacy
+    if (GetRandInt(10) == 0)
+        txNew.nLockTime = std::max(0, (int)txNew.nLockTime - GetRandInt(100));
+
+    assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
+    assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+
+    FeeCalculation feeCalc;
+    CAmount nFeeNeeded;
+    unsigned int nBytes;
+    {
+        LOCK2(cs_main, cs_wallet);
+        {
+            std::set<CInputCoin> setCoins;
+            std::vector<COutput> vAvailableCoins;
+            AvailableCoins(vAvailableCoins, true, coinControl);
+
+            CFeeRate discard_rate = GetDiscardRate(::feeEstimator);
+            
+            size_t nSubFeeTries = 100;
+            bool pick_new_inputs = true;
+            CAmount nValueIn = 0;
+
+            nFeeRet = payTxFee.GetFeePerK();
+            LogPrintf("nFeeRet=%s\n", nFeeRet);
+
+            // Start with no fee and loop until there is enough fee
+            for (;;)
+            {
+                txNew.vin.clear();
+                txNew.vpout.clear();
+                wtxNew.fFromMe = true;
+
+                CAmount nValueToSelect = nValue;
+                if (nSubtractFeeFromAmount == 0)
+                    nValueToSelect += nFeeRet;
+
+                // Choose coins to use
+                if (pick_new_inputs) {
+                    nValueIn = 0;
+                    setCoins.clear();
+                    if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
+                        return errorN(1, strFailReason, __func__, _("Insufficient funds.").c_str());
+                }
+
+                int nChangePosInOut = -1;
+
+                const CAmount nChange = nValueIn - nValueToSelect;
+
+                // Remove fee outputs from last round
+                for (size_t i = 0; i < vecSend.size(); ++i)
+                {
+                    if (vecSend[i].fChange)
+                    {
+                        vecSend.erase(vecSend.begin() + i);
+                        i--;
+                    };
+                };
+
+                if (nChange > 0)
+                {
+
+                    {
+                        // Fill an output to ourself
+                        CTempRecipient r;
+                        r.nType = OUTPUT_STANDARD;
+                        r.fChange = true;
+                        r.SetAmount(nChange);
+
+                        if (!SetChangeDest(coinControl, r, strFailReason))
+                            return errorN(1, strFailReason, __func__, ("SetChangeDest failed: " + strFailReason).c_str());
+
+                        CTxOutStandard tempOut;
+                        tempOut.scriptPubKey = r.scriptPubKey;
+                        tempOut.nValue = nChange;
+
+                        // Never create dust outputs; if we would, just
+                        // add the dust to the fee.
+                        if (IsDust(&tempOut, discard_rate))
+                        {
+                            nChangePosInOut = -1;
+                            nFeeRet += nChange;
+                        } else
+                        {
+                            InsertChangeAddress(r, vecSend, nChangePosInOut);
+                        };
+                    }
+                };
+
+                // Fill vin
+                //
+                // Note how the sequence number is set to non-maxint so that
+                // the nLockTime set above actually works.
+                //
+                // BIP125 defines opt-in RBF as any nSequence < maxint-1, so
+                // we use the highest possible value in that range (maxint-2)
+                // to avoid conflicting with other possible uses of nSequence,
+                // and in the spirit of "smallest possible change from prior
+                // behavior."
+                const uint32_t nSequence = (coinControl && coinControl->signalRbf) ? MAX_BIP125_RBF_SEQUENCE : (CTxIn::SEQUENCE_FINAL - 1);
+                for (const auto& coin : setCoins)
+                    txNew.vin.push_back(CTxIn(coin.outpoint,CScript(),
+                                              nSequence));
+
+                CAmount nValueOutPlain = 0;
+
+                bool fFirst = true;
+                for (size_t i = 0; i < vecSend.size(); ++i)
+                {
+                    auto &r = vecSend[i];
+
+                    r.ApplySubFee(nFeeRet, nSubtractFeeFromAmount, fFirst);
+
+                    OUTPUT_PTR<CTxOutBase> txbout;
+                    if (0 != CreateOutput(txbout, r, strFailReason))
+                        return 1; // sError will be set
+
+                    if (!CheckOutputValue(r, &*txbout, nFeeRet, strFailReason))
+                        return 1; // sError set
+
+                    if (r.nType == OUTPUT_STANDARD)
+                    {
+                        nValueOutPlain += r.nAmount;
+                        if (r.fChange)
+                            nChangePosInOut = i;
+                    };
+
+
+                    r.n = txNew.vpout.size();
+                    txNew.vpout.push_back(txbout);
+                };
+
+
+                // Fill in dummy signatures for fee calculation.
+                int nIn = 0;
+                CTransaction txNewConst(txNew);
+                for (const auto &coin : setCoins)
+                {
+                    //const CScript& scriptPubKey = coin.first->tx->vpout[coin.second]->GetStandardOutput()->scriptPubKey;
+                    const CScript& scriptPubKey = *coin.txoutBase->GetPScriptPubKey();
+                    SignatureData sigdata;
+
+                    std::vector<uint8_t> vchAmount(8);
+                    CAmount txoutAmount = coin.txoutBase->GetValue();
+                    memcpy(&vchAmount[0], &txoutAmount, 8);
+                    if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn,
+                                                                      vchAmount,
+                                                                      SIGHASH_ALL), scriptPubKey, sigdata))
+                        return errorN(1, strFailReason, __func__, "Zerocoin Mint signature failed.");
+                    UpdateTransaction(txNew, nIn, sigdata);
+                    nIn++;
+
+                    if (IsMine(coin.txoutBase.get()) & ISMINE_HARDWARE_DEVICE)
+                        coinControl->fNeedHardwareKey = true;
+                };
+
+                nBytes = GetVirtualTransactionSize(txNew);
+
+                // Remove scriptSigs to eliminate the fee calculation dummy signatures
+                for (auto &vin : txNew.vin) {
+                    vin.scriptSig = CScript();
+                    vin.scriptWitness.SetNull();
+                }
+
+
+
+
+                if (GetTransactionWeight(txNew) >= MAX_STANDARD_TX_WEIGHT) {
+                    strFailReason = _("Transaction too large");
+                    return false;
+                }
+
+                int64_t nFeeNeeded = payTxFee.GetFeePerK() * (1 + (int64_t) GetTransactionWeight(txNew) / 1000);
+                int64_t nMinFee = ::minRelayTxFee.GetFee(nBytes);
+
+                if (nFeeNeeded < nMinFee) {
+                    nFeeNeeded = nMinFee;
+                }
+
+                if (nFeeRet >= nFeeNeeded)
+                    break; // Done, enough fee included.
+
+                // Include more fee and try again.
+                nFeeRet = nFeeNeeded;
+                continue;
+
+            };
+        }
+
+
+        // Embed the constructed transaction data in wtxNew.
+        wtxNew.SetTx(MakeTransactionRef(std::move(txNew)));
+    }
+
+    if (gArgs.GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS)) {
+        // Lastly, ensure this tx will pass the mempool's chain limits
+        LockPoints lp;
+        CTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, false, 0, lp);
+        CTxMemPool::setEntries setAncestors;
+        size_t nLimitAncestors = gArgs.GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT);
+        size_t nLimitAncestorSize = gArgs.GetArg("-limitancestorsize", DEFAULT_ANCESTOR_SIZE_LIMIT) * 1000;
+        size_t nLimitDescendants = gArgs.GetArg("-limitdescendantcount", DEFAULT_DESCENDANT_LIMIT);
+        size_t nLimitDescendantSize = gArgs.GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT) * 1000;
+        std::string errString;
+        if (!mempool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize,
+                                               nLimitDescendants, nLimitDescendantSize, errString)) {
+            strFailReason = _("Transaction has too long of a mempool chain");
+            return false;
+        }
+    }
+    return true;
+}
+*/
 bool CHDWallet::CreateZerocoinMintTransaction(CScript pubCoin, int64_t nValue, CWalletTx &wtxNew, CReserveKey &reservekey,
                                        int64_t &nFeeRet, std::string &strFailReason,
                                        const CCoinControl *coinControl) {
-    vector <CRecipient> vecSend;
-    CRecipient recipient = {pubCoin, nValue, false};
+    vector <CTempRecipient> vecSend;
+    // Fill an output to ourself
+
+    CTempRecipient recipient(nValue, false, pubCoin);
+
     vecSend.push_back(recipient);
     int nChangePosRet = -1;
     return CreateZerocoinMintTransaction(vecSend, wtxNew, reservekey, nFeeRet, nChangePosRet, strFailReason,
@@ -9150,6 +9385,7 @@ bool CHDWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValu
                             && id < coinId
                             && coinHeight + (ZEROCOIN_CONFIRM_HEIGHT) <= chainActive.Height()
                             && zerocoinState->GetAccumulatorValueForSpend(
+                                    &chainActive,
                                     chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
                                     denomination,
                                     id,
@@ -9486,6 +9722,7 @@ void CHDWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnly
             LogPrintf("pcoin->vpout.size()=%s\n", pcoin->tx->vpout.size());
 
             for (unsigned int i = 0; i < pcoin->tx->vpout.size(); i++) {
+                if(pcoin->tx->vpout[i]->IsStandardOutput())
                 if (pcoin->tx->vpout[i]->GetPScriptPubKey()->IsZerocoinMint()) {
 
                     OUTPUT_PTR<CTxOutStandard> newTxOutStandard = MAKE_OUTPUT<CTxOutStandard>();
@@ -9645,7 +9882,7 @@ bool CHDWallet::GhostModeSpendTrigger(string denomination){
     if (this->IsLocked())
         return error("%s: Error: The wallet needs to be unlocked.", __func__);
 
-    if(!CreateZerocoinSpendModel(stringError, denomination))
+    if(!CreateZerocoinSpendModel(stringError, denomination, ""))
         return error("%s: Error: Failed to create zerocoin spend model - %s.", __func__, stringError);
 
     return true;

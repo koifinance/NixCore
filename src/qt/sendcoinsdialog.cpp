@@ -306,7 +306,7 @@ void SendCoinsDialog::on_sendButton_clicked()
         nRecipient++;
     };
 
-    sCommand += "] 64";
+    sCommand += "] \"\" \"\"";
 
 
     QString sCoinControl;
@@ -641,7 +641,7 @@ bool SendCoinsDialog::handlePaymentRequest(const SendCoinsRecipient &rv)
 }
 
 void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance)
+                const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance,const CAmount& t1,const CAmount& t2,const CAmount& t3,const CAmount& t4)
 {
     Q_UNUSED(unconfirmedBalance);
     Q_UNUSED(immatureBalance);

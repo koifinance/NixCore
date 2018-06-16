@@ -305,49 +305,6 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         return DuplicateAddress;
     }
 
-    /*
-    CAmount nBalance = getBalance(&coinControl);
-
-    if(total > nBalance)
-    {
-        return AmountExceedsBalance;
-    }
-
-
-    {
-        LOCK2(cs_main, wallet->cs_wallet);
-
-        transaction.newPossibleKeyChange(wallet);
-
-        CAmount nFeeRequired = 0;
-        int nChangePosRet = -1;
-        std::string strFailReason;
-
-        CWalletTx *newTx = transaction.getTransaction();
-        CReserveKey *keyChange = transaction.getPossibleKeyChange();
-        bool fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl);
-        transaction.setTransactionFee(nFeeRequired);
-        if (fSubtractFeeFromAmount && fCreated)
-            transaction.reassignAmounts(nChangePosRet);
-
-        if(!fCreated)
-        {
-            if(!fSubtractFeeFromAmount && (total + nFeeRequired) > nBalance)
-            {
-                return SendCoinsReturn(AmountWithFeeExceedsBalance);
-            }
-            Q_EMIT message(tr("Send Coins"), QString::fromStdString(strFailReason),
-                         CClientUIInterface::MSG_ERROR);
-            return TransactionCreationFailed;
-        }
-
-        // reject absurdly high fee. (This can never happen because the
-        // wallet caps the fee at maxTxFee. This merely serves as a
-        // belt-and-suspenders check)
-        if (nFeeRequired > maxTxFee)
-            return AbsurdFee;
-    }
-    */
     return SendCoinsReturn(OK);
 }
 
@@ -554,6 +511,15 @@ static void NotifyWaitingForDevice(WalletModel *walletmodel, bool fCompleted)
                               Q_ARG(bool, fCompleted));
 }
 
+static void NotifyGhostProtocolChanged(WalletModel *walletmodel, CHDWallet *wallet,  const std::string &pubCoin, int denomination, const std::string &isUsed, ChangeType status)
+{
+    qDebug() << "NotifyGhostProtocolChanged:" + QString::fromStdString(pubCoin) + " " + QString::fromStdString(isUsed) + " status=" + QString::number(status);
+    QMetaObject::invokeMethod(walletmodel, "updateAddressBook", Qt::QueuedConnection,
+                              Q_ARG(QString, QString::fromStdString(pubCoin)),
+                              Q_ARG(QString, QString::fromStdString(isUsed)),
+                              Q_ARG(int, status));
+}
+
 void WalletModel::subscribeToCoreSignals()
 {
     // Connect signals to wallet
@@ -566,8 +532,9 @@ void WalletModel::subscribeToCoreSignals()
     if (IsHDWallet(wallet))
     {
         CHDWallet *phdw = GetHDWallet(wallet);
+        phdw->NotifyZerocoinChanged.connect(boost::bind(NotifyGhostProtocolChanged, this, _1, _2, _3, _4, _5));
         phdw->NotifyWaitingForDevice.connect(boost::bind(NotifyWaitingForDevice, this, _1));
-    };
+    }
 }
 
 void WalletModel::unsubscribeFromCoreSignals()
@@ -582,8 +549,9 @@ void WalletModel::unsubscribeFromCoreSignals()
     if (IsHDWallet(wallet))
     {
         CHDWallet *phdw = GetHDWallet(wallet);
+        phdw->NotifyZerocoinChanged.disconnect(boost::bind(NotifyGhostProtocolChanged, this, _1, _2, _3, _4, _5));
         phdw->NotifyWaitingForDevice.disconnect(boost::bind(NotifyWaitingForDevice, this, _1));
-    };
+    }
 }
 
 // WalletModel::UnlockContext implementation

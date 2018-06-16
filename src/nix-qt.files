@@ -81,7 +81,13 @@ protocol.cpp
 protocol.h
 pubkey.cpp
 pubkey.h
+qt/forms/ghostnodelist.ui
+qt/forms/ghostprotocol.ui
 qt/forms/mnemonicdialog.ui
+qt/ghostnodelist.cpp
+qt/ghostnodelist.h
+qt/ghostprotocol.cpp
+qt/ghostprotocol.h
 qt/mnemonicdialog.cpp
 qt/mnemonicdialog.h
 random.cpp

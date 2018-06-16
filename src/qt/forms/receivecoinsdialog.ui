@@ -113,22 +113,12 @@
             </property>
             <item>
              <property name="text">
-              <string>Standard</string>
+              <string>Standard Address</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>Stealth</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Extended</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Standard 256bit</string>
+              <string>Ghost Address</string>
              </property>
             </item>
            </widget>
@@ -239,7 +229,6 @@
             <property name="focusPolicy">
              <enum>Qt::StrongFocus</enum>
             </property>
-
             <property name="toolTip">
              <string>Use bech32 encoding.</string>
             </property>

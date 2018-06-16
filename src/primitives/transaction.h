@@ -598,6 +598,8 @@ public:
     // actually immutable; deserialization and assignment are implemented,
     // and bypass the constness. This is safe, as they update the entire
     // structure, including the hash.
+    static int64_t nMinTxFee;
+    static int64_t nMinRelayTxFee;
     const std::vector<CTxIn> vin;
     const std::vector<CTxOut> vout;
     const std::vector<CTxOutBaseRef> vpout;
@@ -667,11 +669,12 @@ public:
 
     bool IsZerocoinMint(const CTransaction& tx) const
     {
-        for (std::vector<CTxOut>::const_iterator it(tx.vout.begin()); it != tx.vout.end(); ++it)
-            {
-                if (it -> scriptPubKey.IsZerocoinMint())
-                    return true;
-            }
+
+        for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
+        {
+            if (tx.vpout[idx]->GetPScriptPubKey()->IsZerocoinMint())
+                return true;
+        }
             return false;
     }
 
