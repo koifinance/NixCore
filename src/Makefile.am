@@ -59,6 +59,7 @@ LIBNIX_UTIL=libnix_util.a
 LIBNIX_CRYPTO=crypto/libnix_crypto.a
 LIBNIXQT=qt/libnixqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
+LIBNIX_SMSG=libnix_smsg.a
 
 if ENABLE_ZMQ
 LIBNIX_ZMQ=libnix_zmq.a
@@ -87,7 +88,8 @@ EXTRA_LIBRARIES += \
   $(LIBNIX_CLI) \
   $(LIBNIX_WALLET) \
   $(LIBNIX_USBDEVICE) \
-  $(LIBNIX_ZMQ)
+  $(LIBNIX_ZMQ) \
+  $(LIBNIX_SMSG)
 
 lib_LTLIBRARIES = $(LIBNIXCONSENSUS)
 
@@ -190,10 +192,6 @@ NIX_CORE_H = \
   ghost-address/mnemonic.h \
   ghost-address/stealth.h \
   ghost-address/xxhash.h \
-  ghost-address/smsg/db.h \
-  ghost-address/smsg/crypter.h \
-  ghost-address/smsg/smessage.h \
-  ghost-address/smsg/rpcsmessage.h \
   ghost-address/key/wordlists/chinese_simplified.h \
   ghost-address/key/wordlists/chinese_traditional.h \
   ghost-address/key/wordlists/english.h \
@@ -203,7 +201,6 @@ NIX_CORE_H = \
   ghost-address/key/wordlists/italian.h \
   ghost-address/key/wordlists/korean.h \
   ghost-address/smsg/crypter.h \
-  ghost-address/smsg/keystore.h \
   ghost-address/smsg/db.h \
   ghost-address/smsg/smessage.h \
   ghost-address/smsg/rpcsmessage.h \
@@ -479,10 +476,6 @@ libnix_common_a_SOURCES = \
   ghost-address/stealth.cpp \
   ghost-address/xxhash.c \
   ghost-address/smsg/crypter.cpp \
-  ghost-address/smsg/keystore.cpp \
-  ghost-address/smsg/db.cpp \
-  ghost-address/smsg/smessage.cpp \
-  ghost-address/smsg/rpcsmessage.cpp \
   warnings.cpp \
   $(NIX_CORE_H)
 
@@ -533,6 +526,22 @@ libnix_util_a_SOURCES = \
   utiltime.cpp \
   $(NIX_CORE_H)
 
+
+libnix_smsg_a_CPPFLAGS = $(AM_CPPFLAGS) $(NIX_INCLUDES)
+libnix_smsg_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libnix_smsg_a_SOURCES = \
+  ghost-address/lz4.h \
+  ghost-address/lz4.c \
+  ghost-address/xxhash.h \
+  ghost-address/xxhash.c \
+  ghost-address/smsg/crypter.cpp \
+  ghost-address/smsg/keystore.h \
+  ghost-address/smsg/keystore.cpp \
+  ghost-address/smsg/db.cpp \
+  ghost-address/smsg/smessage.cpp \
+  ghost-address/smsg/rpcsmessage.cpp
+
+
 if GLIBC_BACK_COMPAT
 libnix_util_a_SOURCES += compat/glibc_compat.cpp
 endif
@@ -570,6 +579,7 @@ nixd_LDADD = \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
   $(LIBSECP256K1) \
+  $(LIBNIX_SMSG) \
   $(LIBNIX_USBDEVICE)
 
 nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(USB_LIBS) -lz

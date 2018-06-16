@@ -82,7 +82,7 @@ bool IsBlockPayeeValid(const CTransaction &txNew, int nBlockHeight, CAmount bloc
 
     //check for ghostnode payee
     if (mnpayments.IsTransactionValid(txNew, nBlockHeight)) {
-        LogPrintf("mnpayments", "IsBlockPayeeValid -- Valid ghostnode payment at height %d: %s", nBlockHeight, txNew.ToString());
+        LogPrintf("mnpayments: IsBlockPayeeValid -- Valid ghostnode payment at height %d: %s", nBlockHeight, txNew.ToString());
         return true;
     } else {
         if(sporkManager.IsSporkActive(SPORK_8_GHOSTNODE_PAYMENT_ENFORCEMENT)){
@@ -98,7 +98,7 @@ void FillBlockPayments(CMutableTransaction &txNew, int nBlockHeight, CAmount gho
 
     // FILL BLOCK PAYEE WITH GHOSTNODE PAYMENT OTHERWISE
     mnpayments.FillBlockPayee(txNew, nBlockHeight, ghostnodePayment, txoutGhostnodeRet);
-    LogPrintf("mnpayments", "FillBlockPayments -- nBlockHeight %d ghostnodePayment %lld txoutGhostnodeRet %s txNew %s",
+    LogPrintf("mnpayments: FillBlockPayments -- nBlockHeight %d ghostnodePayment %lld txoutGhostnodeRet %s txNew %s",
              nBlockHeight, ghostnodePayment, txoutGhostnodeRet.ToString(), txNew.ToString());
 }
 
@@ -222,7 +222,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         netfulfilledman.AddFulfilledRequest(pfrom->addr, NetMsgType::GHOSTNODEPAYMENTSYNC);
 
         Sync(pfrom);
-        LogPrintf("mnpayments", "GHOSTNODEPAYMENTSYNC -- Sent Ghostnode payment votes to peer %d\n", pfrom->GetId());
+        LogPrintf("mnpayments: GHOSTNODEPAYMENTSYNC -- Sent Ghostnode payment votes to peer %d\n", pfrom->GetId());
 
     } else if (strCommand == NetMsgType::GHOSTNODEPAYMENTVOTE) { // Ghostnode Payments Vote for the Winner
 
@@ -240,7 +240,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         {
             LOCK(cs_mapGhostnodePaymentVotes);
             if (mapGhostnodePaymentVotes.count(nHash)) {
-                LogPrintf("mnpayments", "GHOSTNODEPAYMENTVOTE -- hash=%s, nHeight=%d seen\n", nHash.ToString(), pCurrentBlockIndex->nHeight);
+                LogPrintf("mnpayments: GHOSTNODEPAYMENTVOTE -- hash=%s, nHeight=%d seen\n", nHash.ToString(), pCurrentBlockIndex->nHeight);
                 return;
             }
 
@@ -253,13 +253,13 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
 
         int nFirstBlock = pCurrentBlockIndex->nHeight - GetStorageLimit();
         if (vote.nBlockHeight < nFirstBlock || vote.nBlockHeight > pCurrentBlockIndex->nHeight + 20) {
-            LogPrintf("mnpayments", "GHOSTNODEPAYMENTVOTE -- vote out of range: nFirstBlock=%d, nBlockHeight=%d, nHeight=%d\n", nFirstBlock, vote.nBlockHeight, pCurrentBlockIndex->nHeight);
+            LogPrintf("mnpayments: GHOSTNODEPAYMENTVOTE -- vote out of range: nFirstBlock=%d, nBlockHeight=%d, nHeight=%d\n", nFirstBlock, vote.nBlockHeight, pCurrentBlockIndex->nHeight);
             return;
         }
 
         std::string strError = "";
         if (!vote.IsValid(pfrom, pCurrentBlockIndex->nHeight, strError)) {
-            LogPrintf("mnpayments", "GHOSTNODEPAYMENTVOTE -- invalid message, error: %s\n", strError);
+            LogPrintf("mnpayments: GHOSTNODEPAYMENTVOTE -- invalid message, error: %s\n", strError);
             return;
         }
 
@@ -283,7 +283,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
                 Misbehaving(pfrom->GetId(), nDos);
             } else {
                 // only warn about anything non-critical (i.e. nDos == 0) in debug mode
-                LogPrintf("mnpayments", "GHOSTNODEPAYMENTVOTE -- WARNING: invalid signature\n");
+                LogPrintf("mnpayments: GHOSTNODEPAYMENTVOTE -- WARNING: invalid signature\n");
             }
             // Either our info or vote info could be outdated.
             // In case our info is outdated, ask for an update,
@@ -298,7 +298,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         ExtractDestination(vote.payee, address1);
         CBitcoinAddress address2(address1);
 
-        LogPrintf("mnpayments", "GHOSTNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s\n", address2.ToString(), vote.nBlockHeight, pCurrentBlockIndex->nHeight, vote.vinGhostnode.prevout.ToStringShort());
+        LogPrintf("mnpayments: GHOSTNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s\n", address2.ToString(), vote.nBlockHeight, pCurrentBlockIndex->nHeight, vote.vinGhostnode.prevout.ToStringShort());
 
         if (AddPaymentVote(vote)) {
             vote.Relay();
@@ -356,7 +356,7 @@ bool CGhostnodePayments::IsScheduled(CGhostnode &mn, int nNotBlockHeight) {
 }
 
 bool CGhostnodePayments::AddPaymentVote(const CGhostnodePaymentVote &vote) {
-    LogPrintf("ghostnode-payments", "CGhostnodePayments::AddPaymentVote\n");
+    LogPrintf("ghostnode-payments: CGhostnodePayments::AddPaymentVote\n");
     uint256 blockHash = uint256();
     if (!GetBlockHash(blockHash, vote.nBlockHeight - 119)) return false;
 
@@ -398,9 +398,9 @@ void CGhostnodeBlockPayees::AddPayee(const CGhostnodePaymentVote &vote) {
 
 bool CGhostnodeBlockPayees::GetBestPayee(CScript &payeeRet) {
     LOCK(cs_vecPayees);
-    LogPrintf("mnpayments", "CGhostnodeBlockPayees::GetBestPayee, vecPayees.size()=%s\n", vecPayees.size());
+    LogPrintf("mnpayments: CGhostnodeBlockPayees::GetBestPayee, vecPayees.size()=%s\n", vecPayees.size());
     if (!vecPayees.size()) {
-        LogPrintf("mnpayments", "CGhostnodeBlockPayees::GetBestPayee -- ERROR: couldn't find any payee\n");
+        LogPrintf("mnpayments: CGhostnodeBlockPayees::GetBestPayee -- ERROR: couldn't find any payee\n");
         return false;
     }
 
@@ -460,7 +460,7 @@ bool CGhostnodeBlockPayees::IsTransactionValid(const CTransaction &txNew) {
             for (unsigned int idx = 0; idx < txNew.vpout.size(); idx++)
             {
                 if (*txNew.vpout[idx]->GetPScriptPubKey() == payee.GetPayee() && txNew.vpout[idx]->GetValue() == nGhostnodePayment){
-                    LogPrintf("mnpayments", "CGhostnodeBlockPayees::IsTransactionValid -- Found required payment\n");
+                    LogPrintf("mnpayments: CGhostnodeBlockPayees::IsTransactionValid -- Found required payment\n");
                     return true;
                 }
             }
@@ -536,7 +536,7 @@ void CGhostnodePayments::CheckAndRemove() {
         CGhostnodePaymentVote vote = (*it).second;
 
         if (pCurrentBlockIndex->nHeight - vote.nBlockHeight > nLimit) {
-            LogPrintf("mnpayments", "CGhostnodePayments::CheckAndRemove -- Removing old Ghostnode payment: nBlockHeight=%d\n", vote.nBlockHeight);
+            LogPrintf("mnpayments: CGhostnodePayments::CheckAndRemove -- Removing old Ghostnode payment: nBlockHeight=%d\n", vote.nBlockHeight);
             mapGhostnodePaymentVotes.erase(it++);
             mapGhostnodeBlocks.erase(vote.nBlockHeight);
         } else {
@@ -580,7 +580,7 @@ bool CGhostnodePaymentVote::IsValid(CNode *pnode, int nValidationHeight, std::st
     int nRank = mnodeman.GetGhostnodeRank(vinGhostnode, nBlockHeight - 119, nMinRequiredProtocol, false);
 
     if (nRank == -1) {
-        LogPrintf("mnpayments", "CGhostnodePaymentVote::IsValid -- Can't calculate rank for ghostnode %s\n",
+        LogPrintf("mnpayments: CGhostnodePaymentVote::IsValid -- Can't calculate rank for ghostnode %s\n",
                  vinGhostnode.prevout.ToStringShort());
         return false;
     }
@@ -620,12 +620,12 @@ bool CGhostnodePayments::ProcessBlock(int nBlockHeight) {
     int nRank = mnodeman.GetGhostnodeRank(activeGhostnode.vin, nBlockHeight - 119, GetMinGhostnodePaymentsProto(), false);
 
     if (nRank == -1) {
-        LogPrintf("mnpayments", "CGhostnodePayments::ProcessBlock -- Unknown Ghostnode\n");
+        LogPrintf("mnpayments: CGhostnodePayments::ProcessBlock -- Unknown Ghostnode\n");
         return false;
     }
 
     if (nRank > MNPAYMENTS_SIGNATURES_TOTAL) {
-        LogPrintf("mnpayments", "CGhostnodePayments::ProcessBlock -- Ghostnode not in the top %d (%d)\n", MNPAYMENTS_SIGNATURES_TOTAL, nRank);
+        LogPrintf("mnpayments: CGhostnodePayments::ProcessBlock -- Ghostnode not in the top %d (%d)\n", MNPAYMENTS_SIGNATURES_TOTAL, nRank);
         return false;
     }
 
