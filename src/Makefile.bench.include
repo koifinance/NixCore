@@ -43,7 +43,8 @@ bench_bench_nix_LDADD = \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
   $(LIBSECP256K1) \
-  $(LIBUNIVALUE)
+  $(LIBUNIVALUE) \
+  $(LIBPARTICL_SMSG)
 
 if ENABLE_ZMQ
 bench_bench_nix_LDADD += $(LIBNIX_ZMQ) $(ZMQ_LIBS)
