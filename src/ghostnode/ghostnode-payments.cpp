@@ -39,7 +39,7 @@ bool IsBlockValueValid(const CBlock &block, int nBlockHeight, CAmount blockRewar
     //if (fDebug) LogPrintf("block.vtx[0].GetValueOut() %lld <= blockReward %lld\n", block.vtx[0]->GetValueOut(), blockReward);
 
 
-    if (!ghostnodeSync.IsSynced()) {
+    if (!ghostnodeSync.IsSynced(chainActive.Height())) {
 
         if (!isBlockRewardValueMet) {
             strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded block reward, only regular blocks are allowed at this height",
@@ -74,7 +74,7 @@ bool IsBlockPayeeValid(const CTransaction &txNew, int nBlockHeight, CAmount bloc
         //if (fDebug) LogPrintf("IsBlockPayeeValid -- ghostnode isn't start\n");
         return true;
     }
-    if (!ghostnodeSync.IsSynced()) {
+    if (!ghostnodeSync.IsSynced(chainActive.Height())) {
         //there is no budget data to use to check anything, let's just accept the longest chain
         //if (fDebug) LogPrintf("IsBlockPayeeValid -- WARNING: Client not synced, skipping block payee checks\n");
         return true;
@@ -211,7 +211,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         // Ignore such requests until we are fully synced.
         // We could start processing this after ghostnode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!ghostnodeSync.IsSynced()) return;
+        if (!ghostnodeSync.IsSynced(chainActive.Height())) return;
 
         int nCountNeeded;
         vRecv >> nCountNeeded;

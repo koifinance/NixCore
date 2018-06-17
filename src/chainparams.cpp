@@ -114,8 +114,10 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 720; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
-
+        //consensus.nGhostnodePaymentsStartBlock = 2520; // 3.5 days after mainnet, start payment processing
+        //consensus.nGhostnodeInitialize = 2160; //3 days after mainnet
+        consensus.nGhostnodePaymentsStartBlock = 50; // 3.5 days after mainnet, start payment processing
+        consensus.nGhostnodeInitialize = 25; //3 days after mainnet
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
         nPoolMaxTransactions = 3;

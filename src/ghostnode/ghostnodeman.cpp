@@ -212,7 +212,7 @@ void CGhostnodeMan::CheckAndRemove()
             } else {
                 bool fAsk = pCurrentBlockIndex &&
                             (nAskForMnbRecovery > 0) &&
-                            ghostnodeSync.IsSynced() &&
+                            ghostnodeSync.IsSynced(chainActive.Height()) &&
                             it->IsNewStartRequired() &&
                             !IsMnbRecoveryRequested(hash);
                 if(fAsk) {
@@ -948,7 +948,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
         // Ignore such requests until we are fully synced.
         // We could start processing this after ghostnode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!ghostnodeSync.IsSynced()) return;
+        if (!ghostnodeSync.IsSynced(chainActive.Height())) return;
 
         CTxIn vin;
         vRecv >> vin;
@@ -1035,7 +1035,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 void CGhostnodeMan::DoFullVerificationStep()
 {
     if(activeGhostnode.vin == CTxIn()) return;
-    if(!ghostnodeSync.IsSynced()) return;
+    if(!ghostnodeSync.IsSynced(chainActive.Height())) return;
 
     std::vector<std::pair<int, CGhostnode> > vecGhostnodeRanks = GetGhostnodeRanks(pCurrentBlockIndex->nHeight - 1, MIN_POSE_PROTO_VERSION);
 
@@ -1114,7 +1114,7 @@ void CGhostnodeMan::DoFullVerificationStep()
 
 void CGhostnodeMan::CheckSameAddr()
 {
-    if(!ghostnodeSync.IsSynced() || vGhostnodes.empty()) return;
+    if(!ghostnodeSync.IsSynced(chainActive.Height()) || vGhostnodes.empty()) return;
 
     std::vector<CGhostnode*> vBan;
     std::vector<CGhostnode*> vSortedByAddr;

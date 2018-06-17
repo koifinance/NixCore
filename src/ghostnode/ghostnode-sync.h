@@ -23,7 +23,7 @@ static const int GHOSTNODE_SYNC_TICK_SECONDS    = 6;
 static const int GHOSTNODE_SYNC_TIMEOUT_SECONDS = 30; // our blocks are 2 minutes so 30 seconds should be fine
 
 //static const int GHOSTNODE_SYNC_ENOUGH_PEERS    = 6;  //Mainnet PARAMS
-static const int GHOSTNODE_SYNC_ENOUGH_PEERS    = 1;  //Testnet PARAMS
+static const int GHOSTNODE_SYNC_ENOUGH_PEERS    = 0;  //Testnet PARAMS
 
 extern CGhostnodeSync ghostnodeSync;
 
@@ -72,7 +72,7 @@ public:
     bool IsBlockchainSynced(bool fBlockAccepted = false);
     bool IsGhostnodeListSynced() { return nRequestedGhostnodeAssets > GHOSTNODE_SYNC_LIST; }
     bool IsWinnersListSynced() { return nRequestedGhostnodeAssets > GHOSTNODE_SYNC_MNW; }
-    bool IsSynced() { return nRequestedGhostnodeAssets == GHOSTNODE_SYNC_FINISHED; }
+    bool IsSynced(int nHeight) { return (nHeight >= 25) ? nRequestedGhostnodeAssets == GHOSTNODE_SYNC_FINISHED : true; }
 
     int GetAssetID() { return nRequestedGhostnodeAssets; }
     int GetAttempt() { return nRequestedGhostnodeAttempt; }

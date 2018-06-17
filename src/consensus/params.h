@@ -80,6 +80,7 @@ struct Params {
 
     int nGhostnodeMinimumConfirmations;
     int nGhostnodePaymentsStartBlock;
+    int nGhostnodeInitialize;
 
 };
 } // namespace Consensus
