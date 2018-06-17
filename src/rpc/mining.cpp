@@ -422,7 +422,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
     if (g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) == 0)
-        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "NIX Core is not connected!");
 
     if (IsInitialBlockDownload())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "NIX Core is downloading blocks...");
@@ -635,7 +635,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     result.push_back(Pair("previousblockhash", pblock->hashPrevBlock.GetHex()));
     result.push_back(Pair("transactions", transactions));
     result.push_back(Pair("coinbaseaux", aux));
-    result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0]->vout[0].nValue));
+    result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0]->vpout[0]->GetValue()));
     result.push_back(Pair("longpollid", chainActive.Tip()->GetBlockHash().GetHex() + i64tostr(nTransactionsUpdatedLast)));
     result.push_back(Pair("target", hashTarget.GetHex()));
     result.push_back(Pair("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1));
@@ -658,22 +658,23 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     result.push_back(Pair("bits", strprintf("%08x", pblock->nBits)));
     result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight+1)));
 
+
     if (!pblocktemplate->vchCoinbaseCommitment.empty() && fSupportsSegwit) {
         result.push_back(Pair("default_witness_commitment", HexStr(pblocktemplate->vchCoinbaseCommitment.begin(), pblocktemplate->vchCoinbaseCommitment.end())));
     }
 
 
 
-    UniValue zoinodeObj(UniValue::VOBJ);
-    if(pblock->txoutGhostnode != CTxOut()) {
+    UniValue ghostnodeObj(UniValue::VOBJ);
+    if(!(pblock->txoutGhostnode.IsEmpty())) {
         CTxDestination address1;
         ExtractDestination(pblock->txoutGhostnode.scriptPubKey, address1);
         CBitcoinAddress address2(address1);
-        zoinodeObj.push_back(Pair("payee", address2.ToString().c_str()));
-        zoinodeObj.push_back(Pair("script", HexStr(pblock->txoutGhostnode.scriptPubKey.begin(), pblock->txoutGhostnode.scriptPubKey.end())));
-        zoinodeObj.push_back(Pair("amount", pblock->txoutGhostnode.nValue));
+        ghostnodeObj.push_back(Pair("payee", address2.ToString().c_str()));
+        ghostnodeObj.push_back(Pair("script", HexStr(pblock->txoutGhostnode.scriptPubKey.begin(), pblock->txoutGhostnode.scriptPubKey.end())));
+        ghostnodeObj.push_back(Pair("amount", pblock->txoutGhostnode.nValue));
     }
-    result.push_back(Pair("ghostnode", zoinodeObj));
+    result.push_back(Pair("ghostnode", ghostnodeObj));
     result.push_back(Pair("ghostnode_payments_started", pindexPrev->nHeight + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock));
 
 

@@ -81,7 +81,7 @@ public:
     std::vector<CTransactionRef> vtx;
 
     // memory only
-    mutable CTxOut txoutGhostnode; // ghostnode payment
+    mutable CTxOutStandard txoutGhostnode; // ghostnode payment
     mutable std::vector<CTxOut> voutSuperblock; // superblock payment
     mutable bool fChecked;
 
@@ -118,7 +118,7 @@ public:
         ZerocoinClean();
         CBlockHeader::SetNull();
         vtx.clear();
-        txoutGhostnode = CTxOut();
+        txoutGhostnode = CTxOutStandard();
         voutSuperblock.clear();
         fChecked = false;
     }

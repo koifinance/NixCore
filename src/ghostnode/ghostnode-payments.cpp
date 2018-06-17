@@ -94,7 +94,7 @@ bool IsBlockPayeeValid(const CTransaction &txNew, int nBlockHeight, CAmount bloc
     }
 }
 
-void FillBlockPayments(CMutableTransaction &txNew, int nBlockHeight, CAmount ghostnodePayment, CTxOut &txoutGhostnodeRet, std::vector <CTxOut> &voutSuperblockRet) {
+void FillBlockPayments(CMutableTransaction &txNew, int nBlockHeight, CAmount ghostnodePayment, CTxOutStandard &txoutGhostnodeRet, std::vector <CTxOut> &voutSuperblockRet) {
 
     // FILL BLOCK PAYEE WITH GHOSTNODE PAYMENT OTHERWISE
     mnpayments.FillBlockPayee(txNew, nBlockHeight, ghostnodePayment, txoutGhostnodeRet);
@@ -147,9 +147,9 @@ std::string CGhostnodePayee::ToString() const {
 *   Fill Ghostnode ONLY payment block
 */
 
-void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHeight, CAmount ghostnodePayment, CTxOut &txoutGhostnodeRet) {
+void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHeight, CAmount ghostnodePayment, CTxOutStandard &txoutGhostnodeRet) {
     // make sure it's not filled yet
-    txoutGhostnodeRet = CTxOut();
+    txoutGhostnodeRet = CTxOutStandard();
 
     CScript payee;
     bool foundMaxVotedPayee = true;
@@ -170,13 +170,16 @@ void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHe
         LogPrintf("payee=%s\n", winningNode->ToString());
     }
 
-    txoutGhostnodeRet = CTxOut(ghostnodePayment, payee);
+   // txoutGhostnodeRet = CTxOut(ghostnodePayment, payee);
     //txNew.vout.push_back(txoutGhostnodeRet);
 
     OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
     txout->nValue = ghostnodePayment;
     txout->scriptPubKey = payee;
     txNew.vpout.push_back(txout);
+    txoutGhostnodeRet.nValue = ghostnodePayment;
+    txoutGhostnodeRet.scriptPubKey = payee;
+
 
     CTxDestination address1;
     ExtractDestination(payee, address1);
