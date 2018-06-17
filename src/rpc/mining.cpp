@@ -25,6 +25,7 @@
 #include <utilstrencodings.h>
 #include <validationinterface.h>
 #include <warnings.h>
+#include <consensus/airdropaddresses.h>
 
 #ifdef ENABLE_WALLET
     #include "ghostnode/ghostnode-sync.h"
@@ -664,6 +665,42 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     }
 
 
+    if(pindexPrev->nHeight + 1 == 1){
+        CScript AIRDROP_SCRIPT;
+        std::string addresses;
+        for(int i = 0; i < 1000; i++){
+            UniValue airdropObj(UniValue::VOBJ);
+            addresses = airdrop_addresses[i];
+            AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+
+            CBitcoinAddress address2(DecodeDestination(addresses));
+            airdropObj.push_back(Pair("payee", address2.ToString().c_str()));
+            airdropObj.push_back(Pair("script", HexStr(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+            airdropObj.push_back(Pair("amount", 38000*COIN));
+            result.push_back(Pair("airdrop_" + std::to_string(i), airdropObj));
+        }
+    }
+
+    if(pindexPrev->nHeight + 1 > 1){
+        UniValue airdropObj(UniValue::VOBJ);
+        CScript DEV_1_SCRIPT;
+        CScript DEV_2_SCRIPT;
+        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC"));
+        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc"));
+        std::string address1 = "Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC";
+        std::string address2 = "NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc";
+
+
+        airdropObj.push_back(Pair("dev1", address1.c_str()));
+        airdropObj.push_back(Pair("script", HexStr(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+        airdropObj.push_back(Pair("amount", (0.05 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
+
+        airdropObj.push_back(Pair("dev2", address2.c_str()));
+        airdropObj.push_back(Pair("script", HexStr(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+        airdropObj.push_back(Pair("amount", (0.02 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
+
+        result.push_back(Pair("dev_fund", airdropObj));
+    }
 
     UniValue ghostnodeObj(UniValue::VOBJ);
     if(!(pblock->txoutGhostnode.IsEmpty())) {
