@@ -666,19 +666,18 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
 
     if(pindexPrev->nHeight + 1 == 1){
-        CScript AIRDROP_SCRIPT;
         std::string addresses;
+        UniValue airdropObj(UniValue::VOBJ);
+        CScript AIRDROP_SCRIPT;
+        airdropObj.push_back(Pair("amount", 38000*COIN));
+        UniValue airdropObjTemp(UniValue::VOBJ);
         for(int i = 0; i < 1000; i++){
-            UniValue airdropObj(UniValue::VOBJ);
             addresses = airdrop_addresses[i];
-            AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
-
-            CBitcoinAddress address2(DecodeDestination(addresses));
-            airdropObj.push_back(Pair("payee", address2.ToString().c_str()));
-            airdropObj.push_back(Pair("script", HexStr(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
-            airdropObj.push_back(Pair("amount", 38000*COIN));
-            result.push_back(Pair("airdrop_" + std::to_string(i), airdropObj));
+            airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
         }
+        airdropObj.push_back(Pair("payee", airdropObjTemp));
+        result.push_back(Pair("airdrop", airdropObj));
+
     }
 
     if(pindexPrev->nHeight + 1 > 1){
