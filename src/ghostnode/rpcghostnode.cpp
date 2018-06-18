@@ -92,8 +92,8 @@ UniValue getpoolinfo(const JSONRPCRequest& req) {
     }
 
     if (GetHDWallet(vpwallets.front())) {
-        obj.push_back(Pair("keys_left", GetHDWallet(GetHDWallet(vpwallets.front()))->nKeysLeftSinceAutoBackup));
-        obj.push_back(Pair("warnings", GetHDWallet(GetHDWallet(vpwallets.front()))->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
+        obj.push_back(Pair("keys_left", GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup));
+        obj.push_back(Pair("warnings", GetHDWallet(vpwallets.front())->nKeysLeftSinceAutoBackup < PRIVATESEND_KEYS_THRESHOLD_WARNING
                                        ? "WARNING: keypool is almost depleted!" : ""));
     }
 
@@ -234,7 +234,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
         CPubKey pubkey;
         CKey key;
 
-        if (!GetHDWallet(vpwallets.front()) || !GetHDWallet(GetHDWallet(vpwallets.front()))->GetGhostnodeVinAndKeys(vin, pubkey, key))
+        if (!GetHDWallet(vpwallets.front()) || !GetHDWallet(vpwallets.front())->GetGhostnodeVinAndKeys(vin, pubkey, key))
             throw JSONRPCError(RPC_INVALID_PARAMETER,
                                "Missing ghostnode input, please look at the documentation for instructions on ghostnode creation");
 
@@ -246,8 +246,8 @@ UniValue ghostnode(const JSONRPCRequest& req) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "You must set ghostnode=1 in the configuration");
 
         {
-            LOCK(GetHDWallet(GetHDWallet(vpwallets.front()))->cs_wallet);
-            EnsureWalletIsUnlocked(GetHDWallet(GetHDWallet(vpwallets.front())));
+            LOCK(GetHDWallet(vpwallets.front())->cs_wallet);
+            EnsureWalletIsUnlocked(GetHDWallet(vpwallets.front()));
         }
 
         if (activeGhostnode.nState != ACTIVE_GHOSTNODE_STARTED) {
