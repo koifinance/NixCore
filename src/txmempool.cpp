@@ -533,7 +533,7 @@ void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCac
         std::vector<uint8_t> hashBytes;
         const CScript *pScript = &coin.out.scriptPubKey;
         int scriptType = 0;
-        CAmount nValue = coin.nType == coin.out.nValue;
+        CAmount nValue = coin.out.nValue;
 
         if (!ExtractIndexInfo(pScript, scriptType, hashBytes))
             continue;
