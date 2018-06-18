@@ -453,7 +453,7 @@ private:
     void trackPackageRemoved(const CFeeRate& rate);
 
 public:
-    int countZCSpend;
+
     static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 
     typedef boost::multi_index_container<
@@ -528,7 +528,6 @@ private:
 public:
     indirectmap<COutPoint, const CTransaction*> mapNextTx;
     std::map<uint256, CAmount> mapDeltas;
-
 
 
     /** Create a new CTxMemPool.
@@ -733,7 +732,6 @@ public:
 
 /**
  * DisconnectedBlockTransactions
-
  * During the reorg, it's desirable to re-add previously confirmed transactions
  * to the mempool, so that anything not re-confirmed in the new chain is
  * available to be mined. However, it's more efficient to wait until the reorg

@@ -517,6 +517,9 @@ void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCac
 
     const CTransaction& tx = entry.GetTx();
 
+    if (!tx.IsNIXVersion())
+        return;
+
     std::vector<CSpentIndexKey> inserted;
 
     uint256 txhash = tx.GetHash();
@@ -530,7 +533,7 @@ void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCac
         std::vector<uint8_t> hashBytes;
         const CScript *pScript = &coin.out.scriptPubKey;
         int scriptType = 0;
-        CAmount nValue = coin.out.nValue;
+        CAmount nValue = coin.nType == coin.out.nValue;
 
         if (!ExtractIndexInfo(pScript, scriptType, hashBytes))
             continue;
@@ -584,7 +587,6 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     const uint256 hash = it->GetTx().GetHash();
     for (const CTxIn& txin : it->GetTx().vin)
     {
-
         mapNextTx.erase(txin.prevout);
     }
 
@@ -712,7 +714,6 @@ void CTxMemPool::removeConflicts(const CTransaction &tx)
     // Remove transactions which depend on inputs of tx, recursively
     LOCK(cs);
     for (const auto &txin : tx.vin) {
-
         auto it = mapNextTx.find(txin.prevout);
         if (it != mapNextTx.end()) {
             const CTransaction &txConflict = *it->second;
@@ -821,8 +822,11 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
             indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
             if (it2 != mapTx.end()) {
                 const CTransaction& tx2 = it2->GetTx();
-                assert(tx2.vpout.size() > txin.prevout.n && tx2.vpout[txin.prevout.n] != nullptr
+
+                    assert(tx2.vpout.size() > txin.prevout.n && tx2.vpout[txin.prevout.n] != nullptr
                         && (tx2.vpout[txin.prevout.n]->IsStandardOutput()));
+
+
                 fDependsWait = true;
                 if (setParentCheck.insert(it2).second) {
                     parentSizes += it2->GetTxSize();
