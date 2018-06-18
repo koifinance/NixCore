@@ -26,6 +26,7 @@
 #include <validationinterface.h>
 #include <warnings.h>
 #include <consensus/airdropaddresses.h>
+#include <consensus/merkle.h>
 
 #ifdef ENABLE_WALLET
     #include "ghostnode/ghostnode-sync.h"
@@ -126,9 +127,6 @@ UniValue generateBlocks(CScript &coinbaseScript, int nGenerate, uint64_t nMaxTri
         std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript));
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
-
-        //if (!ImportOutputs(pblocktemplate.get(), nHeight+1))
-            //throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't import new outputs");
 
         CBlock *pblock = &pblocktemplate->block;
         {
@@ -781,6 +779,25 @@ UniValue submitblock(const JSONRPCRequest& request)
             fBlockPresent = true;
         }
     }
+
+    //rebuild block for vpout settings
+    if(block.vtx[0]->vpout.empty() && block.vtx[0]->vout.empty()){
+        for (unsigned int idx = 0; idx < block.vtx.size(); idx++)
+        {
+            CMutableTransaction txAgain(*block.vtx[idx]);
+            for(unsigned int id = 0; id < block.vtx[idx]->vout.size(); id++){
+                OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
+                txout->nValue = block.vtx[idx]->vout[id].GetValue();
+                txout->scriptPubKey = *block.vtx[idx]->vout[id].GetPScriptPubKey();
+                txout->nRounds = block.vtx[idx]->vout[id].nRounds;
+                txAgain.vpout.push_back(txout);
+            }
+            txAgain.vout.clear();
+            block.vtx[idx] = MakeTransactionRef(std::move(txAgain));
+        }
+        block.hashMerkleRoot = BlockMerkleRoot(block);
+    }
+
 
     {
         LOCK(cs_main);
