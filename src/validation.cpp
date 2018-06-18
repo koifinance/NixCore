@@ -4367,9 +4367,30 @@ void UpdateUncommittedBlockStructures(CBlock& block, const CBlockIndex* pindexPr
     static const std::vector<unsigned char> nonce(32, 0x00);
     if (commitpos != -1 && IsWitnessEnabled(pindexPrev, consensusParams) && !block.vtx[0]->HasWitness()) {
         CMutableTransaction tx(*block.vtx[0]);
-        tx.vin[0].scriptWitness.stack.resize(1);
-        tx.vin[0].scriptWitness.stack[0] = nonce;
-        block.vtx[0] = MakeTransactionRef(std::move(tx));
+        if(tx.vpout.empty() && !tx.vout.empty()){
+            for (unsigned int idx = 0; idx < block.vtx.size(); idx++)
+            {
+                CMutableTransaction txAgain(*block.vtx[idx]);
+                for(unsigned int id = 0; id < block.vtx[idx]->vout.size(); id++){
+                    OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
+                    txout->nValue = block.vtx[idx]->vout[id].GetValue();
+                    txout->scriptPubKey = *block.vtx[idx]->vout[id].GetPScriptPubKey();
+                    txout->nRounds = block.vtx[idx]->vout[id].nRounds;
+                    txAgain.vpout.push_back(txout);
+                }
+                txAgain.vout.clear();
+                if(idx == 0){
+                    txAgain.vin[0].scriptWitness.stack.resize(1);
+                    txAgain.vin[0].scriptWitness.stack[0] = nonce;
+                }
+                block.vtx[idx] = MakeTransactionRef(std::move(txAgain));
+            }
+        }
+        else{
+            tx.vin[0].scriptWitness.stack.resize(1);
+            tx.vin[0].scriptWitness.stack[0] = nonce;
+            block.vtx[0] = MakeTransactionRef(std::move(tx));
+        }
     }
 }
 
