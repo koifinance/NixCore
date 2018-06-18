@@ -33,6 +33,7 @@
 #endif
 #include <memory>
 #include <stdint.h>
+#include <stdlib.h>     /* atoi */
 
 unsigned int ParseConfirmTarget(const UniValue& value)
 {
@@ -156,6 +157,68 @@ UniValue generateBlocks(CScript &coinbaseScript, int nGenerate, uint64_t nMaxTri
         }
     }
     return blockHashes;
+}
+
+UniValue generateblockwithnonce(const JSONRPCRequest& request)
+{
+    int nHeight = 0;
+
+    {   // Don't keep cs_main locked
+        LOCK(cs_main);
+        nHeight = chainActive.Height();
+    }
+
+    // We allow 2 arguments for compliance with BIP22. Argument 2 is ignored.
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2) {
+        throw std::runtime_error(
+            "generateblockwithnonce \"nonce\" \"coinbaseaddress\" \n"
+            "\nAttempts to create new block and submit to network with nonce given.\n"
+
+            "\nArguments\n"
+            "1. \"nonce\"        (string, required) nonce value for the block data to submit\n"
+            "2. \"coinbaseaddress\"          (string, required) address to receive coinbase.\n"
+            "\nResult:\n"
+            "\nExamples:\n"
+            + HelpExampleCli("submitblock", "\"512354\" \"Nsgrua828r5naIFasngu38FASINF\"")
+            + HelpExampleRpc("submitblock", "\"512354\" \"Nsgrua828r5naIFasngu38FASINF\"")
+        );
+    }
+
+    std::string nonceStr = request.params[0].get_str();
+    uint32_t nonce = atoi(nonceStr.c_str());
+    CBitcoinAddress address(request.params[1].get_str());
+    if (!address.IsValid()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Error: Invalid address");
+    }
+    CScript script = GetScriptForDestination(DecodeDestination(request.params[1].get_str()));
+
+    std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(script, true, false));
+
+    if (!pblocktemplate.get())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+
+    CBlock *pblock = &pblocktemplate->block;
+
+    unsigned int nExtraNonce = 0;
+
+    std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(*pblock);
+
+    IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
+
+    pblock->nNonce = nonce;
+
+    if(!CheckProofOfWork(pblock->GetPoWHash(nHeight+1), pblock->nBits, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Proof-of-work error");
+
+    if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+
+    UniValue blockHashes(UniValue::VARR);
+
+    blockHashes.push_back(pblock->GetHash().GetHex());
+
+    return blockHashes;
+
 }
 
 UniValue getmininginfo(const JSONRPCRequest& request)
@@ -687,13 +750,13 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         std::string address2 = "NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc";
 
 
-        airdropObj.push_back(Pair("dev1", address1.c_str()));
-        airdropObj.push_back(Pair("script", HexStr(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
-        airdropObj.push_back(Pair("amount", (0.05 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
+        airdropObj.push_back(Pair("dev_1", address1.c_str()));
+        airdropObj.push_back(Pair("script_1", HexStr(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+        airdropObj.push_back(Pair("amount_1", (0.05 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
 
-        airdropObj.push_back(Pair("dev2", address2.c_str()));
-        airdropObj.push_back(Pair("script", HexStr(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
-        airdropObj.push_back(Pair("amount", (0.02 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
+        airdropObj.push_back(Pair("dev_2", address2.c_str()));
+        airdropObj.push_back(Pair("script_2", HexStr(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+        airdropObj.push_back(Pair("amount_2", (0.02 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
 
         result.push_back(Pair("dev_fund", airdropObj));
     }
@@ -774,6 +837,7 @@ UniValue submitblock(const JSONRPCRequest& request)
                 txAgain.vpout.push_back(txout);
             }
             txAgain.vout.clear();
+            //need to run txhash again
             block.vtx[idx] = MakeTransactionRef(std::move(txAgain));
         }
         block.hashMerkleRoot = BlockMerkleRoot(block);
@@ -1053,6 +1117,7 @@ static const CRPCCommand commands[] =
     { "mining",             "prioritisetransaction",  &prioritisetransaction,  {"txid","dummy","fee_delta"} },
     { "mining",             "getblocktemplate",       &getblocktemplate,       {"template_request"} },
     { "mining",             "submitblock",            &submitblock,            {"hexdata","dummy"} },
+    { "mining",             "generateblockwithnonce",   &generateblockwithnonce, {"nonce","coinbaseaddress"} },
 
     { "util",               "estimatefee",            &estimatefee,            {"nblocks"} },
     { "util",               "estimatesmartfee",       &estimatesmartfee,       {"conf_target", "estimate_mode"} },
