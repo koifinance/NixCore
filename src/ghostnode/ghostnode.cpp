@@ -492,9 +492,9 @@ bool CGhostnodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollatera
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
 
-    LogPrintf("ghostnode", "CGhostnodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyGhostnodeNew.GetID() = %s\n",
-             CBitcoinAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
-             pubKeyGhostnodeNew.GetID().ToString());
+    //LogPrintf("ghostnode", "CGhostnodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyGhostnodeNew.GetID() = %s\n",
+      //       CBitcoinAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
+      //       pubKeyGhostnodeNew.GetID().ToString());
 
 
     CGhostnodePing mnp(txin);
