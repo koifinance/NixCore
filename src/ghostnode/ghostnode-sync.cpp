@@ -243,7 +243,7 @@ void CGhostnodeSync::ProcessTick() {
     //the actual count of ghostnodes we have currently
     int nMnCount = mnodeman.CountGhostnodes();
 
-    LogPrintf("ProcessTick", "CGhostnodeSync::ProcessTick \n");
+    LogPrintf("ProcessTick CGhostnodeSync::ProcessTick \n");
 
     // INITIAL SYNC SETUP / LOG REPORTING
     double nSyncProgress = double(nRequestedGhostnodeAttempt + (nRequestedGhostnodeAssets - 1) * 8) / (8 * 4);
@@ -370,7 +370,7 @@ void CGhostnodeSync::ProcessTick() {
             // MNW : SYNC GHOSTNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
 
             if (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_MNW) {
-                LogPrintf("mnpayments", "CGhostnodeSync::ProcessTick \n");
+                LogPrintf("mnpayments CGhostnodeSync::ProcessTick \n");
                 // check for timeout first
                 // This might take a lot longer than GHOSTNODE_SYNC_TIMEOUT_SECONDS minutes due to new blocks,
                 // but that should be OK and it should timeout eventually.
