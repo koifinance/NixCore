@@ -14,15 +14,15 @@
 CActiveGhostnode activeGhostnode;
 
 void CActiveGhostnode::ManageState() {
-    LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- Start\n");
+     //LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- Start\n");
     if (!fGhostNode) {
-        LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- Not a ghostnode, returning\n");
+         //LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- Not a ghostnode, returning\n");
         return;
     }
 
     if (Params().NetworkIDString() != CBaseChainParams::REGTEST && !ghostnodeSync.IsBlockchainSynced()) {
         nState = ACTIVE_GHOSTNODE_SYNC_IN_PROCESS;
-        LogPrintf("CActiveGhostnode::ManageState -- %s: %s\n", GetStateString(), GetStatus());
+         //LogPrintf("CActiveGhostnode::ManageState -- %s: %s\n", GetStateString(), GetStatus());
         return;
     }
 
@@ -30,8 +30,8 @@ void CActiveGhostnode::ManageState() {
         nState = ACTIVE_GHOSTNODE_INITIAL;
     }
 
-    LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- status = %s, type = %s, pinger enabled = %d\n",
-             GetStatus(), GetTypeString(), fPingerEnabled);
+     //LogPrintf("ghostnode", "CActiveGhostnode::ManageState -- status = %s, type = %s, pinger enabled = %d\n",
+             //GetStatus(), GetTypeString(), fPingerEnabled);
 
     if (eType == GHOSTNODE_UNKNOWN) {
         ManageStateInitial();
@@ -105,49 +105,49 @@ std::string CActiveGhostnode::GetTypeString() const {
 
 bool CActiveGhostnode::SendGhostnodePing() {
     if (!fPingerEnabled) {
-        LogPrintf("ghostnode",
-                 "CActiveGhostnode::SendGhostnodePing -- %s: ghostnode ping service is disabled, skipping...\n",
-                 GetStateString());
+         //LogPrintf("ghostnode",
+                // "CActiveGhostnode::SendGhostnodePing -- %s: ghostnode ping service is disabled, skipping...\n",
+               //  GetStateString());
         return false;
     }
 
     if (!mnodeman.Has(vin)) {
         strNotCapableReason = "Ghostnode not in ghostnode list";
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
-        LogPrintf("CActiveGhostnode::SendGhostnodePing -- %s: %s\n", GetStateString(), strNotCapableReason);
+         //LogPrintf("CActiveGhostnode::SendGhostnodePing -- %s: %s\n", GetStateString(), strNotCapableReason);
         return false;
     }
 
     CGhostnodePing mnp(vin);
     if (!mnp.Sign(keyGhostnode, pubKeyGhostnode)) {
-        LogPrintf("CActiveGhostnode::SendGhostnodePing -- ERROR: Couldn't sign Ghostnode Ping\n");
+         //LogPrintf("CActiveGhostnode::SendGhostnodePing -- ERROR: Couldn't sign Ghostnode Ping\n");
         return false;
     }
 
     // Update lastPing for our ghostnode in Ghostnode list
     if (mnodeman.IsGhostnodePingedWithin(vin, GHOSTNODE_MIN_MNP_SECONDS, mnp.sigTime)) {
-        LogPrintf("CActiveGhostnode::SendGhostnodePing -- Too early to send Ghostnode Ping\n");
+         //LogPrintf("CActiveGhostnode::SendGhostnodePing -- Too early to send Ghostnode Ping\n");
         return false;
     }
 
     mnodeman.SetGhostnodeLastPing(vin, mnp);
 
-    LogPrintf("CActiveGhostnode::SendGhostnodePing -- Relaying ping, collateral=%s\n", vin.ToString());
+     //LogPrintf("CActiveGhostnode::SendGhostnodePing -- Relaying ping, collateral=%s\n", vin.ToString());
     mnp.Relay();
 
     return true;
 }
 
 void CActiveGhostnode::ManageStateInitial() {
-    LogPrintf("ghostnode", "CActiveGhostnode::ManageStateInitial -- status = %s, type = %s, pinger enabled = %d\n",
-             GetStatus(), GetTypeString(), fPingerEnabled);
+     //LogPrintf("ghostnode", "CActiveGhostnode::ManageStateInitial -- status = %s, type = %s, pinger enabled = %d\n",
+             //GetStatus(), GetTypeString(), fPingerEnabled);
 
     // Check that our local network configuration is correct
     if (!fListen) {
         // listen option is probably overwritten by smth else, no good
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
         strNotCapableReason = "Ghostnode must accept connections from outside. Make sure listen configuration option is not overwritten by some another parameter.";
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
@@ -162,7 +162,7 @@ void CActiveGhostnode::ManageStateInitial() {
             if (g_connman->vNodes.empty()) {
                 nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
                 strNotCapableReason = "Can't detect valid external address. Will retry when there are some connections available.";
-                LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
+                 //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
                 return;
             }
             // We have some peers, let's try to find our local address from one of them
@@ -179,7 +179,7 @@ void CActiveGhostnode::ManageStateInitial() {
     if (!fFoundLocal) {
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
         strNotCapableReason = "Can't detect valid external address. Please consider using the externalip configuration option if problem persists. Make sure to use IPv4 address only.";
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
@@ -189,23 +189,23 @@ void CActiveGhostnode::ManageStateInitial() {
             nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
             strNotCapableReason = strprintf("Invalid port: %u - only %d is supported on mainnet.", service.GetPort(),
                                             mainnetDefaultPort);
-            LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
+             //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
     } else if (service.GetPort() == mainnetDefaultPort) {
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
         strNotCapableReason = strprintf("Invalid port: %u - %d is only supported on mainnet.", service.GetPort(),
                                         mainnetDefaultPort);
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
-    LogPrintf("CActiveGhostnode::ManageStateInitial -- Checking inbound connection to '%s'\n", service.ToString());
+     //LogPrintf("CActiveGhostnode::ManageStateInitial -- Checking inbound connection to '%s'\n", service.ToString());
     //TODO
     if (!g_connman->ConnectNode(CAddress(service, NODE_NETWORK), NULL, false, true)) {
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
         strNotCapableReason = "Could not connect to " + service.ToString();
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
@@ -214,17 +214,17 @@ void CActiveGhostnode::ManageStateInitial() {
 
     // Check if wallet funds are available
     if (!GetHDWallet(vpwallets.front())) {
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet not available\n", GetStateString());
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet not available\n", GetStateString());
         return;
     }
 
     if (GetHDWallet(vpwallets.front())->IsLocked()) {
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet is locked\n", GetStateString());
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet is locked\n", GetStateString());
         return;
     }
 
     if (GetHDWallet(vpwallets.front())->GetBalance() < GHOSTNODE_COIN_REQUIRED * COIN) {
-        LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet balance is < 40000 NIX\n", GetStateString());
+         //LogPrintf("CActiveGhostnode::ManageStateInitial -- %s: Wallet balance is < 40000 NIX\n", GetStateString());
         return;
     }
 
@@ -238,14 +238,14 @@ void CActiveGhostnode::ManageStateInitial() {
         eType = GHOSTNODE_LOCAL;
     }
 
-    LogPrintf("ghostnode", "CActiveGhostnode::ManageStateInitial -- End status = %s, type = %s, pinger enabled = %d\n",
-             GetStatus(), GetTypeString(), fPingerEnabled);
+     //LogPrintf("ghostnode", "CActiveGhostnode::ManageStateInitial -- End status = %s, type = %s, pinger enabled = %d\n",
+             //GetStatus(), GetTypeString(), fPingerEnabled);
 }
 
 void CActiveGhostnode::ManageStateRemote() {
-    LogPrintf("ghostnode",
-             "CActiveGhostnode::ManageStateRemote -- Start status = %s, type = %s, pinger enabled = %d, pubKeyGhostnode.GetID() = %s\n",
-             GetStatus(), fPingerEnabled, GetTypeString(), pubKeyGhostnode.GetID().ToString());
+     //LogPrintf("ghostnode",
+             //"CActiveGhostnode::ManageStateRemote -- Start status = %s, type = %s, pinger enabled = %d, pubKeyGhostnode.GetID() = %s\n",
+             //GetStatus(), fPingerEnabled, GetTypeString(), pubKeyGhostnode.GetID().ToString());
 
     mnodeman.CheckGhostnode(pubKeyGhostnode);
     ghostnode_info_t infoMn = mnodeman.GetGhostnodeInfo(pubKeyGhostnode);
@@ -253,25 +253,25 @@ void CActiveGhostnode::ManageStateRemote() {
         if (infoMn.nProtocolVersion != PROTOCOL_VERSION) {
             nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
             strNotCapableReason = "Invalid protocol version";
-            LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
+             //LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
         if (service != infoMn.addr) {
             nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
-            // LogPrintf("service: %s\n", service.ToString());
-            // LogPrintf("infoMn.addr: %s\n", infoMn.addr.ToString());
+            //  //LogPrintf("service: %s\n", service.ToString());
+            //  //LogPrintf("infoMn.addr: %s\n", infoMn.addr.ToString());
             strNotCapableReason = "Broadcasted IP doesn't match our external address. Make sure you issued a new broadcast if IP of this ghostnode changed recently.";
-            LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
+             //LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
         if (!CGhostnode::IsValidStateForAutoStart(infoMn.nActiveState)) {
             nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
             strNotCapableReason = strprintf("Ghostnode in %s state", CGhostnode::StateToString(infoMn.nActiveState));
-            LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
+             //LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
         if (nState != ACTIVE_GHOSTNODE_STARTED) {
-            LogPrintf("CActiveGhostnode::ManageStateRemote -- STARTED!\n");
+             //LogPrintf("CActiveGhostnode::ManageStateRemote -- STARTED!\n");
             vin = infoMn.vin;
             service = infoMn.addr;
             fPingerEnabled = true;
@@ -280,13 +280,13 @@ void CActiveGhostnode::ManageStateRemote() {
     } else {
         nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
         strNotCapableReason = "Ghostnode not in ghostnode list";
-        LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
+         //LogPrintf("CActiveGhostnode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
     }
 }
 
 void CActiveGhostnode::ManageStateLocal() {
-    LogPrintf("ghostnode", "CActiveGhostnode::ManageStateLocal -- status = %s, type = %s, pinger enabled = %d\n",
-             GetStatus(), GetTypeString(), fPingerEnabled);
+     //LogPrintf("ghostnode", "CActiveGhostnode::ManageStateLocal -- status = %s, type = %s, pinger enabled = %d\n",
+             //GetStatus(), GetTypeString(), fPingerEnabled);
     if (nState == ACTIVE_GHOSTNODE_STARTED) {
         return;
     }
@@ -300,7 +300,7 @@ void CActiveGhostnode::ManageStateLocal() {
         if (nInputAge < Params().GetConsensus().nGhostnodeMinimumConfirmations) {
             nState = ACTIVE_GHOSTNODE_INPUT_TOO_NEW;
             strNotCapableReason = strprintf(_("%s - %d confirmations"), GetStatus(), nInputAge);
-            LogPrintf("CActiveGhostnode::ManageStateLocal -- %s: %s\n", GetStateString(), strNotCapableReason);
+             //LogPrintf("CActiveGhostnode::ManageStateLocal -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
 
@@ -315,7 +315,7 @@ void CActiveGhostnode::ManageStateLocal() {
                                      pubKeyGhostnode, strError, mnb)) {
             nState = ACTIVE_GHOSTNODE_NOT_CAPABLE;
             strNotCapableReason = "Error creating mastenode broadcast: " + strError;
-            LogPrintf("CActiveGhostnode::ManageStateLocal -- %s: %s\n", GetStateString(), strNotCapableReason);
+             //LogPrintf("CActiveGhostnode::ManageStateLocal -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
 
@@ -323,12 +323,12 @@ void CActiveGhostnode::ManageStateLocal() {
         nState = ACTIVE_GHOSTNODE_STARTED;
 
         //update to ghostnode list
-        LogPrintf("CActiveGhostnode::ManageStateLocal -- Update Ghostnode List\n");
+         //LogPrintf("CActiveGhostnode::ManageStateLocal -- Update Ghostnode List\n");
         mnodeman.UpdateGhostnodeList(mnb);
         mnodeman.NotifyGhostnodeUpdates();
 
         //send to all peers
-        LogPrintf("CActiveGhostnode::ManageStateLocal -- Relay broadcast, vin=%s\n", vin.ToString());
+         //LogPrintf("CActiveGhostnode::ManageStateLocal -- Relay broadcast, vin=%s\n", vin.ToString());
         mnb.RelayGhostNode();
     }
 }

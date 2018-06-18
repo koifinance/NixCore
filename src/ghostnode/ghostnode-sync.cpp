@@ -30,14 +30,14 @@ bool CGhostnodeSync::CheckNodeHeight(CNode *pnode, bool fDisconnectStuckNodes) {
         if (fDisconnectStuckNodes) {
             // Disconnect to free this connection slot for another peer.
             pnode->fDisconnect = true;
-            LogPrintf("CGhostnodeSync::CheckNodeHeight -- disconnecting from stuck peer \n");
+             //LogPrintf("CGhostnodeSync::CheckNodeHeight -- disconnecting from stuck peer \n");
         } else {
-            LogPrintf("CGhostnodeSync::CheckNodeHeight -- skipping stuck peer \n");
+             //LogPrintf("CGhostnodeSync::CheckNodeHeight -- skipping stuck peer \n");
         }
         return false;
     } else if (pCurrentBlockIndex->nHeight < stats.nSyncHeight - 1) {
         // This peer announced more headers than we have blocks currently
-        LogPrintf("CGhostnodeSync::CheckNodeHeight -- skipping peer, who announced more headers than we have blocks currently \n");
+         //LogPrintf("CGhostnodeSync::CheckNodeHeight -- skipping peer, who announced more headers than we have blocks currently \n");
         return false;
     }
 
@@ -53,7 +53,7 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
         return true;
     // if the last call to this function was more than 60 minutes ago (client was in sleep mode) reset the sync process
     if (GetTime() - nTimeLastProcess > 60 * 60) {
-        LogPrintf("CGhostnodeSync::IsBlockchainSynced time-check \n");
+         //LogPrintf("CGhostnodeSync::IsBlockchainSynced time-check \n");
         Reset();
         fBlockchainSynced = false;
     }
@@ -77,7 +77,7 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
         }
     }
 
-    LogPrintf("ghostnode-sync, CGhostnodeSync::IsBlockchainSynced -- state before check \n");
+     //LogPrintf("ghostnode-sync, CGhostnodeSync::IsBlockchainSynced -- state before check \n");
 
     nTimeLastProcess = GetTime();
     nSkipped = 0;
@@ -104,7 +104,7 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
             nNodesAtSameHeight++;
             // if we have decent number of such peers, most likely we are synced now
             if (nNodesAtSameHeight >= GHOSTNODE_SYNC_ENOUGH_PEERS) {
-                LogPrintf("CGhostnodeSync::IsBlockchainSynced -- found enough peers on the same height as we are, done\n");
+                 //LogPrintf("CGhostnodeSync::IsBlockchainSynced -- found enough peers on the same height as we are, done\n");
                 fBlockchainSynced = true;
                 g_connman->ReleaseNodeVector(vNodesCopy);
                 return true;
@@ -166,22 +166,22 @@ void CGhostnodeSync::SwitchToNextAsset() {
         case (GHOSTNODE_SYNC_INITIAL):
             ClearFulfilledRequests();
             nRequestedGhostnodeAssets = GHOSTNODE_SYNC_SPORKS;
-            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting\n");
+             //LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting\n");
             break;
         case (GHOSTNODE_SYNC_SPORKS):
             nTimeLastGhostnodeList = GetTime();
             nRequestedGhostnodeAssets = GHOSTNODE_SYNC_LIST;
-            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting \n");
+             //LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting \n");
             break;
         case (GHOSTNODE_SYNC_LIST):
             nTimeLastPaymentVote = GetTime();
             nRequestedGhostnodeAssets = GHOSTNODE_SYNC_MNW;
-            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting \n");
+             //LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Starting \n");
             break;
 
         case (GHOSTNODE_SYNC_MNW):
             nTimeLastGovernanceItem = GetTime();
-            LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Sync has finished\n");
+             //LogPrintf("CGhostnodeSync::SwitchToNextAsset -- Sync has finished\n");
             nRequestedGhostnodeAssets = GHOSTNODE_SYNC_FINISHED;
             break;
     }
@@ -218,7 +218,7 @@ void CGhostnodeSync::ProcessMessage(CNode *pfrom, std::string &strCommand, CData
         int nCount;
         vRecv >> nItemID >> nCount;
 
-        LogPrintf("SYNCSTATUSCOUNT -- got inventory count \n");
+         //LogPrintf("SYNCSTATUSCOUNT -- got inventory count \n");
     }
 }
 
@@ -243,11 +243,11 @@ void CGhostnodeSync::ProcessTick() {
     //the actual count of ghostnodes we have currently
     int nMnCount = mnodeman.CountGhostnodes();
 
-    LogPrintf("ProcessTick CGhostnodeSync::ProcessTick \n");
+     //LogPrintf("ProcessTick CGhostnodeSync::ProcessTick \n");
 
     // INITIAL SYNC SETUP / LOG REPORTING
     double nSyncProgress = double(nRequestedGhostnodeAttempt + (nRequestedGhostnodeAssets - 1) * 8) / (8 * 4);
-    LogPrintf("ProcessTick, CGhostnodeSync::ProcessTick \n");
+     //LogPrintf("ProcessTick, CGhostnodeSync::ProcessTick \n");
     uiInterface.NotifyAdditionalDataSyncProgressChanged(pCurrentBlockIndex->nHeight, nSyncProgress);
 
     // RESET SYNCING INCASE OF FAILURE
@@ -257,7 +257,7 @@ void CGhostnodeSync::ProcessTick() {
                 Resync if we lost all ghostnodes from sleep/wake or failed to sync originally
             */
             if (nMnCount == 0) {
-                LogPrintf("CGhostnodeSync::ProcessTick -- WARNING: not enough data, restarting sync\n");
+                 //LogPrintf("CGhostnodeSync::ProcessTick -- WARNING: not enough data, restarting sync\n");
                 Reset();
             } else {
                 std::vector < CNode * > vNodesCopy = g_connman->CopyNodeVector();
@@ -320,7 +320,7 @@ void CGhostnodeSync::ProcessTick() {
                 // We already fully synced from this node recently,
                 // disconnect to free this connection slot for another peer.
                 pnode->fDisconnect = true;
-                LogPrintf("CGhostnodeSync::ProcessTick -- disconnecting from recently synced peer \n");
+                 //LogPrintf("CGhostnodeSync::ProcessTick -- disconnecting from recently synced peer \n");
                 continue;
             }
 
@@ -332,7 +332,7 @@ void CGhostnodeSync::ProcessTick() {
                 // get current network sporks
                 const CNetMsgMaker msgMaker(pnode->GetSendVersion());
                 g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::GETSPORKS));
-                LogPrintf("CGhostnodeSync::ProcessTick \n");
+                 //LogPrintf("CGhostnodeSync::ProcessTick \n");
                 continue; // always get sporks first, switch to the next node without waiting for the next tick
             }
 
@@ -341,9 +341,9 @@ void CGhostnodeSync::ProcessTick() {
             if (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_LIST) {
                 // check for timeout first
                 if (nTimeLastGhostnodeList < GetTime() - GHOSTNODE_SYNC_TIMEOUT_SECONDS) {
-                    LogPrintf("CGhostnodeSync::ProcessTick \n");
+                     //LogPrintf("CGhostnodeSync::ProcessTick \n");
                     if (nRequestedGhostnodeAttempt == 0) {
-                        LogPrintf("CGhostnodeSync::ProcessTick -- ERROR: failed to sync \n");
+                         //LogPrintf("CGhostnodeSync::ProcessTick -- ERROR: failed to sync \n");
                         // there is no way we can continue without ghostnode list, fail here and try later
                         Fail();
                         g_connman->ReleaseNodeVector(vNodesCopy);
@@ -370,14 +370,14 @@ void CGhostnodeSync::ProcessTick() {
             // MNW : SYNC GHOSTNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
 
             if (nRequestedGhostnodeAssets == GHOSTNODE_SYNC_MNW) {
-                LogPrintf("mnpayments CGhostnodeSync::ProcessTick \n");
+                 //LogPrintf("mnpayments CGhostnodeSync::ProcessTick \n");
                 // check for timeout first
                 // This might take a lot longer than GHOSTNODE_SYNC_TIMEOUT_SECONDS minutes due to new blocks,
                 // but that should be OK and it should timeout eventually.
                 if (nTimeLastPaymentVote < GetTime() - GHOSTNODE_SYNC_TIMEOUT_SECONDS) {
-                    LogPrintf("CGhostnodeSync::ProcessTick \n");
+                     //LogPrintf("CGhostnodeSync::ProcessTick \n");
                     if (nRequestedGhostnodeAttempt == 0) {
-                        LogPrintf("CGhostnodeSync::ProcessTick -- ERROR: failed to sync \n");
+                         //LogPrintf("CGhostnodeSync::ProcessTick -- ERROR: failed to sync \n");
                         // probably not a good idea to proceed without winner list
                         Fail();
                         g_connman->ReleaseNodeVector(vNodesCopy);
@@ -392,7 +392,7 @@ void CGhostnodeSync::ProcessTick() {
                 // if mnpayments already has enough blocks and votes, switch to the next asset
                 // try to fetch data from at least two peers though
                 if (nRequestedGhostnodeAttempt > 1 && mnpayments.IsEnoughData()) {
-                    LogPrintf("CGhostnodeSync::ProcessTick -found enough data\n");
+                     //LogPrintf("CGhostnodeSync::ProcessTick -found enough data\n");
                     SwitchToNextAsset();
                     g_connman->ReleaseNodeVector(vNodesCopy);
                     return;

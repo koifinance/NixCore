@@ -49,17 +49,17 @@ bool CDarkSendRelay::Sign(std::string strSharedKey)
     CPubKey pubkey2;
 
     if(!darkSendSigner.GetKeysFromSecret(strSharedKey, key2, pubkey2)) {
-        LogPrintf("CDarkSendRelay::Sign -- GetKeysFromSecret() failed, invalid shared key %s\n", strSharedKey);
+         //LogPrintf("CDarkSendRelay::Sign -- GetKeysFromSecret() failed, invalid shared key %s\n", strSharedKey);
         return false;
     }
 
     if(!darkSendSigner.SignMessage(strMessage, vchSig2, key2)) {
-        LogPrintf("CDarkSendRelay::Sign -- SignMessage() failed\n");
+         //LogPrintf("CDarkSendRelay::Sign -- SignMessage() failed\n");
         return false;
     }
 
     if(!darkSendSigner.VerifyMessage(pubkey2, vchSig2, strMessage, strError)) {
-        LogPrintf("CDarkSendRelay::Sign -- VerifyMessage() failed, error: %s\n", strError);
+         //LogPrintf("CDarkSendRelay::Sign -- VerifyMessage() failed, error: %s\n", strError);
         return false;
     }
 
@@ -75,12 +75,12 @@ bool CDarkSendRelay::VerifyMessage(std::string strSharedKey)
     CPubKey pubkey2;
 
     if(!darkSendSigner.GetKeysFromSecret(strSharedKey, key2, pubkey2)) {
-        LogPrintf("CDarkSendRelay::VerifyMessage -- GetKeysFromSecret() failed, invalid shared key %s\n", strSharedKey);
+         //LogPrintf("CDarkSendRelay::VerifyMessage -- GetKeysFromSecret() failed, invalid shared key %s\n", strSharedKey);
         return false;
     }
 
     if(!darkSendSigner.VerifyMessage(pubkey2, vchSig2, strMessage, strError)) {
-        LogPrintf("CDarkSendRelay::VerifyMessage -- VerifyMessage() failed, error: %s\n", strError);
+         //LogPrintf("CDarkSendRelay::VerifyMessage -- VerifyMessage() failed, error: %s\n", strError);
         return false;
     }
 
