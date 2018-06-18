@@ -762,6 +762,23 @@ UniValue submitblock(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
     }
 
+    if(block.vtx[0]->vpout.empty() && !block.vtx[0]->vout.empty()){
+        for (unsigned int idx = 0; idx < block.vtx.size(); idx++)
+        {
+            CMutableTransaction txAgain(*block.vtx[idx]);
+            for(unsigned int id = 0; id < block.vtx[idx]->vout.size(); id++){
+                OUTPUT_PTR<CTxOutStandard> txout = MAKE_OUTPUT<CTxOutStandard>();
+                txout->nValue = block.vtx[idx]->vout[id].GetValue();
+                txout->scriptPubKey = *block.vtx[idx]->vout[id].GetPScriptPubKey();
+                txout->nRounds = block.vtx[idx]->vout[id].nRounds;
+                txAgain.vpout.push_back(txout);
+            }
+            txAgain.vout.clear();
+            block.vtx[idx] = MakeTransactionRef(std::move(txAgain));
+        }
+        block.hashMerkleRoot = BlockMerkleRoot(block);
+    }
+
     uint256 hash = block.GetHash();
     bool fBlockPresent = false;
     {
@@ -780,6 +797,7 @@ UniValue submitblock(const JSONRPCRequest& request)
         }
     }
 
+    /*
     //rebuild block for vpout settings
     if(block.vtx[0]->vpout.empty() && block.vtx[0]->vout.empty()){
         for (unsigned int idx = 0; idx < block.vtx.size(); idx++)
@@ -797,7 +815,7 @@ UniValue submitblock(const JSONRPCRequest& request)
         }
         block.hashMerkleRoot = BlockMerkleRoot(block);
     }
-
+    */
 
     {
         LOCK(cs_main);
