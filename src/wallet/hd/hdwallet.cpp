@@ -10243,9 +10243,16 @@ bool CHDWallet::GetGhostnodeVinAndKeys(CTxIn &txinRet, CPubKey &pubKeyRet, CKey 
     uint256 txHash = uint256S(strTxHash);
     int nOutputIndex = atoi(strOutputIndex.c_str());
 
-    BOOST_FOREACH(COutput & out, vPossibleCoins)
-    if (out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
-        return GetVinAndKeysFromOutput(out, txinRet, pubKeyRet, keyRet);
+    //BOOST_FOREACH(COutput & out, vPossibleCoins)
+
+    for (auto &out : vPossibleCoins)
+    {
+        if (out.tx->GetHash() == txHash && out.i == nOutputIndex) {
+            return GetVinAndKeysFromOutput(out, txinRet, pubKeyRet, keyRet);
+        }
+    }
+    //if (out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
+    //    return GetVinAndKeysFromOutput(out, txinRet, pubKeyRet, keyRet);
 
     LogPrintf("CWallet::GetGhostnodeVinAndKeys -- Could not locate specified ghostnode vin\n");
     return false;

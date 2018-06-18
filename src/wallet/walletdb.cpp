@@ -917,3 +917,47 @@ bool CWalletDB::WriteVersion(int nVersion)
 {
     return batch.WriteVersion(nVersion);
 }
+
+bool CWalletDB::WriteLockedUnspentOutput(const COutPoint &o)
+{
+    bool tmp = true;
+    return WriteIC(std::make_pair(std::string("luo"), o), tmp);
+}
+
+bool CWalletDB::EraseLockedUnspentOutput(const COutPoint &o)
+{
+    return EraseIC(std::make_pair(std::string("luo"), o));
+}
+
+bool CWalletDB::EraseAllByPrefix(std::string sPrefix)
+{
+    // Must be in transaction to call pcursor->del
+    if (!TxnBegin())
+        return error("%s: TxnBegin failed.\n", __func__);
+
+    // Get cursor
+    Dbc *pcursor = nullptr;
+    int ret = batch.pdb->cursor(batch.activeTxn, &pcursor, 0);
+    if (ret != 0 || !pcursor)
+        return error("%s: GetCursor failed.\n", __func__);
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+    std::string strType;
+    ssKey << sPrefix;
+    while (batch.ReadAtCursor(pcursor, ssKey, ssValue, true) == 0)
+    {
+        ssKey >> strType;
+        if (IsKeyType(strType) || strType != sPrefix)
+            break;
+        int rv = pcursor->del(0);
+        if (rv != 0)
+            LogPrintf("%s: Erase failed with error %d\n", __func__, rv);
+        m_dbw.IncrementUpdateCounter();
+    };
+    pcursor->close();
+
+    TxnCommit();
+
+    return true;
+}

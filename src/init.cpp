@@ -1984,11 +1984,11 @@ bool AppInitMain()
             outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
-            if (vpwallets.front()->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
+            if (GetHDWallet(vpwallets.front())->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
                 LogPrintf("  %s %s - IS NOT SPENDABLE, was not locked\n", mne.getTxHash(), mne.getOutputIndex());
                 continue;
             }
-            vpwallets.front()->LockCoin(outpoint);
+            //GetHDWallet(vpwallets.front())->LockCoin(outpoint);
             LogPrintf("  %s %s - locked successfully\n", mne.getTxHash(), mne.getOutputIndex());
         }
     }

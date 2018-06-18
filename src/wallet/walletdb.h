@@ -146,6 +146,7 @@ public:
  */
 class CWalletDB
 {
+friend class CHDWalletDB;
 protected:
     template <typename K, typename T>
     bool WriteIC(const K& key, const T& value, bool fOverwrite = true)
@@ -375,6 +376,10 @@ public:
 
     CDB batch;
     CWalletDBWrapper& m_dbw;
+
+    bool WriteLockedUnspentOutput(const COutPoint &o);
+    bool EraseLockedUnspentOutput(const COutPoint &o);
+    bool EraseAllByPrefix(std::string sPrefix);
 };
 
 //! Compacts BDB state so that wallet.dat is self-contained (if there are changes)

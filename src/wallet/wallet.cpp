@@ -3815,22 +3815,34 @@ void CWallet::MarkReserveKeysAsUsed(int64_t keypool_id)
     }
 }
 
-void CWallet::LockCoin(const COutPoint& output)
+void CWallet::LockCoin(const COutPoint& output, bool fPermanent)
 {
     AssertLockHeld(cs_wallet); // setLockedCoins
     setLockedCoins.insert(output);
+    if (fPermanent)
+    {
+        CWalletDB batch(*dbw);
+        batch.WriteLockedUnspentOutput(output);
+    };
 }
 
 void CWallet::UnlockCoin(const COutPoint& output)
 {
     AssertLockHeld(cs_wallet); // setLockedCoins
-    setLockedCoins.erase(output);
+    if (setLockedCoins.erase(output))
+    {
+        CWalletDB batch(*dbw);
+        batch.EraseLockedUnspentOutput(output);
+    };
 }
 
 void CWallet::UnlockAllCoins()
 {
     AssertLockHeld(cs_wallet); // setLockedCoins
     setLockedCoins.clear();
+
+    CWalletDB batch(*dbw);
+    batch.EraseAllByPrefix("luo");
 }
 
 bool CWallet::IsLockedCoin(uint256 hash, unsigned int n) const

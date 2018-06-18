@@ -394,7 +394,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
     if (strCommand == "outputs") {
         // Find possible candidates
         std::vector <COutput> vPossibleCoins;
-        GetHDWallet(vpwallets.front())->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_40000);
+        GetHDWallet(vpwallets.front())->AvailableCoins(vPossibleCoins, true, NULL, 1, MAX_MONEY, MAX_MONEY, 0, 0, 0x7FFFFFFF, ONLY_40000);
 
         UniValue obj(UniValue::VOBJ);
         BOOST_FOREACH(COutput & out, vPossibleCoins)

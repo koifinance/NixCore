@@ -1091,7 +1091,7 @@ public:
     virtual bool IsSpent(const uint256& hash, unsigned int n) const;
 
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
-    void LockCoin(const COutPoint& output);
+    void LockCoin(const COutPoint& output, bool fPermanent=false);
     void UnlockCoin(const COutPoint& output);
     void UnlockAllCoins();
     void ListLockedCoins(std::vector<COutPoint>& vOutpts) const;

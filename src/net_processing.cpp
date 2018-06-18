@@ -2199,6 +2199,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             inv.type = State(pfrom->GetId())->fWantsCmpctWitness ? MSG_WITNESS_BLOCK : MSG_BLOCK;
             inv.hash = req.blockhash;
             pfrom->vRecvGetData.push_back(inv);
+            ProcessGetData(pfrom, chainparams.GetConsensus(), connman, interruptMsgProc);
             // The message processing loop will go around again (without pausing) and we'll respond then (without cs_main)
             return true;
         }
@@ -2289,13 +2290,12 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         CTxLockRequest txLockRequest;
         CDarksendBroadcastTx dstx;
         int nInvType = MSG_TX;
-        const CTransaction& tx = *ptx;
 
         // Read data and assign inv type
         if(strCommand == NetMsgType::TX) {
             vRecv >> ptx;
         } else if(strCommand == NetMsgType::TXLOCKREQUEST) {
-            txLockRequest.Unserialize(vRecv);
+            vRecv >> txLockRequest;
             CTransaction tempTX(txLockRequest);
             CTransactionRef temp(&tempTX);
             ptx = temp;
@@ -2305,6 +2305,8 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             ptx = dstx.tx;
             nInvType = MSG_DSTX;
         }
+
+        const CTransaction& tx = *ptx;
 
         CInv inv(MSG_TX, tx.GetHash());
         pfrom->AddInventoryKnown(inv);
@@ -3075,7 +3077,28 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
     else {
         // Ignore unknown commands for extensibility
-        LogPrint(BCLog::NET, "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->GetId());
+        bool found = false;
+        const std::vector <std::string> &allMessages = getAllNetMessageTypes();
+        BOOST_FOREACH(const std::string msg, allMessages) {
+            if (msg == strCommand) {
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            std::string strCommandNonConst = strCommand;
+            //probably one the extensions
+            darkSendPool.ProcessMessage(pfrom, strCommandNonConst, vRecv);
+            mnodeman.ProcessMessage(pfrom, strCommandNonConst, vRecv);
+            mnpayments.ProcessMessage(pfrom, strCommandNonConst, vRecv);
+            instantsend.ProcessMessage(pfrom, strCommandNonConst, vRecv);
+            sporkManager.ProcessSpork(pfrom, strCommandNonConst, vRecv);
+            ghostnodeSync.ProcessMessage(pfrom, strCommandNonConst, vRecv);
+        } else {
+            // Ignore unknown commands for extensibility
+            LogPrint(BCLog::NET, "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->GetId());
+        }
     }
 
 
