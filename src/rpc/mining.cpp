@@ -824,7 +824,7 @@ UniValue submitblock(const JSONRPCRequest& request)
     if (block.vtx.empty() || !block.vtx[0]->IsCoinBase()) {
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
     }
-
+    LogPrintf("Blockhash before: %s \n", block.GetHash().ToString());
     if(block.vtx[0]->vpout.empty() && !block.vtx[0]->vout.empty()){
         for (unsigned int idx = 0; idx < block.vtx.size(); idx++)
         {
@@ -844,6 +844,7 @@ UniValue submitblock(const JSONRPCRequest& request)
     }
 
     uint256 hash = block.GetHash();
+    LogPrintf("Blockhash after: %s \n", hash.ToString());
     bool fBlockPresent = false;
     {
         LOCK(cs_main);

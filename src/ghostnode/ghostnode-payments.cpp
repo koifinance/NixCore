@@ -623,12 +623,12 @@ bool CGhostnodePayments::ProcessBlock(int nBlockHeight) {
     int nRank = mnodeman.GetGhostnodeRank(activeGhostnode.vin, nBlockHeight - 119, GetMinGhostnodePaymentsProto(), false);
 
     if (nRank == -1) {
-         //LogPrintf("mnpayments: CGhostnodePayments::ProcessBlock -- Unknown Ghostnode\n");
+         LogPrintf("mnpayments: CGhostnodePayments::ProcessBlock -- Unknown Ghostnode\n");
         return false;
     }
 
     if (nRank > MNPAYMENTS_SIGNATURES_TOTAL) {
-         //LogPrintf("mnpayments: CGhostnodePayments::ProcessBlock -- Ghostnode not in the top %d (%d)\n", MNPAYMENTS_SIGNATURES_TOTAL, nRank);
+         LogPrintf("mnpayments: CGhostnodePayments::ProcessBlock -- Ghostnode not in the top %d (%d)\n");
         return false;
     }
 

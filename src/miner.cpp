@@ -271,7 +271,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     if (nHeight >= chainparams.GetConsensus().nGhostnodePaymentsStartBlock) {
         CAmount ghostnodePayment = GetGhostnodePayment(nHeight, blockReward);
-        coinbaseTx.vout[0].nValue -= ghostnodePayment;
         FillBlockPayments(coinbaseTx, nHeight, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
 
