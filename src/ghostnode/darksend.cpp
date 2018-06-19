@@ -2641,7 +2641,7 @@ void ThreadCheckDarkSendPool() {
     fOneThread = true;
 
     // Make this thread recognisable as the PrivateSend thread
-    RenameThread("dash-privatesend");
+    RenameThread("nix-privatesend");
 
     unsigned int nTick = 0;
     unsigned int nDoAutoNextRun = nTick + PRIVATESEND_AUTO_TIMEOUT_MIN;
@@ -2673,10 +2673,6 @@ void ThreadCheckDarkSendPool() {
             if (fGhostNode && (nTick % (60 * 5) == 0)) {
                 mnodeman.DoFullVerificationStep();
             }
-
-//            if(nTick % (60 * 5) == 0) {
-//                governance.DoMaintenance();
-//            }
 
             darkSendPool.CheckTimeout();
             darkSendPool.CheckForCompleteQueue();

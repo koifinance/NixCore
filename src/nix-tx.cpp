@@ -191,6 +191,22 @@ static void MutateTxVersion(CMutableTransaction& tx, const std::string& cmdVal)
     if (newVersion < 1 || newVersion > CTransaction::MAX_STANDARD_VERSION)
         throw std::runtime_error("Invalid TX version requested");
 
+    for (const auto& txout : tx.vout)
+    {
+        tx.vpout.push_back(MAKE_OUTPUT<CTxOutStandard>(txout.nValue, txout.scriptPubKey));
+    };
+    tx.vout.clear();
+    for (auto& txin : tx.vin)
+    {
+        ScriptError serror;
+        std::vector<std::vector<unsigned char> > stack;
+        if (!EvalScript(stack, txin.scriptSig, SCRIPT_VERIFY_P2SH, BaseSignatureChecker(), SIGVERSION_BASE, &serror))
+            throw std::runtime_error("EvalScript failed for input.");
+
+        txin.scriptWitness.stack = stack;
+        txin.scriptSig.clear();
+    };
+
     tx.nVersion = (int) newVersion;
 }
 
@@ -277,9 +293,22 @@ static void MutateTxAddOutAddr(CMutableTransaction& tx, const std::string& strIn
     }
     CScript scriptPubKey = GetScriptForDestination(destination);
 
-    // construct TxOut, append to transaction output list
-    CTxOut txout(value, scriptPubKey);
-    tx.vout.push_back(txout);
+    if (destination.type() == typeid(CStealthAddress))
+    {
+        CStealthAddress sx = boost::get<CStealthAddress>(destination);
+        std::shared_ptr<CTxOutData> outData = MAKE_OUTPUT<CTxOutData>();
+        std::string sNarration;
+        std::string sError;
+        if (0 != PrepareStealthOutput(sx, sNarration, scriptPubKey, outData->vData, sError))
+            throw std::runtime_error(std::string("PrepareStealthOutput failed: ") + sError);
+
+        tx.vpout.push_back(MAKE_OUTPUT<CTxOutStandard>(value, scriptPubKey));
+        tx.vpout.push_back(outData);
+        return;
+    };
+
+    tx.vpout.push_back(MAKE_OUTPUT<CTxOutStandard>(value, scriptPubKey));
+    return;
 }
 
 static void MutateTxAddOutPubKey(CMutableTransaction& tx, const std::string& strInput)
@@ -321,9 +350,8 @@ static void MutateTxAddOutPubKey(CMutableTransaction& tx, const std::string& str
         scriptPubKey = GetScriptForDestination(CScriptID(scriptPubKey));
     }
 
-    // construct TxOut, append to transaction output list
-    CTxOut txout(value, scriptPubKey);
-    tx.vout.push_back(txout);
+    tx.vpout.push_back(MAKE_OUTPUT<CTxOutStandard>(value, scriptPubKey));
+    return;
 }
 
 static void MutateTxAddOutMultiSig(CMutableTransaction& tx, const std::string& strInput)
@@ -395,9 +423,8 @@ static void MutateTxAddOutMultiSig(CMutableTransaction& tx, const std::string& s
         scriptPubKey = GetScriptForDestination(CScriptID(scriptPubKey));
     }
 
-    // construct TxOut, append to transaction output list
-    CTxOut txout(value, scriptPubKey);
-    tx.vout.push_back(txout);
+    tx.vpout.push_back(MAKE_OUTPUT<CTxOutStandard>(value, scriptPubKey));
+    return;
 }
 
 static void MutateTxAddOutData(CMutableTransaction& tx, const std::string& strInput)
@@ -467,9 +494,8 @@ static void MutateTxAddOutScript(CMutableTransaction& tx, const std::string& str
         scriptPubKey = GetScriptForDestination(CScriptID(scriptPubKey));
     }
 
-    // construct TxOut, append to transaction output list
-    CTxOut txout(value, scriptPubKey);
-    tx.vout.push_back(txout);
+    tx.vpout.push_back(MAKE_OUTPUT<CTxOutStandard>(value, scriptPubKey));
+    return;
 }
 
 static void MutateTxDelInput(CMutableTransaction& tx, const std::string& strInIdx)
@@ -489,13 +515,15 @@ static void MutateTxDelOutput(CMutableTransaction& tx, const std::string& strOut
 {
     // parse requested deletion index
     int outIdx = atoi(strOutIdx);
-    if (outIdx < 0 || outIdx >= (int)tx.vout.size()) {
+
+    if (outIdx < 0 || outIdx >= (int)tx.vpout.size()) {
         std::string strErr = "Invalid TX output index '" + strOutIdx + "'";
         throw std::runtime_error(strErr.c_str());
     }
 
     // delete output from transaction
-    tx.vout.erase(tx.vout.begin() + outIdx);
+    tx.vpout.erase(tx.vpout.begin() + outIdx);
+    return;
 }
 
 static const unsigned int N_SIGHASH_OPTS = 6;

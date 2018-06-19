@@ -405,8 +405,8 @@ int CommandLineRPC(int argc, char *argv[])
         std::unique_ptr<BaseRequestHandler> rh;
         std::string method;
         if (gArgs.GetBoolArg("-getinfo", false)) {
-            rh.reset(new GetinfoRequestHandler());
-            method = "";
+                    rh.reset(new GetinfoRequestHandler());
+                    method = "";
         } else {
             rh.reset(new DefaultRequestHandler());
             if (args.size() < 1) {
@@ -414,6 +414,34 @@ int CommandLineRPC(int argc, char *argv[])
             }
             method = args[0];
             args.erase(args.begin()); // Remove trailing method name from arguments vector
+
+            if (method == "extkeyimportmaster"
+                    || method == "extkeygenesisimport")
+            {
+                std::string sTemp;
+                if (args.size() == 0)
+                {
+                    args.resize(2);
+                    printf("Please enter a mnemonic or private extkey and press return:\n");
+                    std::getline(std::cin, args[0]);
+
+                    printf("Please enter passphrase, leave blank for none:\n");
+                    std::getline(std::cin, args[1]);
+                } else
+                {
+                    if (args.size() > 0 && (args[0] == "-stdin" || args[0] == ""))
+                    {
+                        printf("Please enter a mnemonic or private extkey and press return:\n");
+                        std::getline(std::cin, args[0]);
+                    };
+
+                    if (args.size() > 1 && args[1] == "-stdin")
+                    {
+                        printf("Please enter a passphrase and press return:\n");
+                        std::getline(std::cin, args[1]);
+                    };
+                }
+            };
         }
 
         // Execute and handle connection failures with -rpcwait
