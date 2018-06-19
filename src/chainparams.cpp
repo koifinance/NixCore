@@ -457,6 +457,8 @@ static CRegTestParams regTestParams;
 static std::unique_ptr<CChainParams> globalChainParams;
 
 const CChainParams &Params() {
+    if(!globalChainParams)
+        globalChainParams = std::unique_ptr<CChainParams>(new CMainParams());
     assert(globalChainParams);
     return *globalChainParams;
 }
