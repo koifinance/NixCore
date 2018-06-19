@@ -2438,14 +2438,14 @@ std::string CDarksendPool::GetMessageByID(PoolMessage nMessageID) {
 bool CDarkSendSigner::IsVinAssociatedWithPubkey(const CTxIn &txin, const CPubKey &pubkey) {
     CScript payee;
     payee = GetScriptForDestination(pubkey.GetID());
-
+    LogPrintf("IsVinAssociatedWithPubkey for txid: %s", txin.prevout.hash.ToString());
     CTransaction tx;
     uint256 hash;
-    CTransactionRef txRef(&tx);
+    CTransactionRef txRef;
     if (GetTransaction(txin.prevout.hash, txRef, Params().GetConsensus(), hash, true)) {
         for (unsigned int idx = 0; idx < tx.vpout.size(); idx++)
         {
-            if (tx.vpout[idx]->GetValue() == GHOSTNODE_COIN_REQUIRED * COIN && *tx.vpout[idx]->GetPScriptPubKey() == payee) return true;
+            if (txRef->vpout[idx]->GetValue() == GHOSTNODE_COIN_REQUIRED * COIN && *txRef->vpout[idx]->GetPScriptPubKey() == payee) return true;
         }
     }
 
