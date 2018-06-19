@@ -69,6 +69,15 @@ struct CompareByAmount
     }
 };
 
+struct CompareValueOnly
+{
+    bool operator()(const CInputCoin& t1,
+                    const CInputCoin& t2) const
+    {
+        return t1.GetValue() < t2.GetValue();
+    }
+};
+
 int CTransactionRecord::InsertOutput(COutputRecord &r)
 {
     for (size_t i = 0; i < vout.size(); ++i)
@@ -2783,8 +2792,19 @@ int CHDWallet::AddStandardInputs(CWalletTx &wtx, CTransactionRecord &rtx,
             if (pick_new_inputs) {
                 nValueIn = 0;
                 setCoins.clear();
-                if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
+                if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl)){
+                    if (nCoinType == ONLY_NOT40000IFMN) {
+                        sError = _("Unable to locate enough funds for this transaction that are not equal 40000 NIX.");
+                    } else if (nCoinType == ONLY_NONDENOMINATED_NOT40000IFMN) {
+                        sError = _("Unable to locate enough PrivateSend non-denominated funds for this transaction that are not equal 40000 NIX.");
+                    } else if (nCoinType == ONLY_DENOMINATED) {
+                        sError = _("Unable to locate enough PrivateSend denominated funds for this transaction.");
+                        sError += _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
+                    } else if (nValueIn < nValueToSelect) {
+                        sError = _("Insufficient funds.");
+                    }
                     return errorN(1, sError, __func__, _("Insufficient funds.").c_str());
+                }
             }
 
             int nChangePosInOut = -1;

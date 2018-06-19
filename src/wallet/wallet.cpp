@@ -72,15 +72,6 @@ const uint256 CMerkleTx::ABANDON_HASH(uint256S("00000000000000000000000000000000
  * @{
  */
 
-struct CompareValueOnly
-{
-    bool operator()(const CInputCoin& t1,
-                    const CInputCoin& t2) const
-    {
-        return t1.txout.nValue < t2.txout.nValue;
-    }
-};
-
 std::string COutput::ToString() const
 {
     return strprintf("COutput(%s, %d, %d) [%s]", tx->GetHash().ToString(), i, nDepth, FormatMoney(tx->tx->vpout[i]->GetValue()));
@@ -2922,16 +2913,6 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                     setCoins.clear();
                     if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, &coin_control))
                     {
-                        if (nCoinType == ONLY_NOT40000IFMN) {
-                            strFailReason = _("Unable to locate enough funds for this transaction that are not equal 40000 NIX.");
-                        } else if (nCoinType == ONLY_NONDENOMINATED_NOT40000IFMN) {
-                            strFailReason = _("Unable to locate enough PrivateSend non-denominated funds for this transaction that are not equal 40000 NIX.");
-                        } else if (nCoinType == ONLY_DENOMINATED) {
-                            strFailReason = _("Unable to locate enough PrivateSend denominated funds for this transaction.");
-                            strFailReason += _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
-                        } else if (nValueIn < nValueToSelect) {
-                            strFailReason = _("Insufficient funds.");
-                        }
                         strFailReason = _("Insufficient funds");
                         return false;
                     }

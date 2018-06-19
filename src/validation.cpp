@@ -3022,14 +3022,24 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // NOTE: Be careful tracking coin created, block reward is based on nMoneySupply
     CAmount nMoneyCreated = 0;
 
+    set<uint256> txIds;
+
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = *(block.vtx[i]);
         const uint256 txhash = tx.GetHash();
         nInputs += tx.vin.size();
 
-        if (!tx.IsCoinBase())
+        if (!tx.IsCoinBase() && !tx.IsZerocoinSpend())
         {
+
+            uint256 txHash = tx.GetHash();
+            if (txIds.count(txHash) > 0 && (pindex->nHeight >= 25))
+                return state.DoS(100, error("ConnectBlock(): duplicate transactions in the same block"),
+                                 REJECT_INVALID, "bad-txns-duplicatetxid");
+
+            txIds.insert(txHash);
+
             CAmount txfee = 0;
             if (!Consensus::CheckTxInputs(tx, state, view, pindex->nHeight, txfee)) {
                 control.Wait();
