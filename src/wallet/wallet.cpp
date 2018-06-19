@@ -51,6 +51,15 @@ OutputType g_change_type = OUTPUT_TYPE_NONE;
 const char * DEFAULT_WALLET_DAT = "wallet.dat";
 const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
 
+struct CompareValueOnly
+{
+    bool operator()(const CInputCoin& t1,
+                    const CInputCoin& t2) const
+    {
+        return t1.GetValue() < t2.GetValue();
+    }
+};
+
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
  * Override with -mintxfee

@@ -69,15 +69,6 @@ struct CompareByAmount
     }
 };
 
-struct CompareValueOnly
-{
-    bool operator()(const CInputCoin& t1,
-                    const CInputCoin& t2) const
-    {
-        return t1.GetValue() < t2.GetValue();
-    }
-};
-
 int CTransactionRecord::InsertOutput(COutputRecord &r)
 {
     for (size_t i = 0; i < vout.size(); ++i)
