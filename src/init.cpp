@@ -1475,7 +1475,7 @@ bool AppInitMain()
         LogPrintf("AppInitMain(): Initial startup, Tor networking enabled \n");
         WriteBinaryFileTor(pathTorSetting.string().c_str(), "1");
     }
-
+    /*
     if(torEnabledArg.second != "0"){
         StartTorEnabled(threadGroup, scheduler);
         SetLimited(NET_TOR);
@@ -1494,6 +1494,7 @@ bool AppInitMain()
         SetLimited(NET_IPV6, false);
         SetLimited(NET_TOR, false);
     }
+    */
     bool proxyRandomize = gArgs.GetBoolArg("-proxyrandomize", DEFAULT_PROXYRANDOMIZE);
     // -proxy sets a proxy for all outgoing network traffic
     // -noproxy (or -proxy=0) as well as the empty string can be used to not set a proxy, this is the default
