@@ -163,7 +163,7 @@ void GhostNode::StartAll(std::string strCommand)
             strFailedHtml += "\nFailed to start " + mne.getAlias() + ". Error: " + strError;
         }
     }
-    walletModel->wallet->Lock();
+    walletModel->getWallet()->Lock();
 
     std::string returnObj;
     returnObj = strprintf("Successfully started %d ghostnodes, failed to start %d, total %d", nCountSuccessful, nCountFailed, nCountFailed + nCountSuccessful);

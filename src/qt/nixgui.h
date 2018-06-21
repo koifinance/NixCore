@@ -111,6 +111,10 @@ private:
     QAction *openRPCConsoleAction;
     QAction *openAction;
     QAction *showHelpMessageAction;
+    QAction *ghostVaultAction;
+    QAction *ghostVaultMenuAction;
+    QAction *ghostnodeAction;
+
 
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
@@ -207,6 +211,10 @@ private Q_SLOTS:
 
     /** Show open dialog */
     void openClicked();
+
+    void gotoGhostnodePage();
+
+    void gotoGhostVaultPage();
 #endif // ENABLE_WALLET
     /** Show configuration dialog */
     void optionsClicked();

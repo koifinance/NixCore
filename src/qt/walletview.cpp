@@ -18,6 +18,8 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
+#include <qt/ghostnode.h>
+#include <qt/ghostvault.h>
 
 #include <ui_interface.h>
 
@@ -59,10 +61,15 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     usedSendingAddressesPage = new AddressBookPage(platformStyle, AddressBookPage::ForEditing, AddressBookPage::SendingTab, this);
     usedReceivingAddressesPage = new AddressBookPage(platformStyle, AddressBookPage::ForEditing, AddressBookPage::ReceivingTab, this);
 
+    ghostnodePage = new GhostNode(platformStyle);
+    ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
+
     addWidget(overviewPage);
     addWidget(transactionsPage);
     addWidget(receiveCoinsPage);
     addWidget(sendCoinsPage);
+    addWidget(ghostnodePage);
+    addWidget(ghostVaultPage);
 
     // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
@@ -122,6 +129,8 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     overviewPage->setWalletModel(_walletModel);
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
+    ghostVaultPage->setModel(_walletModel->getAddressTableModel());
+    ghostnodePage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
 
@@ -190,6 +199,15 @@ void WalletView::gotoSendCoinsPage(QString addr)
 
     if (!addr.isEmpty())
         sendCoinsPage->setAddress(addr);
+}
+
+void WalletView::gotoGhostnodePage()
+{
+    setCurrentWidget(ghostnodePage);
+}
+void WalletView::gotoGhostVaultPage()
+{
+    setCurrentWidget(ghostVaultPage);
 }
 
 void WalletView::gotoSignMessageTab(QString addr)
