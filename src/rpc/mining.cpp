@@ -25,6 +25,7 @@
 #include <utilstrencodings.h>
 #include <validationinterface.h>
 #include <warnings.h>
+#include <consensus/airdropaddresses.h>
 
 #ifdef ENABLE_WALLET
     #include "ghostnode/ghostnode-sync.h"
@@ -729,7 +730,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     }
 
     UniValue ghostnodeObj(UniValue::VOBJ);
-    if(!(pblock->txoutGhostnode.IsEmpty())) {
+    if(!(pblock->txoutGhostnode.IsNull())) {
         CTxDestination address1;
         ExtractDestination(pblock->txoutGhostnode.scriptPubKey, address1);
         CBitcoinAddress address2(address1);
