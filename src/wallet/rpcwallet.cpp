@@ -4042,7 +4042,7 @@ UniValue getnewstealthaddress(const JSONRPCRequest &request)
     if (request.params.size() > 2)
         sPrefix_num = request.params[2].get_str();
 
-    bool fBech32 = request.params.size() > 3 ? request.params[3].get_bool() : false;
+    bool fBech32 = request.params.size() > 3 ? request.params[3].get_bool() : true;
     bool fMakeV2 = request.params.size() > 4 ? request.params[4].get_bool() : false;
 
     if (fMakeV2 && !fBech32)
