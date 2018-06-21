@@ -240,7 +240,7 @@ void CGhostnode::Check(bool fForce) {
             return;
         }
 
-        bool fWatchdogActive = ghostnodeSync.IsSynced() && mnodeman.IsWatchdogActive();
+        bool fWatchdogActive = ghostnodeSync.IsSynced(chainActive.Height()) && mnodeman.IsWatchdogActive();
         bool fWatchdogExpired = (fWatchdogActive && ((GetTime() - nTimeLastWatchdogVote) > GHOSTNODE_WATCHDOG_MAX_SECONDS));
 
 //        //LogPrint("ghostnode", "CGhostnode::Check -- outpoint=%s, nTimeLastWatchdogVote=%d, GetTime()=%d, fWatchdogExpired=%d\n",

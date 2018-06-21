@@ -111,7 +111,8 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 720; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
+        consensus.nGhostnodePaymentsStartBlock = 720;
+        consensus.nGhostnodeInitialize = 600;
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -235,7 +236,9 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000002e9e7b00e1f6dc5123a04aad68dd0f0968d8c7aa45f6640795c37b1"); //1135275
 
+        // ghostnode params
         consensus.nGhostnodePaymentsStartBlock = 720;
+        consensus.nGhostnodeInitialize = 600;
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 
@@ -349,7 +352,8 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 720; // not true, but it's ok as long as it's less then nGhostnodePaymentsIncreaseBlock
+        consensus.nGhostnodePaymentsStartBlock = 720;
+        consensus.nGhostnodeInitialize = 600;
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
