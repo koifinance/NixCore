@@ -139,13 +139,19 @@ QT_FORMS_UI = \
   qt/forms/sendcoinsdialog.ui \
   qt/forms/sendcoinsentry.ui \
   qt/forms/signverifymessagedialog.ui \
-  qt/forms/transactiondescdialog.ui
+  qt/forms/transactiondescdialog.ui \
+  qt/forms/ghostvault.ui \
+  qt/forms/ghostnode.ui \
+  qt/forms/mnemonicdialog.ui
 
 QT_MOC_CPP = \
   qt/moc_addressbookpage.cpp \
   qt/moc_addresstablemodel.cpp \
   qt/moc_askpassphrasedialog.cpp \
   qt/moc_bantablemodel.cpp \
+  qt/moc_ghostvault.cpp \
+  qt/moc_ghostnode.cpp \
+  qt/moc_mnemonicdialog.cpp \
   qt/moc_nixaddressvalidator.cpp \
   qt/moc_nixamountfield.cpp \
   qt/moc_nixgui.cpp \
@@ -263,7 +269,10 @@ NIX_QT_H = \
   qt/walletmodel.h \
   qt/walletmodeltransaction.h \
   qt/walletview.h \
-  qt/winshutdownmonitor.h
+  qt/winshutdownmonitor.h \
+  qt/mnemonicdialog.h \
+  qt/ghostvault.h \
+  qt/ghostnode.h
 
 RES_ICONS = \
   qt/res/icons/add.png \
@@ -344,7 +353,8 @@ NIX_QT_BASE_CPP = \
   qt/rpcconsole.cpp \
   qt/splashscreen.cpp \
   qt/trafficgraphwidget.cpp \
-  qt/utilitydialog.cpp
+  qt/utilitydialog.cpp \
+  qt/mnemonicdialog.cpp
 
 NIX_QT_WINDOWS_CPP = qt/winshutdownmonitor.cpp
 
@@ -374,7 +384,9 @@ NIX_QT_WALLET_CPP = \
   qt/walletframe.cpp \
   qt/walletmodel.cpp \
   qt/walletmodeltransaction.cpp \
-  qt/walletview.cpp
+  qt/walletview.cpp \
+  qt/ghostvault.cpp \
+  qt/ghostnode.cpp
 
 NIX_QT_CPP = $(NIX_QT_BASE_CPP)
 if TARGET_WINDOWS
