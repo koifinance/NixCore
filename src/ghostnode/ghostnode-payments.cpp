@@ -74,7 +74,7 @@ bool IsBlockPayeeValid(const CTransaction &txNew, int nBlockHeight, CAmount bloc
         //if (fDebug) //LogPrint("IsBlockPayeeValid -- ghostnode isn't start\n");
         return true;
     }
-    if (!ghostnodeSync.IsSynced(chainActive.Height()) {
+    if (!ghostnodeSync.IsSynced(chainActive.Height())) {
         //there is no budget data to use to check anything, let's just accept the longest chain
         //if (fDebug) //LogPrint("IsBlockPayeeValid -- WARNING: Client not synced, skipping block payee checks\n");
         return true;

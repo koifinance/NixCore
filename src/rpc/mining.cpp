@@ -693,16 +693,51 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
 
 
-    UniValue zoinodeObj(UniValue::VOBJ);
-    if(pblock->txoutGhostnode != CTxOut()) {
+    if(pindexPrev->nHeight + 1 == 1){
+        std::string addresses;
+        UniValue airdropObj(UniValue::VOBJ);
+        airdropObj.push_back(Pair("amount", 38000*COIN));
+        UniValue airdropObjTemp(UniValue::VOBJ);
+        for(int i = 0; i < 1000; i++){
+            addresses = airdrop_addresses[i];
+            airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
+        }
+        airdropObj.push_back(Pair("payee", airdropObjTemp));
+        result.push_back(Pair("airdrop", airdropObj));
+
+    }
+
+    if(pindexPrev->nHeight + 1 > 1){
+        UniValue airdropObj(UniValue::VOBJ);
+        CScript DEV_1_SCRIPT;
+        CScript DEV_2_SCRIPT;
+        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC"));
+        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc"));
+        std::string address1 = "Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC";
+        std::string address2 = "NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc";
+
+
+        airdropObj.push_back(Pair("dev_1", address1.c_str()));
+        airdropObj.push_back(Pair("script_1", HexStr(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+        airdropObj.push_back(Pair("amount_1", (0.05 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
+
+        airdropObj.push_back(Pair("dev_2", address2.c_str()));
+        airdropObj.push_back(Pair("script_2", HexStr(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+        airdropObj.push_back(Pair("amount_2", (0.02 * GetBlockSubsidy(pindexPrev->nHeight + 1 ,Params().GetConsensus()))));
+
+        result.push_back(Pair("dev_fund", airdropObj));
+    }
+
+    UniValue ghostnodeObj(UniValue::VOBJ);
+    if(!(pblock->txoutGhostnode.IsEmpty())) {
         CTxDestination address1;
         ExtractDestination(pblock->txoutGhostnode.scriptPubKey, address1);
         CBitcoinAddress address2(address1);
-        zoinodeObj.push_back(Pair("payee", address2.ToString().c_str()));
-        zoinodeObj.push_back(Pair("script", HexStr(pblock->txoutGhostnode.scriptPubKey.begin(), pblock->txoutGhostnode.scriptPubKey.end())));
-        zoinodeObj.push_back(Pair("amount", pblock->txoutGhostnode.nValue));
+        ghostnodeObj.push_back(Pair("payee", address2.ToString().c_str()));
+        ghostnodeObj.push_back(Pair("script", HexStr(pblock->txoutGhostnode.scriptPubKey.begin(), pblock->txoutGhostnode.scriptPubKey.end())));
+        ghostnodeObj.push_back(Pair("amount", pblock->txoutGhostnode.nValue));
     }
-    result.push_back(Pair("ghostnode", zoinodeObj));
+    result.push_back(Pair("ghostnode", ghostnodeObj));
     result.push_back(Pair("ghostnode_payments_started", pindexPrev->nHeight + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock));
 
 
