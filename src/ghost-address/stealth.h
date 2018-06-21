@@ -15,7 +15,7 @@
 #include <serialize.h>
 #include <key.h>
 #include <uint256.h>
-#include <stealth-address/types.h>
+#include <ghost-address/types.h>
 
 class CScript;
 

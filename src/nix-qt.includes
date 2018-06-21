@@ -65,3 +65,15 @@ wallet
 wallet/test
 zerocoin
 zmq
+leveldb/doc/bench
+leveldb/issues
+ghost-address/wordlists
+tor/src/ext/curve25519_donna
+ghost-address
+univalue/gen
+ghost-address/smsg
+univalue/test
+libexecstream/test
+tor/src/ext/timeouts/lua
+tor/src/ext/mulodi
+tor/src/tools

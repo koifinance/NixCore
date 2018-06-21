@@ -598,6 +598,28 @@ public:
     int readData(const char *pch, unsigned int nBytes);
 };
 
+class SecMsgNode
+{
+public:
+    SecMsgNode()
+    {
+        lastSeen        = 0;
+        lastMatched     = 0;
+        ignoreUntil     = 0;
+        nWakeCounter    = 0;
+        fEnabled        = false;
+    };
+
+    ~SecMsgNode() {};
+
+    CCriticalSection            cs_smsg_net;
+    int64_t                     lastSeen;
+    int64_t                     lastMatched;
+    int64_t                     ignoreUntil;
+    uint32_t                    nWakeCounter;
+    bool                        fEnabled;
+
+};
 
 /** Information about a peer */
 class CNode
@@ -730,6 +752,7 @@ public:
 
     //Ghostnode
     bool fGhostnode;
+    SecMsgNode smsgData;
 
 private:
     const NodeId id;

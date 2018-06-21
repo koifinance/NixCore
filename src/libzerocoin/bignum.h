@@ -77,6 +77,13 @@ public:
         }
     }
 
+    CBigNum(const char *hexString)
+    {
+        init();
+        if (!SetHexBool(hexString))
+            throw bignum_error("CBigNum::CBigNum(const char *) : invalid hex string");
+    }
+
     CBigNum& operator=(const CBigNum& b)
     {
         if (!BN_copy(bn, &b))

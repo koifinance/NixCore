@@ -8,10 +8,10 @@
 
 
 #include <key.h>
-#include <stealth-address/stealth.h>
+#include <ghost-address/stealth.h>
 #include <util.h>
-#include <stealth-address/keyutil.h>
-#include <stealth-address/types.h>
+#include <ghost-address/keyutil.h>
+#include <ghost-address/types.h>
 #include <sync.h>
 #include <script/ismine.h>
 
@@ -128,7 +128,7 @@ struct CExtKey {
 
     bool IsValid() const { return key.IsValid(); }
 
-    void Encode(unsigned char code[74]) const;
+    void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[74]);
     bool Derive(CExtKey &out, unsigned int nChild) const;
     CExtPubKey Neutered() const;
@@ -188,7 +188,6 @@ public:
         nDepth = vk.nDepth;
         memcpy(vchFingerprint, vk.vchFingerprint, sizeof(vchFingerprint));
         nChild = vk.nChild;
-        memcpy(vchChainCode, vk.vchChainCode, sizeof(vchChainCode));
         key = vk.key;
         pubkey = key.GetPubKey();
     };
@@ -198,7 +197,6 @@ public:
         nDepth = pk.nDepth;
         memcpy(vchFingerprint, pk.vchFingerprint, sizeof(vchFingerprint));
         nChild = pk.nChild;
-        memcpy(vchChainCode, pk.vchChainCode, sizeof(vchChainCode));
         key.Clear();
         pubkey = pk.pubkey;
     };
@@ -209,7 +207,6 @@ public:
         vk.nDepth = nDepth;
         memcpy(vk.vchFingerprint, vchFingerprint, sizeof(vchFingerprint));
         vk.nChild = nChild;
-        memcpy(vk.vchChainCode, vchChainCode, sizeof(vchChainCode));
         vk.key = key;
         return vk;
     };

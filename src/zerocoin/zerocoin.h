@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <functional>
 
-#define ZEROCOIN_MODULUS   "25195908475657893494027183240048398571429282126204032027777137836043662020707595556264018525880784406918290641249515082189298559149176184502808489120072844992687392807287776735971418347270261896375014971824691165077613379859095700097330459748808428401797429100642458691817195118746121515172654632282216869987549182422433637259085141865462043576798423387184774447920739934236584823824281198163815010674810451660377306056201619676256133844143603833904414952634432190114657544454178424020924616515723350778707749817125772467962926386356373289912154831438167899885040445364023527381951378636564391212010397122822120720357"
+#define ZEROCOIN_MODULUS   "C7970CEEDCC3B0754490201A7AA613CD73911081C790F5F1A8726F463550BB5B7FF0DB8E1EA1189EC72F93D1650011BD721AEEACC2ACDE32A04107F0648C2813A31F5B0B7765FF8B44B4B6FFC93384B646EB09C7CF5E8592D40EA33C80039F35B4F14A04B51F7BFD781BE4D1673164BA8EB991C2C4D730BBBE35F592BDEF524AF7E8DAEFD26C66FC02C479AF89D64D373F442709439DE66CEB955F3EA37D5159F6135809F85334B5CB1813ADDC80CD05609F10AC6A95AD65872C909525BDAD32BC729592642920F24C61DC5B3C3B7923E56B16A4D9D373D8721F24A3FC0F1B3131F55615172866BCCC30F95054C824E733A5EB6817F7BC16399D48C6361CC7E5"
 
 // Zerocoin transaction info, added to the CBlock to ensure zerocoin mint/spend transactions got their info stored into
 // index
@@ -48,13 +48,13 @@ bool ConnectBlockGhost(CValidationState &state, const CChainParams &chainparams,
 
 int ZerocoinGetNHeight(const CBlockHeader &block);
 
-bool ZerocoinBuildStateFromIndex(CChain *chain);
+bool ZerocoinBuildStateFromIndex(CChain *chain, set<CBlockIndex *> &changes);
 
 /*
  * State of minted/spent coins as extracted from the index
  */
 class CZerocoinState {
-friend bool ZerocoinBuildStateFromIndex(CChain *);
+friend bool ZerocoinBuildStateFromIndex(CChain *, set<CBlockIndex *> &);
 public:
     // First and last block where mint (and hence accumulator update) with given denomination and id was seen
     struct CoinGroupInfo {
@@ -112,7 +112,7 @@ public:
     // Given denomination and id returns latest accumulator value and corresponding block hash
     // Do not take into account coins with height more than maxHeight
     // Returns number of coins satisfying conditions
-    int GetAccumulatorValueForSpend(int maxHeight, int denomination, int id, CBigNum &accumulator, uint256 &blockHash);
+    int GetAccumulatorValueForSpend(CChain *chain, int maxHeight, int denomination, int id, CBigNum &accumulator, uint256 &blockHash);
 
     // Get witness
     libzerocoin::AccumulatorWitness GetWitnessForSpend(CChain *chain, int maxHeight, int denomination, int id, const CBigNum &pubCoin);
@@ -122,6 +122,12 @@ public:
 
     // Reset to initial values
     void Reset();
+
+    // Test function
+    bool TestValidity(CChain *chain);
+
+    // Returns set of indices that changed
+    set<CBlockIndex *> RecalculateAccumulators(CChain *chain);
 
     static CZerocoinState *GetZerocoinState();
 };

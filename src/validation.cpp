@@ -86,14 +86,13 @@ CAmount GetGhostnodePayment(int nHeight, CAmount blockValue) {
     return ret;
 }
 
-
 int GetInputAge(const CTxIn &txin) {
     LogPrintf("\n GETINPUT \n");
     CCoinsView viewDummy;
     CCoinsViewCache view(&viewDummy);
     {
         LOCK(mempool.cs);
-        CCoinsViewMemPool viewMempool(pcoinsTip->getBase(), mempool);
+        CCoinsViewMemPool viewMempool(pcoinsTip.get(), mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
         const Coin &coin = view.AccessCoin(txin.prevout);
         if (coin.nHeight <= 0) return 0;
@@ -1726,12 +1725,13 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                 bool is_spent = view.SpendCoin(out, &coin);
                 if (!is_spent || tx.vout[o] != coin.out || pindex->nHeight != coin.nHeight || is_coinbase != coin.fCoinBase) {
                     fClean = false; // transaction output mismatch
+                    LogPrintf("Error for vout: vout: %d, amount: %d", o, tx.vout[o].nValue);
                 }
             }
         }
 
         // restore inputs
-        if (i > 0 || !tx.IsZerocoinSpend()) { // not coinbases
+        if (i > 0 && !tx.IsZerocoinSpend()) { // not coinbases
             CTxUndo &txundo = blockUndo.vtxundo[i-1];
             if (txundo.vprevout.size() != tx.vin.size()) {
                 error("DisconnectBlock(): transaction and undo data inconsistent");
@@ -3249,6 +3249,7 @@ void UpdateUncommittedBlockStructures(CBlock& block, const CBlockIndex* pindexPr
 std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBlockIndex* pindexPrev, const Consensus::Params& consensusParams)
 {
     std::vector<unsigned char> commitment;
+    return commitment;
     int commitpos = GetWitnessCommitmentIndex(block);
     std::vector<unsigned char> ret(32, 0x00);
     if (consensusParams.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout != 0) {
@@ -3974,7 +3975,13 @@ bool static LoadBlockIndexDB(const CChainParams& chainparams)
     pblocktree->ReadFlag("txindex", fTxIndex);
     LogPrintf("%s: transaction index %s\n", __func__, fTxIndex ? "enabled" : "disabled");
 
-    ZerocoinBuildStateFromIndex(&chainActive);
+    // some blocks in index can change as a result of ZerocoinBuildStateFromIndex() call
+    set<CBlockIndex *> changes;
+    ZerocoinBuildStateFromIndex(&chainActive, changes);
+    if (!changes.empty()) {
+        setDirtyBlockIndex.insert(changes.begin(), changes.end());
+        FlushStateToDisk();
+    }
 
     return true;
 }

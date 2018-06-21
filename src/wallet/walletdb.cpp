@@ -269,7 +269,21 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             CWalletTx wtx;
             ssValue >> wtx;
             CValidationState state;
-            if (!(CheckTransaction(*wtx.tx, state, wtx.GetHash(), true) && (wtx.GetHash() == hash) && state.IsValid()))
+            int nHeight = INT_MAX;
+            if(!wtx.tx->vin.empty()){
+                const uint256& prevHash = wtx.tx->GetHash();
+                CTransactionRef tx;
+                uint256 hashBlock;
+                bool fFound = GetTransaction(prevHash, tx, Params().GetConsensus(), hashBlock);
+                if(fFound)
+                {
+                    if(mapBlockIndex.find(hashBlock) != mapBlockIndex.end())
+                    {
+                        nHeight = mapBlockIndex[hashBlock]->nHeight;
+                    }
+                }
+            }
+            if (!(CheckTransaction(*wtx.tx, state, wtx.GetHash(), true, true, nHeight) && (wtx.GetHash() == hash) && state.IsValid()))
                 return false;
 
             // Undo serialize changes in 31600

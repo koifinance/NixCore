@@ -3951,13 +3951,16 @@ void CWallet::MarkReserveKeysAsUsed(int64_t keypool_id)
 
 void CWallet::GetScriptForMining(std::shared_ptr<CReserveScript> &script)
 {
+    OutputType output_type = g_address_type;
+
     std::shared_ptr<CReserveKey> rKey = std::make_shared<CReserveKey>(this);
     CPubKey pubkey;
     if (!rKey->GetReservedKey(pubkey))
         return;
 
     script = rKey;
-    script->reserveScript = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
+    CTxDestination dest = GetDestinationForKey(pubkey, output_type);
+    script->reserveScript = GetScriptForDestination(dest);
 }
 
 void CWallet::LockCoin(const COutPoint& output)
@@ -5128,7 +5131,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
             CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
 
             CBigNum accumulatorValue;
-            uint256 accumulatorBlockHash;      // to be used in zerocoin spend v2
+            uint256 accumulatorBlockHash;
 
             int coinId = INT_MAX;
             int coinHeight;
@@ -5144,7 +5147,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
                     if (coinHeight > 0
                             && id < coinId
                             && coinHeight + (ZEROCOIN_CONFIRM_HEIGHT) <= chainActive.Height()
-                            && zerocoinState->GetAccumulatorValueForSpend(
+                            && zerocoinState->GetAccumulatorValueForSpend( &chainActive,
                                     chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
                                     denomination,
                                     id,
@@ -7407,12 +7410,12 @@ int CWallet::ExtKeyLoadMaster()
                 LogPrintf("Wallet locked, master key will be created when unlocked.\n");
                 return 0;
             };
-            */
+
             if (ExtKeyCreateInitial(&wdb) != 0)
                 return errorN(1, "ExtKeyCreateDefaultMaster failed.");
 
             return 0;
-
+            */
         };
         LogPrintf("Warning: No master ext key has been set.\n");
         return 1;

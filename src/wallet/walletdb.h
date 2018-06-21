@@ -16,9 +16,9 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <stealth-address/types.h>
-#include <stealth-address/stealth.h>
-#include <stealth-address/extkey.h>
+#include <ghost-address/types.h>
+#include <ghost-address/stealth.h>
+#include <ghost-address/extkey.h>
 
 /**
  * Overview of wallet database classes:

@@ -20,7 +20,7 @@ bool CGhostnodeConfig::read(std::string& strErr) {
     int linenumber = 1;
     boost::filesystem::path pathGhostnodeConfigFile = GetGhostnodeConfigFile();
     boost::filesystem::ifstream streamConfig(pathGhostnodeConfigFile);
-    LogPrintf("pathGhostnodeConfigFile=%s\n", pathGhostnodeConfigFile);
+    //LogPrint("pathGhostnodeConfigFile=%s\n", pathGhostnodeConfigFile);
 
     if (!streamConfig.good()) {
         FILE* configFile = fopen(pathGhostnodeConfigFile.string().c_str(), "a");
@@ -37,7 +37,7 @@ bool CGhostnodeConfig::read(std::string& strErr) {
     for(std::string line; std::getline(streamConfig, line); linenumber++)
     {
         if(line.empty()) continue;
-        LogPrintf("Read line=%s\n", line);
+        //LogPrint("Read line=%s\n", line);
         std::istringstream iss(line);
         std::string comment, alias, ip, privKey, txHash, outputIndex;
 
@@ -67,9 +67,9 @@ bool CGhostnodeConfig::read(std::string& strErr) {
             return false;
         }
         int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
-        LogPrintf("mainnetDefaultPort=%s\n", mainnetDefaultPort);
-        LogPrintf("Params().NetworkIDString()=%s\n", Params().NetworkIDString());
-        LogPrintf("CBaseChainParams::MAIN=%s\n", CBaseChainParams::MAIN);
+        //LogPrint("mainnetDefaultPort=%s\n", mainnetDefaultPort);
+        //LogPrint("Params().NetworkIDString()=%s\n", Params().NetworkIDString());
+        //LogPrint("CBaseChainParams::MAIN=%s\n", CBaseChainParams::MAIN);
         if(Params().NetworkIDString() == CBaseChainParams::MAIN) {
             if(port != mainnetDefaultPort) {
                 strErr = _("Invalid port detected in ghostnode.conf") + "\n" +

@@ -13,6 +13,29 @@
 #include <uint256.h>
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
+static const int32_t NIX_TXN_VERSION = 2;
+
+enum OutputTypes
+{
+    OUTPUT_NULL             = 0, // marker for CCoinsView (0.14)
+    OUTPUT_STANDARD         = 2,
+    OUTPUT_DATA             = 3,
+    OUTPUT_ZEROCOIN         = 4,
+};
+
+enum TransactionTypes
+{
+    TXN_STANDARD            = 0,
+    TXN_COINBASE            = 1,
+    TXN_ZEROCOIN            = 2,
+};
+
+enum DataOutputTypes
+{
+    DO_NULL                 = 0, // reserved
+    DO_STEALTH              = 1,
+    DO_STEALTH_PREFIX       = 2,
+};
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint

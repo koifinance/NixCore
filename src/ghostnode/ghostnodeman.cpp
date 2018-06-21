@@ -125,7 +125,7 @@ bool CGhostnodeMan::Add(CGhostnode &mn)
 
     CGhostnode *pmn = Find(mn.vin);
     if (pmn == NULL) {
-        LogPrintf("ghostnode", "CGhostnodeMan::Add -- Adding new Ghostnode: addr=%s, %i now\n", mn.addr.ToString(), size() + 1);
+        //LogPrint("ghostnode", "CGhostnodeMan::Add -- Adding new Ghostnode: addr=%s, %i now\n", mn.addr.ToString(), size() + 1);
         vGhostnodes.push_back(mn);
         indexGhostnodes.AddGhostnodeVIN(mn.vin);
         fGhostnodesAdded = true;
@@ -150,14 +150,14 @@ void CGhostnodeMan::AskForMN(CNode* pnode, const CTxIn &vin)
                 return;
             }
             // we asked this node for this outpoint but it's ok to ask again already
-            LogPrintf("CGhostnodeMan::AskForMN -- Asking same peer %s for missing ghostnode entry again: %s\n", pnode->addr.ToString(), vin.prevout.ToStringShort());
+            //LogPrint("CGhostnodeMan::AskForMN -- Asking same peer %s for missing ghostnode entry again: %s\n", pnode->addr.ToString(), vin.prevout.ToStringShort());
         } else {
             // we already asked for this outpoint but not this node
-            LogPrintf("CGhostnodeMan::AskForMN -- Asking new peer %s for missing ghostnode entry: %s\n", pnode->addr.ToString(), vin.prevout.ToStringShort());
+            //LogPrint("CGhostnodeMan::AskForMN -- Asking new peer %s for missing ghostnode entry: %s\n", pnode->addr.ToString(), vin.prevout.ToStringShort());
         }
     } else {
         // we never asked any node for this outpoint
-        LogPrintf("CGhostnodeMan::AskForMN -- Asking peer %s for missing ghostnode entry for the first time: %s\n", pnode->addr.ToString(), vin.prevout.ToStringShort());
+        //LogPrint("CGhostnodeMan::AskForMN -- Asking peer %s for missing ghostnode entry for the first time: %s\n", pnode->addr.ToString(), vin.prevout.ToStringShort());
     }
     mWeAskedForGhostnodeListEntry[vin.prevout][pnode->addr] = GetTime() + DSEG_UPDATE_SECONDS;
 
@@ -169,7 +169,7 @@ void CGhostnodeMan::Check()
 {
     LOCK(cs);
 
-//    LogPrintf("ghostnode", "CGhostnodeMan::Check -- nLastWatchdogVoteTime=%d, IsWatchdogActive()=%d\n", nLastWatchdogVoteTime, IsWatchdogActive());
+//    //LogPrint("ghostnode", "CGhostnodeMan::Check -- nLastWatchdogVoteTime=%d, IsWatchdogActive()=%d\n", nLastWatchdogVoteTime, IsWatchdogActive());
 
     BOOST_FOREACH(CGhostnode& mn, vGhostnodes) {
         mn.Check();
@@ -180,7 +180,7 @@ void CGhostnodeMan::CheckAndRemove()
 {
     if(!ghostnodeSync.IsGhostnodeListSynced()) return;
 
-    LogPrintf("CGhostnodeMan::CheckAndRemove\n");
+    //LogPrint("CGhostnodeMan::CheckAndRemove\n");
 
     {
         // Need LOCK2 here to ensure consistent locking order because code below locks cs_main
@@ -199,7 +199,7 @@ void CGhostnodeMan::CheckAndRemove()
             uint256 hash = mnb.GetHash();
             // If collateral was spent ...
             if ((*it).IsOutpointSpent()) {
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- Removing Ghostnode: %s  addr=%s  %i now\n", (*it).GetStateString(), (*it).addr.ToString(), size() - 1);
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- Removing Ghostnode: %s  addr=%s  %i now\n", (*it).GetStateString(), (*it).addr.ToString(), size() - 1);
 
                 // erase all of the broadcasts we've seen from this txin, ...
                 mapSeenGhostnodeBroadcast.erase(hash);
@@ -235,7 +235,7 @@ void CGhostnodeMan::CheckAndRemove()
                         fAskedForMnbRecovery = true;
                     }
                     if(fAskedForMnbRecovery) {
-                        LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- Recovery initiated, ghostnode=%s\n", it->vin.prevout.ToStringShort());
+                        //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- Recovery initiated, ghostnode=%s\n", it->vin.prevout.ToStringShort());
                         nAskForMnbRecovery--;
                     }
                     // wait for mnb recovery replies for MNB_RECOVERY_WAIT_SECONDS seconds
@@ -246,20 +246,20 @@ void CGhostnodeMan::CheckAndRemove()
         }
 
         // proces replies for GHOSTNODE_NEW_START_REQUIRED ghostnodes
-        LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- mMnbRecoveryGoodReplies size=%d\n", (int)mMnbRecoveryGoodReplies.size());
+        //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- mMnbRecoveryGoodReplies size=%d\n", (int)mMnbRecoveryGoodReplies.size());
         std::map<uint256, std::vector<CGhostnodeBroadcast> >::iterator itMnbReplies = mMnbRecoveryGoodReplies.begin();
         while(itMnbReplies != mMnbRecoveryGoodReplies.end()){
             if(mMnbRecoveryRequests[itMnbReplies->first].first < GetTime()) {
                 // all nodes we asked should have replied now
                 if(itMnbReplies->second.size() >= MNB_RECOVERY_QUORUM_REQUIRED) {
                     // majority of nodes we asked agrees that this mn doesn't require new mnb, reprocess one of new mnbs
-                    LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- reprocessing mnb, ghostnode=%s\n", itMnbReplies->second[0].vin.prevout.ToStringShort());
+                    //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- reprocessing mnb, ghostnode=%s\n", itMnbReplies->second[0].vin.prevout.ToStringShort());
                     // mapSeenGhostnodeBroadcast.erase(itMnbReplies->first);
                     int nDos;
                     itMnbReplies->second[0].fRecovery = true;
                     CheckMnbAndUpdateGhostnodeList(NULL, itMnbReplies->second[0], nDos);
                 }
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- removing mnb recovery reply, ghostnode=%s, size=%d\n", itMnbReplies->second[0].vin.prevout.ToStringShort(), (int)itMnbReplies->second.size());
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- removing mnb recovery reply, ghostnode=%s, size=%d\n", itMnbReplies->second[0].vin.prevout.ToStringShort(), (int)itMnbReplies->second.size());
                 mMnbRecoveryGoodReplies.erase(itMnbReplies++);
             } else {
                 ++itMnbReplies;
@@ -334,7 +334,7 @@ void CGhostnodeMan::CheckAndRemove()
         std::map<uint256, CGhostnodePing>::iterator it4 = mapSeenGhostnodePing.begin();
         while(it4 != mapSeenGhostnodePing.end()){
             if((*it4).second.IsExpired()) {
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- Removing expired Ghostnode ping: hash=%s\n", (*it4).second.GetHash().ToString());
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- Removing expired Ghostnode ping: hash=%s\n", (*it4).second.GetHash().ToString());
                 mapSeenGhostnodePing.erase(it4++);
             } else {
                 ++it4;
@@ -345,14 +345,14 @@ void CGhostnodeMan::CheckAndRemove()
         std::map<uint256, CGhostnodeVerification>::iterator itv2 = mapSeenGhostnodeVerification.begin();
         while(itv2 != mapSeenGhostnodeVerification.end()){
             if((*itv2).second.nBlockHeight < pCurrentBlockIndex->nHeight - MAX_POSE_BLOCKS){
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckAndRemove -- Removing expired Ghostnode verification: hash=%s\n", (*itv2).first.ToString());
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckAndRemove -- Removing expired Ghostnode verification: hash=%s\n", (*itv2).first.ToString());
                 mapSeenGhostnodeVerification.erase(itv2++);
             } else {
                 ++itv2;
             }
         }
 
-        LogPrintf("CGhostnodeMan::CheckAndRemove -- %s\n", ToString());
+        //LogPrint("CGhostnodeMan::CheckAndRemove -- %s\n", ToString());
 
         if(fGhostnodesRemoved) {
             CheckAndRebuildGhostnodeIndex();
@@ -432,7 +432,7 @@ void CGhostnodeMan::DsegUpdate(CNode* pnode)
         if(!(pnode->addr.IsRFC1918() || pnode->addr.IsLocal())) {
             std::map<CNetAddr, int64_t>::iterator it = mWeAskedForGhostnodeList.find(pnode->addr);
             if(it != mWeAskedForGhostnodeList.end() && GetTime() < (*it).second) {
-                LogPrintf("CGhostnodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
+                //LogPrint("CGhostnodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
                 return;
             }
         }
@@ -443,7 +443,7 @@ void CGhostnodeMan::DsegUpdate(CNode* pnode)
     int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
     mWeAskedForGhostnodeList[pnode->addr] = askAgain;
 
-    LogPrintf("ghostnode", "CGhostnodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
+    //LogPrint("ghostnode", "CGhostnodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
 }
 
 CGhostnode* CGhostnodeMan::Find(const CScript &payee)
@@ -546,23 +546,23 @@ char* CGhostnodeMan::GetNotQualifyReason(CGhostnode& mn, int nBlockHeight, bool 
     }
     // //check protocol version
     if (mn.nProtocolVersion < mnpayments.GetMinGhostnodePaymentsProto()) {
-        // LogPrintf("Invalid nProtocolVersion!\n");
-        // LogPrintf("mn.nProtocolVersion=%s!\n", mn.nProtocolVersion);
-        // LogPrintf("mnpayments.GetMinGhostnodePaymentsProto=%s!\n", mnpayments.GetMinGhostnodePaymentsProto());
+        // //LogPrint("Invalid nProtocolVersion!\n");
+        // //LogPrint("mn.nProtocolVersion=%s!\n", mn.nProtocolVersion);
+        // //LogPrint("mnpayments.GetMinGhostnodePaymentsProto=%s!\n", mnpayments.GetMinGhostnodePaymentsProto());
         char* reasonStr = new char[256];
         sprintf(reasonStr, "false: 'Invalid nProtocolVersion', nProtocolVersion=%d", mn.nProtocolVersion);
         return reasonStr;
     }
     //it's in the list (up to 8 entries ahead of current block to allow propagation) -- so let's skip it
     if (mnpayments.IsScheduled(mn, nBlockHeight)) {
-        // LogPrintf("mnpayments.IsScheduled!\n");
+        // //LogPrint("mnpayments.IsScheduled!\n");
         char* reasonStr = new char[256];
         sprintf(reasonStr, "false: 'is scheduled'");
         return reasonStr;
     }
     //it's too new, wait for a cycle
     if (fFilterSigTime && mn.sigTime + (nMnCount * 2.6 * 60) > GetAdjustedTime()) {
-        // LogPrintf("it's too new, wait for a cycle!\n");
+        // //LogPrint("it's too new, wait for a cycle!\n");
         char* reasonStr = new char[256];
         sprintf(reasonStr, "false: 'too new', sigTime=%s, will be qualifed after=%s",
                 DateTimeStrFormat("%Y-%m-%d %H:%M UTC", mn.sigTime).c_str(), DateTimeStrFormat("%Y-%m-%d %H:%M UTC", mn.sigTime + (nMnCount * 2.6 * 60)).c_str());
@@ -570,8 +570,8 @@ char* CGhostnodeMan::GetNotQualifyReason(CGhostnode& mn, int nBlockHeight, bool 
     }
     //make sure it has at least as many confirmations as there are ghostnodes
     if (mn.GetCollateralAge() < nMnCount) {
-        // LogPrintf("mn.GetCollateralAge()=%s!\n", mn.GetCollateralAge());
-        // LogPrintf("nMnCount=%s!\n", nMnCount);
+        // //LogPrint("mn.GetCollateralAge()=%s!\n", mn.GetCollateralAge());
+        // //LogPrint("nMnCount=%s!\n", nMnCount);
         char* reasonStr = new char[256];
         sprintf(reasonStr, "false: 'collateralAge < znCount', collateralAge=%d, znCount=%d", mn.GetCollateralAge(), nMnCount);
         return reasonStr;
@@ -607,47 +607,47 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
     BOOST_FOREACH(CGhostnode &mn, vGhostnodes)
     {
         index += 1;
-        // LogPrintf("index=%s, mn=%s\n", index, mn.ToString());
+        // //LogPrint("index=%s, mn=%s\n", index, mn.ToString());
         /*if (!mn.IsValidForPayment()) {
-            LogPrintf("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'not valid for payment'\n",
+            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'not valid for payment'\n",
                      mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
             continue;
         }
         // //check protocol version
         if (mn.nProtocolVersion < mnpayments.GetMinGhostnodePaymentsProto()) {
-            // LogPrintf("Invalid nProtocolVersion!\n");
-            // LogPrintf("mn.nProtocolVersion=%s!\n", mn.nProtocolVersion);
-            // LogPrintf("mnpayments.GetMinGhostnodePaymentsProto=%s!\n", mnpayments.GetMinGhostnodePaymentsProto());
-            LogPrintf("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'invalid nProtocolVersion'\n",
+            // //LogPrint("Invalid nProtocolVersion!\n");
+            // //LogPrint("mn.nProtocolVersion=%s!\n", mn.nProtocolVersion);
+            // //LogPrint("mnpayments.GetMinGhostnodePaymentsProto=%s!\n", mnpayments.GetMinGhostnodePaymentsProto());
+            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'invalid nProtocolVersion'\n",
                      mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
             continue;
         }
         //it's in the list (up to 8 entries ahead of current block to allow propagation) -- so let's skip it
         if (mnpayments.IsScheduled(mn, nBlockHeight)) {
-            // LogPrintf("mnpayments.IsScheduled!\n");
-            LogPrintf("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'IsScheduled'\n",
+            // //LogPrint("mnpayments.IsScheduled!\n");
+            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'IsScheduled'\n",
                      mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
             continue;
         }
         //it's too new, wait for a cycle
         if (fFilterSigTime && mn.sigTime + (nMnCount * 2.6 * 60) > GetAdjustedTime()) {
-            // LogPrintf("it's too new, wait for a cycle!\n");
-            LogPrintf("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'it's too new, wait for a cycle!', sigTime=%s, will be qualifed after=%s\n",
+            // //LogPrint("it's too new, wait for a cycle!\n");
+            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'it's too new, wait for a cycle!', sigTime=%s, will be qualifed after=%s\n",
                      mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), DateTimeStrFormat("%Y-%m-%d %H:%M UTC", mn.sigTime).c_str(), DateTimeStrFormat("%Y-%m-%d %H:%M UTC", mn.sigTime + (nMnCount * 2.6 * 60)).c_str());
             continue;
         }
         //make sure it has at least as many confirmations as there are ghostnodes
         if (mn.GetCollateralAge() < nMnCount) {
-            // LogPrintf("mn.GetCollateralAge()=%s!\n", mn.GetCollateralAge());
-            // LogPrintf("nMnCount=%s!\n", nMnCount);
-            LogPrintf("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'mn.GetCollateralAge() < nMnCount', CollateralAge=%d, nMnCount=%d\n",
+            // //LogPrint("mn.GetCollateralAge()=%s!\n", mn.GetCollateralAge());
+            // //LogPrint("nMnCount=%s!\n", nMnCount);
+            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'mn.GetCollateralAge() < nMnCount', CollateralAge=%d, nMnCount=%d\n",
                      mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), mn.GetCollateralAge(), nMnCount);
             continue;
         }*/
         char* reasonStr = GetNotQualifyReason(mn, nBlockHeight, fFilterSigTime, nMnCount);
         if (reasonStr != NULL) {
-            LogPrintf("ghostnodeman", "Ghostnode, %s, addr(%s), qualify %s\n",
-                     mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), reasonStr);
+            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), qualify %s\n",
+                     //mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), reasonStr);
             delete [] reasonStr;
             continue;
         }
@@ -657,7 +657,7 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
 
     //when the network is in the process of upgrading, don't penalize nodes that recently restarted
     if(fFilterSigTime && nCount < nMnCount / 3) {
-        // LogPrintf("Need Return, nCount=%s, nMnCount/3=%s\n", nCount, nMnCount/3);
+        // //LogPrint("Need Return, nCount=%s, nMnCount/3=%s\n", nCount, nMnCount/3);
         return GetNextGhostnodeInQueueForPayment(nBlockHeight, false, nCount);
     }
 
@@ -666,7 +666,7 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
 
     uint256 blockHash;
     if(!GetBlockHash(blockHash, nBlockHeight - 101)) {
-        LogPrintf("CGhostnode::GetNextGhostnodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight - 101);
+        //LogPrint("CGhostnode::GetNextGhostnodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight - 101);
         return NULL;
     }
     // Look at 1/10 of the oldest nodes (by last payment), calculate their scores and pay the best one
@@ -697,7 +697,7 @@ CGhostnode* CGhostnodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToExc
     int nCountEnabled = CountEnabled(nProtocolVersion);
     int nCountNotExcluded = nCountEnabled - vecToExclude.size();
 
-    LogPrintf("CGhostnodeMan::FindRandomNotInVec -- %d enabled ghostnodes, %d ghostnodes to choose from\n", nCountEnabled, nCountNotExcluded);
+    //LogPrint("CGhostnodeMan::FindRandomNotInVec -- %d enabled ghostnodes, %d ghostnodes to choose from\n", nCountEnabled, nCountNotExcluded);
     if(nCountNotExcluded < 1) return NULL;
 
     // fill a vector of pointers
@@ -723,11 +723,11 @@ CGhostnode* CGhostnodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToExc
         }
         if(fExclude) continue;
         // found the one not in vecToExclude
-        LogPrintf("ghostnode", "CGhostnodeMan::FindRandomNotInVec -- found, ghostnode=%s\n", pmn->vin.prevout.ToStringShort());
+        //LogPrint("ghostnode", "CGhostnodeMan::FindRandomNotInVec -- found, ghostnode=%s\n", pmn->vin.prevout.ToStringShort());
         return pmn;
     }
 
-    LogPrintf("ghostnode", "CGhostnodeMan::FindRandomNotInVec -- failed\n");
+    //LogPrint("ghostnode", "CGhostnodeMan::FindRandomNotInVec -- failed\n");
     return NULL;
 }
 
@@ -806,7 +806,7 @@ CGhostnode* CGhostnodeMan::GetGhostnodeByRank(int nRank, int nBlockHeight, int n
 
     uint256 blockHash;
     if(!GetBlockHash(blockHash, nBlockHeight)) {
-        LogPrintf("CGhostnode::GetGhostnodeByRank -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight);
+        //LogPrint("CGhostnode::GetGhostnodeByRank -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight);
         return NULL;
     }
 
@@ -843,7 +843,7 @@ void CGhostnodeMan::ProcessGhostnodeConnections()
     BOOST_FOREACH(CNode* pnode, g_connman->vNodes) {
         if(pnode->fGhostnode) {
             if(darkSendPool.pSubmittedToGhostnode != NULL && pnode->addr == darkSendPool.pSubmittedToGhostnode->addr) continue;
-            // LogPrintf("Closing Ghostnode connection: peer=%d, addr=%s\n", pnode->GetId(), pnode->addr.ToString());
+            // //LogPrint("Closing Ghostnode connection: peer=%d, addr=%s\n", pnode->GetId(), pnode->addr.ToString());
             pnode->fDisconnect = true;
         }
     }
@@ -880,7 +880,7 @@ std::pair<CService, std::set<uint256> > CGhostnodeMan::PopScheduledMnbRequestCon
 void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
 
-//    LogPrintf("ghostnode", "CGhostnodeMan::ProcessMessage, strCommand=%s\n", strCommand);
+//    //LogPrint("ghostnode", "CGhostnodeMan::ProcessMessage, strCommand=%s\n", strCommand);
     if(fLiteMode) return; // disable all Dash specific functionality
     if(!ghostnodeSync.IsBlockchainSynced()) return;
 
@@ -890,7 +890,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 
         pfrom->setAskFor.erase(mnb.GetHash());
 
-        LogPrintf("MNANNOUNCE -- Ghostnode announce, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+        //LogPrint("MNANNOUNCE -- Ghostnode announce, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
 
         int nDos = 0;
 
@@ -913,7 +913,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 
         pfrom->setAskFor.erase(nHash);
 
-        LogPrintf("ghostnode", "MNPING -- Ghostnode ping, ghostnode=%s\n", mnp.vin.prevout.ToStringShort());
+        //LogPrint("ghostnode", "MNPING -- Ghostnode ping, ghostnode=%s\n", mnp.vin.prevout.ToStringShort());
 
         // Need LOCK2 here to ensure consistent locking order because the CheckAndUpdate call below locks cs_main
         LOCK2(cs_main, cs);
@@ -921,7 +921,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
         if(mapSeenGhostnodePing.count(nHash)) return; //seen
         mapSeenGhostnodePing.insert(std::make_pair(nHash, mnp));
 
-        LogPrintf("ghostnode", "MNPING -- Ghostnode ping, ghostnode=%s new\n", mnp.vin.prevout.ToStringShort());
+        //LogPrint("ghostnode", "MNPING -- Ghostnode ping, ghostnode=%s new\n", mnp.vin.prevout.ToStringShort());
 
         // see if we have this Ghostnode
         CGhostnode* pmn = mnodeman.Find(mnp.vin);
@@ -953,7 +953,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
         CTxIn vin;
         vRecv >> vin;
 
-        LogPrintf("ghostnode", "DSEG -- Ghostnode list, ghostnode=%s\n", vin.prevout.ToStringShort());
+        //LogPrint("ghostnode", "DSEG -- Ghostnode list, ghostnode=%s\n", vin.prevout.ToStringShort());
 
         LOCK(cs);
 
@@ -967,7 +967,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
                     int64_t t = (*i).second;
                     if (GetTime() < t) {
                         Misbehaving(pfrom->GetId(), 34);
-                        LogPrintf("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->GetId());
+                        //LogPrint("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->GetId());
                         return;
                     }
                 }
@@ -983,7 +983,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
             if (mn.addr.IsRFC1918() || mn.addr.IsLocal()) continue; // do not send local network ghostnode
             if (mn.IsUpdateRequired()) continue; // do not send outdated ghostnodes
 
-            LogPrintf("ghostnode", "DSEG -- Sending Ghostnode entry: ghostnode=%s  addr=%s\n", mn.vin.prevout.ToStringShort(), mn.addr.ToString());
+            //LogPrint("ghostnode", "DSEG -- Sending Ghostnode entry: ghostnode=%s  addr=%s\n", mn.vin.prevout.ToStringShort(), mn.addr.ToString());
             CGhostnodeBroadcast mnb = CGhostnodeBroadcast(mn);
             uint256 hash = mnb.GetHash();
             pfrom->PushInventory(CInv(MSG_GHOSTNODE_ANNOUNCE, hash));
@@ -995,7 +995,7 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
             }
 
             if (vin == mn.vin) {
-                LogPrintf("DSEG -- Sent 1 Ghostnode inv to peer %d\n", pfrom->GetId());
+                //LogPrint("DSEG -- Sent 1 Ghostnode inv to peer %d\n", pfrom->GetId());
                 return;
             }
         }
@@ -1003,11 +1003,11 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
         if(vin == CTxIn()) {
             const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
             g_connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::SYNCSTATUSCOUNT, GHOSTNODE_SYNC_LIST, nInvCount));
-            LogPrintf("DSEG -- Sent %d Ghostnode invs to peer %d\n", nInvCount, pfrom->GetId());
+            //LogPrint("DSEG -- Sent %d Ghostnode invs to peer %d\n", nInvCount, pfrom->GetId());
             return;
         }
         // smth weird happen - someone asked us for vin we have no idea about?
-        LogPrintf("ghostnode", "DSEG -- No invs sent to peer %d\n", pfrom->GetId());
+        //LogPrint("ghostnode", "DSEG -- No invs sent to peer %d\n", pfrom->GetId());
 
     } else if (strCommand == NetMsgType::MNVERIFY) { // Ghostnode Verify
 
@@ -1052,14 +1052,14 @@ void CGhostnodeMan::DoFullVerificationStep()
     std::vector<std::pair<int, CGhostnode> >::iterator it = vecGhostnodeRanks.begin();
     while(it != vecGhostnodeRanks.end()) {
         if(it->first > MAX_POSE_RANK) {
-            LogPrintf("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Must be in top %d to send verify request\n",
-                        (int)MAX_POSE_RANK);
+            //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Must be in top %d to send verify request\n",
+                    //    (int)MAX_POSE_RANK);
             return;
         }
         if(it->second.vin == activeGhostnode.vin) {
             nMyRank = it->first;
-            LogPrintf("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Found self at rank %d/%d, verifying up to %d ghostnodes\n",
-                        nMyRank, nRanksTotal, (int)MAX_POSE_CONNECTIONS);
+            //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Found self at rank %d/%d, verifying up to %d ghostnodes\n",
+                    //    nMyRank, nRanksTotal, (int)MAX_POSE_CONNECTIONS);
             break;
         }
         ++it;
@@ -1083,18 +1083,18 @@ void CGhostnodeMan::DoFullVerificationStep()
     it = vecGhostnodeRanks.begin() + nOffset;
     while(it != vecGhostnodeRanks.end()) {
         if(it->second.IsPoSeVerified() || it->second.IsPoSeBanned()) {
-            LogPrintf("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Already %s%s%s ghostnode %s address %s, skipping...\n",
-                        it->second.IsPoSeVerified() ? "verified" : "",
-                        it->second.IsPoSeVerified() && it->second.IsPoSeBanned() ? " and " : "",
-                        it->second.IsPoSeBanned() ? "banned" : "",
-                        it->second.vin.prevout.ToStringShort(), it->second.addr.ToString());
+            //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Already %s%s%s ghostnode %s address %s, skipping...\n",
+//                        it->second.IsPoSeVerified() ? "verified" : "",
+//                        it->second.IsPoSeVerified() && it->second.IsPoSeBanned() ? " and " : "",
+//                        it->second.IsPoSeBanned() ? "banned" : "",
+//                        it->second.vin.prevout.ToStringShort(), it->second.addr.ToString());
             nOffset += MAX_POSE_CONNECTIONS;
             if(nOffset >= (int)vecGhostnodeRanks.size()) break;
             it += MAX_POSE_CONNECTIONS;
             continue;
         }
-        LogPrintf("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Verifying ghostnode %s rank %d/%d address %s\n",
-                    it->second.vin.prevout.ToStringShort(), it->first, nRanksTotal, it->second.addr.ToString());
+        //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Verifying ghostnode %s rank %d/%d address %s\n",
+                 //   it->second.vin.prevout.ToStringShort(), it->first, nRanksTotal, it->second.addr.ToString());
         if(SendVerifyRequest(CAddress(it->second.addr, NODE_NETWORK), vSortedByAddr)) {
             nCount++;
             if(nCount >= MAX_POSE_CONNECTIONS) break;
@@ -1104,7 +1104,7 @@ void CGhostnodeMan::DoFullVerificationStep()
         it += MAX_POSE_CONNECTIONS;
     }
 
-    LogPrintf("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Sent verification requests to %d ghostnodes\n", nCount);
+    //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Sent verification requests to %d ghostnodes\n", nCount);
 }
 
 // This function tries to find ghostnodes with the same addr,
@@ -1160,7 +1160,7 @@ void CGhostnodeMan::CheckSameAddr()
 
     // ban duplicates
     BOOST_FOREACH(CGhostnode* pmn, vBan) {
-        LogPrintf("CGhostnodeMan::CheckSameAddr -- increasing PoSe ban score for ghostnode %s\n", pmn->vin.prevout.ToStringShort());
+        //LogPrint("CGhostnodeMan::CheckSameAddr -- increasing PoSe ban score for ghostnode %s\n", pmn->vin.prevout.ToStringShort());
         pmn->IncreasePoSeBanScore();
     }
 }
@@ -1169,13 +1169,13 @@ bool CGhostnodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<CG
 {
     if(netfulfilledman.HasFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request")) {
         // we already asked for verification, not a good idea to do this too often, skip it
-        LogPrintf("ghostnode", "CGhostnodeMan::SendVerifyRequest -- too many requests, skipping... addr=%s\n", addr.ToString());
+        //LogPrint("ghostnode", "CGhostnodeMan::SendVerifyRequest -- too many requests, skipping... addr=%s\n", addr.ToString());
         return false;
     }
 
     CNode* pnode = g_connman->ConnectNode(addr, NULL, false, true);
     if(pnode == NULL) {
-        LogPrintf("CGhostnodeMan::SendVerifyRequest -- can't connect to node to verify it, addr=%s\n", addr.ToString());
+        //LogPrint("CGhostnodeMan::SendVerifyRequest -- can't connect to node to verify it, addr=%s\n", addr.ToString());
         return false;
     }
 
@@ -1183,7 +1183,7 @@ bool CGhostnodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<CG
     // use random nonce, store it and require node to reply with correct one later
     CGhostnodeVerification mnv(addr, GetRandInt(999999), pCurrentBlockIndex->nHeight - 1);
     mWeAskedForVerification[addr] = mnv;
-    LogPrintf("CGhostnodeMan::SendVerifyRequest -- verifying node using nonce %d addr=%s\n", mnv.nonce, addr.ToString());
+    //LogPrint("CGhostnodeMan::SendVerifyRequest -- verifying node using nonce %d addr=%s\n", mnv.nonce, addr.ToString());
     const CNetMsgMaker msgMaker(pnode->GetSendVersion());
     g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::MNVERIFY, mnv));
 
@@ -1202,28 +1202,28 @@ void CGhostnodeMan::SendVerifyReply(CNode* pnode, CGhostnodeVerification& mnv)
 
     if(netfulfilledman.HasFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-reply")) {
 //        // peer should not ask us that often
-        LogPrintf("GhostnodeMan::SendVerifyReply -- ERROR: peer already asked me recently, peer=%d\n", pnode->GetId());
+        //LogPrint("GhostnodeMan::SendVerifyReply -- ERROR: peer already asked me recently, peer=%d\n", pnode->GetId());
         Misbehaving(pnode->GetId(), 20);
         return;
     }
 
     uint256 blockHash;
     if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
-        LogPrintf("GhostnodeMan::SendVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->GetId());
+        //LogPrint("GhostnodeMan::SendVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->GetId());
         return;
     }
 
     std::string strMessage = strprintf("%s%d%s", activeGhostnode.service.ToString(), mnv.nonce, blockHash.ToString());
 
     if(!darkSendSigner.SignMessage(strMessage, mnv.vchSig1, activeGhostnode.keyGhostnode)) {
-        LogPrintf("GhostnodeMan::SendVerifyReply -- SignMessage() failed\n");
+        //LogPrint("GhostnodeMan::SendVerifyReply -- SignMessage() failed\n");
         return;
     }
 
     std::string strError;
 
     if(!darkSendSigner.VerifyMessage(activeGhostnode.pubKeyGhostnode, mnv.vchSig1, strMessage, strError)) {
-        LogPrintf("GhostnodeMan::SendVerifyReply -- VerifyMessage() failed, error: %s\n", strError);
+        //LogPrint("GhostnodeMan::SendVerifyReply -- VerifyMessage() failed, error: %s\n", strError);
         return;
     }
 
@@ -1238,23 +1238,23 @@ void CGhostnodeMan::ProcessVerifyReply(CNode* pnode, CGhostnodeVerification& mnv
 
     // did we even ask for it? if that's the case we should have matching fulfilled request
     if(!netfulfilledman.HasFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request")) {
-        LogPrintf("CGhostnodeMan::ProcessVerifyReply -- ERROR: we didn't ask for verification of %s, peer=%d\n", pnode->addr.ToString(), pnode->GetId());
+        //LogPrint("CGhostnodeMan::ProcessVerifyReply -- ERROR: we didn't ask for verification of %s, peer=%d\n", pnode->addr.ToString(), pnode->GetId());
         Misbehaving(pnode->GetId(), 20);
         return;
     }
 
     // Received nonce for a known address must match the one we sent
     if(mWeAskedForVerification[pnode->addr].nonce != mnv.nonce) {
-        LogPrintf("CGhostnodeMan::ProcessVerifyReply -- ERROR: wrong nounce: requested=%d, received=%d, peer=%d\n",
-                    mWeAskedForVerification[pnode->addr].nonce, mnv.nonce, pnode->GetId());
+        //LogPrint("CGhostnodeMan::ProcessVerifyReply -- ERROR: wrong nounce: requested=%d, received=%d, peer=%d\n",
+                   // mWeAskedForVerification[pnode->addr].nonce, mnv.nonce, pnode->GetId());
         Misbehaving(pnode->GetId(), 20);
         return;
     }
 
     // Received nBlockHeight for a known address must match the one we sent
     if(mWeAskedForVerification[pnode->addr].nBlockHeight != mnv.nBlockHeight) {
-        LogPrintf("CGhostnodeMan::ProcessVerifyReply -- ERROR: wrong nBlockHeight: requested=%d, received=%d, peer=%d\n",
-                    mWeAskedForVerification[pnode->addr].nBlockHeight, mnv.nBlockHeight, pnode->GetId());
+        //LogPrint("CGhostnodeMan::ProcessVerifyReply -- ERROR: wrong nBlockHeight: requested=%d, received=%d, peer=%d\n",
+                   // mWeAskedForVerification[pnode->addr].nBlockHeight, mnv.nBlockHeight, pnode->GetId());
         Misbehaving(pnode->GetId(), 20);
         return;
     }
@@ -1262,13 +1262,13 @@ void CGhostnodeMan::ProcessVerifyReply(CNode* pnode, CGhostnodeVerification& mnv
     uint256 blockHash;
     if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
         // this shouldn't happen...
-        LogPrintf("GhostnodeMan::ProcessVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->GetId());
+        //LogPrint("GhostnodeMan::ProcessVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->GetId());
         return;
     }
 
 //    // we already verified this address, why node is spamming?
     if(netfulfilledman.HasFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-done")) {
-        LogPrintf("CGhostnodeMan::ProcessVerifyReply -- ERROR: already verified %s recently\n", pnode->addr.ToString());
+        //LogPrint("CGhostnodeMan::ProcessVerifyReply -- ERROR: already verified %s recently\n", pnode->addr.ToString());
         Misbehaving(pnode->GetId(), 20);
         return;
     }
@@ -1300,14 +1300,14 @@ void CGhostnodeMan::ProcessVerifyReply(CNode* pnode, CGhostnodeVerification& mnv
                                             mnv.vin1.prevout.ToStringShort(), mnv.vin2.prevout.ToStringShort());
                     // ... and sign it
                     if(!darkSendSigner.SignMessage(strMessage2, mnv.vchSig2, activeGhostnode.keyGhostnode)) {
-                        LogPrintf("GhostnodeMan::ProcessVerifyReply -- SignMessage() failed\n");
+                        //LogPrint("GhostnodeMan::ProcessVerifyReply -- SignMessage() failed\n");
                         return;
                     }
 
                     std::string strError;
 
                     if(!darkSendSigner.VerifyMessage(activeGhostnode.pubKeyGhostnode, mnv.vchSig2, strMessage2, strError)) {
-                        LogPrintf("GhostnodeMan::ProcessVerifyReply -- VerifyMessage() failed, error: %s\n", strError);
+                        //LogPrint("GhostnodeMan::ProcessVerifyReply -- VerifyMessage() failed, error: %s\n", strError);
                         return;
                     }
 
@@ -1324,20 +1324,20 @@ void CGhostnodeMan::ProcessVerifyReply(CNode* pnode, CGhostnodeVerification& mnv
         if(!prealGhostnode) {
             // this should never be the case normally,
             // only if someone is trying to game the system in some way or smth like that
-            LogPrintf("CGhostnodeMan::ProcessVerifyReply -- ERROR: no real ghostnode found for addr %s\n", pnode->addr.ToString());
+            //LogPrint("CGhostnodeMan::ProcessVerifyReply -- ERROR: no real ghostnode found for addr %s\n", pnode->addr.ToString());
             Misbehaving(pnode->GetId(), 20);
             return;
         }
-        LogPrintf("CGhostnodeMan::ProcessVerifyReply -- verified real ghostnode %s for addr %s\n",
-                    prealGhostnode->vin.prevout.ToStringShort(), pnode->addr.ToString());
+        //LogPrint("CGhostnodeMan::ProcessVerifyReply -- verified real ghostnode %s for addr %s\n",
+                   // prealGhostnode->vin.prevout.ToStringShort(), pnode->addr.ToString());
         // increase ban score for everyone else
         BOOST_FOREACH(CGhostnode* pmn, vpGhostnodesToBan) {
             pmn->IncreasePoSeBanScore();
-            LogPrintf("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
-                        prealGhostnode->vin.prevout.ToStringShort(), pnode->addr.ToString(), pmn->nPoSeBanScore);
+            //LogPrint("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
+                        //prealGhostnode->vin.prevout.ToStringShort(), pnode->addr.ToString(), pmn->nPoSeBanScore);
         }
-        LogPrintf("CGhostnodeMan::ProcessVerifyBroadcast -- PoSe score increased for %d fake ghostnodes, addr %s\n",
-                    (int)vpGhostnodesToBan.size(), pnode->addr.ToString());
+        //LogPrint("CGhostnodeMan::ProcessVerifyBroadcast -- PoSe score increased for %d fake ghostnodes, addr %s\n",
+                   // (int)vpGhostnodesToBan.size(), pnode->addr.ToString());
     }
 }
 
@@ -1353,14 +1353,14 @@ void CGhostnodeMan::ProcessVerifyBroadcast(CNode* pnode, const CGhostnodeVerific
 
     // we don't care about history
     if(mnv.nBlockHeight < pCurrentBlockIndex->nHeight - MAX_POSE_BLOCKS) {
-        LogPrintf("ghostnode", "GhostnodeMan::ProcessVerifyBroadcast -- Outdated: current block %d, verification block %d, peer=%d\n",
-                    pCurrentBlockIndex->nHeight, mnv.nBlockHeight, pnode->GetId());
+        //LogPrint("ghostnode", "GhostnodeMan::ProcessVerifyBroadcast -- Outdated: current block %d, verification block %d, peer=%d\n",
+                  //  pCurrentBlockIndex->nHeight, mnv.nBlockHeight, pnode->GetId());
         return;
     }
 
     if(mnv.vin1.prevout == mnv.vin2.prevout) {
-        LogPrintf("ghostnode", "GhostnodeMan::ProcessVerifyBroadcast -- ERROR: same vins %s, peer=%d\n",
-                    mnv.vin1.prevout.ToStringShort(), pnode->GetId());
+        //LogPrint("ghostnode", "GhostnodeMan::ProcessVerifyBroadcast -- ERROR: same vins %s, peer=%d\n",
+                   // mnv.vin1.prevout.ToStringShort(), pnode->GetId());
         // that was NOT a good idea to cheat and verify itself,
         // ban the node we received such message from
         Misbehaving(pnode->GetId(), 100);
@@ -1370,21 +1370,21 @@ void CGhostnodeMan::ProcessVerifyBroadcast(CNode* pnode, const CGhostnodeVerific
     uint256 blockHash;
     if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
         // this shouldn't happen...
-        LogPrintf("GhostnodeMan::ProcessVerifyBroadcast -- Can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->GetId());
+        //LogPrint("GhostnodeMan::ProcessVerifyBroadcast -- Can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->GetId());
         return;
     }
 
     int nRank = GetGhostnodeRank(mnv.vin2, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION);
 
     if (nRank == -1) {
-        LogPrintf("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- Can't calculate rank for ghostnode %s\n",
-                    mnv.vin2.prevout.ToStringShort());
+        //LogPrint("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- Can't calculate rank for ghostnode %s\n",
+                  //  mnv.vin2.prevout.ToStringShort());
         return;
     }
 
     if(nRank > MAX_POSE_RANK) {
-        LogPrintf("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- Mastrernode %s is not in top %d, current rank %d, peer=%d\n",
-                    mnv.vin2.prevout.ToStringShort(), (int)MAX_POSE_RANK, nRank, pnode->GetId());
+        //LogPrint("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- Mastrernode %s is not in top %d, current rank %d, peer=%d\n",
+                  //  mnv.vin2.prevout.ToStringShort(), (int)MAX_POSE_RANK, nRank, pnode->GetId());
         return;
     }
 
@@ -1397,28 +1397,28 @@ void CGhostnodeMan::ProcessVerifyBroadcast(CNode* pnode, const CGhostnodeVerific
 
         CGhostnode* pmn1 = Find(mnv.vin1);
         if(!pmn1) {
-            LogPrintf("CGhostnodeMan::ProcessVerifyBroadcast -- can't find ghostnode1 %s\n", mnv.vin1.prevout.ToStringShort());
+            //LogPrint("CGhostnodeMan::ProcessVerifyBroadcast -- can't find ghostnode1 %s\n", mnv.vin1.prevout.ToStringShort());
             return;
         }
 
         CGhostnode* pmn2 = Find(mnv.vin2);
         if(!pmn2) {
-            LogPrintf("CGhostnodeMan::ProcessVerifyBroadcast -- can't find ghostnode2 %s\n", mnv.vin2.prevout.ToStringShort());
+            //LogPrint("CGhostnodeMan::ProcessVerifyBroadcast -- can't find ghostnode2 %s\n", mnv.vin2.prevout.ToStringShort());
             return;
         }
 
         if(pmn1->addr != mnv.addr) {
-            LogPrintf("CGhostnodeMan::ProcessVerifyBroadcast -- addr %s do not match %s\n", mnv.addr.ToString(), pnode->addr.ToString());
+            //LogPrint("CGhostnodeMan::ProcessVerifyBroadcast -- addr %s do not match %s\n", mnv.addr.ToString(), pnode->addr.ToString());
             return;
         }
 
         if(darkSendSigner.VerifyMessage(pmn1->pubKeyGhostnode, mnv.vchSig1, strMessage1, strError)) {
-            LogPrintf("GhostnodeMan::ProcessVerifyBroadcast -- VerifyMessage() for ghostnode1 failed, error: %s\n", strError);
+            //LogPrint("GhostnodeMan::ProcessVerifyBroadcast -- VerifyMessage() for ghostnode1 failed, error: %s\n", strError);
             return;
         }
 
         if(darkSendSigner.VerifyMessage(pmn2->pubKeyGhostnode, mnv.vchSig2, strMessage2, strError)) {
-            LogPrintf("GhostnodeMan::ProcessVerifyBroadcast -- VerifyMessage() for ghostnode2 failed, error: %s\n", strError);
+            //LogPrint("GhostnodeMan::ProcessVerifyBroadcast -- VerifyMessage() for ghostnode2 failed, error: %s\n", strError);
             return;
         }
 
@@ -1427,8 +1427,8 @@ void CGhostnodeMan::ProcessVerifyBroadcast(CNode* pnode, const CGhostnodeVerific
         }
         mnv.Relay();
 
-        LogPrintf("CGhostnodeMan::ProcessVerifyBroadcast -- verified ghostnode %s for addr %s\n",
-                    pmn1->vin.prevout.ToStringShort(), pnode->addr.ToString());
+        //LogPrint("CGhostnodeMan::ProcessVerifyBroadcast -- verified ghostnode %s for addr %s\n",
+                   // pmn1->vin.prevout.ToStringShort(), pnode->addr.ToString());
 
         // increase ban score for everyone else with the same addr
         int nCount = 0;
@@ -1436,11 +1436,11 @@ void CGhostnodeMan::ProcessVerifyBroadcast(CNode* pnode, const CGhostnodeVerific
             if(mn.addr != mnv.addr || mn.vin.prevout == mnv.vin1.prevout) continue;
             mn.IncreasePoSeBanScore();
             nCount++;
-            LogPrintf("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
-                        mn.vin.prevout.ToStringShort(), mn.addr.ToString(), mn.nPoSeBanScore);
+            //LogPrint("ghostnode", "CGhostnodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
+                      //  mn.vin.prevout.ToStringShort(), mn.addr.ToString(), mn.nPoSeBanScore);
         }
-        LogPrintf("CGhostnodeMan::ProcessVerifyBroadcast -- PoSe score incresed for %d fake ghostnodes, addr %s\n",
-                    nCount, pnode->addr.ToString());
+        //LogPrint("CGhostnodeMan::ProcessVerifyBroadcast -- PoSe score incresed for %d fake ghostnodes, addr %s\n",
+                    //nCount, pnode->addr.ToString());
     }
 }
 
@@ -1461,12 +1461,12 @@ std::string CGhostnodeMan::ToString() const
 void CGhostnodeMan::UpdateGhostnodeList(CGhostnodeBroadcast mnb)
 {
     try {
-        LogPrintf("CGhostnodeMan::UpdateGhostnodeList\n");
+        //LogPrint("CGhostnodeMan::UpdateGhostnodeList\n");
         LOCK2(cs_main, cs);
         mapSeenGhostnodePing.insert(std::make_pair(mnb.lastPing.GetHash(), mnb.lastPing));
         mapSeenGhostnodeBroadcast.insert(std::make_pair(mnb.GetHash(), std::make_pair(GetTime(), mnb)));
 
-        LogPrintf("CGhostnodeMan::UpdateGhostnodeList -- ghostnode=%s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
+        //LogPrint("CGhostnodeMan::UpdateGhostnodeList -- ghostnode=%s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
 
         CGhostnode *pmn = Find(mnb.vin);
         if (pmn == NULL) {
@@ -1494,22 +1494,22 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
     {
         LOCK(cs);
         nDos = 0;
-        LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+        //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
 
         uint256 hash = mnb.GetHash();
         if (mapSeenGhostnodeBroadcast.count(hash) && !mnb.fRecovery) { //seen
-            LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen\n", mnb.vin.prevout.ToStringShort());
+            //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen\n", mnb.vin.prevout.ToStringShort());
             // less then 2 pings left before this MN goes into non-recoverable state, bump sync timeout
             if (GetTime() - mapSeenGhostnodeBroadcast[hash].first > GHOSTNODE_NEW_START_REQUIRED_SECONDS - GHOSTNODE_MIN_MNP_SECONDS * 2) {
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen update\n", mnb.vin.prevout.ToStringShort());
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen update\n", mnb.vin.prevout.ToStringShort());
                 mapSeenGhostnodeBroadcast[hash].first = GetTime();
                 ghostnodeSync.AddedGhostnodeList();
             }
             // did we ask this node for it?
             if (pfrom && IsMnbRecoveryRequested(hash) && GetTime() < mMnbRecoveryRequests[hash].first) {
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- mnb=%s seen request\n", hash.ToString());
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- mnb=%s seen request\n", hash.ToString());
                 if (mMnbRecoveryRequests[hash].second.count(pfrom->addr)) {
-                    LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- mnb=%s seen request, addr=%s\n", hash.ToString(), pfrom->addr.ToString());
+                    //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- mnb=%s seen request, addr=%s\n", hash.ToString(), pfrom->addr.ToString());
                     // do not allow node to send same mnb multiple times in recovery mode
                     mMnbRecoveryRequests[hash].second.erase(pfrom->addr);
                     // does it have newer lastPing?
@@ -1517,10 +1517,10 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
                         // simulate Check
                         CGhostnode mnTemp = CGhostnode(mnb);
                         mnTemp.Check();
-                        LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- mnb=%s seen request, addr=%s, better lastPing: %d min ago, projected mn state: %s\n", hash.ToString(), pfrom->addr.ToString(), (GetTime() - mnb.lastPing.sigTime) / 60, mnTemp.GetStateString());
+                        //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- mnb=%s seen request, addr=%s, better lastPing: %d min ago, projected mn state: %s\n", hash.ToString(), pfrom->addr.ToString(), (GetTime() - mnb.lastPing.sigTime) / 60, mnTemp.GetStateString());
                         if (mnTemp.IsValidStateForAutoStart(mnTemp.nActiveState)) {
                             // this node thinks it's a good one
-                            LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen good\n", mnb.vin.prevout.ToStringShort());
+                            //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen good\n", mnb.vin.prevout.ToStringShort());
                             mMnbRecoveryGoodReplies[hash].push_back(mnb);
                         }
                     }
@@ -1530,10 +1530,10 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
         }
         mapSeenGhostnodeBroadcast.insert(std::make_pair(hash, std::make_pair(GetTime(), mnb)));
 
-        LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s new\n", mnb.vin.prevout.ToStringShort());
+        //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s new\n", mnb.vin.prevout.ToStringShort());
 
         if (!mnb.SimpleCheck(nDos)) {
-            LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- SimpleCheck() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+            //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- SimpleCheck() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
             return false;
         }
 
@@ -1542,7 +1542,7 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
         if (pmn) {
             CGhostnodeBroadcast mnbOld = mapSeenGhostnodeBroadcast[CGhostnodeBroadcast(*pmn).GetHash()].second;
             if (!mnb.Update(pmn, nDos)) {
-                LogPrintf("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Update() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+                //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Update() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
                 return false;
             }
             if (hash != mnbOld.GetHash()) {
@@ -1559,19 +1559,19 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
             mnb.nPoSeBanScore = -GHOSTNODE_POSE_BAN_MAX_SCORE;
             if(mnb.nProtocolVersion == PROTOCOL_VERSION) {
                 // ... and PROTOCOL_VERSION, then we've been remotely activated ...
-                LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Got NEW Ghostnode entry: ghostnode=%s  sigTime=%lld  addr=%s\n",
-                            mnb.vin.prevout.ToStringShort(), mnb.sigTime, mnb.addr.ToString());
+                //LogPrint("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Got NEW Ghostnode entry: ghostnode=%s  sigTime=%lld  addr=%s\n",
+                            //mnb.vin.prevout.ToStringShort(), mnb.sigTime, mnb.addr.ToString());
                 activeGhostnode.ManageState();
             } else {
                 // ... otherwise we need to reactivate our node, do not add it to the list and do not relay
                 // but also do not ban the node we get this message from
-                LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- wrong PROTOCOL_VERSION, re-activate your MN: message nProtocolVersion=%d  PROTOCOL_VERSION=%d\n", mnb.nProtocolVersion, PROTOCOL_VERSION);
+                //LogPrint("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- wrong PROTOCOL_VERSION, re-activate your MN: message nProtocolVersion=%d  PROTOCOL_VERSION=%d\n", mnb.nProtocolVersion, PROTOCOL_VERSION);
                 return false;
             }
         }
         mnb.RelayGhostNode();
     } else {
-        LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Rejected Ghostnode entry: %s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
+        //LogPrint("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Rejected Ghostnode entry: %s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
         return false;
     }
 
@@ -1583,7 +1583,7 @@ void CGhostnodeMan::UpdateLastPaid()
     LOCK(cs);
     if(fLiteMode) return;
     if(!pCurrentBlockIndex) {
-        // LogPrintf("CGhostnodeMan::UpdateLastPaid, pCurrentBlockIndex=NULL\n");
+        // //LogPrint("CGhostnodeMan::UpdateLastPaid, pCurrentBlockIndex=NULL\n");
         return;
     }
 
@@ -1592,8 +1592,8 @@ void CGhostnodeMan::UpdateLastPaid()
     // (MNs should update this info on every block, so limited scan should be enough for them)
     int nMaxBlocksToScanBack = (IsFirstRun || !fGhostNode) ? mnpayments.GetStorageLimit() : LAST_PAID_SCAN_BLOCKS;
 
-    LogPrintf("mnpayments", "CGhostnodeMan::UpdateLastPaid -- nHeight=%d, nMaxBlocksToScanBack=%d, IsFirstRun=%s\n",
-                             pCurrentBlockIndex->nHeight, nMaxBlocksToScanBack, IsFirstRun ? "true" : "false");
+    //LogPrint("mnpayments", "CGhostnodeMan::UpdateLastPaid -- nHeight=%d, nMaxBlocksToScanBack=%d, IsFirstRun=%s\n",
+                            // pCurrentBlockIndex->nHeight, nMaxBlocksToScanBack, IsFirstRun ? "true" : "false");
 
     BOOST_FOREACH(CGhostnode& mn, vGhostnodes) {
         mn.UpdateLastPaid(pCurrentBlockIndex, nMaxBlocksToScanBack);
@@ -1717,7 +1717,7 @@ void CGhostnodeMan::SetGhostnodeLastPing(const CTxIn& vin, const CGhostnodePing&
 void CGhostnodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 {
     pCurrentBlockIndex = pindex;
-    LogPrintf("ghostnode", "CGhostnodeMan::UpdatedBlockTip -- pCurrentBlockIndex->nHeight=%d\n", pCurrentBlockIndex->nHeight);
+    //LogPrint("ghostnode", "CGhostnodeMan::UpdatedBlockTip -- pCurrentBlockIndex->nHeight=%d\n", pCurrentBlockIndex->nHeight);
 
     CheckSameAddr();
 

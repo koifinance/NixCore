@@ -3,10 +3,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
-#include <stealth-address/stealth.h>
+//#include <ghost-address/smsg/crypter.h>
+#include <ghost-address/stealth.h>
+//#include <ghost-address/smsg/smessage.h>
 #include <base58.h>
 #include <crypto/sha256.h>
-#include <stealth-address/keyutil.h>
+#include <ghost-address/keyutil.h>
 #include <key.h>
 #include <pubkey.h>
 #include <random.h>
@@ -388,16 +390,10 @@ bool ExtractStealthPrefix(const char *pPrefix, uint32_t &nPrefix)
 int MakeStealthData(const std::string &sNarration, stealth_prefix prefix, const CKey &sShared, const CPubKey &pkEphem,
     std::vector<uint8_t> &vData, uint32_t &nStealthPrefix, std::string &sError)
 {
-    /*
+
     std::vector<uint8_t> vchNarr;
     if (sNarration.length() > 0)
     {
-        SecMsgCrypter crypter;
-        crypter.SetKey(sShared.begin(), pkEphem.begin());
-
-        if (!crypter.Encrypt((uint8_t*)sNarration.data(), sNarration.length(), vchNarr))
-            return errorN(1, sError, __func__, "Narration encryption failed.");
-
         if (vchNarr.size() > MAX_STEALTH_NARRATION_SIZE)
             return errorN(1, sError, __func__, "Encrypted narration is too long.");
     };
@@ -419,13 +415,6 @@ int MakeStealthData(const std::string &sNarration, stealth_prefix prefix, const 
         o+=4;
     };
 
-    if (vchNarr.size() > 0)
-    {
-        vData[o++] = DO_NARR_CRYPT;
-        memcpy(&vData[o], &vchNarr[0], vchNarr.size());
-        o += vchNarr.size();
-    };
-    */
     return 0;
 };
 

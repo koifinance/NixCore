@@ -3421,20 +3421,20 @@ UniValue generate(const JSONRPCRequest& request)
         max_tries = request.params[1].get_int();
     }
 
-    std::shared_ptr<CReserveScript> coinbase_script;
-    pwallet->GetScriptForMining(coinbase_script);
+    std::shared_ptr<CReserveScript> coinbaseScript;
+    pwallet->GetScriptForMining(coinbaseScript);
 
     // If the keypool is exhausted, no script is returned at all.  Catch this.
-    if (!coinbase_script) {
+    if (!coinbaseScript) {
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
     }
 
     //throw an error if no script was provided
-    if (coinbase_script->reserveScript.empty()) {
+    if (coinbaseScript->reserveScript.empty()) {
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available");
     }
 
-    return generateBlocks(coinbase_script, num_generate, max_tries, true);
+    return generateBlocks(coinbaseScript, num_generate, max_tries, true);
 }
 
 UniValue rescanblockchain(const JSONRPCRequest& request)
@@ -4000,7 +4000,7 @@ UniValue getnewstealthaddress(const JSONRPCRequest &request)
     if (request.fHelp || request.params.size() > 5)
         throw std::runtime_error(
             "getnewstealthaddress ( \"label\" num_prefix_bits prefix_num bech32 makeV2 )\n"
-            "Returns a new Particl stealth address for receiving payments."
+            "Returns a new Nix stealth address for receiving payments."
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
             "1. \"label\"             (string, optional) If specified the key is added to the address book.\n"
@@ -4013,7 +4013,7 @@ UniValue getnewstealthaddress(const JSONRPCRequest &request)
             "4. bech32              (bool, optional, default=false) Use Bech32 encoding.\n"
             "5. makeV2              (bool, optional, default=false) Generate an address from the same method used for hardware wallets.\n"
             "\nResult:\n"
-            "\"address\"              (string) The new particl stealth address\n"
+            "\"address\"              (string) The new nix ghost address\n"
             "\nExamples:\n"
             + HelpExampleCli("getnewstealthaddress", "\"lblTestSxAddrPrefix\" 3 \"0b101\"")
             + HelpExampleRpc("getnewstealthaddress", "\"lblTestSxAddrPrefix\", 3, \"0b101\""));
