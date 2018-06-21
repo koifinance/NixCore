@@ -52,6 +52,8 @@ public:
 
     static const QString Send;      /**< Specifies send address */
     static const QString Receive;   /**< Specifies receive address */
+    static const QString GhostVault;   /**< Specifies ghost address */
+
 
     /** @name Methods overridden from QAbstractTableModel
         @{*/
@@ -80,6 +82,8 @@ public:
     int lookupAddress(const QString &address) const;
 
     EditStatus getEditStatus() const { return editStatus; }
+    bool ghostNIX(std::string &stringError, std::string denomAmount);
+    bool convertGhost(std::string &stringError, std::string thirdPartyAddress, std::string denomAmount);
 
 private:
     WalletModel *walletModel;
@@ -90,6 +94,7 @@ private:
 
     /** Notify listeners that data changed. */
     void emitDataChanged(int index);
+    void warningBox(QString msg);
 
 public Q_SLOTS:
     /* Update address list from core.

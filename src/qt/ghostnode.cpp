@@ -1,16 +1,17 @@
 #include "ghostnode.h"
-#include "ui_ghostnode.h"
+#include "qt/forms/ui_ghostnode.h"
 
-#include "activeghostnode.h"
+#include "ghostnode/activeghostnode.h"
 #include "clientmodel.h"
 #include "init.h"
 #include "guiutil.h"
-#include "ghostnode-sync.h"
-#include "ghostnodeconfig.h"
-#include "ghostnodeman.h"
+#include "ghostnode/ghostnode-sync.h"
+#include "ghostnode/ghostnodeconfig.h"
+#include "ghostnode/ghostnodeman.h"
 #include "sync.h"
 #include "wallet/wallet.h"
 #include "walletmodel.h"
+#include <boost/foreach.hpp>
 
 #include <QTimer>
 #include <QMessageBox>
@@ -155,14 +156,14 @@ void GhostNode::StartAll(std::string strCommand)
         if(fSuccess) {
             nCountSuccessful++;
             mnodeman.UpdateGhostnodeList(mnb);
-            mnb.RelayGhostnode();
+            mnb.RelayGhostNode();
             mnodeman.NotifyGhostnodeUpdates();
         } else {
             nCountFailed++;
             strFailedHtml += "\nFailed to start " + mne.getAlias() + ". Error: " + strError;
         }
     }
-    pwalletMain->Lock();
+    walletModel->wallet->Lock();
 
     std::string returnObj;
     returnObj = strprintf("Successfully started %d ghostnodes, failed to start %d, total %d", nCountSuccessful, nCountFailed, nCountFailed + nCountSuccessful);

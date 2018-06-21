@@ -28,5 +28,5 @@ int64_t GetMockTime();
 void MilliSleep(int64_t n);
 
 std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime);
-
+std::string DurationToDHMS(int64_t nDurationTime);
 #endif // BITCOIN_UTILTIME_H

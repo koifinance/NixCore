@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Ghostnode</class>
- <widget class="QWidget" name="Ghostnode">
+ <class>GhostNode</class>
+ <widget class="QWidget" name="GhostNode">
   <property name="geometry">
    <rect>
     <x>0</x>

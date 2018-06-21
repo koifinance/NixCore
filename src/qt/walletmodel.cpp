@@ -515,6 +515,16 @@ static void NotifyWatchonlyChanged(WalletModel *walletmodel, bool fHaveWatchonly
                               Q_ARG(bool, fHaveWatchonly));
 }
 
+static void NotifyGhostProtocolChanged(WalletModel *walletmodel, CWallet *wallet,  const std::string &pubCoin, int denomination, const std::string &isUsed, ChangeType status)
+{
+    qDebug() << "NotifyGhostProtocolChanged:" + QString::fromStdString(pubCoin) + " " + QString::fromStdString(isUsed) + " status=" + QString::number(status);
+    QMetaObject::invokeMethod(walletmodel, "updateAddressBook", Qt::QueuedConnection,
+                              Q_ARG(QString, QString::fromStdString(pubCoin)),
+                              Q_ARG(QString, QString::fromStdString(isUsed)),
+                              Q_ARG(int, status));
+}
+
+
 void WalletModel::subscribeToCoreSignals()
 {
     // Connect signals to wallet
@@ -523,6 +533,8 @@ void WalletModel::subscribeToCoreSignals()
     wallet->NotifyTransactionChanged.connect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
     wallet->ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
     wallet->NotifyWatchonlyChanged.connect(boost::bind(NotifyWatchonlyChanged, this, _1));
+    wallet->NotifyZerocoinChanged.connect(boost::bind(NotifyGhostProtocolChanged, this, _1, _2, _3, _4, _5));
+
 }
 
 void WalletModel::unsubscribeFromCoreSignals()
@@ -533,6 +545,8 @@ void WalletModel::unsubscribeFromCoreSignals()
     wallet->NotifyTransactionChanged.disconnect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
     wallet->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
     wallet->NotifyWatchonlyChanged.disconnect(boost::bind(NotifyWatchonlyChanged, this, _1));
+    wallet->NotifyZerocoinChanged.disconnect(boost::bind(NotifyGhostProtocolChanged, this, _1, _2, _3, _4, _5));
+
 }
 
 // WalletModel::UnlockContext implementation
@@ -846,16 +860,16 @@ bool WalletModel::tryCallRpc(const QString &sCommand, UniValue &rv) const
         try { // Nice formatting for standard-format error
             int code = find_value(objError, "code").get_int();
             std::string message = find_value(objError, "message").get_str();
-            warningBox(tr("Wallet Model"), QString::fromStdString(message) + " (code " + QString::number(code) + ")");
+            //warningBox(tr("Wallet Model"), QString::fromStdString(message) + " (code " + QString::number(code) + ")");
             return false;
         } catch (const std::runtime_error&) // raised when converting to invalid type, i.e. missing code or message
         {   // Show raw JSON object
-            warningBox(tr("Wallet Model"), QString::fromStdString(objError.write()));
+            //warningBox(tr("Wallet Model"), QString::fromStdString(objError.write()));
             return false;
         };
     } catch (const std::exception& e)
     {
-        warningBox(tr("Wallet Model"), QString::fromStdString(e.what()));
+        //warningBox(tr("Wallet Model"), QString::fromStdString(e.what()));
         return false;
     };
 

@@ -1369,7 +1369,7 @@ public:
     std::string MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SpendZerocoin(std::string &toKey, int64_t nValue, libzerocoin::CoinDenomination denomination, CWalletTx& wtxNew, CBigNum& coinSerial, uint256& txHash, CBigNum& zcSelectedValue, bool& zcSelectedIsUsed);
     bool CreateZerocoinMintModel(string &stringError, string denomAmount);
-    bool CreateZerocoinSpendModel(string &stringError, string denomAmount);
+    bool CreateZerocoinSpendModel(string &stringError, string denomAmount, string toAddr="");
     bool SetZerocoinBook(const CZerocoinEntry& zerocoinEntry);
     /**
      * Add ghost functions

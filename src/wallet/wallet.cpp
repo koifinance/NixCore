@@ -4685,7 +4685,7 @@ bool CWallet::CreateZerocoinMintModel(string &stringError, string denomAmount) {
     }
 }
 
-bool CWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount) {
+bool CWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount, string toAddr) {
 
     int64_t nAmount = 0;
     libzerocoin::CoinDenomination denomination;
@@ -4727,6 +4727,8 @@ bool CWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount) 
     bool zcSelectedIsUsed;
 
     string toKey = "";
+    if(toAddr != "")
+        toKey = toAddr;
 
     stringError = SpendZerocoin(toKey, nAmount, denomination, wtx, coinSerial, txHash, zcSelectedValue, zcSelectedIsUsed);
 

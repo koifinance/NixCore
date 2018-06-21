@@ -16,6 +16,7 @@
 
 const QString AddressTableModel::Send = "S";
 const QString AddressTableModel::Receive = "R";
+const QString AddressTableModel::GhostVault = "G";
 
 struct AddressTableEntry
 {
@@ -451,4 +452,39 @@ int AddressTableModel::lookupAddress(const QString &address) const
 void AddressTableModel::emitDataChanged(int idx)
 {
     Q_EMIT dataChanged(index(idx, 0, QModelIndex()), index(idx, columns.length()-1, QModelIndex()));
+}
+
+void AddressTableModel::warningBox(QString msg)
+{
+    qWarning() << msg;
+    QPair<QString, CClientUIInterface::MessageBoxFlags> msgParams;
+    msgParams.second = CClientUIInterface::MSG_WARNING;
+    msgParams.first = msg;
+
+    Q_EMIT walletModel->message(tr("Address Table"), msgParams.first, msgParams.second);
+}
+
+
+bool AddressTableModel::ghostNIX(string &stringError, string denomAmount)
+{
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet failed or was cancelled
+        return false;
+    }
+
+    return (wallet)->CreateZerocoinMintModel(stringError, denomAmount);
+}
+
+bool AddressTableModel::convertGhost(string &stringError, string thirdPartyAddress, string denomAmount)
+{
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet failed or was cancelled
+        return false;
+    }
+
+    return (wallet)->CreateZerocoinSpendModel(stringError, denomAmount, thirdPartyAddress);
 }

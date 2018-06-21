@@ -70,7 +70,7 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
         ui->convertNIXAmount->addItem("None");
     else
         for(int i = 0; i < vCoins.size(); i++)
-            ui->convertNIXAmount->addItem(QString::number(vCoins[i].tx->tx->vpout[vCoins[i].i]->GetValue()));
+            ui->convertNIXAmount->addItem(QString::number(vCoins[i].tx->tx->vout[vCoins[i].i].nValue));
     // Build context menu
     contextMenu = new QMenu(this);
 
@@ -139,7 +139,7 @@ void GhostVault::on_ghostNIXButton_clicked() {
             ui->convertNIXAmount->addItem("None");
         else
             for(int i = 0; i < vCoins.size(); i++)
-                ui->convertNIXAmount->addItem(QString::number(vCoins[i].tx->tx->vpout[vCoins[i].i]->GetValue()));
+                ui->convertNIXAmount->addItem(QString::number(vCoins[i].tx->tx->vout[vCoins[i].i].nValue));
 
     }
 }

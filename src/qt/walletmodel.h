@@ -124,6 +124,7 @@ public:
     {
         Unencrypted,  // !wallet->IsCrypted()
         Locked,       // wallet->IsCrypted() && wallet->IsLocked()
+        UnlockedForMixingOnly,
         Unlocked      // wallet->IsCrypted() && !wallet->IsLocked()
     };
 
@@ -221,7 +222,7 @@ public:
 
     int getDefaultConfirmTarget() const;
 
-    bool tryCallRpc(const QString &sCommand, UniValue &rv);
+    bool tryCallRpc(const QString &sCommand, UniValue &rv) const;
 
     CWallet* getWallet(){return wallet;}
 
