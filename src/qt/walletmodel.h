@@ -9,6 +9,7 @@
 #include <qt/walletmodeltransaction.h>
 
 #include <support/allocators/secure.h>
+#include <univalue/include/univalue.h>
 
 #include <map>
 #include <vector>
@@ -219,6 +220,10 @@ public:
     OutputType getDefaultAddressType() const;
 
     int getDefaultConfirmTarget() const;
+
+    bool tryCallRpc(const QString &sCommand, UniValue &rv);
+
+    CWallet* getWallet(){return wallet;}
 
 private:
     CWallet *wallet;

@@ -35,6 +35,8 @@ void RandAddSeedSleep();
  * of those source fail to provide a result.
  */
 void GetStrongRandBytes(unsigned char* buf, int num);
+void GetStrongRandBytes2(unsigned char* buf, int num);
+
 
 /**
  * Fast randomness source. This is seeded once with secure random data, but

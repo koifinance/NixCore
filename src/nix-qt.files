@@ -95,6 +95,7 @@ random.h
 rest.cpp
 reverse_iterator.h
 reverselock.h
+rpc/mnemonic.cpp
 scheduler.cpp
 scheduler.h
 serialize.h

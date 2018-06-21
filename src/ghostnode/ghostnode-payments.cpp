@@ -472,7 +472,7 @@ bool CGhostnodeBlockPayees::IsTransactionValid(const CTransaction &txNew) {
 
     if (!hasValidPayee) return true;
 
-    //LogPrint("CGhostnodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f ZOI\n", strPayeesPossible, (float) nGhostnodePayment / COIN);
+    //LogPrint("CGhostnodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f NIX\n", strPayeesPossible, (float) nGhostnodePayment / COIN);
     return false;
 }
 

@@ -277,6 +277,7 @@ libnix_server_a_SOURCES = \
   rpc/misc.cpp \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
+  rpc/mnemonic.cpp \
   rpc/safemode.cpp \
   rpc/server.cpp \
   script/sigcache.cpp \

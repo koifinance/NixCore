@@ -8,22 +8,20 @@
 #include <qt/guiutil.h>
 
 #include <qt/walletmodel.h>
-#include <wallet/hd/hdwallet.h>
+#include <wallet/wallet.h>
 
-#include <rpc/rpcutil.h>
 #include <util.h>
 #include <univalue.h>
 #include <ghost-address/mnemonic.h>
 
 #include <QDebug>
 
-
 MnemonicDialog::MnemonicDialog(QWidget *parent, WalletModel *wm) :
     QDialog(parent), walletModel(wm),
     ui(new Ui::MnemonicDialog)
 {
     ui->setupUi(this);
-    CHDWallet *phdw = wm->getNIXWallet();
+    CWallet *phdw = wm->getWallet();
     if (!phdw)
         return;
 
@@ -43,22 +41,22 @@ MnemonicDialog::MnemonicDialog(QWidget *parent, WalletModel *wm) :
     ui->cbxLanguage->clear();
     for (int l = 1; l < WLL_MAX; ++l)
         ui->cbxLanguage->addItem(mnLanguagesDesc[l], QString(mnLanguagesTag[l]));
-};
+}
 
 MnemonicDialog::~MnemonicDialog()
 {
 
-};
+}
 
 void MnemonicDialog::on_btnCancel_clicked()
 {
     close();
-};
+}
 
 void MnemonicDialog::on_btnCancel2_clicked()
 {
     close();
-};
+}
 
 void MnemonicDialog::on_btnImport_clicked()
 {
@@ -76,10 +74,10 @@ void MnemonicDialog::on_btnImport_clicked()
         close();
         if (!rv["warnings"].isNull())
         {
-            for (size_t i = 0; i < rv["warnings"].size(); ++i)
-                walletModel->warningBox(tr("Import"), QString::fromStdString(rv["warnings"][i].get_str()));
-        };
-    };
+            //for (size_t i = 0; i < rv["warnings"].size(); ++i)
+                //walletModel->warningBox(tr("Import"), QString::fromStdString(rv["warnings"][i].get_str()));
+        }
+    }
 }
 
 void MnemonicDialog::on_btnGenerate_clicked()
@@ -93,5 +91,5 @@ void MnemonicDialog::on_btnGenerate_clicked()
     if (walletModel->tryCallRpc(sCommand, rv))
     {
         ui->tbxMnemonicOut->setText(QString::fromStdString(rv["mnemonic"].get_str()));
-    };
-};
+    }
+}
