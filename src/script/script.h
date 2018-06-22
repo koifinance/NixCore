@@ -650,7 +650,7 @@ public:
     bool IsNormalPaymentScript() const;
 
     bool IsPayToPublicKeyHash() const;
-    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToScriptHash256() || IsPayToTimeLockedScriptHash();};
+    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToScriptHash256() || IsPayToTimeLockedScriptHash();}
     bool IsPayToScriptHash() const;
     bool MatchPayToScriptHash(size_t ofs) const;
     bool MatchPayToPublicKeyHash(size_t ofs) const;

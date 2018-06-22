@@ -295,7 +295,7 @@ enum OutputType : int
     OUTPUT_TYPE_LEGACY,
     OUTPUT_TYPE_P2SH_SEGWIT,
     OUTPUT_TYPE_BECH32,
-
+    OUTPUT_TYPE_GHOST,
     OUTPUT_TYPE_DEFAULT = OUTPUT_TYPE_BECH32
 };
 
@@ -1414,7 +1414,7 @@ public:
     int ExtKeyUnlock(const CKeyingMaterial &vMKey);
 
     int ExtKeyCreateInitial(CWalletDB *pwdb);
-    int ExtKeyLoadMaster();
+    int ExtKeyLoadMaster(bool fFirstRun);
 
     int ExtKeyLoadAccountKeys(CWalletDB *pwdb, CExtKeyAccount *sea);
     int ExtKeyLoadAccount(CWalletDB *pwdb, const CKeyID &idAccount);

@@ -407,6 +407,7 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
 static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control)
 {
     CAmount curBalance = pwallet->GetBalance();
+    LogPrintf("\nCurrent balance: %lf \n", curBalance);
 
     // Check amount
     if (nValue <= 0)
@@ -4043,7 +4044,8 @@ UniValue getnewstealthaddress(const JSONRPCRequest &request)
         sPrefix_num = request.params[2].get_str();
 
     bool fBech32 = request.params.size() > 3 ? request.params[3].get_bool() : true;
-    bool fMakeV2 = request.params.size() > 4 ? request.params[4].get_bool() : false;
+   // bool fMakeV2 = request.params.size() > 4 ? request.params[4].get_bool() : false;
+     bool fMakeV2 = false;
 
     if (fMakeV2 && !fBech32)
         throw JSONRPCError(RPC_INVALID_PARAMETER, _("bech32 must be true when using makeV2."));
@@ -4299,18 +4301,19 @@ UniValue liststealthaddresses(const JSONRPCRequest &request)
 
     if (request.fHelp || request.params.size() > 1)
         throw std::runtime_error(
-            "liststealthaddresses ( show_secrets=0 )\n"
+            "liststealthaddresses ( show_secrets(true/false) )\n"
             "List owned stealth addresses.");
 
     bool fShowSecrets = false;
 
     if (request.params.size() > 0)
     {
-        std::string str = request.params[0].get_str();
 
-        if (nix::IsStringBoolNegative(str))
-            fShowSecrets = false;
-        else
+        bool show = false;
+
+        show = request.params[0].get_bool();
+
+        if (show)
             fShowSecrets = true;
     };
 

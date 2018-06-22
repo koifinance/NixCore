@@ -115,6 +115,7 @@ void ReceiveCoinsDialog::clear()
     ui->reqAmount->clear();
     ui->reqLabel->setText("");
     ui->reqMessage->setText("");
+    ui->addressType->setCurrentIndex(ui->addressType->findText("Standard Address"));
     updateDisplayUnit();
 }
 
@@ -148,6 +149,9 @@ void ReceiveCoinsDialog::on_receiveButton_clicked()
     if (address_type != OUTPUT_TYPE_LEGACY) {
         address_type = ui->useBech32->isChecked() ? OUTPUT_TYPE_BECH32 : OUTPUT_TYPE_P2SH_SEGWIT;
     }
+    if (ui->addressType->currentText() == "Ghost Address")
+        address_type = OUTPUT_TYPE_GHOST;
+
     address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "", address_type);
     SendCoinsRecipient info(address, label,
         ui->reqAmount->value(), ui->reqMessage->text());

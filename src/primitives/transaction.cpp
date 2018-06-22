@@ -48,10 +48,11 @@ std::string COutPoint::ToStringShort() const
     return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,64), n);
 }
 
-CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
+CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, int nRoundsIn)
 {
     nValue = nValueIn;
     scriptPubKey = scriptPubKeyIn;
+    nRounds = nRoundsIn;
 }
 
 std::string CTxOut::ToString() const

@@ -5832,18 +5832,18 @@ int CWallet::NewStealthKeyV2FromAccount(std::string &sLabel, CEKAStealthKey &akS
         if (!wdb.TxnBegin())
             return errorN(1, "%s TxnBegin failed.", __func__);
 
-        if (0 != NewStealthKeyV2FromAccount(&wdb, idDefaultAccount, sLabel, akStealthOut, nPrefixBits, pPrefix, fBech32))
+        if (0 != NewStealthKeyV2FromAccount(&wdb, hdChain.masterKeyID, sLabel, akStealthOut, nPrefixBits, pPrefix, fBech32))
         {
             wdb.TxnAbort();
-            ExtKeyRemoveAccountFromMapsAndFree(idDefaultAccount);
-            ExtKeyLoadAccount(&wdb, idDefaultAccount);
+            ExtKeyRemoveAccountFromMapsAndFree(hdChain.masterKeyID);
+            ExtKeyLoadAccount(&wdb, hdChain.masterKeyID);
             return 1;
         };
 
         if (!wdb.TxnCommit())
         {
-            ExtKeyRemoveAccountFromMapsAndFree(idDefaultAccount);
-            ExtKeyLoadAccount(&wdb, idDefaultAccount);
+            ExtKeyRemoveAccountFromMapsAndFree(hdChain.masterKeyID);
+            ExtKeyLoadAccount(&wdb, hdChain.masterKeyID);
             return errorN(1, "%s TxnCommit failed.", __func__);
         };
     }
@@ -6208,8 +6208,12 @@ bool CWallet::InitLoadWallet()
 
     for (const std::string& walletFile : gArgs.GetArgs("-wallet"))
     {
+
         std::unique_ptr<CWalletDBWrapper> dbw(new CWalletDBWrapper(&bitdb, walletFile));
         CWallet *const pwallet = (CWallet*) CreateWalletFromFile(walletFile);
+        CWallet *walletInstance = new CWallet(std::move(dbw));
+        bool fFirstRun = false;
+        walletInstance->LoadWallet(fFirstRun);
 
         if (!pwallet)
             return false;
@@ -6223,7 +6227,7 @@ bool CWallet::InitLoadWallet()
 
         {
             // Prepare extended keys
-            pwallet->ExtKeyLoadMaster();
+            pwallet->ExtKeyLoadMaster(fFirstRun);
             pwallet->ExtKeyLoadAccounts();
             pwallet->ExtKeyLoadAccountPacks();
             pwallet->LoadStealthAddresses();
@@ -7389,7 +7393,7 @@ int CWallet::ExtKeyCreateInitial(CWalletDB *pwdb)
     return 0;
 }
 
-int CWallet::ExtKeyLoadMaster()
+int CWallet::ExtKeyLoadMaster(bool fFirstRun)
 {
     LogPrintf("Loading master ext key %s.\n", GetName());
 
@@ -7404,21 +7408,15 @@ int CWallet::ExtKeyLoadMaster()
         if (!wdb.ReadFlag("madeDefaultEKey", nValue)
             || nValue == 0)
         {
-            //TODO: Check for wallet lock, only run this on initial wallet creation
-            /*
-            if (IsLocked())
-            {
-                fMakeExtKeyInitials = true; // set flag for unlock
-                LogPrintf("Wallet locked, master key will be created when unlocked.\n");
-                return 0;
-            };
+            //Only run this on initial wallet creation
 
             if (ExtKeyCreateInitial(&wdb) != 0)
                 return errorN(1, "ExtKeyCreateDefaultMaster failed.");
 
             return 0;
-            */
-        };
+
+        }
+        //Only run this on initial wallet creation
         LogPrintf("Warning: No master ext key has been set.\n");
         return 1;
     };

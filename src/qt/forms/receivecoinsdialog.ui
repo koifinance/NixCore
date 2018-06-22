@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>776</width>
+    <width>600</width>
     <height>396</height>
    </rect>
   </property>
@@ -99,6 +99,26 @@
         </item>
         <item row="7" column="2">
          <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QComboBox" name="addressType">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <item>
+             <property name="text">
+              <string>Standard Address</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Ghost Address</string>
+             </property>
+            </item>
+           </widget>
+          </item>
           <item>
            <widget class="QPushButton" name="receiveButton">
             <property name="minimumSize">

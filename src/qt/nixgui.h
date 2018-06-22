@@ -86,6 +86,7 @@ private:
     QLabel *connectionsControl;
     QLabel *labelBlocksIcon;
     QLabel *progressBarLabel;
+    QLabel *blockCount;
     QProgressBar *progressBar;
     QProgressDialog *progressDialog;
 
