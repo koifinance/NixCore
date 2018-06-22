@@ -5832,18 +5832,18 @@ int CWallet::NewStealthKeyV2FromAccount(std::string &sLabel, CEKAStealthKey &akS
         if (!wdb.TxnBegin())
             return errorN(1, "%s TxnBegin failed.", __func__);
 
-        if (0 != NewStealthKeyV2FromAccount(&wdb, hdChain.masterKeyID, sLabel, akStealthOut, nPrefixBits, pPrefix, fBech32))
+        if (0 != NewStealthKeyV2FromAccount(&wdb, idDefaultAccount, sLabel, akStealthOut, nPrefixBits, pPrefix, fBech32))
         {
             wdb.TxnAbort();
-            ExtKeyRemoveAccountFromMapsAndFree(hdChain.masterKeyID);
-            ExtKeyLoadAccount(&wdb, hdChain.masterKeyID);
+            ExtKeyRemoveAccountFromMapsAndFree(idDefaultAccount);
+            ExtKeyLoadAccount(&wdb, idDefaultAccount);
             return 1;
         };
 
         if (!wdb.TxnCommit())
         {
-            ExtKeyRemoveAccountFromMapsAndFree(hdChain.masterKeyID);
-            ExtKeyLoadAccount(&wdb, hdChain.masterKeyID);
+            ExtKeyRemoveAccountFromMapsAndFree(idDefaultAccount);
+            ExtKeyLoadAccount(&wdb, idDefaultAccount);
             return errorN(1, "%s TxnCommit failed.", __func__);
         };
     }
