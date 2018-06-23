@@ -421,7 +421,8 @@ static void SendMoney(CWallet * const pwallet, const CBitcoinAddress &address, C
     }
 
     // Parse Bitcoin address
-    CScript scriptPubKey;// = address.get();
+    CTxDestination destinationAddress = address.Get();
+    CScript scriptPubKey = GetScriptForDestination(destinationAddress);
 
 
     if (address.IsValidStealthAddress())

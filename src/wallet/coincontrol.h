@@ -59,7 +59,7 @@ public:
     void SetNull()
     {
         destChange = CNoDestination();
-        change_type = g_change_type;
+        change_type = OUTPUT_TYPE_BECH32;
         fAllowOtherInputs = false;
         fAllowWatchOnly = false;
         setSelected.clear();

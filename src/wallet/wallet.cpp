@@ -49,8 +49,6 @@ CFeeRate payTxFee(DEFAULT_TRANSACTION_FEE);
 unsigned int nTxConfirmTarget = DEFAULT_TX_CONFIRM_TARGET;
 bool bSpendZeroConfChange = DEFAULT_SPEND_ZEROCONF_CHANGE;
 bool fWalletRbf = DEFAULT_WALLET_RBF;
-OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
-OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
 
 const char * DEFAULT_WALLET_DAT = "wallet.dat";
 const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
@@ -2819,34 +2817,6 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& nC
     return true;
 }
 
-OutputType CWallet::TransactionChangeType(OutputType change_type, const std::vector<CRecipient>& vecSend)
-{
-    // If -changetype is specified, always use that change type.
-    if (change_type != OUTPUT_TYPE_NONE) {
-        return change_type;
-    }
-
-    // if g_address_type is legacy, use legacy address as change (even
-    // if some of the outputs are P2WPKH or P2WSH).
-    if (g_address_type == OUTPUT_TYPE_LEGACY) {
-        return OUTPUT_TYPE_LEGACY;
-    }
-
-    // if any destination is P2WPKH or P2WSH, use P2WPKH for the change
-    // output.
-    for (const auto& recipient : vecSend) {
-        // Check if any destination contains a witness program:
-        int witnessversion = 0;
-        std::vector<unsigned char> witnessprogram;
-        if (recipient.scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
-            return OUTPUT_TYPE_BECH32;
-        }
-    }
-
-    // else use g_address_type for change
-    return g_address_type;
-}
-
 bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
                                 int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, AvailableCoinsType nCoinType, bool fUseInstantSend)
 {
@@ -2921,9 +2891,10 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
             // TODO: pass in scriptChange instead of reservekey so
             // change transaction isn't always pay-to-bitcoin-address
             CScript scriptChange;
-
             // coin control: send change to custom address
             if (!boost::get<CNoDestination>(&coin_control.destChange)) {
+                LogPrintf("\nCOIN CONTROL %s\n", CBitcoinAddress(coin_control.destChange).ToString());
+                LogPrintf("\nCOIN CONTROL %d\n", coin_control.change_type);
                 scriptChange = GetScriptForDestination(coin_control.destChange);
             } else { // no coin control: send change to newly generated address
                 // Note: We use a new key here to keep it from being obvious which side is the change.
@@ -2932,7 +2903,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                 //  If we reused the old key, it would be possible to add code to look for and
                 //  rediscover unknown transactions that were written with keys of ours to recover
                 //  post-backup change.
-
+                LogPrintf("\nRandom coin control %d\n", coin_control.change_type);
                 // Reserve a new key pair from key pool
                 CPubKey vchPubKey;
                 bool ret;
@@ -2943,7 +2914,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                     return false;
                 }
 
-                const OutputType change_type = TransactionChangeType(coin_control.change_type, vecSend);
+                const OutputType change_type = OUTPUT_TYPE_BECH32;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -4811,7 +4782,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                     return false;
                 }
 
-                const OutputType change_type = TransactionChangeType(coinControl.change_type, vecSend);
+                const OutputType change_type = OUTPUT_TYPE_BECH32;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -4974,7 +4945,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                 nBytes = GetVirtualTransactionSize(txNew);
 
                 // Remove scriptSigs if we used dummy signatures for fee calculation
-                if (!sign) {
+                if (sign) {
                     for (auto& vin : txNew.vin) {
                         vin.scriptSig = CScript();
                         vin.scriptWitness.SetNull();

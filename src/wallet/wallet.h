@@ -299,8 +299,8 @@ enum OutputType : int
     OUTPUT_TYPE_DEFAULT = OUTPUT_TYPE_BECH32
 };
 
-extern OutputType g_address_type;
-extern OutputType g_change_type;
+OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
+OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
 
 /** A key pool entry */
 class CKeyPool
@@ -1344,7 +1344,7 @@ public:
     CAmount GetNeedsToBeAnonymizedBalance(CAmount nMinBalance = 0) const;
     CAmount GetDenominatedBalance(bool unconfirmed=false) const;
 
-    OutputType TransactionChangeType(OutputType change_type, const std::vector<CRecipient>& vecSend);
+    //OutputType TransactionChangeType(OutputType change_type, const std::vector<CRecipient>& vecSend);
 
     /**
      * Insert additional inputs into the transaction by
