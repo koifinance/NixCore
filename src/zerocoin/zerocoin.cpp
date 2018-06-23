@@ -18,7 +18,7 @@ using namespace boost;
 // zerocoin init
 static CBigNum bnTrustedModulus(ZEROCOIN_MODULUS);
 // Set up the Zerocoin Params object
-static libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus);
+libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus);
 
 
 static CZerocoinState zerocoinState;

@@ -16,7 +16,8 @@
 
 // Zerocoin transaction info, added to the CBlock to ensure zerocoin mint/spend transactions got their info stored into
 // index
-
+// zerocoin parameters
+extern libzerocoin::Params *ZCParams;
 
 class CZerocoinTxInfo {
 public:

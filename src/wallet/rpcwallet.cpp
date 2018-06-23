@@ -404,10 +404,10 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control)
+static void SendMoney(CWallet * const pwallet, const CBitcoinAddress &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control)
 {
     CAmount curBalance = pwallet->GetBalance();
-    LogPrintf("\nCurrent balance: %lf \n", curBalance);
+    LogPrintf("\nCurrent balance: %lf, nValue: %lf \n", curBalance, nValue);
 
     // Check amount
     if (nValue <= 0)
@@ -421,7 +421,37 @@ static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CA
     }
 
     // Parse Bitcoin address
-    CScript scriptPubKey = GetScriptForDestination(address);
+    CScript scriptPubKey;// = address.get();
+
+
+    if (address.IsValidStealthAddress())
+    {
+        CStealthAddress sx = boost::get<CStealthAddress>(address.Get());
+
+        CKey sShared;
+        ec_point pkSendTo;
+
+        CKey sEphem;
+        CPubKey pkTo;
+        int k, nTries = 24;
+        for (k = 0; k < nTries; ++k) // if StealthSecret fails try again with new ephem key
+        {
+            sEphem.MakeNewKey(true);
+            if (StealthSecret(sEphem, sx.scan_pubkey, sx.spend_pubkey, sShared, pkSendTo) == 0)
+                break;
+        };
+        if (k >= nTries)
+            throw JSONRPCError(RPC_WALLET_ERROR, "Could not generate receiving public key for ghost address.");
+
+        CPubKey pkEphem = sEphem.GetPubKey();
+        pkTo = CPubKey(pkSendTo);
+        CKeyID idTo = pkTo.GetID();
+        scriptPubKey = GetScriptForDestination(idTo);
+
+        if (LogAcceptCategory(BCLog::HDWALLET))
+            LogPrintf("Stealth send to generated address: %s\n", CBitcoinAddress(idTo).ToString());
+
+    }
 
     // Create and send the transaction
     CReserveKey reservekey(pwallet);
@@ -488,8 +518,9 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(request.params[0].get_str());
-    if (!IsValidDestination(dest)) {
+    std::string sAddress = request.params[0].get_str();
+    CBitcoinAddress dest(sAddress);
+    if (!(dest.IsValid())) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
     }
 
@@ -3635,19 +3666,17 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
     LogPrintf("rpcWallet.mintzerocoin() denomination = %s, nAmount = %s \n", denomination, nAmount);
 
 
-    CBigNum bnTrustedModulus;
-
-    // Loads a trusted Zerocoin modulus "N"
-    bnTrustedModulus.SetHex(ZEROCOIN_MODULUS);
-
     // Set up the Zerocoin Params object
-    libzerocoin::Params *ZeroCoinParams = new libzerocoin::Params(bnTrustedModulus);
+    libzerocoin::Params *zcParams = ZCParams;
+
+    int mintVersion = 1;
 
     // The following constructor does all the work of minting a brand
     // new zerocoin. It stores all the private values inside the
     // PrivateCoin object. This includes the coin secrets, which must be
     // stored in a secure location (wallet) at the client.
-    libzerocoin::PrivateCoin newCoin(ZeroCoinParams, denomination, ZEROCOIN_VERSION_1);
+    libzerocoin::PrivateCoin newCoin(zcParams, denomination, mintVersion);
+
     // Get a copy of the 'public' portion of the coin. You should
     // embed this into a Zerocoin 'MINT' transaction along with a series
     // of currency inputs totaling the assigned value of one zerocoin.
@@ -3670,19 +3699,19 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_WALLET_ERROR, strError);
 
         CWalletDB walletdb(pwalletMain->GetDBHandle());
+        const unsigned char *ecdsaSecretKey = newCoin.getEcdsaSeckey();
         CZerocoinEntry zerocoinTx;
         zerocoinTx.IsUsed = false;
         zerocoinTx.denomination = denomination;
         zerocoinTx.value = pubCoin.getValue();
-        libzerocoin::PublicCoin checkPubCoin(ZeroCoinParams, zerocoinTx.value, denomination);
-        if (!checkPubCoin.validate()) {
-            return false;
-        }
         zerocoinTx.randomness = newCoin.getRandomness();
         zerocoinTx.serialNumber = newCoin.getSerialNumber();
-        walletdb.WriteZerocoinEntry(zerocoinTx);
-
-        return pubCoin.getValue().GetHex();
+        zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
+        LogPrintf("CreateZerocoinMintModel() -> NotifyZerocoinChanged\n");
+        LogPrintf("pubcoin=%s, isUsed=%s\n", zerocoinTx.value.GetHex(), zerocoinTx.IsUsed);
+        LogPrintf("randomness=%s, serialNumber=%s\n", zerocoinTx.randomness.ToString(), zerocoinTx.serialNumber.ToString());
+        if (!walletdb.WriteZerocoinEntry(zerocoinTx))
+            return false;
     } else {
         return "";
     }
