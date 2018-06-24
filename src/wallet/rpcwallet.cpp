@@ -3628,7 +3628,7 @@ UniValue listunspentmintzerocoins(const JSONRPCRequest& request) {
 UniValue mintzerocoin(const JSONRPCRequest& request)
 {
 
-    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error("mintzerocoin <amount>(1,5,10,50,100,500,1000,5000)\n" + HelpRequiringPassphrase(pwalletMain));
@@ -3711,12 +3711,14 @@ UniValue mintzerocoin(const JSONRPCRequest& request)
         LogPrintf("CreateZerocoinMintModel() -> NotifyZerocoinChanged\n");
         LogPrintf("pubcoin=%s, isUsed=%s\n", zerocoinTx.value.GetHex(), zerocoinTx.IsUsed);
         LogPrintf("randomness=%s, serialNumber=%s\n", zerocoinTx.randomness.ToString(), zerocoinTx.serialNumber.ToString());
+        pwalletMain->NotifyZerocoinChanged(pwalletMain, zerocoinTx.value.GetHex(), zerocoinTx.denomination, zerocoinTx.IsUsed ? "Used" : "New", CT_NEW);
         if (!walletdb.WriteZerocoinEntry(zerocoinTx))
             return false;
     } else {
         return "";
     }
 
+    return "Sucessfully ghosted " + std::to_string(nAmount/COIN) +  " NIX";
 }
 
 UniValue spendzerocoin(const JSONRPCRequest& request) {
@@ -3760,7 +3762,7 @@ UniValue spendzerocoin(const JSONRPCRequest& request) {
         throw runtime_error("spendzerocoin <amount>(1,5,10,50,100,500,1000,5000) <spendtoaddress>(optional)\n");
     }
 
-    CBitcoinAddress address = NULL;
+    CBitcoinAddress address;
     string toKey = "";
     if (request.params.size() > 1){
         // Address

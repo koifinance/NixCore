@@ -3954,14 +3954,6 @@ bool static LoadBlockIndexDB(const CChainParams& chainparams)
     pblocktree->ReadFlag("txindex", fTxIndex);
     LogPrintf("%s: transaction index %s\n", __func__, fTxIndex ? "enabled" : "disabled");
 
-    // some blocks in index can change as a result of ZerocoinBuildStateFromIndex() call
-    set<CBlockIndex *> changes;
-    ZerocoinBuildStateFromIndex(&chainActive, changes);
-    if (!changes.empty()) {
-        setDirtyBlockIndex.insert(changes.begin(), changes.end());
-        FlushStateToDisk();
-    }
-
     return true;
 }
 
@@ -4090,6 +4082,14 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             if (!g_chainstate.ConnectBlock(block, state, pindex, coins, chainparams))
                 return error("VerifyDB(): *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
+    }
+
+    // some blocks in index can change as a result of ZerocoinBuildStateFromIndex() call
+    set<CBlockIndex *> changes;
+    ZerocoinBuildStateFromIndex(&chainActive, changes);
+    if (!changes.empty()) {
+        setDirtyBlockIndex.insert(changes.begin(), changes.end());
+        FlushStateToDisk();
     }
 
     LogPrintf("[DONE].\n");
