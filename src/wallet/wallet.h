@@ -299,8 +299,8 @@ enum OutputType : int
     OUTPUT_TYPE_DEFAULT = OUTPUT_TYPE_BECH32
 };
 
-OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
-OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
+extern OutputType g_address_type;
+extern OutputType g_change_type;
 
 /** A key pool entry */
 class CKeyPool

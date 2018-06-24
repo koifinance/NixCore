@@ -54,6 +54,8 @@ const char * DEFAULT_WALLET_DAT = "wallet.dat";
 const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
 const int ZEROCOIN_CONFIRM_HEIGHT = 1;
 
+OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
+OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
  * Override with -mintxfee
