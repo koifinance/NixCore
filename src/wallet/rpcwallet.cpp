@@ -404,7 +404,7 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-static void SendMoney(CWallet * const pwallet, const CBitcoinAddress &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control)
+static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control, bool isStealth)
 {
     CAmount curBalance = pwallet->GetBalance();
     LogPrintf("\nCurrent balance: %lf, nValue: %lf \n", curBalance, nValue);
@@ -421,13 +421,12 @@ static void SendMoney(CWallet * const pwallet, const CBitcoinAddress &address, C
     }
 
     // Parse Bitcoin address
-    CTxDestination destinationAddress = address.Get();
-    CScript scriptPubKey = GetScriptForDestination(destinationAddress);
+    CScript scriptPubKey = GetScriptForDestination(address);
 
 
-    if (address.IsValidStealthAddress())
+    if (isStealth)
     {
-        CStealthAddress sx = boost::get<CStealthAddress>(address.Get());
+        CStealthAddress sx = boost::get<CStealthAddress>(address);
 
         CKey sShared;
         ec_point pkSendTo;
@@ -519,9 +518,9 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    std::string sAddress = request.params[0].get_str();
-    CBitcoinAddress dest(sAddress);
-    if (!(dest.IsValid())) {
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
+
+    if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
     }
 
@@ -560,7 +559,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     EnsureWalletIsUnlocked(pwallet);
 
-    SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control);
+    SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control, IsStealthAddress(request.params[0].get_str()));
 
     return wtx.GetHash().GetHex();
 }
@@ -1043,7 +1042,7 @@ UniValue sendfrom(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     CCoinControl no_coin_control; // This is a deprecated API
-    SendMoney(pwallet, dest, nAmount, false, wtx, no_coin_control);
+    SendMoney(pwallet, dest, nAmount, false, wtx, no_coin_control, IsStealthAddress(request.params[1].get_str()));
 
     return wtx.GetHash().GetHex();
 }

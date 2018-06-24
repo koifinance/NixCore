@@ -7371,7 +7371,7 @@ int CWallet::ExtKeyCreateInitial(CWalletDB *pwdb)
     };
 
     CPubKey newKey;
-    if (0 != NewKeyFromAccount(pwdb, idDefaultAccount, newKey, false, false))
+    if (0 != NewKeyFromAccount(pwdb, idDefaultAccount, newKey, false,false))
     {
         pwdb->TxnAbort();
         return errorN(1, "NewKeyFromAccount failed.");
