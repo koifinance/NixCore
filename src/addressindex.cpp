@@ -37,13 +37,14 @@ bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8
 
 bool ExtractIndexInfo(const CTxOut *out, int &scriptType, std::vector<uint8_t> &hashBytes, CAmount &nValue, const CScript *&pScript)
 {
-    if (!(*pScript = out->scriptPubKey))
+    const CScript *ps = &out->scriptPubKey;
+    if (!(pScript = ps))
     {
         LogPrintf("ERROR: %s - expected script pointer.\n", __func__);
         return false;
     };
 
-    nValue =  out->nValue();
+    nValue =  out->nValue;
 
     ExtractIndexInfo(pScript, scriptType, hashBytes);
 

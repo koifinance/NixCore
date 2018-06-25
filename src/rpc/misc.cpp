@@ -27,6 +27,7 @@
 #endif
 #include <warnings.h>
 #include "txmempool.h"
+#include <uint256.h>
 
 #include <stdint.h>
 #ifdef HAVE_MALLOC_INFO
