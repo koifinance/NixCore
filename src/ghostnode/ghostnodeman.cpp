@@ -651,7 +651,6 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
         nCountTenth++;
         if(nCountTenth >= nTenthNetwork) break;
     }
-    LogPrintf("\nSuccess finding node %s \n", pBestGhostnode->ToString());
     return pBestGhostnode;
 }
 
