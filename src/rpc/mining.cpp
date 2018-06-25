@@ -712,10 +712,10 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         UniValue airdropObj(UniValue::VOBJ);
         CScript DEV_1_SCRIPT;
         CScript DEV_2_SCRIPT;
-        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC"));
-        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc"));
-        std::string address1 = "Nbn2KQLJyY74oit3cWHEU9tBLbgzLNZ4LC";
-        std::string address2 = "NMm66JeE7U9R652QiTZW1KnsL9ib9awQXc";
+        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NLFwJPAL1g59VDV3bDqwD8bhJe9gSKcuS6"));
+        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NcNu4bHR9AQAonGQhbXtqad583QJhAihvg"));
+        std::string address1 = "NLFwJPAL1g59VDV3bDqwD8bhJe9gSKcuS6";
+        std::string address2 = "NcNu4bHR9AQAonGQhbXtqad583QJhAihvg";
 
 
         airdropObj.push_back(Pair("dev_1", address1.c_str()));
