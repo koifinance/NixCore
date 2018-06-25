@@ -42,7 +42,7 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
     while (cache.count(pindexPrev) == 0) {
         if (pindexPrev == nullptr) {
             // The genesis block is by definition defined.
-            cache[pindexPrev] = THRESHOLD_ACTIVE;
+            cache[pindexPrev] = THRESHOLD_DEFINED;
             break;
         }
         if (pindexPrev->GetMedianTimePast() < nTimeStart) {
@@ -149,7 +149,7 @@ int AbstractThresholdConditionChecker::GetStateSinceHeightFor(const CBlockIndex*
     const ThresholdState initialState = GetStateFor(pindexPrev, params, cache);
 
     // BIP 9 about state DEFINED: "The genesis block is by definition in this state for each deployment."
-    if (initialState == THRESHOLD_ACTIVE) {
+    if (initialState == THRESHOLD_DEFINED) {
         return 0;
     }
 
