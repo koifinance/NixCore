@@ -296,7 +296,7 @@ enum OutputType : int
     OUTPUT_TYPE_P2SH_SEGWIT,
     OUTPUT_TYPE_BECH32,
     OUTPUT_TYPE_GHOST,
-    OUTPUT_TYPE_DEFAULT = OUTPUT_TYPE_BECH32
+    OUTPUT_TYPE_DEFAULT = OUTPUT_TYPE_P2SH_SEGWIT
 };
 
 extern OutputType g_address_type;
@@ -458,7 +458,7 @@ class CAddressBookData
 public:
     std::string name;
     std::string purpose = "unknown";
-    bool fBech32 = true;
+    bool fBech32 = false;
 
     std::vector<uint32_t> vPath; // index to m is stored in first entry
 
@@ -1442,19 +1442,19 @@ public:
     int ExtKeyGetIndex(CWalletDB *pwdb, CExtKeyAccount *sea, uint32_t &index, bool &fUpdate);
     int ExtKeyGetIndex(CExtKeyAccount *sea, uint32_t &index);
 
-    int NewKeyFromAccount(CWalletDB *pwdb, const CKeyID &idAccount, CPubKey &pkOut, bool fInternal, bool fHardened, bool f256bit=false, bool fBech32=true, const char *plabel=nullptr);
-    int NewKeyFromAccount(CPubKey &pkOut, bool fInternal=false, bool fHardened=false, bool f256bit=false, bool fBech32=true, const char *plabel=nullptr); // wrapper - use default account
+    int NewKeyFromAccount(CWalletDB *pwdb, const CKeyID &idAccount, CPubKey &pkOut, bool fInternal, bool fHardened, bool f256bit=false, bool fBech32=false, const char *plabel=nullptr);
+    int NewKeyFromAccount(CPubKey &pkOut, bool fInternal=false, bool fHardened=false, bool f256bit=false, bool fBech32=false, const char *plabel=nullptr); // wrapper - use default account
 
-    int NewStealthKeyFromAccount(CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=true);
-    int NewStealthKeyFromAccount(std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=true); // wrapper - use default account
+    int NewStealthKeyFromAccount(CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=false);
+    int NewStealthKeyFromAccount(std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=false); // wrapper - use default account
 
     int InitAccountStealthV2Chains(CWalletDB *pwdb, CExtKeyAccount *sea);
     int SaveStealthAddress(CWalletDB *pwdb, CExtKeyAccount *sea, const CEKAStealthKey &akStealth, bool fBech32);
-    int NewStealthKeyV2FromAccount(CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=true);
-    int NewStealthKeyV2FromAccount(std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=true); // wrapper - use default account
+    int NewStealthKeyV2FromAccount(CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=false);
+    int NewStealthKeyV2FromAccount(std::string &sLabel, CEKAStealthKey &akStealthOut, uint32_t nPrefixBits, const char *pPrefix, bool fBech32=false); // wrapper - use default account
 
     int NewExtKeyFromAccount(CWalletDB *pwdb, const CKeyID &idAccount, std::string &sLabel, CStoredExtKey *sekOut, const char *plabel=nullptr, const uint32_t *childNo=nullptr, bool fHardened=false, bool fBech32=true);
-    int NewExtKeyFromAccount(std::string &sLabel, CStoredExtKey *sekOut, const char *plabel=nullptr, const uint32_t *childNo=nullptr, bool fHardened=false, bool fBech32=true); // wrapper - use default account
+    int NewExtKeyFromAccount(std::string &sLabel, CStoredExtKey *sekOut, const char *plabel=nullptr, const uint32_t *childNo=nullptr, bool fHardened=false, bool fBech32=false); // wrapper - use default account
 
     int ExtKeyGetDestination(const CExtKeyPair &ek, CPubKey &pkDest, uint32_t &nKey);
     int ExtKeyUpdateLooseKey(const CExtKeyPair &ek, uint32_t nKey, bool fAddToAddressBook);
@@ -1543,7 +1543,7 @@ public:
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
     DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
 
-    bool SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& purpose, bool bech32 = true);
+    bool SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& purpose, bool bech32 = false);
     bool SetAddressBook(CWalletDB *pwdb, const CTxDestination &address, const std::string &strName,
         const std::string &strPurpose, const std::vector<uint32_t> &vPath, bool fNotifyChanged, bool fBech32);
     bool DelAddressBook(const CTxDestination& address);

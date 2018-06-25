@@ -107,14 +107,14 @@ public:
  */
 class CBitcoinAddress : public CBase58Data {
 public:
-    bool Set(const CKeyID &id, bool fBech32 = true);
-    bool Set(const CScriptID &id, bool fBech32 = true);
-    bool Set(const CKeyID256 &id, bool fBech32 = true);
-    bool Set(const CScriptID256 &id, bool fBech32 = true);
-    bool Set(const CKeyID &id, CChainParams::Base58Type prefix, bool fBech32 = true);
-    bool Set(const CStealthAddress &sx, bool fBech32 = true);
-    bool Set(const CExtKeyPair &ek, bool fBech32 = true);
-    bool Set(const CTxDestination &dest, bool fBech32 = true);
+    bool Set(const CKeyID &id, bool fBech32 = false);
+    bool Set(const CScriptID &id, bool fBech32 = false);
+    bool Set(const CKeyID256 &id, bool fBech32 = false);
+    bool Set(const CScriptID256 &id, bool fBech32 = false);
+    bool Set(const CKeyID &id, CChainParams::Base58Type prefix, bool fBech32 = false);
+    bool Set(const CStealthAddress &sx, bool fBech32 = false);
+    bool Set(const CExtKeyPair &ek, bool fBech32 = false);
+    bool Set(const CTxDestination &dest, bool fBech32 = false);
 
     bool IsValidStealthAddress() const;
     bool IsValidStealthAddress(const CChainParams &params) const;
@@ -286,7 +286,7 @@ public:
     std::string ToStringVersion(CChainParams::Base58Type prefix);
 };
 
-std::string EncodeDestination(const CTxDestination& dest, bool fBech32=true);
+std::string EncodeDestination(const CTxDestination& dest, bool fBech32=false);
 CTxDestination DecodeDestination(const std::string& str);
 bool IsValidDestinationString(const std::string& str);
 bool IsValidDestinationString(const std::string& str, const CChainParams& params);

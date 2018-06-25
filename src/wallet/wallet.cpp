@@ -2916,7 +2916,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                     return false;
                 }
 
-                const OutputType change_type = OUTPUT_TYPE_BECH32;
+                const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -4784,7 +4784,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                     return false;
                 }
 
-                const OutputType change_type = OUTPUT_TYPE_BECH32;
+                const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
