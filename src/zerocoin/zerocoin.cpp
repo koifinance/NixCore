@@ -301,10 +301,6 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         }
         //7% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
-            CTxDestination txdes;
-            ExtractDestination(output.scriptPubKey, txdes);
-            CBitcoinAddress addresserror(txdes);
-            LogPrintf("Dev 1 Print: %s \n", addresserror.ToString());
             //5% for first address
             if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
