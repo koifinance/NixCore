@@ -572,7 +572,7 @@ bool CGhostnodePaymentVote::IsValid(CNode *pnode, int nValidationHeight, std::st
     // Regular clients (miners included) need to verify ghostnode rank for future block votes only.
     if (!fGhostNode && nBlockHeight < nValidationHeight) return true;
 
-    int nRank = mnodeman.GetGhostnodeRank(vinGhostnode, nBlockHeight - 119, nMinRequiredProtocol, false);
+    int nRank = mnodeman.GetGhostnodeRank(vinGhostnode, nBlockHeight - 10, nMinRequiredProtocol, false);
 
     if (nRank == -1) {
         //LogPrint("mnpayments", "CGhostnodePaymentVote::IsValid -- Can't calculate rank for ghostnode %s\n",
@@ -612,7 +612,7 @@ bool CGhostnodePayments::ProcessBlock(int nBlockHeight) {
         return false;
     }
 
-    int nRank = mnodeman.GetGhostnodeRank(activeGhostnode.vin, nBlockHeight - 119, GetMinGhostnodePaymentsProto(), false);
+    int nRank = mnodeman.GetGhostnodeRank(activeGhostnode.vin, nBlockHeight - 10, GetMinGhostnodePaymentsProto(), false);
 
     if (nRank == -1) {
         LogPrintf("mnpayments CGhostnodePayments::ProcessBlock -- Unknown Ghostnode\n");
