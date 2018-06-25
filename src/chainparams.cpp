@@ -147,6 +147,12 @@ public:
         vSeeds.emplace_back("ny.nixplatform.io");
         vSeeds.emplace_back("sf.nixplatform.io");
         vSeeds.emplace_back("ldn.nixplatform.io");
+//        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,38);
+//        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
+//        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
+//        base58Prefixes[PUBKEY_ADDRESS_256] = std::vector<unsigned char>(1,57);
+//        base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
+//        base58Prefixes[STEALTH_ADDRESS]    = std::vector<unsigned char>(1,97); // G
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,3);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
@@ -464,6 +470,8 @@ static CRegTestParams regTestParams;
 static std::unique_ptr<CChainParams> globalChainParams;
 
 const CChainParams &Params() {
+    if(!globalChainParams)
+        globalChainParams = std::unique_ptr<CChainParams>(new CMainParams());
     assert(globalChainParams);
     return *globalChainParams;
 }

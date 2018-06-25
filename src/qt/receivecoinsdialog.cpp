@@ -141,6 +141,9 @@ void ReceiveCoinsDialog::on_receiveButton_clicked()
     if (ui->addressType->currentText() == "Ghost Address")
         address_type = OUTPUT_TYPE_GHOST;
 
+    if (ui->addressType->currentText() == "Ghostnode Address")
+        address_type = OUTPUT_TYPE_LEGACY;
+
     address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "", address_type);
     SendCoinsRecipient info(address, label,
         ui->reqAmount->value(), ui->reqMessage->text());
