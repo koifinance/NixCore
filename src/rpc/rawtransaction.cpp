@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include <univalue.h>
+#include <boost/foreach.hpp>
 
 
 void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex)
@@ -96,15 +97,15 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
                 if (spentInfo.addressType == 1) {
                     in.push_back(Pair("address", CBitcoinAddress(CKeyID(spentInfo.addressHash)).ToString()));
                 } else if (spentInfo.addressType == 2)  {
-                    in.push_back(Pair("address", CBitcoinAddress(CScriptID(spentInfo.addressHash)).ToString()));
+                    in.push_back(Pair("address", CBitcoinAddress(CScriptID(*((uint160*)&spentInfo.addressHash))).ToString()));
                 }
             }
         }
-        if (!tx.wit.IsNull()) {
-            if (!tx.wit.vtxinwit[i].IsNull()) {
+        if (!tx.HasWitness()) {
+            if (!txin.scriptWitness.IsNull()) {
                 UniValue txinwitness(UniValue::VARR);
-                for (unsigned int j = 0; j < tx.wit.vtxinwit[i].scriptWitness.stack.size(); j++) {
-                    std::vector<unsigned char> item = tx.wit.vtxinwit[i].scriptWitness.stack[j];
+                for (unsigned int j = 0; j < txin.scriptWitness.stack.size(); j++) {
+                    std::vector<unsigned char> item = txin.scriptWitness.stack[j];
                     txinwitness.push_back(HexStr(item.begin(), item.end()));
                 }
                 in.push_back(Pair("txinwitness", txinwitness));

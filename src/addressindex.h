@@ -9,6 +9,7 @@
 #include <uint256.h>
 #include <amount.h>
 #include <script/script.h>
+#include <primitives/transaction.h>
 
 enum AddressIndexType {
     ADDR_INDT_UNKNOWN                = 0,
@@ -299,10 +300,8 @@ struct CMempoolAddressDeltaKeyCompare
     }
 };
 
-class CTxOutBase;
-
 bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8_t> &hashBytes);
-bool ExtractIndexInfo(const CTxOutBase *out, int &scriptType, std::vector<uint8_t> &hashBytes, CAmount &nValue, const CScript *&pScript);
+bool ExtractIndexInfo(const CTxOut *out, int &scriptType, std::vector<uint8_t> &hashBytes, CAmount &nValue, const CScript *&pScript);
 
 
 #endif // BITCOIN_ADDRESSINDEX_H

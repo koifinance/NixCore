@@ -108,6 +108,7 @@ endif
 # nix core #
 NIX_CORE_H = \
   addrdb.h \
+  addressindex.h \
   addrman.h \
   base58.h \
   bech32.h \
@@ -250,6 +251,7 @@ libnix_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(NIX_INCLUDES) $(MINIUPNPC_CPPFLAGS) 
 libnix_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libnix_server_a_SOURCES = \
   addrdb.cpp \
+  addressindex.cpp \
   addrman.cpp \
   bloom.cpp \
   blockencodings.cpp \

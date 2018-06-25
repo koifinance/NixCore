@@ -13,6 +13,8 @@
 #include <memusage.h>
 #include <serialize.h>
 #include <uint256.h>
+#include <spentindex.h>
+#include <addressindex.h>
 
 #include <assert.h>
 #include <stdint.h>
@@ -213,6 +215,10 @@ protected:
 
 public:
     CCoinsViewCache(CCoinsView *baseIn);
+
+    mutable std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    mutable std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
+    mutable std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
 
     /**
      * By deleting the copy constructor, we prevent accidentally using it when one intends to create a cache on top of a base cache.

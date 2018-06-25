@@ -629,9 +629,9 @@ UniValue getmempoolentry(const JSONRPCRequest& request)
     return info;
 }
 
-UniValue getblockhashes(const UniValue& params, bool fHelp)
+UniValue getblockhashes(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 3)
+    if (request.fHelp || request.params.size() < 3)
         throw runtime_error(
                 "getblockhashes timestamp\n"
                         "\nReturns array of hashes of blocks within the timestamp range provided.\n"
@@ -647,8 +647,8 @@ UniValue getblockhashes(const UniValue& params, bool fHelp)
                 + HelpExampleRpc("getblockhashes", "1231614698, 1231024505")
         );
 
-    unsigned int high = params[0].get_int();
-    unsigned int low = params[1].get_int();
+    unsigned int high = request.params[0].get_int();
+    unsigned int low = request.params[1].get_int();
     std::vector<uint256> blockHashes;
     if (!GetTimestampIndex(high, low, blockHashes)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for block hashes");
@@ -1654,7 +1654,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getbestblockhash",       &getbestblockhash,       {} },
     { "blockchain",         "getblockcount",          &getblockcount,          {} },
     { "blockchain",         "getblock",               &getblock,               {"blockhash","verbosity|verbose"} },
-    { "blockchain",         "getblockhashes",         &getblockhashes,         true  },
+    { "blockchain",         "getblockhashes",         &getblockhashes,         {"high","low"}  },
     { "blockchain",         "getblockhash",           &getblockhash,           {"height"} },
     { "blockchain",         "getblockheader",         &getblockheader,         {"blockhash","verbose"} },
     { "blockchain",         "getchaintips",           &getchaintips,           {} },

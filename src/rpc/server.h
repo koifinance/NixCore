@@ -188,11 +188,11 @@ extern CAmount AmountFromValue(const UniValue& value);
 extern std::string HelpExampleCli(const std::string& methodname, const std::string& args);
 extern std::string HelpExampleRpc(const std::string& methodname, const std::string& args);
 
-extern UniValue getaddressmempool(const UniValue& params, bool fHelp);
-extern UniValue getaddressutxos(const UniValue& params, bool fHelp);
-extern UniValue getaddressdeltas(const UniValue& params, bool fHelp);
-extern UniValue getaddresstxids(const UniValue& params, bool fHelp);
-extern UniValue getaddressbalance(const UniValue& params, bool fHelp);
+extern UniValue getaddressmempool(const JSONRPCRequest& req);
+extern UniValue getaddressutxos(const JSONRPCRequest& req);
+extern UniValue getaddressdeltas(const JSONRPCRequest& req);
+extern UniValue getaddresstxids(const JSONRPCRequest& req);
+extern UniValue getaddressbalance(const JSONRPCRequest& req);
 
 //Ghostnode
 extern UniValue getpoolinfo(const JSONRPCRequest& req);

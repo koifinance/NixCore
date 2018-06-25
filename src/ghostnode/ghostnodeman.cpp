@@ -602,48 +602,13 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
     /*
         Make a vector with all of the last paid times
     */
+    LogPrintf("\nGhostnode InQueueForPayment \n");
     int nMnCount = CountEnabled();
     int index = 0;
     BOOST_FOREACH(CGhostnode &mn, vGhostnodes)
     {
         index += 1;
-        // //LogPrint("index=%s, mn=%s\n", index, mn.ToString());
-        /*if (!mn.IsValidForPayment()) {
-            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'not valid for payment'\n",
-                     mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
-            continue;
-        }
-        // //check protocol version
-        if (mn.nProtocolVersion < mnpayments.GetMinGhostnodePaymentsProto()) {
-            // //LogPrint("Invalid nProtocolVersion!\n");
-            // //LogPrint("mn.nProtocolVersion=%s!\n", mn.nProtocolVersion);
-            // //LogPrint("mnpayments.GetMinGhostnodePaymentsProto=%s!\n", mnpayments.GetMinGhostnodePaymentsProto());
-            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'invalid nProtocolVersion'\n",
-                     mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
-            continue;
-        }
-        //it's in the list (up to 8 entries ahead of current block to allow propagation) -- so let's skip it
-        if (mnpayments.IsScheduled(mn, nBlockHeight)) {
-            // //LogPrint("mnpayments.IsScheduled!\n");
-            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'IsScheduled'\n",
-                     mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
-            continue;
-        }
-        //it's too new, wait for a cycle
-        if (fFilterSigTime && mn.sigTime + (nMnCount * 2.6 * 60) > GetAdjustedTime()) {
-            // //LogPrint("it's too new, wait for a cycle!\n");
-            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'it's too new, wait for a cycle!', sigTime=%s, will be qualifed after=%s\n",
-                     mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), DateTimeStrFormat("%Y-%m-%d %H:%M UTC", mn.sigTime).c_str(), DateTimeStrFormat("%Y-%m-%d %H:%M UTC", mn.sigTime + (nMnCount * 2.6 * 60)).c_str());
-            continue;
-        }
-        //make sure it has at least as many confirmations as there are ghostnodes
-        if (mn.GetCollateralAge() < nMnCount) {
-            // //LogPrint("mn.GetCollateralAge()=%s!\n", mn.GetCollateralAge());
-            // //LogPrint("nMnCount=%s!\n", nMnCount);
-            //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), not-qualified: 'mn.GetCollateralAge() < nMnCount', CollateralAge=%d, nMnCount=%d\n",
-                     mn.vin.prevout.ToStringShort(), CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), mn.GetCollateralAge(), nMnCount);
-            continue;
-        }*/
+
         char* reasonStr = GetNotQualifyReason(mn, nBlockHeight, fFilterSigTime, nMnCount);
         if (reasonStr != NULL) {
             //LogPrint("ghostnodeman", "Ghostnode, %s, addr(%s), qualify %s\n",
@@ -651,13 +616,14 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
             delete [] reasonStr;
             continue;
         }
+        LogPrintf("\nNODE Last Paid\n");
         vecGhostnodeLastPaid.push_back(std::make_pair(mn.GetLastPaidBlock(), &mn));
     }
     nCount = (int)vecGhostnodeLastPaid.size();
 
     //when the network is in the process of upgrading, don't penalize nodes that recently restarted
     if(fFilterSigTime && nCount < nMnCount / 3) {
-        // //LogPrint("Need Return, nCount=%s, nMnCount/3=%s\n", nCount, nMnCount/3);
+        LogPrintf("Need Return, nCount=%s, nMnCount/3=%s\n", nCount, nMnCount/3);
         return GetNextGhostnodeInQueueForPayment(nBlockHeight, false, nCount);
     }
 
@@ -665,8 +631,8 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
     sort(vecGhostnodeLastPaid.begin(), vecGhostnodeLastPaid.end(), CompareLastPaidBlock());
 
     uint256 blockHash;
-    if(!GetBlockHash(blockHash, nBlockHeight - 101)) {
-        //LogPrint("CGhostnode::GetNextGhostnodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight - 101);
+    if(!GetBlockHash(blockHash, nBlockHeight - 10)) {
+        LogPrintf("CGhostnode::GetNextGhostnodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", (nBlockHeight - 10));
         return NULL;
     }
     // Look at 1/10 of the oldest nodes (by last payment), calculate their scores and pay the best one
@@ -685,6 +651,7 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
         nCountTenth++;
         if(nCountTenth >= nTenthNetwork) break;
     }
+    LogPrintf("\nSuccess finding node %s \n", pBestGhostnode->ToString());
     return pBestGhostnode;
 }
 

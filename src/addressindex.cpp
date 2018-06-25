@@ -10,11 +10,6 @@
 
 bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8_t> &hashBytes)
 {
-    CScript tmpScript;
-    if (HasIsCoinstakeOp(*pScript)
-        && GetNonCoinstakeScriptPath(*pScript, tmpScript))
-        return ExtractIndexInfo(&tmpScript, scriptType, hashBytes);
-
     scriptType = ADDR_INDT_UNKNOWN;
     if (pScript->IsPayToPublicKeyHash())
     {
@@ -40,15 +35,15 @@ bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8
     return true;
 };
 
-bool ExtractIndexInfo(const CTxOutBase *out, int &scriptType, std::vector<uint8_t> &hashBytes, CAmount &nValue, const CScript *&pScript)
+bool ExtractIndexInfo(const CTxOut *out, int &scriptType, std::vector<uint8_t> &hashBytes, CAmount &nValue, const CScript *&pScript)
 {
-    if (!(pScript = out->GetPScriptPubKey()))
+    if (!(*pScript = out->scriptPubKey))
     {
         LogPrintf("ERROR: %s - expected script pointer.\n", __func__);
         return false;
     };
 
-    nValue = out->IsType(OUTPUT_STANDARD) ? out->GetValue() : 0;
+    nValue =  out->nValue();
 
     ExtractIndexInfo(pScript, scriptType, hashBytes);
 
