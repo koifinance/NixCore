@@ -72,7 +72,7 @@ public:
     bool IsBlockchainSynced(bool fBlockAccepted = false);
     bool IsGhostnodeListSynced() { return nRequestedGhostnodeAssets > GHOSTNODE_SYNC_LIST; }
     bool IsWinnersListSynced() { return nRequestedGhostnodeAssets > GHOSTNODE_SYNC_MNW; }
-    bool IsSynced(int nHeight) { return (nHeight >= 600) ? nRequestedGhostnodeAssets == GHOSTNODE_SYNC_FINISHED : true; }
+    bool IsSynced(int nHeight) { return (nHeight >= 7) ? nRequestedGhostnodeAssets == GHOSTNODE_SYNC_FINISHED : true; }
 
     int GetAssetID() { return nRequestedGhostnodeAssets; }
     int GetAttempt() { return nRequestedGhostnodeAttempt; }
