@@ -2307,8 +2307,8 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
 
         for (const auto& entry : mapWallet)
         {
-            const uint256& wtxid = entry.first;
             const CWalletTx* pcoin = &entry.second;
+            const uint256& wtxid = pcoin->GetHash();
 
             if (!CheckFinalTx(*pcoin->tx))
                 continue;
@@ -2378,7 +2378,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                     found = !IsDenominatedAmount(pcoin->tx->vout[i].nValue);
                     if (found && fGhostNode) found = pcoin->tx->vout[i].nValue != GHOSTNODE_COIN_REQUIRED * COIN; // do not use Hot MN funds
                 } else if (nCoinType == ONLY_40000) {
-                    LogPrintf("nCoinType = ONLY_1000\n");
+                    LogPrintf("nCoinType = ONLY_40000\n");
                     LogPrintf("pcoin->vout[i].nValue = %s\n", pcoin->tx->vout[i].nValue);
                     found = pcoin->tx->vout[i].nValue == GHOSTNODE_COIN_REQUIRED * COIN;
                 } else if (nCoinType == ONLY_PRIVATESEND_COLLATERAL) {
@@ -2391,13 +2391,13 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                 if (pcoin->tx->vout[i].nValue < nMinimumAmount || pcoin->tx->vout[i].nValue > nMaximumAmount)
                     continue;
 
-                if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(entry.first, i)))
+                if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(pcoin->tx->vout[i].GetHash(), i)))
                     continue;
 
-                if (IsLockedCoin(entry.first, i))
+                if (IsLockedCoin(pcoin->tx->vout[i].GetHash(), i))
                     continue;
 
-                if (IsSpent(wtxid, i))
+                if (IsSpent(pcoin->tx->vout[i].GetHash(), i))
                     continue;
 
                 isminetype mine = IsMine(pcoin->tx->vout[i]);
@@ -8823,13 +8823,17 @@ bool CWallet::GetVinAndKeysFromOutput(COutput out, CTxIn &txinRet, CPubKey &pubK
     ExtractDestination(pubScript, address1);
     CBitcoinAddress address2(address1);
 
-    CKeyID keyID;
-    if (!address2.GetKeyID(keyID)) {
+    //if (!address2.GetKeyID(keyID)) {
+    //    LogPrintf("CWallet::GetVinAndKeysFromOutput -- Address does not refer to a key\n");
+    //    return false;
+    //}
+    if (!address2.IsValid()) {
         LogPrintf("CWallet::GetVinAndKeysFromOutput -- Address does not refer to a key\n");
         return false;
     }
 
-    if (!GetKey(keyID, keyRet)) {
+    const CWallet *pw = this;
+    if (!GetKey(GetKeyForDestination(*pw, address1), keyRet)) {
         LogPrintf("CWallet::GetVinAndKeysFromOutput -- Private key for address is not known\n");
         return false;
     }
