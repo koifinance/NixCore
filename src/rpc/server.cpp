@@ -267,6 +267,13 @@ static const CRPCCommand vRPCCommands[] =
   { "control",            "stop",                   &stop,                   {}  },
   { "control",            "uptime",                 &uptime,                 {}  },
 
+  /* Address index */
+{ "addressindex",       "getaddressmempool",      &getaddressmempool,      true  },
+{ "addressindex",       "getaddressutxos",        &getaddressutxos,        false },
+{ "addressindex",       "getaddressdeltas",       &getaddressdeltas,       false },
+{ "addressindex",       "getaddresstxids",        &getaddresstxids,        false },
+{ "addressindex",       "getaddressbalance",      &getaddressbalance,      false },
+
   /* Ghostnode features */
   { "NIX Ghostnode",               "ghostnode",             &ghostnode,             {"command"}  },
   { "NIX Ghostnode",               "ghostsync",             &ghostnodesync,             {"command"}  },

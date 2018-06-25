@@ -27,6 +27,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <spentindex.h>
+#include <addressindex.h>
+
 
 #include <atomic>
 
@@ -403,6 +406,14 @@ public:
 /** Initializes the script-execution cache */
 void InitScriptExecutionCache();
 
+/** Insight functions */
+bool GetTimestampIndex(const unsigned int &high, const unsigned int &low, std::vector<uint256> &hashes);
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+bool GetAddressIndex(uint160 addressHash, int type,
+                     std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex,
+                     int start = 0, int end = 0);
+bool GetAddressUnspent(uint160 addressHash, int type,
+                       std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &unspentOutputs);
 
 /** Functions for disk access for blocks */
 bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, int nHeight, const Consensus::Params& consensusParams);
