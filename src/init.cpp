@@ -319,6 +319,7 @@ void Shutdown()
     CloseWallets();
 #endif
     globalVerifyHandle.reset();
+    ECC_Stop_Stealth();
     ECC_Stop();
     LogPrintf("%s: done\n", __func__);
 }
@@ -1319,6 +1320,7 @@ bool AppInitSanityChecks()
     LogPrintf("Using the '%s' SHA256 implementation\n", sha256_algo);
     RandomInit();
     ECC_Start();
+    ECC_Start_Stealth();
     globalVerifyHandle.reset(new ECCVerifyHandle());
 
     // Sanity check
@@ -1974,8 +1976,6 @@ bool AppInitMain()
 
     fEnablePrivateSend = false;
 
-    fEnableInstantSend = false;
-
     //lite mode disables all Ghostnode and Darksend related functionality
     fLiteMode = gArgs.GetBoolArg("-litemode", false);
     if (fGhostNode && fLiteMode) {
@@ -1985,7 +1985,6 @@ bool AppInitMain()
     LogPrintf("fLiteMode %d\n", fLiteMode);
 
     darkSendPool.InitDenominations();
-
 
     // ********************************************************* Step 11b: Load cache data
 
