@@ -113,7 +113,7 @@ public:
         // ghostnode params
         //consensus.nGhostnodePaymentsStartBlock = 10080; //2 weeks after mainnet release
         //consensus.nGhostnodeInitialize = 9500; //~18 hours before node payments start
-
+        consensus.nGhostnodeMinimumConfirmations = 1;
         consensus.nGhostnodePaymentsStartBlock = 10; //2 weeks after mainnet release
         consensus.nGhostnodeInitialize = 7; //~18 hours before node payments start
 
