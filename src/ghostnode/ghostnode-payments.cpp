@@ -350,10 +350,12 @@ bool CGhostnodePayments::IsScheduled(CGhostnode &mn, int nNotBlockHeight) {
 }
 
 bool CGhostnodePayments::AddPaymentVote(const CGhostnodePaymentVote &vote) {
-    //LogPrint("ghostnode-payments", "CGhostnodePayments::AddPaymentVote\n");
+    LogPrintf("\nghostnode-payments CGhostnodePayments::AddPaymentVote\n");
     uint256 blockHash = uint256();
-    if (!GetBlockHash(blockHash, vote.nBlockHeight - 1)) return false;
-
+    if (!GetBlockHash(blockHash, vote.nBlockHeight - 1)){
+        LogPrintf("\nghostnode-payments CGhostnodePayments::Invalid Hash\n");
+        return false;
+    }
     if (HasVerifiedPaymentVote(vote.GetHash())) return false;
 
     LOCK2(cs_mapGhostnodeBlocks, cs_mapGhostnodePaymentVotes);
