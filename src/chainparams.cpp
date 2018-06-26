@@ -114,8 +114,8 @@ public:
         //consensus.nGhostnodePaymentsStartBlock = 10080; //2 weeks after mainnet release
         //consensus.nGhostnodeInitialize = 9500; //~18 hours before node payments start
         consensus.nGhostnodeMinimumConfirmations = 1;
-        consensus.nGhostnodePaymentsStartBlock = 10080; //2 weeks after mainnet release
-        consensus.nGhostnodeInitialize = 9500; //~18 hours before node payments start
+        consensus.nGhostnodePaymentsStartBlock = 1080; //2 weeks after mainnet release
+        consensus.nGhostnodeInitialize = 800; //~18 hours before node payments start
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 

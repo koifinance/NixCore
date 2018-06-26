@@ -259,7 +259,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/1000;
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
 
         bool found_1 = false;
 
@@ -267,7 +267,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript AIRDROP_SCRIPT;
         std::string addresses;
 
-        for(int i = 0; i < 1000; i++){
+        for(int i = 0; i < 100; i++){
             addresses = airdrop_addresses[i];
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;

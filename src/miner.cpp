@@ -146,7 +146,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/1000;
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/100;
         //Subtract 38m from block
         coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
         CScript AIRDROP_SCRIPT;
@@ -154,7 +154,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
         //Draw from mainnet addresses
         if (!fTestNet) {
-            for(int i = 0; i < 1000; i++){
+            for(int i = 0; i < 100; i++){
                 addresses = airdrop_addresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
                 coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));

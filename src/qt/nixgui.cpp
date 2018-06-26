@@ -320,7 +320,7 @@ void BitcoinGUI::createActions()
     tabGroup->addAction(historyAction);
 
     ghostVaultAction = new QAction(platformStyle->SingleColorIcon(":/icons/eye"), tr("&Ghost Vault"), this);
-    ghostVaultAction->setStatusTip(tr("Your personal vault of privatized funds"));
+    ghostVaultAction->setStatusTip(tr("Your personal vault of privatized funds (coming soon)"));
     ghostVaultAction->setToolTip(ghostVaultAction->statusTip());
     ghostVaultAction->setCheckable(true);
     ghostVaultAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
@@ -335,7 +335,7 @@ void BitcoinGUI::createActions()
     // can be triggered from the tray menu, and need to show the GUI to be useful.
 
     ghostnodeAction = new QAction(platformStyle->SingleColorIcon(":/icons/about"), tr("&Ghostnodes"), this);
-    ghostnodeAction->setStatusTip(tr("Browse ghostnodes"));
+    ghostnodeAction->setStatusTip(tr("Browse/enable ghostnodes"));
     ghostnodeAction->setToolTip(ghostnodeAction->statusTip());
     ghostnodeAction->setCheckable(true);
 #ifdef Q_OS_MAC
@@ -607,7 +607,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedSendingAddressesAction->setEnabled(enabled);
     usedReceivingAddressesAction->setEnabled(enabled);
     ghostnodeAction->setEnabled(enabled);
-    ghostVaultAction->setEnabled(enabled);
+    ghostVaultAction->setEnabled(false);
     openAction->setEnabled(enabled);
 }
 

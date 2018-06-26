@@ -4466,6 +4466,7 @@ bool CWalletTx::AcceptToMemoryPool(const CAmount& nAbsurdFee, CValidationState& 
 }
 
 static const std::string OUTPUT_TYPE_STRING_LEGACY = "legacy";
+static const std::string OUTPUT_TYPE_STRING_GHOSTNODE = "ghostnode";
 static const std::string OUTPUT_TYPE_STRING_P2SH_SEGWIT = "p2sh-segwit";
 static const std::string OUTPUT_TYPE_STRING_BECH32 = "bech32";
 
@@ -4479,6 +4480,8 @@ OutputType ParseOutputType(const std::string& type, OutputType default_type)
         return OUTPUT_TYPE_P2SH_SEGWIT;
     } else if (type == OUTPUT_TYPE_STRING_BECH32) {
         return OUTPUT_TYPE_BECH32;
+    }  else if (type == OUTPUT_TYPE_STRING_GHOSTNODE) {
+        return OUTPUT_TYPE_LEGACY;
     } else {
         return OUTPUT_TYPE_NONE;
     }

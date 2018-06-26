@@ -147,7 +147,7 @@ UniValue getnewaddress(const JSONRPCRequest& request)
             "so payments received with the address will be credited to 'account'.\n"
             "\nArguments:\n"
             "1. \"account\"        (string, optional) DEPRECATED. The account name for the address to be linked to. If not provided, the default account \"\" is used. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created if there is no account by the given name.\n"
-            "2. \"address_type\"   (string, optional) The address type to use. Options are \"legacy\", \"p2sh-segwit\", and \"bech32\". Default is set by -addresstype.\n"
+            "2. \"address_type\"   (string, optional) The address type to use. Options are \"ghostnode\", \"p2sh-segwit(default)\", and \"bech32\". Default is set by -addresstype.\n"
             "\nResult:\n"
             "\"address\"    (string) The new bitcoin address\n"
             "\nExamples:\n"
@@ -4492,14 +4492,17 @@ static const CRPCCommand commands[] =
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
-    // NIX ghost functions
-    { "NIX Ghost Protocol",             "listunspentmintzerocoins", &listunspentmintzerocoins, {} },
-    { "NIX Ghost Protocol",             "mintzerocoin",             &mintzerocoin,             {"amount"} },
-    { "NIX Ghost Protocol",             "spendzerocoin",            &spendzerocoin,            {"amount"} },
-    { "NIX Ghost Protocol",             "resetmintzerocoin",        &resetmintzerocoin,        {} },
-    { "NIX Ghost Protocol",             "setmintzerocoinstatus",    &setmintzerocoinstatus,    {} },
-    { "NIX Ghost Protocol",             "listmintzerocoins",        &listmintzerocoins,        {} },
-    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
+    // NIX ghost functions (experimental)
+//    { "NIX Ghost Protocol",             "listunghostednix", &listunspentmintzerocoins, {} },
+//    { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
+//    { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
+//    { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
+//    { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
+//    { "NIX Ghost Protocol",             "listghostednix",        &listmintzerocoins,        {} },
+//    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
+
+
+      //NIX Ghost address functions
     { "NIX Ghost Protocol",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
     { "NIX Ghost Protocol",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
     { "NIX Ghost Protocol",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
@@ -4509,7 +4512,7 @@ static const CRPCCommand commands[] =
     { "NIX TOR",             "enabletor",        &enableTor,        {} },
     { "NIX TOR",             "torstatus",             &torStatus,             {} },
 
-    //NIX Stealth address functions
+
 
 };
 

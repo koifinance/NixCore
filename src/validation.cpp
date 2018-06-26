@@ -695,7 +695,6 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     if (pool.exists(hash)) {
         return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-mempool");
     }
-
     // Check for conflicts with in-memory transactions
     std::set<uint256> setConflicts;
     if(!tx.IsZerocoinSpend())
@@ -747,13 +746,15 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         LockPoints lp;
         CCoinsViewMemPool viewMemPool(pcoinsTip.get(), pool);
         view.SetBackend(viewMemPool);
-
         // do all inputs exist?
+        int i = 0;
         for (const CTxIn txin : tx.vin) {
             if (!pcoinsTip->HaveCoinInCache(txin.prevout)) {
                 coins_to_uncache.push_back(txin.prevout);
             }
+            i++;
             if (!view.HaveCoin(txin.prevout)) {
+                LogPrintf("\n Input %d, outpoint %s", i, txin.prevout.ToString());
                 // Are inputs missing because we already have the tx?
                 for (size_t out = 0; out < tx.vout.size(); out++) {
                     // Optimistically just do efficient check of cache for outputs
