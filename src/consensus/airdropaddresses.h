@@ -2,7 +2,8 @@
 #define AIRDROPADDRESSES_H
 
 static const char * airdrop_addresses[1002] = {
-    "NVm5W9zHqgc3RWc9AAGNLWPcNNttsXGTGQ",
+    "GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ",
+    //"NVm5W9zHqgc3RWc9AAGNLWPcNNttsXGTGQ",
     "NP1cG1uu1FbbyTn7KhfjcjHkrQUPYRhZj7",
     "NTSHBgG9aPto3Cp8GpUHhKLc5meWNbPsKu",
     "NPfC4Hvip8p94FyCL1qpPCdozSV2MnZuLF",

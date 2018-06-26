@@ -179,8 +179,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nd9ZbavvRpme5V2kYNY1i72zMiniuCbdR4"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NUsWVtuUcyBmRFntgS28LKeDxLRTqQeLk2"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
