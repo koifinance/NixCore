@@ -631,8 +631,8 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
     sort(vecGhostnodeLastPaid.begin(), vecGhostnodeLastPaid.end(), CompareLastPaidBlock());
 
     uint256 blockHash;
-    if(!GetBlockHash(blockHash, nBlockHeight - 100)) {
-        LogPrintf("CGhostnode::GetNextGhostnodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", (nBlockHeight - 100));
+    if(!GetBlockHash(blockHash, nBlockHeight - 1)) {
+        LogPrintf("CGhostnode::GetNextGhostnodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", (nBlockHeight - 1));
         return NULL;
     }
     // Look at 1/10 of the oldest nodes (by last payment), calculate their scores and pay the best one
