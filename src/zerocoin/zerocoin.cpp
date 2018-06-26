@@ -250,7 +250,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    if(nHeight == INT_MAX && tx.vout.size() == 1001)
+    if(nHeight == INT_MAX && tx.vout.size() == 2 && (tx.vout[0].nValue == GetBlockSubsidy(1, Params().GetConsensus()) || tx.vout[1].nValue == GetBlockSubsidy(1, Params().GetConsensus())))
         nHeight = 1;
     if(nHeight == INT_MAX)
         nHeight = 2;
@@ -259,7 +259,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus());
 
         bool found_1 = false;
 
@@ -267,7 +267,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript AIRDROP_SCRIPT;
         std::string addresses;
 
-        for(int i = 0; i < 100; i++){
+        for(int i = 0; i < 1; i++){
             addresses = airdrop_addresses[i];
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;

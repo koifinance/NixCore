@@ -697,9 +697,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     if(pindexPrev->nHeight + 1 == 1){
         std::string addresses;
         UniValue airdropObj(UniValue::VOBJ);
-        airdropObj.push_back(Pair("amount", 380000*COIN));
+        airdropObj.push_back(Pair("amount", 38000000*COIN));
         UniValue airdropObjTemp(UniValue::VOBJ);
-        for(int i = 0; i < 100; i++){
+        for(int i = 0; i < 1; i++){
             addresses = airdrop_addresses[i];
             airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
         }
