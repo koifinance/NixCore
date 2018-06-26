@@ -13,11 +13,12 @@
 #include <memusage.h>
 #include <serialize.h>
 #include <uint256.h>
-#include <spentindex.h>
-#include <addressindex.h>
 
 #include <assert.h>
 #include <stdint.h>
+#include <spentindex.h>
+#include <addressindex.h>
+
 
 #include <unordered_map>
 

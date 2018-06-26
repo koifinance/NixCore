@@ -259,25 +259,31 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus());
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus()) - (40000*COIN);
 
         bool found_1 = false;
-
+        bool found_2 = false;
 
         CScript AIRDROP_SCRIPT;
+        CScript AIRDROP_SCRIPT2;
+
         std::string addresses;
 
         for(int i = 0; i < 1; i++){
             addresses = airdrop_addresses[i];
+            AIRDROP_SCRIPT2 = GetScriptForDestination(DecodeDestination("NiaMyUwd3vxWWTN778nPZDjB81v8nY6B8z"));
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                LogPrintf("\nAmount:%d \n", output.nValue);
                 if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
                     found_1 = true;
-                    break;
+                }
+                if (output.scriptPubKey == AIRDROP_SCRIPT2 && output.nValue == (int64_t)(40000*COIN)) {
+                    found_2 = true;
                 }
             }
-            if (!(found_1)) {
+            if (!(found_1 && found_2)) {
                 return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
                                  "CTransaction::CheckTransaction() : airdrop funds missing");
             }

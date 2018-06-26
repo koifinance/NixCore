@@ -2499,40 +2499,6 @@ static void DoWarning(const std::string& strWarning)
     }
 }
 
-bool FlushView(CCoinsViewCache *view, CValidationState& state, bool fDisconnecting)
-{
-    if (!view->Flush())
-        return false;
-
-    if (fAddressIndex)
-    {
-        if (fDisconnecting)
-        {
-            if (!pblocktree->EraseAddressIndex(view->addressIndex))
-                return AbortNode(state, "Failed to delete address index");
-        } else
-        {
-            if (!pblocktree->WriteAddressIndex(view->addressIndex))
-                return AbortNode(state, "Failed to write address index");
-        };
-
-        if (!pblocktree->UpdateAddressUnspentIndex(view->addressUnspentIndex))
-            return AbortNode(state, "Failed to write address unspent index");
-    };
-
-    if (fSpentIndex)
-    {
-        if (!pblocktree->UpdateSpentIndex(view->spentIndex))
-            return AbortNode(state, "Failed to write transaction index");
-    };
-
-    view->addressIndex.clear();
-    view->addressUnspentIndex.clear();
-    view->spentIndex.clear();
-
-    return true;
-}
-
 /** Check warning conditions and do some notifications on new chain tip set. */
 void static UpdateTip(const CBlockIndex *pindexNew, const CChainParams& chainParams) {
 
@@ -2619,7 +2585,7 @@ bool CChainState::DisconnectTip(CValidationState& state, const CChainParams& cha
         assert(view.GetBestBlock() == pindexDelete->GetBlockHash());
         if (DisconnectBlock(block, pindexDelete, view) != DISCONNECT_OK)
             return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
-        bool flushed = FlushView(&view, state, true);
+        bool flushed = view.Flush();
         assert(flushed);
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * MILLI);
@@ -2756,7 +2722,7 @@ bool CChainState::ConnectTip(CValidationState& state, const CChainParams& chainp
         }
         nTime3 = GetTimeMicros(); nTimeConnectTotal += nTime3 - nTime2;
         LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs (%.2fms/blk)]\n", (nTime3 - nTime2) * MILLI, nTimeConnectTotal * MICRO, nTimeConnectTotal * MILLI / nBlocksTotal);
-        bool flushed = FlushView(&view, state, false);
+        bool flushed = view.Flush();
         assert(flushed);
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;

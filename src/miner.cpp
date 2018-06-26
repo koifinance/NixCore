@@ -157,7 +157,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             for(int i = 0; i < 1; i++){
                 addresses = airdrop_addresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
-                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress - (40000*COIN), CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                addresses = "NiaMyUwd3vxWWTN778nPZDjB81v8nY6B8z";
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+                coinbaseTx.vout.push_back(CTxOut(40000*COIN, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
         }
         //Draw from testnet addresses
