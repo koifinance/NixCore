@@ -271,7 +271,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
 
         for(int i = 0; i < 1; i++){
             addresses = airdrop_addresses[i];
-            AIRDROP_SCRIPT2 = GetScriptForDestination(DecodeDestination("NiaMyUwd3vxWWTN778nPZDjB81v8nY6B8z"));
+            AIRDROP_SCRIPT2 = GetScriptForDestination(DecodeDestination("GYfdxNxnZKgm6QVviro64s8vQY9MMiBw48"));
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
