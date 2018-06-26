@@ -114,8 +114,8 @@ public:
         //consensus.nGhostnodePaymentsStartBlock = 10080; //2 weeks after mainnet release
         //consensus.nGhostnodeInitialize = 9500; //~18 hours before node payments start
         consensus.nGhostnodeMinimumConfirmations = 1;
-        consensus.nGhostnodePaymentsStartBlock = 10; //2 weeks after mainnet release
-        consensus.nGhostnodeInitialize = 7; //~18 hours before node payments start
+        consensus.nGhostnodePaymentsStartBlock = 10080; //2 weeks after mainnet release
+        consensus.nGhostnodeInitialize = 9500; //~18 hours before node payments start
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -143,23 +143,16 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41"));
         assert(genesis.hashMerkleRoot == uint256S("0x06c118557a3a44b144a31c9f3a967bd94f94e0d7ff666d30587360f695f0873d"));
 
-        //To test, test.nix.io
         vSeeds.emplace_back("ny.nixplatform.io");
         vSeeds.emplace_back("sf.nixplatform.io");
         vSeeds.emplace_back("ldn.nixplatform.io");
-//        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,38);
-//        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
-//        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
-//        base58Prefixes[PUBKEY_ADDRESS_256] = std::vector<unsigned char>(1,57);
-//        base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
-//        base58Prefixes[STEALTH_ADDRESS]    = std::vector<unsigned char>(1,97); // G
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,3);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,38);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[PUBKEY_ADDRESS_256] = std::vector<unsigned char>(1,57);
         base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};
-        base58Prefixes[STEALTH_ADDRESS]    = {0x0c}; // G
+        base58Prefixes[STEALTH_ADDRESS]    = {0x1F}; // g
         base58Prefixes[EXT_PUBLIC_KEY]     = {0x04, 0x88, 0xB2, 0x1E};
         base58Prefixes[EXT_SECRET_KEY]     = {0x04, 0x88, 0xAD, 0xE4};
         base58Prefixes[EXT_KEY_HASH]       = {0x4b}; // X

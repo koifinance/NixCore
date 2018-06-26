@@ -23,7 +23,7 @@ static const int GHOSTNODE_MIN_MNP_SECONDS             =  10 * 60; //PRE_ENABLE_
 static const int GHOSTNODE_EXPIRATION_SECONDS          =  65 * 60;
 static const int GHOSTNODE_WATCHDOG_MAX_SECONDS        = 120 * 60;
 static const int GHOSTNODE_NEW_START_REQUIRED_SECONDS  = 180 * 60;
-static const int GHOSTNODE_COIN_REQUIRED  = 100;
+static const int GHOSTNODE_COIN_REQUIRED  = 40000;
 
 static const int GHOSTNODE_POSE_BAN_MAX_SCORE          = 5;
 //

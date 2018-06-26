@@ -117,11 +117,6 @@
               <string>Ghostnode Address</string>
              </property>
             </item>
-            <item>
-             <property name="text">
-              <string>Ghost Address</string>
-             </property>
-            </item>
            </widget>
           </item>
           <item>

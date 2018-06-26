@@ -48,7 +48,7 @@ struct ChainTxData;
 struct PrecomputedTransactionData;
 struct LockPoints;
 
-static const int TIME_MULTIPLIER = 4;
+static const int TIME_MULTIPLIER = 1;
 /** Default for -whitelistrelay. */
 static const bool DEFAULT_WHITELISTRELAY = true;
 /** Default for -whitelistforcerelay. */

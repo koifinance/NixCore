@@ -371,13 +371,13 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
         if(address_type == OUTPUT_TYPE_GHOST){
             CEKAStealthKey akStealth;
             std::string sLabel = label.toStdString();
-            if (0 != wallet->NewStealthKeyFromAccount(sLabel, akStealth, 0,  nullptr , true))
+            if (0 != wallet->NewStealthKeyFromAccount(sLabel, akStealth, 0,  nullptr))
                 return QString();
 
             CStealthAddress sxAddr;
             akStealth.SetSxAddr(sxAddr);
 
-            QString addr = QString::fromStdString(sxAddr.ToString(true));
+            QString addr = QString::fromStdString(sxAddr.ToString());
 
             return addr;
         }
