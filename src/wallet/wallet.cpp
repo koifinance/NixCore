@@ -2309,7 +2309,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
         {
             const uint256& wtxid = entry.first;
             const CWalletTx* pcoin = &entry.second;
-
+            bool isGN = false;
             if (!CheckFinalTx(*pcoin->tx))
                 continue;
 
@@ -2381,6 +2381,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                     LogPrintf("nCoinType = ONLY_40000\n");
                     LogPrintf("pcoin->vout[i].nValue = %s\n", pcoin->tx->vout[i].nValue);
                     found = pcoin->tx->vout[i].nValue == GHOSTNODE_COIN_REQUIRED * COIN;
+                    isGN = true;
                 } else if (nCoinType == ONLY_PRIVATESEND_COLLATERAL) {
                     found = IsCollateralAmount(pcoin->tx->vout[i].nValue);
                 } else {
@@ -2388,17 +2389,27 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                 }
                 if (!found) continue;
 
+
                 if (pcoin->tx->vout[i].nValue < nMinimumAmount || pcoin->tx->vout[i].nValue > nMaximumAmount)
                     continue;
 
-                if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(entry.first, i)))
-                    continue;
+                if(isGN){
+                    if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(pcoin->tx->vout[i].GetHash(), i)))
+                        continue;
+                    if (IsLockedCoin(pcoin->tx->vout[i].GetHash(), i))
+                        continue;
+                    if (IsSpent(pcoin->tx->vout[i].GetHash(), i))
+                        continue;
+                }
+                else{
+                    if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(entry.first, i)))
+                        continue;
+                    if (IsLockedCoin(entry.first, i))
+                        continue;
+                    if (IsSpent(wtxid, i))
+                        continue;
+                }
 
-                if (IsLockedCoin(entry.first, i))
-                    continue;
-
-                if (IsSpent(wtxid, i))
-                    continue;
 
 
                 isminetype mine = IsMine(pcoin->tx->vout[i]);
