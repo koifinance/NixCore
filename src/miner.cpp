@@ -145,8 +145,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // To airdrop
     if (nHeight == 1) {
 
-        //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+        //Split 38m into 100 unique addresses for faster tx processing
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/100;
         //Subtract 38m from block
         coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
         CScript AIRDROP_SCRIPT;
@@ -154,13 +154,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
         //Draw from mainnet addresses
         if (!fTestNet) {
-            for(int i = 0; i < 1; i++){
+            for(int i = 0; i < 100; i++){
                 addresses = airdrop_addresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
-                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress - (40000*COIN), CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
-                addresses = "GYfdxNxnZKgm6QVviro64s8vQY9MMiBw48";
-                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
-                coinbaseTx.vout.push_back(CTxOut(40000*COIN, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
         }
         //Draw from testnet addresses
@@ -182,8 +179,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));

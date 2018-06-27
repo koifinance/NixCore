@@ -258,32 +258,26 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
     // To airdrop
     if (nHeight == 1) {
 
-        //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus()) - (40000*COIN);
+        //Split 38m into 100 unique addresses for faster tx processing
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
 
         bool found_1 = false;
-        bool found_2 = false;
 
         CScript AIRDROP_SCRIPT;
-        CScript AIRDROP_SCRIPT2;
 
         std::string addresses;
 
-        for(int i = 0; i < 1; i++){
+        for(int i = 0; i < 100; i++){
             addresses = airdrop_addresses[i];
-            AIRDROP_SCRIPT2 = GetScriptForDestination(DecodeDestination("GYfdxNxnZKgm6QVviro64s8vQY9MMiBw48"));
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                LogPrintf("\nAmount:%d \n", output.nValue);
                 if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
                     found_1 = true;
-                }
-                if (output.scriptPubKey == AIRDROP_SCRIPT2 && output.nValue == (int64_t)(40000*COIN)) {
-                    found_2 = true;
+                    break;
                 }
             }
-            if (!(found_1 && found_2)) {
+            if (!(found_1)) {
                 return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
                                  "CTransaction::CheckTransaction() : airdrop funds missing");
             }
@@ -298,8 +292,8 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         CScript DEV_2_SCRIPT;
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("GRYEvBVXerp5bZ1P216LyjxLssmzNmA8wJ"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));

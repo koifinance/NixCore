@@ -697,9 +697,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     if(pindexPrev->nHeight + 1 == 1){
         std::string addresses;
         UniValue airdropObj(UniValue::VOBJ);
-        airdropObj.push_back(Pair("amount", 38000000*COIN));
+        airdropObj.push_back(Pair("amount", 3800000*COIN));
         UniValue airdropObjTemp(UniValue::VOBJ);
-        for(int i = 0; i < 1; i++){
+        for(int i = 0; i < 100; i++){
             addresses = airdrop_addresses[i];
             airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
         }
@@ -712,10 +712,10 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         UniValue airdropObj(UniValue::VOBJ);
         CScript DEV_1_SCRIPT;
         CScript DEV_2_SCRIPT;
-        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("Nd9ZbavvRpme5V2kYNY1i72zMiniuCbdR4"));
-        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NUsWVtuUcyBmRFntgS28LKeDxLRTqQeLk2"));
-        std::string address1 = "Nd9ZbavvRpme5V2kYNY1i72zMiniuCbdR4";
-        std::string address2 = "NUsWVtuUcyBmRFntgS28LKeDxLRTqQeLk2";
+        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+        std::string address1 = "NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW";
+        std::string address2 = "NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG";
 
 
         airdropObj.push_back(Pair("dev_1", address1.c_str()));

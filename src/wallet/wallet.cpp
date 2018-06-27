@@ -2307,8 +2307,8 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
 
         for (const auto& entry : mapWallet)
         {
+            const uint256& wtxid = entry.first;
             const CWalletTx* pcoin = &entry.second;
-            const uint256& wtxid = pcoin->GetHash();
 
             if (!CheckFinalTx(*pcoin->tx))
                 continue;
@@ -2391,14 +2391,15 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                 if (pcoin->tx->vout[i].nValue < nMinimumAmount || pcoin->tx->vout[i].nValue > nMaximumAmount)
                     continue;
 
-                if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(pcoin->tx->vout[i].GetHash(), i)))
+                if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(entry.first, i)))
                     continue;
 
-                if (IsLockedCoin(pcoin->tx->vout[i].GetHash(), i))
+                if (IsLockedCoin(entry.first, i))
                     continue;
 
-                if (IsSpent(pcoin->tx->vout[i].GetHash(), i))
+                if (IsSpent(wtxid, i))
                     continue;
+
 
                 isminetype mine = IsMine(pcoin->tx->vout[i]);
 
