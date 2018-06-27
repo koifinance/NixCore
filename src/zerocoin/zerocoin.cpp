@@ -278,7 +278,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                     break;
                 }
                 //check for the stacked address
-                else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress + (airdropValuePerAddress - 240000*COIN))) {
+                else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
                     found_1 = true;
                     break;
                 }
