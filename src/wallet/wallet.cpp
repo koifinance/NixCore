@@ -5487,7 +5487,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
             }
 
             if (fOnlyConfirmed && !pcoin->IsTrusted()) {
-                LogPrintf("fOnlyConfirmed = %s, !pcoin->IsTrusted()\n", fOnlyConfirmed, !pcoin->IsTrusted());
+                LogPrintf("fOnlyConfirmed = %s, !pcoin->IsTrusted(): %s\n", fOnlyConfirmed, !pcoin->IsTrusted());
                 continue;
             }
 

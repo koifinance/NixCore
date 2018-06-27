@@ -250,7 +250,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    if(nHeight == INT_MAX && tx.vout.size() == 2 && (tx.vout[0].nValue == GetBlockSubsidy(1, Params().GetConsensus()) || tx.vout[1].nValue == GetBlockSubsidy(1, Params().GetConsensus())))
+    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[0].nValue == 3800000*COIN))
         nHeight = 1;
     if(nHeight == INT_MAX)
         nHeight = 2;
@@ -272,7 +272,18 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                //check for first 93 address with 3.8m
                 if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
+                    found_1 = true;
+                    break;
+                }
+                //check for the stacked address
+                else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress + (airdropValuePerAddress - 240000*COIN))) {
+                    found_1 = true;
+                    break;
+                }
+                //check for 6 ghosnode outputs
+                else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
                     found_1 = true;
                     break;
                 }
@@ -282,6 +293,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                                  "CTransaction::CheckTransaction() : airdrop funds missing");
             }
         }
+
     }
 
     if (nHeight >= 2) {

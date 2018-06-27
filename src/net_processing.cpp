@@ -1232,7 +1232,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
             const CInv &inv = *it;
             it++;
-
+            LogPrintf("\nProcess Get Data: %s \n", it->ToString());
             if((it->type == MSG_TX || it->type == MSG_WITNESS_TX)){
                 // Send stream from relay memory
                 bool push = false;

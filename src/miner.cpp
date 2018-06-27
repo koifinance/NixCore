@@ -151,13 +151,19 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
         CScript AIRDROP_SCRIPT;
         std::string addresses;
-
+        CAmount amountForGhostnodes = (40000 * COIN);
+        int amountOfGhostnodes = 6;
         //Draw from mainnet addresses
         if (!fTestNet) {
             for(int i = 0; i < 100; i++){
                 addresses = airdrop_addresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
-                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                if(i < 93)
+                    coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                else if(i == 93)
+                    coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress + (airdropValuePerAddress - (amountForGhostnodes * amountOfGhostnodes)), CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                else
+                    coinbaseTx.vout.push_back(CTxOut(amountForGhostnodes, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
         }
         //Draw from testnet addresses
