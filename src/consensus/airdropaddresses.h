@@ -96,12 +96,12 @@ static const char * airdrop_addresses[102] = {
     "NPttL1rFsXBPDebZL3c7jeaYtpR6HkoA73",
     "NMKLRiWxTcfU8GY3HWNNemBUa8KBoJu7kM",
     "NUSt7Xe2Jr15paFyb9CXgcka1rT59s13Bx",
-    "NSPEYZ9RiBeKYR9RvPQH3dVfe7v9YcxrST",
-    "NXxYMkdW8BCvpvUayCcN1qGwAczbwxf6Px",
-    "NfCSAqHGt419bVJdEBphbYKutJSBXhpZXh",
-    "NdFwSuUpKmtBzHQuEc7wk67sV6xAzP7wpJ",
-    "Nc6FXSWv76rrP5YqyQsaEqVaWDXRyELf6T",
-    "NRK21q2wggzFR5gcnj8dNLGvnnsGVsvMXt",
+    "GRXEvAsrSCtUMAh8kBGbK1Vvrp99WnyP1q",
+    "GRkmuDAoio5B9x2E5jQ7yFCysJyZv7Fhuk",
+    "GJydGsTxcLTQCBt67dPDk4r4V3PGJxyocN",
+    "GYusi7nqPXY8WpbdQ3gCh5RfSwM6QMZJub",
+    "GYzLNfz4QvctZ39TegXMPzce3id9yAqJLL",
+    "GdhgfR2UmaKNEhCBokjSU3SnMxWCNRDHe6",
 };
 
 
