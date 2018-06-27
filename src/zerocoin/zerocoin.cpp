@@ -250,7 +250,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    if(nHeight == INT_MAX && tx.vout.size() == 1001)
+    if(nHeight == INT_MAX && tx.vout.size() == 102)
         nHeight = 1;
     if(nHeight == INT_MAX)
         nHeight = 2;
@@ -259,22 +259,21 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
     if (nHeight == 1) {
 
         //Split 38m into 1000 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/1000;
+        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
 
         bool found_1 = false;
 
-
         CScript AIRDROP_SCRIPT;
+
         std::string addresses;
 
-        for(int i = 0; i < 1000; i++){
+        for(int i = 0; i < 1; i++){
             addresses = airdrop_addresses[i];
             AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
                 if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
                     found_1 = true;
-                    break;
                 }
             }
             if (!(found_1)) {
@@ -414,7 +413,7 @@ bool ConnectBlockGhost(CValidationState &state, const CChainParams &chainparams,
             int denomination = mint.first;
             CBigNum oldAccValue = ZCParams->accumulatorParams.accumulatorBase;
             int mintId = zerocoinState.AddMint(pindexNew, denomination, mint.second, oldAccValue);
-            LogPrintf("ConnectTipZC: mint added denomination=%d, id=%d\n", denomination, mintId);
+            LogPrintf("ConnectTipGhost: mint added denomination=%d, id=%d\n", denomination, mintId);
             pair<int,int> denomAndId = make_pair(denomination, mintId);
 
             pindexNew->mintedPubCoins[denomAndId].push_back(mint.second);

@@ -59,7 +59,7 @@ public:
     void SetNull()
     {
         destChange = CNoDestination();
-        change_type = OUTPUT_TYPE_BECH32;
+        change_type = OUTPUT_TYPE_P2SH_SEGWIT;
         fAllowOtherInputs = false;
         fAllowWatchOnly = false;
         setSelected.clear();

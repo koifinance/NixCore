@@ -4103,12 +4103,12 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     }
 
     // some blocks in index can change as a result of ZerocoinBuildStateFromIndex() call
-    set<CBlockIndex *> changes;
-    ZerocoinBuildStateFromIndex(&chainActive, changes);
-    if (!changes.empty()) {
-        setDirtyBlockIndex.insert(changes.begin(), changes.end());
-        FlushStateToDisk();
-    }
+    //set<CBlockIndex *> changes;
+    //ZerocoinBuildStateFromIndex(&chainActive, changes);
+    //if (!changes.empty()) {
+    //    setDirtyBlockIndex.insert(changes.begin(), changes.end());
+   //     FlushStateToDisk();
+   // }
 
     LogPrintf("[DONE].\n");
     LogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", chainActive.Height() - pindexState->nHeight, nGoodTransactions);

@@ -274,7 +274,7 @@ bool VerifyWallets()
 
 bool OpenWallets()
 {
-    return CWallet::InitLoadWallet();
+    //return CWallet::InitLoadWallet();
     if (gArgs.GetBoolArg("-disablewallet", DEFAULT_DISABLE_WALLET)) {
         LogPrintf("Wallet disabled!\n");
         return true;
