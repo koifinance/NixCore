@@ -5127,6 +5127,9 @@ double GuessVerificationProgress(const ChainTxData& data, const CBlockIndex *pin
     if (pindex == nullptr)
         return 0.0;
 
+    if(ghostnodeSync.IsSynced(chainActive.Height()))
+        return 1.0;
+
     int64_t nNow = time(nullptr);
 
     double fTxTotal;
