@@ -631,7 +631,7 @@ UniValue getmempoolentry(const JSONRPCRequest& request)
 
 UniValue getblockhashes(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 3)
+    if (request.fHelp || request.params.size() < 2)
         throw runtime_error(
                 "getblockhashes timestamp\n"
                         "\nReturns array of hashes of blocks within the timestamp range provided.\n"

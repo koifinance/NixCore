@@ -104,7 +104,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1530415442; // November 15th, 2017.
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000000100010");
+        consensus.nMinimumChainWork = uint256S("00000000000000000000000000000000000000000000000000e576a550284f21");
 
         // By default assume that the signatures in ancestors of this block are valid.
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //506067
@@ -173,8 +173,8 @@ public:
 
         bech32_hrp = "nix";
 
-        //vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
-        vFixedSeeds.clear();
+        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
+        //vFixedSeeds.clear();
 
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
@@ -183,6 +183,7 @@ public:
         checkpointData = {
             {
                 { 0, uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41")},
+                { 820, uint256S("9d48684e77bc21913aa4c3ea949bb3019ecb33fe7765c08c97e086345cc5aab2")},
             }
         };
 
