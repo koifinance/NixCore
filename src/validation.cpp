@@ -4199,19 +4199,19 @@ bool static LoadBlockIndexDB(const CChainParams& chainparams)
     if(fReindexing) fReindex = true;
 
     // Check whether we have a transaction index
-    fTxIndex = pblocktree->ReadFlag("txindex", fTxIndex);
+    pblocktree->ReadFlag("txindex", fTxIndex);
     LogPrintf("%s: transaction index %s\n", __func__, fTxIndex ? "enabled" : "disabled");
 
     // Check whether we have an address index
-    fAddressIndex = pblocktree->ReadFlag("addressindex", fAddressIndex);
+    pblocktree->ReadFlag("addressindex", fAddressIndex);
     LogPrintf("%s: address index %s\n", __func__, fAddressIndex ? "enabled" : "disabled");
 
     // Check whether we have a timestamp index
-    fTimestampIndex = pblocktree->ReadFlag("timestampindex", fTimestampIndex);
+    pblocktree->ReadFlag("timestampindex", fTimestampIndex);
     LogPrintf("%s: timestamp index %s\n", __func__, fTimestampIndex ? "enabled" : "disabled");
 
     // Check whether we have a spent index
-    fSpentIndex = pblocktree->ReadFlag("spentindex", fSpentIndex);
+    pblocktree->ReadFlag("spentindex", fSpentIndex);
     LogPrintf("%s: spent index %s\n", __func__, fSpentIndex ? "enabled" : "disabled");
 
 
