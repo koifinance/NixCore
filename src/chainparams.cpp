@@ -78,7 +78,7 @@ public:
         consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0;
         consensus.BIP34Height = 1;
-        consensus.BIP34Hash = uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41"); //genesis block
+        consensus.BIP34Hash = uint256S("0x4a205f5cd00a449e1b5a93343d759fb2fdbfe3de1b77380eeb04942f9d2579a7"); //block 1
         consensus.BIP65Height = 0;
         consensus.BIP66Height = 0;
         consensus.powLimit = uint256S("0x00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
