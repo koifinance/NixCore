@@ -1232,7 +1232,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
             const CInv &inv = *it;
             it++;
-            LogPrintf("\nProcess Get Data: %s \n", it->ToString());
+
             if((it->type == MSG_TX || it->type == MSG_WITNESS_TX)){
                 // Send stream from relay memory
                 bool push = false;
@@ -3802,7 +3802,7 @@ bool PeerLogicValidation::SendMessages(CNode* pto, std::atomic<bool>& interruptM
             {
                 pto->filterInventoryKnown.insert(inv.hash);
 
-                LogPrintf("SendMessages -- queued inv: %s  index=%d peer=%d\n", inv.ToString(), vInv.size(), pto->GetId());
+                //LogPrintf("SendMessages -- queued inv: %s  index=%d peer=%d\n", inv.ToString(), vInv.size(), pto->GetId());
                 vInv.push_back(inv);
                 if (vInv.size() >= 1000)
                 {
