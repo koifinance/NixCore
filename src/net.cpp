@@ -2868,7 +2868,7 @@ uint64_t CConnman::CalculateKeyedNetGroup(const CAddress& ad) const
 
 void CConnman::RelayInv(CInv &inv, const int minProtoVersion) {
     LOCK(cs_vNodes);
-    LogPrintf("RelayInv, vNodes.size()=%s\n", vNodes.size());
+    //LogPrintf("RelayInv, vNodes.size()=%s\n", vNodes.size());
     BOOST_FOREACH(CNode * pnode, vNodes)
     {
         //LogPrintf("pnode->nVersion=%s\n", pnode->nVersion);

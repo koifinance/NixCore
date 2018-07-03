@@ -191,7 +191,7 @@ int CGhostnodePayments::GetMinGhostnodePaymentsProto() {
 
 void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataStream &vRecv) {
 
-    LogPrintf("CGhostnodePayments::ProcessMessage strCommand=%s\n", strCommand);
+    //LogPrintf("CGhostnodePayments::ProcessMessage strCommand=%s\n", strCommand);
     // Ignore any payments messages until ghostnode list is synced
     if (!ghostnodeSync.IsGhostnodeListSynced()) return;
 
@@ -216,7 +216,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         netfulfilledman.AddFulfilledRequest(pfrom->addr, NetMsgType::GHOSTNODEPAYMENTSYNC);
 
         Sync(pfrom);
-        LogPrintf("mnpayments GHOSTNODEPAYMENTSYNC -- Sent Ghostnode payment votes to peer \n");
+        //LogPrintf("mnpayments GHOSTNODEPAYMENTSYNC -- Sent Ghostnode payment votes to peer \n");
 
     } else if (strCommand == NetMsgType::GHOSTNODEPAYMENTVOTE) { // Ghostnode Payments Vote for the Winner
 
@@ -234,7 +234,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         {
             LOCK(cs_mapGhostnodePaymentVotes);
             if (mapGhostnodePaymentVotes.count(nHash)) {
-                LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- nHeight=%d seen\n", pCurrentBlockIndex->nHeight);
+                //LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- nHeight=%d seen\n", pCurrentBlockIndex->nHeight);
                 return;
             }
 
@@ -292,7 +292,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         ExtractDestination(vote.payee, address1);
         CBitcoinAddress address2(address1);
 
-        LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s\n", address2.ToString(), vote.nBlockHeight, pCurrentBlockIndex->nHeight, vote.vinGhostnode.prevout.ToStringShort());
+        //LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s\n", address2.ToString(), vote.nBlockHeight, pCurrentBlockIndex->nHeight, vote.vinGhostnode.prevout.ToStringShort());
 
         if (AddPaymentVote(vote)) {
             vote.Relay();
@@ -350,7 +350,7 @@ bool CGhostnodePayments::IsScheduled(CGhostnode &mn, int nNotBlockHeight) {
 }
 
 bool CGhostnodePayments::AddPaymentVote(const CGhostnodePaymentVote &vote) {
-    LogPrintf("\nghostnode-payments CGhostnodePayments::AddPaymentVote\n");
+    //LogPrintf("\nghostnode-payments CGhostnodePayments::AddPaymentVote\n");
     uint256 blockHash = uint256();
     if (!GetBlockHash(blockHash, vote.nBlockHeight - 100)){
         LogPrintf("\nghostnode-payments CGhostnodePayments::Invalid Hash\n");
@@ -626,7 +626,7 @@ bool CGhostnodePayments::ProcessBlock(int nBlockHeight) {
 
     // LOCATE THE NEXT GHOSTNODE WHICH SHOULD BE PAID
 
-    LogPrintf("CGhostnodePayments::ProcessBlock -- Start: nBlockHeight=%d, ghostnode=%s\n", nBlockHeight, activeGhostnode.vin.prevout.ToStringShort());
+    //LogPrintf("CGhostnodePayments::ProcessBlock -- Start: nBlockHeight=%d, ghostnode=%s\n", nBlockHeight, activeGhostnode.vin.prevout.ToStringShort());
 
     // pay to the oldest MN that still had no payment but its input is old enough and it was active long enough
     int nCount = 0;
@@ -637,7 +637,7 @@ bool CGhostnodePayments::ProcessBlock(int nBlockHeight) {
         return false;
     }
 
-    LogPrintf("CGhostnodePayments::ProcessBlock -- Ghostnode found by GetNextGhostnodeInQueueForPayment(): %s\n", pmn->vin.prevout.ToStringShort());
+    //LogPrintf("CGhostnodePayments::ProcessBlock -- Ghostnode found by GetNextGhostnodeInQueueForPayment(): %s\n", pmn->vin.prevout.ToStringShort());
 
 
     CScript payee = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
@@ -650,7 +650,7 @@ bool CGhostnodePayments::ProcessBlock(int nBlockHeight) {
 
     // SIGN MESSAGE TO NETWORK WITH OUR GHOSTNODE KEYS
 
-    LogPrintf("ProcessBlock -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s\n", address2.ToString(), voteNew.nBlockHeight, pCurrentBlockIndex->nHeight, voteNew.vinGhostnode.prevout.ToStringShort());
+    //LogPrintf("ProcessBlock -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s\n", address2.ToString(), voteNew.nBlockHeight, pCurrentBlockIndex->nHeight, voteNew.vinGhostnode.prevout.ToStringShort());
 
     if (voteNew.Sign()) {
         if (AddPaymentVote(voteNew)) {
