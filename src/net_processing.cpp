@@ -1231,7 +1231,6 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 break;
 
             const CInv &inv = *it;
-            it++;
 
             if((it->type == MSG_TX || it->type == MSG_WITNESS_TX)){
                 // Send stream from relay memory
@@ -1256,6 +1255,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 }
             }
             else{
+                LogPrintf("\nSend Stream ProcessGetData(): %s \n", inv.GetCommand());
                 // Send stream from relay memory
                 bool pushed = false;
                 {
@@ -1385,6 +1385,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 if (!pushed)
                     vNotFound.push_back(inv);
         }
+            it++;
             // Track requests for our stuff.
             GetMainSignals().Inventory(inv.hash);
         }
@@ -1664,7 +1665,6 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         LogPrintf("dropmessagestest DROPPING RECV MESSAGE\n");
         return true;
     }
-
 
     if (!(pfrom->GetLocalServices() & NODE_BLOOM) &&
               (strCommand == NetMsgType::FILTERLOAD ||
@@ -2282,7 +2282,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
     }
 
 
-    else if (strCommand == NetMsgType::TX || strCommand == NetMsgType::DSTX || strCommand == NetMsgType::TXLOCKREQUEST)
+    else if (strCommand == NetMsgType::TX || strCommand == NetMsgType::DSTX || strCommand == NetMsgType::TXLOCKREQUEST || strCommand == "witness-tx")
     {
         // Stop processing the transaction early if
         // We are in blocks only mode and peer is either not whitelisted or whitelistrelay is off
@@ -2300,7 +2300,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         int nInvType = MSG_TX;
 
         // Read data and assign inv type
-        if(strCommand == NetMsgType::TX) {
+        if(strCommand == NetMsgType::TX || strCommand == "witness-tx") {
             vRecv >> ptx;
         } else if(strCommand == NetMsgType::TXLOCKREQUEST) {
             vRecv >> txLockRequest;
