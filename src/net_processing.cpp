@@ -1255,7 +1255,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 }
             }
             else{
-                LogPrintf("\nSend Stream ProcessGetData(): %s \n", inv.GetCommand());
+                //LogPrintf("\nSend Stream ProcessGetData(): %s \n", inv.GetCommand());
                 // Send stream from relay memory
                 bool pushed = false;
                 {

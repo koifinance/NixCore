@@ -399,6 +399,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
                 return QString();
             }
         }
+        address_type = OUTPUT_TYPE_DEFAULT;
         wallet->LearnRelatedScripts(newKey, address_type);
         strAddress = EncodeDestination(GetDestinationForKey(newKey, address_type));
     }
