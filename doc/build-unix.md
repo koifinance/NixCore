@@ -20,7 +20,7 @@ To Build
 ```bash
 ./autogen.sh
 ./configure
-make
+make CFLAGS=-fPIC
 make install # optional
 ```
 
