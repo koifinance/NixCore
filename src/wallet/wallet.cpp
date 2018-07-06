@@ -7406,7 +7406,7 @@ int CWallet::ExtKeyCreateInitial(CWalletDB *pwdb)
         return errorN(1, "TxnCommit failed.");
     };
 
-    SetAddressBook(CBitcoinAddress(newKey.GetID()).Get(), "Default Address", "receive");
+    //SetAddressBook(CBitcoinAddress(newKey.GetID()).Get(), "Default Address", "receive");
 
     return 0;
 }

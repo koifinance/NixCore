@@ -15,11 +15,15 @@
 #include <qt/editaddressdialog.h>
 #include <qt/guiutil.h>
 #include <qt/platformstyle.h>
+#include <util.h>
+#include <base58.h>
+#include <wallet/wallet.h>
 
 #include <QIcon>
 #include <QMenu>
 #include <QMessageBox>
 #include <QSortFilterProxyModel>
+#include <QDebug>
 
 AddressBookPage::AddressBookPage(const PlatformStyle *platformStyle, Mode _mode, Tabs _tab, QWidget *parent) :
     QDialog(parent),
@@ -243,6 +247,30 @@ void AddressBookPage::selectionChanged()
         ui->deleteAddress->setEnabled(false);
         ui->copyAddress->setEnabled(false);
     }
+
+    //remove standard keys from wallet
+    int row = table->model()->rowCount();
+    for (int i = 0; i < row ; ++i)
+    {
+        QVariant content = table->model()->data(table->model()->index(i, 0), Qt::DisplayRole);
+        LogPrintf("\nTBE: %s \n",content.toString().toStdString());
+        if(content == QVariant("Default Address"))
+        {   
+            QVariant address = table->model()->data(table->model()->index(i, 1), Qt::DisplayRole);
+            CTxDestination addr = CBitcoinAddress(address.toString().toStdString()).Get();
+            vpwallets.front()->DelAddressBook(addr);
+            //table->model()->removeRow(i);
+        }
+        if(content == QVariant("Default Stealth Address"))
+        {
+            QVariant address = table->model()->data(table->model()->index(i, 1), Qt::DisplayRole);
+            CTxDestination addr = CBitcoinAddress(address.toString().toStdString()).Get();
+            vpwallets.front()->DelAddressBook(addr);
+            //table->model()->removeRow(i);
+        }
+    }
+
+
 }
 
 void AddressBookPage::done(int retval)
