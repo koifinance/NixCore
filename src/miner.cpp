@@ -168,9 +168,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         //Draw from testnet addresses
         else{
             for(int i = 0; i < 1; i++){
-                addresses = airdrop_addresses[i];
-                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
-                coinbaseTx.vout.push_back(CTxOut(airdropValuePerAddress, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+                coinbaseTx.vout.push_back(CTxOut(GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
         }
     }
@@ -188,8 +187,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
         }
         else {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
         }
 
         // And give it to the dev fund

@@ -193,9 +193,10 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
 
     if (tx.IsCoinBase())
     {
+        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
-        if (!CheckDevFundInputs(tx, state, nHeight, false))
+        if (!CheckDevFundInputs(tx, state, nHeight, fTestNet))
             return false;
     }
     else

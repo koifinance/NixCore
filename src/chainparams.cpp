@@ -270,8 +270,8 @@ public:
         // nodes with support for servicebits filtering should be at the top
         vSeeds.emplace_back("testnetnode1.nixplatform.io");
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,3);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,1);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,3);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[PUBKEY_ADDRESS_256] = std::vector<unsigned char>(1,57);
         base58Prefixes[SCRIPT_ADDRESS_256] = {0x3d};

@@ -267,23 +267,40 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
 
         std::string addresses;
 
-        for(int i = 0; i < 100; i++){
-            addresses = airdrop_addresses[i];
-            AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+        if (!fTestNet) {
+            for(int i = 0; i < 100; i++){
+                addresses = airdrop_addresses[i];
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+                found_1 = false;
+                BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                    //check for first 93 address with 3.8m
+                    if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
+                        found_1 = true;
+                        break;
+                    }
+                    //check for the stacked address
+                    else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
+                        found_1 = true;
+                        break;
+                    }
+                    //check for 6 ghosnode outputs
+                    else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
+                        found_1 = true;
+                        break;
+                    }
+                }
+                if (!(found_1)) {
+                    return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                     "CTransaction::CheckTransaction() : airdrop funds missing");
+                }
+            }
+        }
+        else{
+            AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
             found_1 = false;
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                //check for first 93 address with 3.8m
-                if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
-                    found_1 = true;
-                    break;
-                }
-                //check for the stacked address
-                else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
-                    found_1 = true;
-                    break;
-                }
-                //check for 6 ghosnode outputs
-                else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
+                //check for first testnet drop
+                if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                     found_1 = true;
                     break;
                 }
@@ -308,8 +325,8 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
         }
         else {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("TDdVuT1t2CG4JreqDurns5u57vaHywfhHZ"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("TJR4R4E1RUBkafv5KPMuspiD7Zz9Esk2qK"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
         }
         //7% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {

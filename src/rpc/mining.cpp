@@ -693,29 +693,49 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     }
 
 
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
 
     if(pindexPrev->nHeight + 1 == 1){
         std::string addresses;
         UniValue airdropObj(UniValue::VOBJ);
-        airdropObj.push_back(Pair("amount", 3800000*COIN));
         UniValue airdropObjTemp(UniValue::VOBJ);
-        for(int i = 0; i < 100; i++){
-            addresses = airdrop_addresses[i];
-            airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
+        if(!fTestNet){
+            airdropObj.push_back(Pair("amount", 3800000*COIN));
+            for(int i = 0; i < 100; i++){
+                addresses = airdrop_addresses[i];
+                airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
+            }
+            airdropObj.push_back(Pair("payee", airdropObjTemp));
+            result.push_back(Pair("airdrop", airdropObj));
         }
-        airdropObj.push_back(Pair("payee", airdropObjTemp));
-        result.push_back(Pair("airdrop", airdropObj));
-
+        else{
+            airdropObj.push_back(Pair("amount", 380000000*COIN));
+            addresses = "2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f";
+            airdropObjTemp.push_back(Pair(std::to_string(i), addresses.c_str()));
+            airdropObj.push_back(Pair("payee", airdropObjTemp));
+            result.push_back(Pair("airdrop", airdropObj));
+        }
     }
 
     if(pindexPrev->nHeight + 1 > 1){
         UniValue airdropObj(UniValue::VOBJ);
         CScript DEV_1_SCRIPT;
         CScript DEV_2_SCRIPT;
-        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
-        std::string address1 = "NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW";
-        std::string address2 = "NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG";
+        std::string address1;
+        std::string address2;
+        if(!fTestNet){
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            address1 = "NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW";
+            address2 = "NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG";
+        }
+        else{
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
+            address1 = "2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f";
+            address2 = "2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1";
+        }
+
 
 
         airdropObj.push_back(Pair("dev_1", address1.c_str()));
