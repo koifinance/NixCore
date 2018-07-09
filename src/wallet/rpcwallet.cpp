@@ -4493,13 +4493,13 @@ static const CRPCCommand commands[] =
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
     // NIX ghost functions (experimental)
-//    { "NIX Ghost Protocol",             "listunghostednix", &listunspentmintzerocoins, {} },
-//    { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
-//    { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
-//    { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
-//    { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
-//    { "NIX Ghost Protocol",             "listghostednix",        &listmintzerocoins,        {} },
-//    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
+   { "NIX Ghost Protocol",             "listunghostednix", &listunspentmintzerocoins, {} },
+    { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
+    { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
+    { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
+    { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
+    { "NIX Ghost Protocol",             "listghostednix",        &listmintzerocoins,        {} },
+    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
 
 
       //NIX Ghost address functions

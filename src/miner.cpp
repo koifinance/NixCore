@@ -256,9 +256,9 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
     CValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
+    //if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+    //    throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    //}
     int64_t nTime2 = GetTimeMicros();
 
     LogPrint(BCLog::BENCH, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
@@ -459,11 +459,6 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
 
-        if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
-            // Everything else we might consider has a lower fee rate
-            return;
-        }
-
         if (!TestPackage(packageSize, packageSigOpsCost)) {
             if (fUsingModified) {
                 // Since we always look at the best entry in mapModifiedTx,
@@ -508,13 +503,19 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         SortForBlock(ancestors, iter, sortedEntries);
 
         for (size_t i=0; i<sortedEntries.size(); ++i) {
+
             if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
                 if(MAX_SPEND_ZC_TX_PER_BLOCK >= COUNT_SPEND_ZC_TX)
                     AddToBlock(sortedEntries[i]);
                 COUNT_SPEND_ZC_TX++;
             }
-            else
+            else{
+                if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+                    // Everything else we might consider has a lower fee rate
+                    return;
+                }
                 AddToBlock(sortedEntries[i]);
+            }
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);
         }

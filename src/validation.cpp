@@ -695,8 +695,20 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     if (pool.exists(hash)) {
         return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-mempool");
     }
+
+    CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
+    CBigNum zcSpendSerial;
     // Check for conflicts with in-memory transactions
     std::set<uint256> setConflicts;
+    if (tx.IsZerocoinSpend()) {
+        zcSpendSerial = ZerocoinGetSpendSerialNumber(tx);
+        if (!zcSpendSerial)
+            return state.Invalid(false, REJECT_INVALID, "txn-invalid-zerocoin-spend");
+        if (!zcState->CanAddSpendToMempool(zcSpendSerial)) {
+            LogPrintf("AcceptToMemoryPool(): serial number %s has been used\n", zcSpendSerial.ToString());
+            return state.Invalid(false, REJECT_INVALID, "txn-mempool-conflict");
+        }
+    }
     if(!tx.IsZerocoinSpend())
         for (const CTxIn &txin : tx.vin)
         {
@@ -746,6 +758,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         LockPoints lp;
         CCoinsViewMemPool viewMemPool(pcoinsTip.get(), pool);
         view.SetBackend(viewMemPool);
+
         // do all inputs exist?
         int i = 0;
         for (const CTxIn txin : tx.vin) {
@@ -753,21 +766,22 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 coins_to_uncache.push_back(txin.prevout);
             }
             i++;
-            if (!view.HaveCoin(txin.prevout)) {
-                LogPrintf("\n Input %d, outpoint %s", i, txin.prevout.ToString());
-                // Are inputs missing because we already have the tx?
-                for (size_t out = 0; out < tx.vout.size(); out++) {
-                    // Optimistically just do efficient check of cache for outputs
-                    if (pcoinsTip->HaveCoinInCache(COutPoint(hash, out))) {
-                        return state.Invalid(false, REJECT_DUPLICATE, "txn-already-known");
+            if(!tx.IsZerocoinSpend())
+                if (!view.HaveCoin(txin.prevout)) {
+                    LogPrintf("\n Input %d, outpoint %s", i, txin.prevout.ToString());
+                    // Are inputs missing because we already have the tx?
+                    for (size_t out = 0; out < tx.vout.size(); out++) {
+                        // Optimistically just do efficient check of cache for outputs
+                        if (pcoinsTip->HaveCoinInCache(COutPoint(hash, out))) {
+                            return state.Invalid(false, REJECT_DUPLICATE, "txn-already-known");
+                        }
                     }
+                    // Otherwise assume this might be an orphan tx for which we just haven't seen parents yet
+                    if (pfMissingInputs) {
+                        *pfMissingInputs = true;
+                    }
+                    return false; // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
                 }
-                // Otherwise assume this might be an orphan tx for which we just haven't seen parents yet
-                if (pfMissingInputs) {
-                    *pfMissingInputs = true;
-                }
-                return false; // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
-            }
         }
 
         // Bring the best block into scope
@@ -1113,6 +1127,9 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             pool.addUnchecked(hash, entry, setAncestors, validForFeeEstimation);
         }
     }
+
+    if (tx.IsZerocoinSpend())
+        zcState->AddSpendToMempool(zcSpendSerial, hash);
 
     GetMainSignals().TransactionAddedToMempool(ptx);
 
@@ -2346,6 +2363,26 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     assert(pindex->phashBlock);
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
+
+    // Erase conflicting zerocoin txs from the mempool
+    CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
+    BOOST_FOREACH(const CTransactionRef &tx, block.vtx) {
+        if (tx->IsZerocoinSpend()) {
+            CBigNum zcSpendSerial = ZerocoinGetSpendSerialNumber(*tx);
+            uint256 thisTxHash = tx->GetHash();
+            uint256 conflictingTxHash = zcState->GetMempoolConflictingTxHash(zcSpendSerial);
+            if (!conflictingTxHash.IsNull() && conflictingTxHash != thisTxHash) {
+                auto pTx = mempool.get(conflictingTxHash);
+                if (pTx)
+                    mempool.removeRecursive(*pTx, MemPoolRemovalReason::BLOCK);
+                LogPrintf("ConnectBlock: removed conflicting zerocoin spend tx %s from the mempool\n",
+                          conflictingTxHash.ToString());
+            }
+
+            // In any case we need to remove serial from mempool set
+            zcState->RemoveSpendFromMempool(zcSpendSerial);
+        }
+    }
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);

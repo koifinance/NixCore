@@ -156,13 +156,13 @@ static const CRPCConvertParam vRPCConvertParams[] =
 
     //NIX Privacy commands
     { "setmininput", 0 , "amount"},
-    { "mintzerocoin", 0 , "amount"},
-    { "spendzerocoin", 0 , "amount"},
+    { "ghostnix", 0 , "amount"},
+    { "spendghostednix", 0 , "amount"},
     { "setgenerate", 0 , "bool"},
     { "setgenerate", 1 , "bool"},
-    { "setmintzerocoinstatus", 2 ,""},
-    { "setmintzerocoinstatus", 1 ,""},
-    { "listmintzerocoins", 0 ,""},
+    { "setghostednixstatus", 2 ,""},
+    { "setghostednixstatus", 1 ,""},
+    { "listunghostednix", 0 ,""},
     { "listpubcoins", 0, ""},
     { "getnewstealthaddress", 1 ,"label"},
     { "importstealthaddress", 0 ,"scan_secret"},

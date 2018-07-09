@@ -607,7 +607,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedSendingAddressesAction->setEnabled(enabled);
     usedReceivingAddressesAction->setEnabled(enabled);
     ghostnodeAction->setEnabled(enabled);
-    ghostVaultAction->setEnabled(false);
+    ghostVaultAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
 }
 

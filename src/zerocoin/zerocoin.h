@@ -51,6 +51,8 @@ int ZerocoinGetNHeight(const CBlockHeader &block);
 
 bool ZerocoinBuildStateFromIndex(CChain *chain, set<CBlockIndex *> &changes);
 
+CBigNum ZerocoinGetSpendSerialNumber(const CTransaction &tx);
+
 /*
  * State of minted/spent coins as extracted from the index
  */
@@ -82,8 +84,6 @@ private:
 
     // Collection of coin groups. Map from <denomination,id> to CoinGroupInfo structure
     map<pair<int, int>, CoinGroupInfo> coinGroups;
-    // Set of all used coin serials. Allows multiple entries for the same coin serial for historical reasons
-    unordered_multiset<CBigNum,CBigNumHash> usedCoinSerials;
     // Set of all minted pubCoin values
     unordered_multimap<CBigNum,CMintedCoinInfo,CBigNumHash> mintedPubCoins;
     // Latest IDs of coins by denomination
@@ -91,6 +91,12 @@ private:
 
 public:
     CZerocoinState();
+
+    // Set of all used coin serials. Allows multiple entries for the same coin serial for historical reasons
+    unordered_multiset<CBigNum,CBigNumHash> usedCoinSerials;
+
+    // serials of spends currently in the mempool mapped to tx hashes
+    unordered_map<CBigNum,uint256,CBigNumHash> mempoolCoinSerials;
 
     // Add mint, automatically assigning id to it. Returns id and previous accumulator value (if any)
     int AddMint(CBlockIndex *index, int denomination, const CBigNum &pubCoin, CBigNum &previousAccValue);
@@ -129,6 +135,20 @@ public:
 
     // Returns set of indices that changed
     set<CBlockIndex *> RecalculateAccumulators(CChain *chain);
+
+    // Check if there is a conflicting tx in the blockchain or mempool
+    bool CanAddSpendToMempool(const CBigNum &coinSerial);
+
+    // Add spend into the mempool. Check if there is a coin with such serial in either blockchain or mempool
+    bool AddSpendToMempool(const CBigNum &coinSerial, uint256 txHash);
+
+    // Get conflicting tx hash by coin serial number
+    uint256 GetMempoolConflictingTxHash(const CBigNum &coinSerial);
+
+    // Remove spend from the mempool (usually as the result of adding tx to the block)
+    void RemoveSpendFromMempool(const CBigNum &coinSerial);
+
+    // Remove spend from the mempool (usually as the result of adding tx to the block)
 
     static CZerocoinState *GetZerocoinState();
 };

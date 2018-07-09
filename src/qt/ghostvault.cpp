@@ -108,13 +108,9 @@ void GhostVault::setModel(AddressTableModel *model) {
     ui->tableView->horizontalHeader()->setSectionResizeMode(AddressTableModel::Address, QHeaderView::ResizeToContents);
 #endif
 
-//    connect(ui->tableView->selectionModel(), SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
-//            this, SLOT(selectionChanged()));
-
     // Select row for newly created address
     connect(model, SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(selectNewAddress(QModelIndex, int, int)));
 
-//    selectionChanged();
 }
 
 void GhostVault::on_ghostNIXButton_clicked() {

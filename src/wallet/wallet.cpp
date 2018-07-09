@@ -5178,7 +5178,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
             }
 
             if (coinId == INT_MAX){
-                strFailReason = _("there needs to be at least 2 mint coins in the accumulator with 6+ confirmations");
+                strFailReason = _("network privacy set too low. There needs to be at least 2 ghosted values of this type!");
                 return false;
             }
 
