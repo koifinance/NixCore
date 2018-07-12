@@ -851,7 +851,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
             }
 
-            if (nAbsurdFee && nFees > nAbsurdFee)
+            if (nAbsurdFee && !tx.IsZerocoinMint(tx) && nFees > nAbsurdFee)
                 return state.Invalid(false,
                                      REJECT_HIGHFEE, "absurdly-high-fee",
                                      strprintf("%d > %d", nFees, nAbsurdFee));
@@ -3451,11 +3451,32 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
     if (block.zerocoinTxInfo == NULL)
         block.zerocoinTxInfo = new CZerocoinTxInfo();
+    bool blockHasMint = false;
     // Check transactions
-    for (const auto& tx : block.vtx)
+    for (const auto& tx : block.vtx){
         if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
+        if(tx->IsZerocoinMint(tx))
+            blockHasMint = true;
+    }
+
+    /* Check for Ghostprotocol fee payment in block */
+    if(nHeight != INT_MAX && nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock && blockHasMint){
+        int i = 0;
+        for (const auto& tx : block.vtx){
+            if(!tx->IsCoinBase())
+                continue;
+            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                i++;
+            }
+        }
+        //pay to 10+ recipients
+        if(i < 10){
+            return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
+                             "CTransaction::CheckTransaction() : invalid ghostnode fee payment");
+        }
+    }
 
     block.zerocoinTxInfo->Complete();
 

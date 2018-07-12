@@ -4970,7 +4970,9 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                 }
 
                 nFeeNeeded = payTxFee.GetFeePerK() * (1 + (int64_t) GetTransactionWeight(txNew) / 1000);
-                int64_t nMinFee = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
+                //int64_t nMinFee = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
+                //add 0.25% tx fee to all ghostprotocol transaction
+                int64_t nMinFee = nValue * 0.0025;
                 if (nFeeNeeded < nMinFee) {
                     nFeeNeeded = nMinFee;
                 }
@@ -5355,8 +5357,6 @@ string CWallet::MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx &wtxNew,
     // Check amount
     if (nValue <= 0)
         return _("Invalid amount");
-    LogPrintf("CWallet.MintZerocoin() nValue = %s, payTxFee.GetFee(1000) = %s, GetBalance() = %s \n", nValue,
-              payTxFee.GetFee(1000), GetBalance());
     if (nValue + payTxFee.GetFeePerK() > GetBalance())
         return _("Insufficient funds");
     LogPrintf("payTxFee.GetFeePerK()=%s\n", payTxFee.GetFeePerK());

@@ -26,7 +26,7 @@
 #include <validationinterface.h>
 #include <warnings.h>
 #include <consensus/airdropaddresses.h>
-
+#include <ghostnode/ghostnode-payments.h>
 #ifdef ENABLE_WALLET
     #include "ghostnode/ghostnode-sync.h"
 #endif
@@ -559,13 +559,20 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     UniValue transactions(UniValue::VARR);
     std::map<uint256, int64_t> setTxIndex;
     int i = 0;
+    CAmount ghostProtocolFees = 0;
     for (const auto& it : pblock->vtx) {
         const CTransaction& tx = *it;
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
+        int index_in_template = i - 1;
+
         if (tx.IsCoinBase())
             continue;
+        if(tx.IsZerocoinMint(tx)){
+            ghostProtocolFees +=  pblocktemplate->vTxFees[index_in_template];
+            continue;
+        }
 
         UniValue entry(UniValue::VOBJ);
 
@@ -581,7 +588,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         }
         entry.push_back(Pair("depends", deps));
 
-        int index_in_template = i - 1;
+
         entry.push_back(Pair("fee", pblocktemplate->vTxFees[index_in_template]));
         int64_t nTxSigOps = pblocktemplate->vTxSigOpsCost[index_in_template];
         if (fPreSegWit) {
@@ -761,6 +768,23 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     result.push_back(Pair("ghostnode", ghostnodeObj));
     result.push_back(Pair("ghostnode_payments_started", pindexPrev->nHeight + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock));
 
+    if(ghostProtocolFees > 0){
+        UniValue ghostProtocolPayout(UniValue::VOBJ);
+
+        int nHeight = pindexPrev->nHeight + 1;
+
+        std::string strFilter = "";
+
+        //pay fees to the 10 ghostnodes in queue
+        for (int i = nHeight; i < nHeight + 10; i++) {
+            std::string strPayment = GetRequiredPaymentsString(i);
+            if (strFilter != "" && strPayment.find(strFilter) == std::string::npos) continue;
+            ghostnodeObj.push_back(Pair("payee_" + i - nHeight, strPayment));
+
+        }
+        ghostnodeObj.push_back(Pair("amounts", ghostProtocolFees/10));
+        result.push_back(Pair("ghost_protocol_fee_payouts", ghostProtocolPayout));
+    }
 
 
     return result;

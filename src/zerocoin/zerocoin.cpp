@@ -245,6 +245,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
         break;
     }
 
+
     return true;
 }
 
