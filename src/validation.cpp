@@ -3457,7 +3457,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
-        if(tx->IsZerocoinMint(tx))
+        if(tx->IsZerocoinMint(*tx))
             blockHasMint = true;
     }
 
@@ -3467,7 +3467,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         for (const auto& tx : block.vtx){
             if(!tx->IsCoinBase())
                 continue;
-            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+            BOOST_FOREACH(const CTxOut &output, tx->vout) {
                 i++;
             }
         }

@@ -768,21 +768,20 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     result.push_back(Pair("ghostnode", ghostnodeObj));
     result.push_back(Pair("ghostnode_payments_started", pindexPrev->nHeight + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock));
 
-    if(ghostProtocolFees > 0){
+    if(pindexPrev->nHeight + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock && ghostProtocolFees > 0){
         UniValue ghostProtocolPayout(UniValue::VOBJ);
-
         int nHeight = pindexPrev->nHeight + 1;
-
         std::string strFilter = "";
 
+        int total_to_pay = 0;
         //pay fees to the 10 ghostnodes in queue
         for (int i = nHeight; i < nHeight + 10; i++) {
             std::string strPayment = GetRequiredPaymentsString(i);
             if (strFilter != "" && strPayment.find(strFilter) == std::string::npos) continue;
+            total_to_pay++;
             ghostnodeObj.push_back(Pair("payee_" + i - nHeight, strPayment));
-
         }
-        ghostnodeObj.push_back(Pair("amounts", ghostProtocolFees/10));
+        ghostnodeObj.push_back(Pair("amount_for_each", ghostProtocolFees/total_to_pay));
         result.push_back(Pair("ghost_protocol_fee_payouts", ghostProtocolPayout));
     }
 
