@@ -2193,6 +2193,42 @@ CAmount CWallet::GetImmatureBalance() const
     return nTotal;
 }
 
+CAmount CWallet::GetGhostBalance() const
+{
+    std::vector<COutput> vCoins;
+    ListAvailableCoinsMintCoins(vCoins);
+
+    CAmount nTotal = 0;
+    for(COutput n: vCoins){
+        for (unsigned int i = 0; i < n.tx->tx->vout.size(); i++) {
+            if (n.tx->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
+                CTxOut txout = n.tx->tx->vout[i];
+                nTotal += txout.nValue;
+            }
+        }
+    }
+
+    return nTotal;
+}
+
+CAmount CWallet::GetGhostBalanceUnconfirmed() const
+{
+    std::vector<COutput> vCoins;
+    ListAvailableCoinsMintCoins(vCoins, false);
+
+    CAmount nTotal = 0;
+    for(COutput n: vCoins){
+        for (unsigned int i = 0; i < n.tx->tx->vout.size(); i++) {
+            if (n.tx->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
+                CTxOut txout = n.tx->tx->vout[i];
+                nTotal += txout.nValue;
+            }
+        }
+    }
+
+    return nTotal - GetGhostBalance();
+}
+
 CAmount CWallet::GetWatchOnlyBalance() const
 {
     CAmount nTotal = 0;

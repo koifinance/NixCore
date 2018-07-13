@@ -873,17 +873,17 @@ bool CWalletDB::WriteVersion(int nVersion)
 }
 
 bool CWalletDB::WriteCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
-    return batch.Write(make_pair(string("zcserial"), zerocoinSpend.coinSerial), zerocoinSpend, true);
+    return WriteIC(make_pair(string("zcserial"), zerocoinSpend.coinSerial), zerocoinSpend);
 }
 
 bool CWalletDB::EraseCoinSpendSerialEntry(const CZerocoinSpendEntry &zerocoinSpend) {
-    return batch.Erase(make_pair(string("zcserial"), zerocoinSpend.coinSerial));
+    return EraseIC(make_pair(string("zcserial"), zerocoinSpend.coinSerial));
 }
 
 bool
 CWalletDB::WriteZerocoinAccumulator(libzerocoin::Accumulator accumulator, libzerocoin::CoinDenomination denomination,
                                     int pubcoinid) {
-    return batch.Write(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
+    return WriteIC(std::make_tuple(string("zcaccumulator"), (unsigned int) denomination, pubcoinid), accumulator);
 }
 
 bool
@@ -893,11 +893,11 @@ CWalletDB::ReadZerocoinAccumulator(libzerocoin::Accumulator &accumulator, libzer
 }
 
 bool CWalletDB::WriteZerocoinEntry(const CZerocoinEntry &zerocoin) {
-    return batch.Write(make_pair(string("zerocoin"), zerocoin.value), zerocoin, true);
+    return WriteIC(make_pair(string("zerocoin"), zerocoin.value), zerocoin);
 }
 
 bool CWalletDB::EraseZerocoinEntry(const CZerocoinEntry &zerocoin) {
-    return batch.Erase(make_pair(string("zerocoin"), zerocoin.value));
+    return EraseIC(make_pair(string("zerocoin"), zerocoin.value));
 }
 
 // Check Calculated Blocked for Zerocoin
@@ -907,7 +907,7 @@ bool CWalletDB::ReadCalculatedZCBlock(int &height) {
 }
 
 bool CWalletDB::WriteCalculatedZCBlock(int height) {
-    return batch.Write(std::string("calculatedzcblock"), height);
+    return WriteIC(std::string("calculatedzcblock"), height);
 }
 
 void CWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {

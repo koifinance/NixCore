@@ -162,7 +162,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "setgenerate", 1 , "bool"},
     { "setghostednixstatus", 2 ,""},
     { "setghostednixstatus", 1 ,""},
-    { "listunghostednix", 0 ,""},
+    { "listunspentghostednix", 0 ,""},
     { "listpubcoins", 0, ""},
     { "getnewstealthaddress", 1 ,"label"},
     { "importstealthaddress", 0 ,"scan_secret"},

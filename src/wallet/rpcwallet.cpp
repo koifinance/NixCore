@@ -3574,15 +3574,6 @@ UniValue listunspentmintzerocoins(const JSONRPCRequest& request) {
 
     UniValue options = request.params;
 
-    //TO DO: find a solution for checking this object
-    RPCTypeCheckObj(options,
-        {
-            {"amount", UniValueType(UniValue::VNUM)},
-            {"confirmations", UniValueType(UniValue::VNUM)},
-            {"script", UniValueType(UniValue::VARR)}
-        },
-        true, true);
-
     int nMinDepth = 1;
     if (request.params.size() > 0)
         nMinDepth = request.params[0].get_int();
@@ -4493,7 +4484,7 @@ static const CRPCCommand commands[] =
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
     // NIX ghost functions (experimental)
-   { "NIX Ghost Protocol",             "listunghostednix", &listunspentmintzerocoins, {} },
+   { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
     { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
     { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
     { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },

@@ -39,7 +39,7 @@ public:
 
 public Q_SLOTS:
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& ghostBalance, const CAmount& ghostBalanceUnconfirmed);
 
 Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);
@@ -52,6 +52,8 @@ private:
     WalletModel *walletModel;
     CAmount currentBalance;
     CAmount currentUnconfirmedBalance;
+    CAmount currentGhostBalance;
+    CAmount currentGhostBalanceUnconfirmed;
     CAmount currentImmatureBalance;
     CAmount currentWatchOnlyBalance;
     CAmount currentWatchUnconfBalance;

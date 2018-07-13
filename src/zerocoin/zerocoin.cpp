@@ -17,8 +17,9 @@ using namespace boost;
 // btzc: add zerocoin init
 // zerocoin init
 static CBigNum bnTrustedModulus(ZEROCOIN_MODULUS);
+static CBigNum bnTrustedSeed(ZEROCOIN_SEED);
 // Set up the Zerocoin Params object
-libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus);
+libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus, bnTrustedSeed);
 
 
 static CZerocoinState zerocoinState;
