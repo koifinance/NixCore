@@ -8483,14 +8483,14 @@ bool CWallet::GhostModeMintTrigger(string totalAmount){
         return error("%s: Error: Amount out of range.", __func__);
 
     //TODO: Create timer function to mint and recognize freshly finished mints to spend
-    denomination = libzerocoin::AmountToClosestDenomination(amount, nRemaining);
+    denomination = libzerocoin::AmountToClosestDenomination(amount, amount);
     while(denomination != libzerocoin::ZQ_ERROR){
         if (this->IsLocked())
             return error("%s: Error: The wallet needs to be unlocked.", __func__);
-        if(!CreateZerocoinMintModel(stringError, CoinDenominationStrings[denomination]))
+        if(!CreateZerocoinMintModel(stringError, std::to_string((int)denomination)))
             return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
-        amount = nRemaining;
-        denomination = libzerocoin::AmountToClosestDenomination(amount, nRemaining);
+        //amount = nRemaining;
+        denomination = libzerocoin::AmountToClosestDenomination(amount * COIN, amount);
 
     }
 

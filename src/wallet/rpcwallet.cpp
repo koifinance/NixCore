@@ -3615,6 +3615,25 @@ UniValue listunspentmintzerocoins(const JSONRPCRequest& request) {
     return results;
 }
 
+
+UniValue ghostamount(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
+
+
+    int64_t nAmount = request.params[0].get_int64();
+
+    bool strError = pwalletMain->GhostModeMintTrigger(std::to_string(nAmount));
+
+    if (!strError)
+        throw JSONRPCError(RPC_WALLET_ERROR, "ghostamount");
+
+    return "Sucessfully ghosted " + std::to_string(nAmount) +  " NIX";
+}
+
 UniValue mintzerocoin(const JSONRPCRequest& request)
 {
 
@@ -4486,6 +4505,7 @@ static const CRPCCommand commands[] =
     // NIX ghost functions (experimental)
    { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
     { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
+  { "NIX Ghost Protocol",             "ghostamount",             &ghostamount,             {"amount"} },
     { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
     { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
     { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
