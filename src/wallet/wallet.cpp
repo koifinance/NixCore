@@ -5007,12 +5007,14 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
 
                 nFeeNeeded = payTxFee.GetFeePerK() * (1 + (int64_t) GetTransactionWeight(txNew) / 1000);
                 //int64_t nMinFee = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
+
+                //min fee value of 0.01
                 //add 0.25% tx fee to all ghostprotocol transaction
-                int64_t nMinFee = nValue * 0.0025;
+                int64_t nMinFee = (nValue * 0.0025) > 0.01 ? (nValue * 0.0025) : 0.01;
+
                 if (nFeeNeeded < nMinFee) {
                     nFeeNeeded = nMinFee;
                 }
-
 
                 if (nFeeRet >= nFeeNeeded)
                     break; // Done, enough fee included.

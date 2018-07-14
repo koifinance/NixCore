@@ -393,6 +393,61 @@ int CGhostnodeMan::CountGhostnodes(int nProtocolVersion)
     return nCount;
 }
 
+//TODO: Enable wallet on ghostnodes, create local wallet addresses to link multisig networking
+bool CGhostnodeMan::GhostProtocolFeeDepositAddress(){
+
+    // Get the public keys
+    std::vector<CPubKey> pubkeys;
+    bool isKeyOwner = false;
+
+    for(CGhostnode gn: vGhostnodes){
+        if(gn.IsEnabled()){
+            int rank = mnodeman.GetGhostnodeRank(gn.vin, pCurrentBlockIndex->nHeight - 100);
+            //Get the top 16 chosen for the current cycle
+            if(rank < 16){
+                pubkeys.push_back(gn.pubKeyGhostnode);
+                //Whether I am one of the chosen nodes
+            }
+        }
+    }
+
+    // Construct using pay-to-script-hash:
+    // Gather public keys
+    if (vGhostnodes.size() < 1) {
+        LogPrintf("GhostProtocolFeeDepositAddress(): a multisignature address must require at least one key to redeem");
+        return false;
+    }
+    if ((int)pubkeys.size() < 9) {
+        LogPrintf("GhostProtocolFeeDepositAddress(): not enough keys supplied (got %u keys, but need at least %u to redeem)", pubkeys.size(), vGhostnodes.size());
+        return false;
+    }
+
+    //We need to limit to batches of multi sig wallets - random 1 batch decides or multilayered multisig network address
+    if (pubkeys.size() > 16) {
+        LogPrintf("GhostProtocolFeeDepositAddress(): Number of keys involved in the multisignature address creation > 16\nReduce the number");
+        return false;
+    }
+
+    //require 51+% consensus
+    CScript result = GetScriptForMultisig(9, pubkeys);
+
+    if (result.size() > MAX_SCRIPT_ELEMENT_SIZE) {
+        LogPrintf("GhostProtocolFeeDepositAddress(): redeemScript exceeds size limit: %d > %d", result.size(), MAX_SCRIPT_ELEMENT_SIZE);
+        return false;
+    }
+
+    //If I am one of the 16 nodes
+
+    //vpwallets.front()->AddCScript(result);
+    //CTxDestination dest = vpwallets.front()->AddAndGetDestinationForScript(result, OUTPUT_TYPE_LEGACY);
+    //vpwallets.front()->SetAddressBook(dest, strAccount, "send");
+
+    //If I am a standard node
+    CTxDestination dest = CScriptID(result);
+
+
+}
+
 int CGhostnodeMan::CountEnabled(int nProtocolVersion)
 {
     LOCK(cs);
