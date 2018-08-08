@@ -20,7 +20,7 @@ NIX is a digital currency that combines Atomic Swaps/Smart Contracts and privacy
 
 * Ghost Protocol and Ghost Vault to enhance privacy features.
 
-For more information, please visit [NixPlatform.io](https://nixplatform.io/nixplatform.io) or read the [whitepaper](https://nixplatform.io/nixplatform.io/whitepaper).
+For more information, please visit [NixPlatform.io](https://nixplatform.io/nixplatform.io) or read the [whitepaper](https://nixplatform.io/docs/NIX-Platform-Whitepaper.pdf).
 
 
 ### Guides & Documentation
