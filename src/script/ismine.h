@@ -21,9 +21,10 @@ enum isminetype
     ISMINE_WATCH_UNSOLVABLE = 1,
     //! Indicates that we know how to create a scriptSig that would solve this if we were given the appropriate private keys
     ISMINE_WATCH_SOLVABLE = 2,
-    ISMINE_WATCH_ONLY = ISMINE_WATCH_SOLVABLE | ISMINE_WATCH_UNSOLVABLE,
     ISMINE_SPENDABLE = 4,
     ISMINE_HARDWARE_DEVICE = (1 << 6), // Pivate key is on external device
+    ISMINE_WATCH_COLDSTAKE = (1 << 7),
+    ISMINE_WATCH_ONLY = ISMINE_WATCH_SOLVABLE | ISMINE_WATCH_UNSOLVABLE | ISMINE_WATCH_COLDSTAKE,
     ISMINE_ALL = ISMINE_WATCH_ONLY | ISMINE_SPENDABLE
 };
 /** used for bitflags of isminetype */

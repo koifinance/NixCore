@@ -89,4 +89,7 @@ static void RelayTransaction(const CTransaction& tx, CConnman* connman)
         pnode->PushInventory(inv);
     });
 }
+
+bool IncomingBlockChecked(const CBlock &block, CValidationState &state);
+
 #endif // BITCOIN_NET_PROCESSING_H

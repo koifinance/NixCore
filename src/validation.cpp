@@ -2862,10 +2862,26 @@ bool CChainState::ConnectTip(CValidationState& state, const CChainParams& chainp
     {
         CCoinsViewCache view(pcoinsTip.get());
         bool rv = ConnectBlock(blockConnecting, state, pindexNew, view, chainparams);
+        if (pindexNew->nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
+            state.nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
         GetMainSignals().BlockChecked(blockConnecting, state);
         if (!rv) {
-            if (state.IsInvalid())
+            if (state.IsInvalid()){
+                if (state.GetRejectReason() == "bad-cs-duplicate")
+                {
+                    pindexNew->SetProofOfStake();
+                    pindexNew->prevoutStake = blockConnecting.vtx[0]->vin[0].prevout;
+                    if (pindexNew->pprev && pindexNew->pprev->bnStakeModifier.IsNull())
+                        LogPrintf("Warning: %s - Previous stake modifier is null.\n", __func__);
+                    else
+                        pindexNew->bnStakeModifier = ComputeStakeModifierV2(pindexNew->pprev, pindexNew->prevoutStake.hash);
+
+                    pindexNew->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
+                    setDirtyBlockIndex.insert(pindexNew);
+                }
                 InvalidBlockFound(pindexNew, state);
+            }
+
             return error("ConnectTip(): ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
         }
         nTime3 = GetTimeMicros(); nTimeConnectTotal += nTime3 - nTime2;
@@ -3605,6 +3621,30 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         if (block.vtx[i]->IsCoinBase())
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
 
+    if (block.IsProofOfStake()) {
+        if (!IsInitialBlockDownload()
+            && block.vtx[0]->IsCoinStake()
+            && !CheckStakeUnique(block))
+        {
+
+            state.nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
+
+        }
+
+        // First transaction must be coinbase (genesis only) or coinstake
+        // 2nd txn may be coinbase in early blocks: check further in ContextualCheckBlock
+        if (!(block.vtx[0]->IsCoinBase() || block.vtx[0]->IsCoinStake())) // only genesis can be coinbase, check in ContextualCheckBlock
+            return state.DoS(100, false, REJECT_INVALID, "bad-cb-missing", false, "first tx is not coinbase");
+
+        // 2nd txn may never be coinstake, remaining txns must not be coinbase/stake
+        for (size_t i = 1; i < block.vtx.size(); i++)
+            if ((i > 1 && block.vtx[i]->IsCoinBase()) || block.vtx[i]->IsCoinStake())
+                return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
+
+        if (!CheckBlockSignature(block))
+            return state.DoS(100, false, REJECT_INVALID, "bad-block-signature", false, "bad block signature");
+    }
+
     // Check transactions
     if (nHeight == INT_MAX)
         nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
@@ -3807,14 +3847,6 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
                 return state.DoS(100, false, REJECT_INVALID, "bad-cs-outputs", false, "Too many outputs in coinstake");
         }
 
-        // coinstake output 0 must be data output of blockheight
-        //int i;
-        //if (!block.vtx[0]->GetCoinStakeHeight(i))
-            //return state.DoS(100, false, REJECT_INVALID, "bad-cs-malformed", false, "coinstake txn is malformed");
-
-        //if (i != nHeight)
-            //return state.DoS(100, false, REJECT_INVALID, "bad-cs-height", false, "block height mismatch in coinstake");
-
         if (!CheckCoinStakeTimestamp(nHeight, block.GetBlockTime()))
             return state.DoS(50, false, REJECT_INVALID, "bad-coinstake-time", true, strprintf("%s: coinstake timestamp violation nTimeBlock=%d", __func__, block.GetBlockTime()));
 
@@ -3823,6 +3855,10 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
             return state.DoS(50, false, REJECT_INVALID, "bad-block-time", true, strprintf("%s: block's timestamp is too early", __func__));
 
         uint256 hashProof, targetProofOfStake;
+
+        bool isWitnessBlock = GetWitnessCommitmentIndex(block) != -1;
+        if(!isWitnessBlock && block.vtx[0]->vout.size() != 1)
+            return state.DoS(100, error("CheckBlock() : wrong number of outputs in coinbase for proof-of-stake block"));
 
         // Blocks are connected at end of import / reindex
         // CheckProofOfStake is run again during connectblock
@@ -4055,8 +4091,14 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
 
     // Header is valid/has work, merkle tree and segwit merkle tree are good...RELAY NOW
     // (but if it does not build on our best tip, let the SendMessages loop relay it)
+    //if (!IsInitialBlockDownload() && chainActive.Tip() == pindex->pprev)
+        //GetMainSignals().NewPoWValidBlock(pindex, pblock);
+
     if (!IsInitialBlockDownload() && chainActive.Tip() == pindex->pprev)
-        GetMainSignals().NewPoWValidBlock(pindex, pblock);
+    {
+        if (!(state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE))
+            GetMainSignals().NewPoWValidBlock(pindex, pblock);
+    }
 
     // Write block to history file
     try {
@@ -4100,6 +4142,14 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
         if (!ret) {
             GetMainSignals().BlockChecked(*pblock, state);
             return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
+        }
+        if (pindex && state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
+        {
+            pindex->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
+            setDirtyBlockIndex.insert(pindex);
+            LogPrint(BCLog::POS, "%s Marking duplicate stake: %s.\n", __func__, pindex->GetBlockHash().ToString());
+            //GetMainSignals().BlockChecked(*pblock, state);
+            IncomingBlockChecked(*pblock, state);
         }
     }
 

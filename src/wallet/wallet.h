@@ -649,6 +649,7 @@ public:
 
     const uint256& GetHash() const { return tx->GetHash(); }
     bool IsCoinBase() const { return tx->IsCoinBase(); }
+    bool IsCoinStake() const { return tx->IsCoinStake(); }
 };
 
 /** 
@@ -1538,6 +1539,8 @@ public:
         std::vector<uint8_t> &vchEphemPK, uint32_t prefix, bool fHavePrefix, CKey &sShared, bool fNeedShared=false);
 
     /* POS functionality */
+
+    bool ProcessStakingSettings(std::string &sError);
 
     bool InMempool(const uint256 &hash) const;
     bool GetSetting(const std::string &setting, UniValue &json);

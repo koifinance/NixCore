@@ -39,6 +39,7 @@
 #include "ghostnode/ghostnode.h"
 #include "random.h"
 
+#include <rpc/server.h>
 #include <pos/kernel.h>
 #include <pos/miner.h>
 #include <consensus/merkle.h>
@@ -483,8 +484,10 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
                 return false;
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, _vMasterKey))
                 continue; // try another master key
-            if (CCryptoKeyStore::Unlock(_vMasterKey))
+            if (CCryptoKeyStore::Unlock(_vMasterKey)){
+                WakeThreadStakeMiner(this);
                 return true;
+            }
         }
     }
     return false;
@@ -1129,8 +1132,19 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
                     if (range.first->second != tx.GetHash()) {
-                        LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
-                        MarkConflicted(pIndex->GetBlockHash(), range.first->second);
+
+                        const CWalletTx *wtxConflicted = GetWalletTx(range.first->second); // coinstakes will only be in mapwallet
+                        if (wtxConflicted && wtxConflicted->isAbandoned() && wtxConflicted->IsCoinStake())
+                        {
+                            // Respending input from orphaned coinstake, leave abandoned
+                            LogPrintf("Reusing kernel from orphaned stake %s, new tx %s, \n    (kernel %s:%i).\n",
+                                      range.first->second.ToString(), tx.GetHash().ToString(), range.first->first.hash.ToString(), range.first->first.n);
+                        } else
+                        {
+                            LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
+                            MarkConflicted(pIndex->GetBlockHash(), range.first->second);
+                        }
+
                     }
                     range.first++;
                 }
@@ -1165,11 +1179,24 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                 }
             }
 
+            // A coinstake txn not linked to a block is being orphaned
+            if (fExisted && tx.IsCoinStake() && !pIndex)
+            {
+                uint256 hashTx = tx.GetHash();
+                LogPrintf("Orphaning stake txn: %s\n", hashTx.ToString());
+
+                // If block is later reconnected tx will be unabandoned by AddToWallet
+                if (!AbandonTransaction(hashTx))
+                    LogPrintf("ERROR: %s - Orphaning stake, AbandonTransaction failed for %s\n", __func__, hashTx.ToString());
+            }
+
             CWalletTx wtx(this, ptx);
 
             // Get merkle branch if transaction was found in a block
             if (pIndex != nullptr)
                 wtx.SetMerkleBranch(pIndex, posInBlock);
+
+            WakeThreadStakeMiner(this); // wallet balance may have changed
 
             return AddToWallet(wtx, false);
         }
@@ -6277,6 +6304,9 @@ bool CWallet::InitLoadWallet()
         if (!pwallet)
             return false;
 
+        std::string sError;
+        pwallet->ProcessStakingSettings(sError);
+
         if (pwallet->mapMasterKeys.size() > 0
             && !pwallet->SetCrypted())
         {
@@ -10090,4 +10120,96 @@ CAmount CWallet::GetStakeableBalance() const
     };
 
     return nBalance;
+}
+
+bool CWallet::ProcessStakingSettings(std::string &sError)
+{
+    LogPrint(BCLog::HDWALLET, "ProcessStakingSettings\n");
+
+    nStakeCombineThreshold = 1000 * COIN;
+    nStakeSplitThreshold = 2000 * COIN;
+    nMaxStakeCombine = 3;
+    nWalletDevFundCedePercent = gArgs.GetArg("-donationpercent", 0);
+
+    UniValue json;
+    if (GetSetting("stakingoptions", json))
+    {
+        if (!json["stakecombinethreshold"].isNull())
+        {
+            try { nStakeCombineThreshold = AmountFromValue(json["stakecombinethreshold"]);
+            } catch (std::exception &e) {
+                sError = "stakecombinethreshold not amount.";
+            };
+        };
+
+        if (!json["stakesplitthreshold"].isNull())
+        {
+            try { nStakeSplitThreshold = AmountFromValue(json["stakesplitthreshold"]);
+            } catch (std::exception &e) {
+                sError = "stakesplitthreshold not amount.";
+            };
+        };
+
+        if (!json["donationpercent"].isNull())
+        {
+            try { nWalletDevFundCedePercent = json["foundationdonationpercent"].get_int();
+            } catch (std::exception &e) {
+                sError = "foundationdonationpercent not integer.";
+            };
+        };
+
+        if (json["rewardaddress"].isStr())
+        {
+            try { rewardAddress = CBitcoinAddress(json["rewardaddress"].get_str());
+            } catch (std::exception &e) {
+                sError = "Setting rewardaddress failed.";
+            };
+        };
+    };
+
+    if (nStakeCombineThreshold < 100 * COIN || nStakeCombineThreshold > 5000 * COIN)
+    {
+        sError = "stakecombinethreshold must be >= 100 and <= 5000.";
+        nStakeCombineThreshold = 1000 * COIN;
+    };
+
+    if (nStakeSplitThreshold < nStakeCombineThreshold * 2 || nStakeSplitThreshold > 10000 * COIN)
+    {
+        sError = "stakesplitthreshold must be >= 2x stakecombinethreshold and <= 10000.";
+        nStakeSplitThreshold = nStakeCombineThreshold * 2;
+    };
+
+    if (nWalletDevFundCedePercent < 0)
+    {
+        LogPrintf("%s: Warning donationpercent out of range %d, clamped to %d\n", nWalletDevFundCedePercent, 0);
+        nWalletDevFundCedePercent = 0;
+    } else
+    if (nWalletDevFundCedePercent > 100)
+    {
+        LogPrintf("%s: Warning donationpercent out of range %d, clamped to %d\n", nWalletDevFundCedePercent, 100);
+        nWalletDevFundCedePercent = 100;
+    };
+
+    return true;
+}
+
+/**
+ * total coins staked (non-spendable until maturity)
+ */
+CAmount CWallet::GetStaked()
+{
+    int64_t nTotal = 0;
+    LOCK2(cs_main, cs_wallet);
+    for (std::pair<const uint256, CWalletTx>& item : mapWallet)
+    {
+        CWalletTx &wtx = item.second;
+
+        if (wtx.IsCoinStake()
+            && wtx.GetDepthInMainChainCached() > 0 // checks for hashunset
+            && wtx.GetBlocksToMaturity() > 0)
+        {
+            nTotal += CWallet::GetCredit(*wtx.tx, ISMINE_SPENDABLE);
+        }
+    }
+    return nTotal;
 }

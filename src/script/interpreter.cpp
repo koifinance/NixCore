@@ -423,6 +423,16 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     break;
                 }
 
+            case OP_ISCOINSTAKE:
+            {
+
+                opcodetype opbool = checker.IsCoinStake() ? OP_TRUE : OP_FALSE;
+                CScriptNum bn(opbool);
+                stack.push_back(bn.getvch());
+                break;
+            }
+
+
                 case OP_NOP1: case OP_NOP4: case OP_NOP5:
                 case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
                 {
