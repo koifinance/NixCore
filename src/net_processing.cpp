@@ -1806,6 +1806,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         connman->PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERACK));
 
         pfrom->nServices = nServices;
+
         pfrom->SetAddrLocal(addrMe);
         {
             LOCK(pfrom->cs_SubVer);
@@ -1813,6 +1814,11 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             pfrom->cleanSubVer = cleanSubVer;
         }
         pfrom->nStartingHeight = nStartingHeight;
+        pfrom->nChainHeight = nStartingHeight;
+        {
+            LOCK(cs_main);
+            connman->cPeerBlockCounts.input(pfrom->nChainHeight);
+        }
         pfrom->fClient = !(nServices & NODE_NETWORK);
         {
             LOCK(pfrom->cs_filter);
@@ -2948,6 +2954,15 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             // it, if the remote node sends a ping once per second and this node takes 5
             // seconds to respond to each, the 5th ping the remote sends would appear to
             // return very quickly.
+
+            int nChainHeight;
+            vRecv >> nChainHeight;
+            pfrom->nChainHeight = nChainHeight;
+            {
+                LOCK(cs_main);
+                connman->cPeerBlockCounts.input(nChainHeight);
+            }
+
             connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::PONG, nonce));
         }
     }
@@ -3440,9 +3455,16 @@ bool PeerLogicValidation::SendMessages(CNode* pto, std::atomic<bool>& interruptM
             }
             pto->fPingQueued = false;
             pto->nPingUsecStart = GetTimeMicros();
+
+            int nChainHeight;
+            {
+                LOCK(cs_main);
+                nChainHeight = (int)chainActive.Height();
+            }
+
             if (pto->nVersion > BIP0031_VERSION) {
                 pto->nPingNonceSent = nonce;
-                connman->PushMessage(pto, msgMaker.Make(NetMsgType::PING, nonce));
+                connman->PushMessage(pto, msgMaker.Make(NetMsgType::PING, nonce, nChainHeight));
             } else {
                 // Peer is too old to support ping command with nonce, pong will never arrive.
                 pto->nPingNonceSent = 0;

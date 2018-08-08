@@ -77,3 +77,4 @@ libexecstream/test
 tor/src/ext/timeouts/lua
 tor/src/ext/mulodi
 tor/src/tools
+pos

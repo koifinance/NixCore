@@ -35,6 +35,8 @@
 #include "../base58.h"
 #include <crypto/hmac_sha256.h>
 #include <crypto/hmac_sha512.h>
+#include <miner.h>
+#include <univalue/include/univalue.h>
 
 typedef CWallet* CWalletRef;
 extern std::vector<CWalletRef> vpwallets;
@@ -130,10 +132,11 @@ enum OutputRecordFlags
     ORF_CHANGE              = (1 << 2),
     ORF_SPENT               = (1 << 3),
     ORF_LOCKED              = (1 << 4), // Needs wallet to be unlocked for further processing
+    ORF_STAKEONLY           = (1 << 5),
     ORF_WATCHONLY           = (1 << 6),
     ORF_HARDWARE_DEVICE     = (1 << 7),
 
-    ORF_OWN_WATCH           =  ORF_WATCHONLY,
+    ORF_OWN_WATCH           =  ORF_STAKEONLY | ORF_WATCHONLY,
     ORF_OWN_ANY             = ORF_OWNED | ORF_OWN_WATCH,
 };
 
@@ -252,6 +255,8 @@ public:
     bool IsTrusted() const;
 
     bool IsCoinBase() const {return false;}
+    bool IsCoinStake() const {return false;}
+
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -489,6 +494,55 @@ struct CRecipient
     bool fSubtractFeeFromAmount;
 };
 
+class CTempRecipient
+{
+public:
+    CTempRecipient() : nType(0), nAmount(0), nAmountSelected(0), fSubtractFeeFromAmount(false) {SetNull();}
+    CTempRecipient(CAmount nAmount_, bool fSubtractFeeFromAmount_, CScript scriptPubKey_)
+        : nAmount(nAmount_), nAmountSelected(nAmount_), fSubtractFeeFromAmount(fSubtractFeeFromAmount_), scriptPubKey(scriptPubKey_) {SetNull();}
+
+    void SetNull()
+    {
+        fNonceSet = false; // if true use nonce and vData from CTempRecipient
+        fScriptSet = false;
+        fChange = false;
+        nChildKey = 0;
+        nChildKeyColdStaking = 0;
+        nStealthPrefix = 0;
+        fExemptFeeSub = false;
+    };
+
+    void SetAmount(CAmount nValue)
+    {
+        nAmount = nValue;
+        nAmountSelected = nValue;
+    };
+
+    bool ApplySubFee(CAmount nFee, size_t nSubtractFeeFromAmount, bool &fFirst);
+
+    uint8_t nType;
+    CAmount nAmount;            // If fSubtractFeeFromAmount, nAmount = nAmountSelected - feeForOutput
+    CAmount nAmountSelected;
+    bool fSubtractFeeFromAmount;
+    bool fExemptFeeSub;         // Value too low to sub fee when blinded value split into two outputs
+    CTxDestination address;
+    CTxDestination addressColdStaking;
+    CScript scriptPubKey;
+    std::vector<uint8_t> vData;
+    uint256 nonce;
+
+    CKey sEphem;
+    CPubKey pkTo;
+    int n;
+    std::string sNarration;
+    bool fScriptSet;
+    bool fChange;
+    bool fNonceSet;
+    uint32_t nChildKey; // update later
+    uint32_t nChildKeyColdStaking; // update later
+    uint32_t nStealthPrefix;
+};
+
 typedef std::map<std::string, std::string> mapValue_t;
 
 
@@ -534,6 +588,8 @@ public:
      * compatibility.
      */
     int nIndex;
+    mutable bool fHeightCached;
+    mutable int nCachedHeight;
 
     CMerkleTx()
     {
@@ -551,6 +607,7 @@ public:
     {
         hashBlock = uint256();
         nIndex = -1;
+        fHeightCached = false;
     }
 
     void SetTx(CTransactionRef arg)
@@ -577,6 +634,7 @@ public:
      *  0  : in memory pool, waiting to be included in a block
      * >=1 : this many blocks deep in the main chain
      */
+    int GetDepthInMainChainCached() const;
     int GetDepthInMainChain(const CBlockIndex* &pindexRet) const;
     int GetDepthInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
 
@@ -1309,6 +1367,8 @@ public:
     bool AccountMove(std::string strFrom, std::string strTo, CAmount nAmount, std::string strComment = "");
     bool GetAccountDestination(CTxDestination &dest, std::string strAccount, bool bForceNew = false);
 
+    int GetDepthInMainChain(const uint256 &blockhash, int nIndex = 0) const;
+
     void MarkDirty();
     bool AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose=true);
     bool LoadToWallet(const CWalletTx& wtxIn);
@@ -1324,6 +1384,7 @@ public:
     // ResendWalletTransactionsBefore may only be called if fBroadcastTransactions!
     std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CConnman* connman);
     CAmount GetBalance() const;
+    CAmount GetStakeableBalance() const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
     CAmount GetWatchOnlyBalance() const;
@@ -1379,7 +1440,7 @@ public:
     bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
     bool DisableGhostMode();
     bool GhostModeMintTrigger(string totalAmount);
-    bool GhostModeSpendTrigger(string denomination);
+    std::string GhostModeSpendTrigger(string denomination, string toKey = "");
     bool SpendAllZerocoins();
     /**
      * Add stealth functions
@@ -1387,6 +1448,7 @@ public:
     static bool InitLoadWallet();
     bool AddressBookChangedNotify(const CTxDestination &address, ChangeType nMode);
     int GetDefaultConfidentialChain(CWalletDB *pwdb, CExtKeyAccount *&sea, CStoredExtKey *&pc);
+
 
     int MakeDefaultAccount();
 
@@ -1474,6 +1536,63 @@ public:
     bool CountRecords(std::string sPrefix, int64_t rv);
     bool ProcessStealthOutput(const CTxDestination &address,
         std::vector<uint8_t> &vchEphemPK, uint32_t prefix, bool fHavePrefix, CKey &sShared, bool fNeedShared=false);
+
+    /* POS functionality */
+
+    bool InMempool(const uint256 &hash) const;
+    bool GetSetting(const std::string &setting, UniValue &json);
+    bool SetSetting(const std::string &setting, const UniValue &json);
+    bool EraseSetting(const std::string &setting);
+
+    CAmount GetStaked();
+    size_t CountColdstakeOutputs();
+    uint64_t GetStakeWeight() const;
+
+    bool SetReserveBalance(CAmount nNewReserveBalance);
+    void AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTime, int nHeight) const;
+    bool SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHeight, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64_t& nValueRet) const;
+    bool CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key);
+    bool SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSearchTime);
+
+    /* Return a script for a simple address type (normal/extended) */
+    bool GetScriptForAddress(CScript &script, const CBitcoinAddress &addr, bool fUpdate = false, std::vector<uint8_t> *vData = NULL);
+
+    int ExpandTempRecipients(std::vector<CTempRecipient> &vecSend, CStoredExtKey *pc, std::string &sError);
+
+    boost::signals2::signal<void (CAmount nReservedBalance)> NotifyReservedBalanceChanged;
+
+    int64_t nLastCoinStakeSearchTime = 0;
+    int64_t nReserveBalance = 0;
+    size_t nStakeThread = 9999999; // unset
+
+    mutable int deepestTxnDepth = 0; // for stake mining
+
+    mutable int m_greatest_txn_depth = 0; // depth of most deep txn
+    //mutable int m_least_txn_depth = 0; // depth of least deep txn
+    mutable bool m_have_spendable_balance_cached = false;
+    mutable CAmount m_spendable_balance_cached = 0;
+
+    enum eStakingState {
+        NOT_STAKING = 0,
+        IS_STAKING = 1,
+        NOT_STAKING_BALANCE = -1,
+        NOT_STAKING_DEPTH = -2,
+        NOT_STAKING_LOCKED = -3,
+        NOT_STAKING_LIMITED = -4,
+        NOT_STAKING_DISABLED = -5,
+    } nIsStaking = NOT_STAKING;
+
+
+    // Staking Settings
+    bool fStakingEnabled;
+    CAmount nStakeCombineThreshold;
+    CAmount nStakeSplitThreshold;
+    size_t nMaxStakeCombine = 3;
+    int nWalletDevFundCedePercent;
+    CBitcoinAddress rewardAddress;
+    int nStakeLimitHeight = 0; // for regtest, don't stake above nStakeLimitHeight
+
+    bool fUnlockForStakingOnly = false; // Use coldstaking instead
 
     /**
      * Create a new transaction paying the recipients with a set of coins

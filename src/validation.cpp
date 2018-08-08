@@ -42,6 +42,7 @@
 #include <coins.h>
 #include <future>
 #include <sstream>
+#include <pos/kernel.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -309,6 +310,12 @@ private:
 
 
 CCriticalSection cs_main;
+
+std::map<uint256, StakeConflict> mapStakeConflict;
+std::map<COutPoint, uint256> mapStakeSeen;
+std::list<COutPoint> listStakeSeen;
+
+CoinStakeCache coinStakeCache;
 
 BlockMap& mapBlockIndex = g_chainstate.mapBlockIndex;
 CChain& chainActive = g_chainstate.chainActive;
@@ -1275,8 +1282,55 @@ bool GetTransaction(const uint256& hash, CTransactionRef& txOut, const Consensus
 }
 
 
+/** Retrieve a transaction and block header from disk
+  * If blockIndex is provided, the transaction is fetched from the corresponding block.
+  */
+bool GetTransaction(const uint256 &hash, CTransactionRef &txOut, const Consensus::Params &consensusParams, CBlock &block, bool fAllowSlow, CBlockIndex* blockIndex)
+{
+    CBlockIndex *pindexSlow = blockIndex;
 
+    LOCK(cs_main);
 
+    if (fTxIndex) {
+        CDiskTxPos postx;
+        if (pblocktree->ReadTxIndex(hash, postx)) {
+            CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
+            if (file.IsNull())
+                return error("%s: OpenBlockFile failed", __func__);
+            CBlockHeader header;
+            try {
+                file >> header;
+                fseek(file.Get(), postx.nTxOffset, SEEK_CUR);
+                file >> txOut;
+            } catch (const std::exception& e) {
+                return error("%s: Deserialize or I/O error - %s", __func__, e.what());
+            }
+            block = CBlock(header);
+            if (txOut->GetHash() != hash)
+                return error("%s: txid mismatch", __func__);
+            return true;
+        }
+    }
+
+    if (fAllowSlow) { // use coin database to locate block that contains transaction, and scan it
+        const Coin& coin = AccessByTxid(*pcoinsTip, hash);
+        if (!coin.IsSpent()) pindexSlow = chainActive[coin.nHeight];
+    }
+
+    if (pindexSlow) {
+        // read and return entire block
+        if (ReadBlockFromDisk(block, pindexSlow, consensusParams)) {
+            for (const auto& tx : block.vtx) {
+                if (tx->GetHash() == hash) {
+                    txOut = tx;
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1364,6 +1418,23 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
         nSubsidy = 1*COIN;
 
     return nSubsidy;
+}
+
+int GetNumPeers()
+{
+    //return g_connman->GetNodeCount(CConnman::CONNECTIONS_IN); // doesn't seem accurate
+    return g_connman ? g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) : 0;
+}
+
+int GetNumBlocksOfPeers()
+{
+    LOCK(cs_main);
+
+    int nPeerBlocks = g_connman ? g_connman->cPeerBlockCounts.median() : 0;
+    CBlockIndex *pcheckpoint = Checkpoints::GetLastCheckpoint(Params().Checkpoints());
+    if (pcheckpoint)
+        return std::max(nPeerBlocks, pcheckpoint->nHeight);
+    return nPeerBlocks;
 }
 
 bool IsInitialBlockDownload()
@@ -2068,6 +2139,18 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // GetAdjustedTime() to go backward).
     if (!CheckBlock(block, state, chainparams.GetConsensus(), !fJustCheck, !fJustCheck, pindex->nHeight, false))
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
+
+
+    //check for PoS
+    if (block.IsProofOfStake())
+    {
+        pindex->bnStakeModifier = ComputeStakeModifierV2(pindex->pprev, pindex->prevoutStake.hash);
+        setDirtyBlockIndex.insert(pindex);
+
+        uint256 hashProof, targetProofOfStake;
+        if (!CheckProofOfStake(pindex->pprev, *block.vtx[0], block.nTime, block.nBits, hashProof, targetProofOfStake))
+            return state.DoS(100, error("%s: Check proof of stake failed.", __func__), REJECT_INVALID, "bad-proof-of-stake");
+    }
 
     // verify that the view's current state corresponds to the previous block
     uint256 hashPrevBlock = pindex->pprev == nullptr ? uint256() : pindex->pprev->GetBlockHash();
@@ -3403,6 +3486,82 @@ static bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state,
     return true;
 }
 
+bool CheckBlockSignature(const CBlock &block)
+{
+    if (!block.IsProofOfStake())
+        return block.vchBlockSig.empty();
+    if (block.vchBlockSig.empty())
+        return false;
+    if (block.vtx[0]->vin.size() < 1)
+        return false;
+
+    const auto &txin = block.vtx[0]->vin[0];
+    if (txin.scriptWitness.stack.size() != 2)
+        return false;
+
+    if (txin.scriptWitness.stack[1].size() != 33)
+        return false;
+
+    CPubKey pubKey(txin.scriptWitness.stack[1]);
+    return pubKey.Verify(block.GetHash(), block.vchBlockSig);
+}
+
+bool AddToMapStakeSeen(const COutPoint &kernel, const uint256 &blockHash)
+{
+    // Overwrites existing values
+
+    std::pair<std::map<COutPoint, uint256>::iterator,bool> ret;
+    ret = mapStakeSeen.insert(std::pair<COutPoint, uint256>(kernel, blockHash));
+    if (ret.second == false) // existing element
+    {
+        ret.first->second = blockHash;
+    } else
+    {
+        listStakeSeen.push_back(kernel);
+    };
+    //mapStakeSeen[kernel] = blockHash;
+    //listStakeSeen.push_back(kernel);
+    return true;
+}
+
+bool CheckStakeUnused(const COutPoint &kernel)
+{
+    std::map<COutPoint, uint256>::const_iterator mi = mapStakeSeen.find(kernel);
+    if (mi != mapStakeSeen.end())
+        return false;
+    return true;
+}
+
+bool CheckStakeUnique(const CBlock &block, bool fUpdate)
+{
+    uint256 blockHash = block.GetHash();
+    const COutPoint &kernel = block.vtx[0]->vin[0].prevout;
+
+    std::map<COutPoint, uint256>::const_iterator mi = mapStakeSeen.find(kernel);
+    if (mi != mapStakeSeen.end())
+    {
+        if (mi->second == blockHash)
+            return true;
+
+        return error("%s: Stake kernel for %s first seen on %s.", __func__, blockHash.ToString(), mi->second.ToString());
+    };
+
+    if (!fUpdate)
+        return true;
+
+
+
+    if (listStakeSeen.size() > MAX_STAKE_SEEN_SIZE)
+    {
+        const COutPoint &oldest = listStakeSeen.front();
+        if (1 != mapStakeSeen.erase(oldest))
+            LogPrintf("%s: Warning: mapStakeSeen did not erase %s %n\n", __func__, oldest.hash.ToString(), oldest.n);
+        listStakeSeen.pop_front();
+    };
+
+    return AddToMapStakeSeen(kernel, blockHash);
+}
+
 bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, bool fCheckMerkleRoot, int nHeight, bool isVerifyDB)
 {
     // These are checks that are independent of context.
@@ -3572,9 +3731,17 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationSta
 
     // Check proof of work
     const Consensus::Params& consensusParams = params.GetConsensus();
-    if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
-
+    if (nHeight >= params.nSwitchToPOSBlock)
+    {
+        // Check proof-of-stake
+        if (block.nBits != GetNextTargetRequired(pindexPrev))
+            return state.DoS(100, false, REJECT_INVALID, "bad-proof-of-stake", true, strprintf("%s: Bad proof-of-stake target", __func__));
+    } else
+    {
+        // Check proof of work
+        if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+            return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
+    }
     // Check against checkpoints
     if (fCheckpointsEnabled) {
         // Don't accept any forks from the main chain prior to last checkpoint.
@@ -3628,6 +3795,46 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
     for (const auto& tx : block.vtx) {
         if (!IsFinalTx(*tx, nHeight, nLockTimeCutoff)) {
             return state.DoS(10, false, REJECT_INVALID, "bad-txns-nonfinal", false, "non-final transaction");
+        }
+    }
+
+    if (block.IsProofOfStake())
+    {
+        // Limit the number of outputs in a coinstake
+        if (nHeight >= Params().nSwitchToPOSBlock)
+        {
+            if (block.vtx[0]->vout.size() > 6)
+                return state.DoS(100, false, REJECT_INVALID, "bad-cs-outputs", false, "Too many outputs in coinstake");
+        }
+
+        // coinstake output 0 must be data output of blockheight
+        //int i;
+        //if (!block.vtx[0]->GetCoinStakeHeight(i))
+            //return state.DoS(100, false, REJECT_INVALID, "bad-cs-malformed", false, "coinstake txn is malformed");
+
+        //if (i != nHeight)
+            //return state.DoS(100, false, REJECT_INVALID, "bad-cs-height", false, "block height mismatch in coinstake");
+
+        if (!CheckCoinStakeTimestamp(nHeight, block.GetBlockTime()))
+            return state.DoS(50, false, REJECT_INVALID, "bad-coinstake-time", true, strprintf("%s: coinstake timestamp violation nTimeBlock=%d", __func__, block.GetBlockTime()));
+
+        // Check timestamp against prev
+        if (block.GetBlockTime() <= pindexPrev->GetBlockTime())
+            return state.DoS(50, false, REJECT_INVALID, "bad-block-time", true, strprintf("%s: block's timestamp is too early", __func__));
+
+        uint256 hashProof, targetProofOfStake;
+
+        // Blocks are connected at end of import / reindex
+        // CheckProofOfStake is run again during connectblock
+        if (!IsInitialBlockDownload() && !CheckProofOfStake(pindexPrev, *block.vtx[0], block.nTime, block.nBits, hashProof, targetProofOfStake))
+        {
+            LogPrintf("WARNING: ContextualCheckBlock(): check proof-of-stake failed for block %s\n", block.GetHash().ToString());
+            //return false; // do not error here as we expect this during initial block download
+            if (pindexPrev->bnStakeModifier.IsNull())
+                // Can happen if the block is received out of order - CheckProofOfStake will run again on connectblock.
+                LogPrint(BCLog::POS, "%s: Accepting failed CheckProofOfStake block, missing stake-modifier.\n", __func__);
+            else
+                return state.DoS(50, false, REJECT_INVALID, "bad-proof-of-stake", true, strprintf("%s: CheckProofOfStake failed.", __func__));
         }
     }
 

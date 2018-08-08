@@ -60,6 +60,34 @@ void CChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64
     consensus.vDeployments[d].nTimeout = nTimeout;
 }
 
+int64_t CChainParams::GetCoinYearReward(int64_t nTime) const
+{
+    static const int64_t nSecondsInYear = 365 * 24 * 60 * 60;
+
+    if (strNetworkID != "regtest")
+    {
+        // Y1 5%, Y2 4%, Y3 3%, Y4 2%, ... YN 2%
+        int64_t nYearsSinceGenesis = (nTime - genesis.nTime) / nSecondsInYear;
+
+        if (nYearsSinceGenesis >= 0 && nYearsSinceGenesis < 3)
+            return (5 - nYearsSinceGenesis) * CENT;
+    };
+
+    return nCoinYearReward;
+}
+
+int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64_t nFees) const
+{
+    int64_t nSubsidy;
+
+    nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+
+    //if (LogAcceptCategory(BCLog::POS) && gArgs.GetBoolArg("-printcreation", false))
+        //LogPrintf("GetProofOfStakeReward(): create=%s\n", FormatMoney(nSubsidy).c_str());
+
+    return nSubsidy + nFees;
+}
+
 /**
  * Main network
  */
@@ -116,6 +144,13 @@ public:
         consensus.nGhostnodeMinimumConfirmations = 1;
         consensus.nGhostnodePaymentsStartBlock = 1080; //1.2 days after mainnet release
         consensus.nGhostnodeInitialize = 800; //~24 hours after mainnet release
+
+        // POS params
+        nSwitchToPOSBlock = 60000;
+        nModifierInterval = 10 * 60;    // 10 minutes
+        nStakeMinConfirmations = 501;   // 501 * 2 minutes
+        nTargetSpacing = 120;           // 2 minutes
+        nTargetTimespan = 24 * 60;      // 24 mins
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -356,6 +391,12 @@ public:
         // ghostnode params
         consensus.nGhostnodePaymentsStartBlock = 720;
         consensus.nGhostnodeInitialize = 600;
+
+        // POS params
+        nModifierInterval = 2 * 60;    // 10 minutes
+        nStakeMinConfirmations = 225;   // 225 * 2 minutes
+        nTargetSpacing = 120;           // 2 minutes
+        nTargetTimespan = 24 * 60;      // 24 mins
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 

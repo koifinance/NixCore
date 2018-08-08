@@ -80,6 +80,9 @@ public:
     // network and disk
     std::vector<CTransactionRef> vtx;
 
+    // pos block signature - signed by one of the coin stake txout[N]'s owner
+    std::vector<uint8_t> vchBlockSig;
+
     // memory only
     mutable CTxOut txoutGhostnode; // ghostnode payment
     mutable std::vector<CTxOut> voutSuperblock; // superblock payment
@@ -101,6 +104,11 @@ public:
         *((CBlockHeader*)this) = header;
     }
 
+    bool IsProofOfStake() const
+    {
+        return (vtx.size() > 0 && vtx[0]->IsCoinStake());
+    }
+
     ~CBlock() {
          ZerocoinClean();
      }
@@ -111,6 +119,10 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
+
+        //if nVersion shifted to 3
+        if (nVersion == NIX_BLOCK_VERSION)
+            READWRITE(vchBlockSig);
     }
 
     void SetNull()

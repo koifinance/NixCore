@@ -3634,6 +3634,38 @@ UniValue ghostamount(const JSONRPCRequest& request)
     return "Sucessfully ghosted " + std::to_string(nAmount) +  " NIX";
 }
 
+UniValue unghostamount(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
+
+
+    int64_t nAmount = request.params[0].get_int64();
+
+    CBitcoinAddress address;
+    string toKey = "";
+    if (request.params.size() > 1){
+        // Address
+        toKey = request.params[1].get_str();
+        address = CBitcoinAddress(request.params[1].get_str());
+
+        if(!IsStealthAddress(toKey))
+            if (!address.IsValid())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "rpcwallet unghostamount(): Invalid toKey address");
+    }
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
+                           "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    std::string strError = pwalletMain->GhostModeSpendTrigger(std::to_string(nAmount), toKey);
+
+
+    return strError;
+}
+
 UniValue mintzerocoin(const JSONRPCRequest& request)
 {
 
@@ -4503,9 +4535,10 @@ static const CRPCCommand commands[] =
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
     // NIX ghost functions (experimental)
-   { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
+    { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
     { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
-  { "NIX Ghost Protocol",             "ghostamount",             &ghostamount,             {"amount"} },
+    { "NIX Ghost Protocol",             "ghostamount",             &ghostamount,             {"amount"} },
+    { "NIX Ghost Protocol",             "unghostamount",             &unghostamount,             {"amount"} },
     { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
     { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
     { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },

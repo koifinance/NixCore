@@ -86,6 +86,7 @@ enum txnouttype
     TX_TIMELOCKED_PUBKEYHASH,
     TX_TIMELOCKED_MULTISIG,
     TX_ZEROCOINMINT,
+    TX_CONDITIONAL_STAKE,
 };
 
 class CNoDestination {
@@ -184,6 +185,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
  */
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CTxDestination>& addressRet, int& nRequiredRet);
 
+bool ExtractStakingKeyID(const CScript &scriptPubKey, CKeyID &keyID);
 
 /**
  * Generate a Bitcoin scriptPubKey for the given CTxDestination. Returns a P2PKH

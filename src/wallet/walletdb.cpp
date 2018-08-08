@@ -1251,3 +1251,18 @@ bool AutoBackupWallet (CWallet* wallet, std::string strWalletFile, std::string& 
     LogPrintf("Automatic wallet backups are disabled!\n");
     return false;
 }
+
+bool CWalletDB::ReadWalletSetting(const std::string &setting, std::string &json, uint32_t nFlags)
+{
+    return batch.Read(std::make_pair(std::string("wset"), setting), json, nFlags);
+}
+
+bool CWalletDB::WriteWalletSetting(const std::string &setting, const std::string &json)
+{
+    return WriteIC(std::make_pair(std::string("wset"), setting), json, true);
+}
+
+bool CWalletDB::EraseWalletSetting(const std::string &setting)
+{
+    return EraseIC(std::make_pair(std::string("wset"), setting));
+}

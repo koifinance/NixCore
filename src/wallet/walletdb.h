@@ -473,6 +473,11 @@ public:
 
     bool WriteAddressBookEntry(const std::string &sKey, const CAddressBookData &data);
     bool EraseAddressBookEntry(const std::string &sKey);
+
+    bool ReadWalletSetting(const std::string &setting, std::string &json, uint32_t nFlags=DB_READ_UNCOMMITTED);
+    bool WriteWalletSetting(const std::string &setting, const std::string &json);
+    bool EraseWalletSetting(const std::string &setting);
+
 private:
     CDB batch;
     CWalletDBWrapper& m_dbw;
