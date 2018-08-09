@@ -18,6 +18,8 @@
 #include <util.h>
 #include <base58.h>
 #include <wallet/wallet.h>
+#include <qt/walletmodel.h>
+#include <qt/receiverequestdialog.h>
 
 #include <QIcon>
 #include <QMenu>
@@ -84,6 +86,7 @@ AddressBookPage::AddressBookPage(const PlatformStyle *platformStyle, Mode _mode,
     QAction *copyAddressAction = new QAction(tr("&Copy Address"), this);
     QAction *copyLabelAction = new QAction(tr("Copy &Label"), this);
     QAction *editAction = new QAction(tr("&Edit"), this);
+    QAction *getPaperWalletAction = new QAction(tr("&Get Paper Wallet"), this);
     deleteAction = new QAction(ui->deleteAddress->text(), this);
 
     // Build context menu
@@ -93,6 +96,8 @@ AddressBookPage::AddressBookPage(const PlatformStyle *platformStyle, Mode _mode,
     contextMenu->addAction(editAction);
     if(tab == SendingTab)
         contextMenu->addAction(deleteAction);
+    if(tab == ReceivingTab)
+        contextMenu->addAction(getPaperWalletAction);
     contextMenu->addSeparator();
 
     // Connect signals for context menu actions
@@ -100,6 +105,8 @@ AddressBookPage::AddressBookPage(const PlatformStyle *platformStyle, Mode _mode,
     connect(copyLabelAction, SIGNAL(triggered()), this, SLOT(onCopyLabelAction()));
     connect(editAction, SIGNAL(triggered()), this, SLOT(onEditAction()));
     connect(deleteAction, SIGNAL(triggered()), this, SLOT(on_deleteAddress_clicked()));
+    connect(getPaperWalletAction, SIGNAL(triggered()), this, SLOT(getPaperWallet()));
+
 
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextualMenu(QPoint)));
 
@@ -155,6 +162,12 @@ void AddressBookPage::setModel(AddressTableModel *_model)
 
     selectionChanged();
 }
+
+void AddressBookPage::setWalletModel(WalletModel *_model)
+{
+    this->walletModel = _model;
+}
+
 
 void AddressBookPage::on_copyAddress_clicked()
 {
@@ -338,4 +351,81 @@ void AddressBookPage::selectNewAddress(const QModelIndex &parent, int begin, int
         ui->tableView->selectRow(idx.row());
         newAddressToSelect.clear();
     }
+}
+
+void AddressBookPage::getPaperWallet(){
+
+    if(!model)
+        return;
+
+    if(!ui->tableView->selectionModel())
+        return;
+
+    QModelIndexList selection = ui->tableView->selectionModel()->selectedRows();
+
+    if(selection.isEmpty())
+        return;
+
+    for (const QModelIndex& index : selection) {
+        ReceiveRequestDialog *dialog = new ReceiveRequestDialog(this);
+        dialog->setModel(walletModel->getOptionsModel());
+        SendCoinsRecipient printKey;
+
+        /************************************/
+        CWallet * const pwallet = walletModel->getWallet();
+        if (!EnsureWalletIsAvailable(pwallet, false)) {
+            return;
+        }
+
+
+        LOCK2(cs_main, pwallet->cs_wallet);
+
+
+        WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+        if(!ctx.isValid())
+        {
+            // Unlock wallet was cancelled
+            return;
+        }
+
+
+        if(!ui->tableView || !ui->tableView->selectionModel())
+            return;
+        QModelIndexList submodel = ui->tableView->selectionModel()->selectedRows(AddressTableModel::Address);
+
+        if(submodel.isEmpty())
+        {
+            return;
+        }
+
+        std::string strAddress = submodel.at(0).data(Qt::EditRole).toString().toStdString();
+        CTxDestination dest = DecodeDestination(strAddress);
+        if (!IsValidDestination(dest)) {
+            return;
+        }
+        auto keyid = GetKeyForDestination(*pwallet, dest);
+        if (keyid.IsNull()) {
+            return;
+        }
+        CKey vchSecret;
+        if (!pwallet->GetKey(keyid, vchSecret)) {
+            return;
+        }
+
+        printKey.address = QString::fromStdString(CBitcoinSecret(vchSecret).ToString());
+        /************************************/
+
+        QModelIndexList submodelLabel = ui->tableView->selectionModel()->selectedRows(AddressTableModel::Label);
+
+        if(submodelLabel.isEmpty())
+        {
+            return;
+        }
+
+        printKey.label = submodelLabel.at(0).data(Qt::EditRole).toString();
+        dialog->setInfo(printKey);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+
 }

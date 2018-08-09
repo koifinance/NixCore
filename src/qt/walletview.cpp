@@ -132,6 +132,7 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     ghostVaultPage->setModel(_walletModel->getAddressTableModel());
     ghostnodePage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
+    usedReceivingAddressesPage->setWalletModel(_walletModel);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
 
     if (_walletModel)
