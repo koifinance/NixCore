@@ -28,6 +28,10 @@
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
 #include <wallet/walletutil.h>
+#include <pos/miner.h>
+#include <rpc/blockchain.h>
+#include <warnings.h>
+#include <validation.h>
 #include "zerocoin/zerocoin.h"
 #include "../libzerocoin/Zerocoin.h"
 
@@ -83,6 +87,9 @@ void EnsureWalletIsUnlocked(CWallet * const pwallet)
     if (pwallet->IsLocked()) {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     }
+
+    if (pwallet->IsHDEnabled() && pwallet->fUnlockForStakingOnly)
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Wallet is unlocked for staking only.");
 }
 
 void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
@@ -2349,29 +2356,33 @@ UniValue walletpassphrase(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() != 2) {
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 3) {
         throw std::runtime_error(
-            "walletpassphrase \"passphrase\" timeout\n"
+            "walletpassphrase <passphrase> <timeout> [stakingonly]\n"
             "\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
-            "This is needed prior to performing transactions related to private keys such as sending bitcoins\n"
+            "This is needed prior to performing transactions related to private keys such as sending " + CURRENCY_UNIT + "\n"
             "\nArguments:\n"
             "1. \"passphrase\"     (string, required) The wallet passphrase\n"
             "2. timeout            (numeric, required) The time to keep the decryption key in seconds. Limited to at most 1073741824 (2^30) seconds.\n"
             "                                          Any value greater than 1073741824 seconds will be set to 1073741824 seconds.\n"
+            "3. stakingonly        (bool, optional) If true, sending functions are disabled.\n"
             "\nNote:\n"
             "Issuing the walletpassphrase command while the wallet is already unlocked will set a new unlock\n"
             "time that overrides the old one.\n"
+            "If [stakingonly] is true and <timeout> is 0, the wallet will remain unlocked for staking until manually locked again.\n"
             "\nExamples:\n"
             "\nUnlock the wallet for 60 seconds\n"
             + HelpExampleCli("walletpassphrase", "\"my pass phrase\" 60") +
             "\nLock the wallet again (before 60 seconds)\n"
             + HelpExampleCli("walletlock", "") +
+            "\nUnlock the wallet to stake\n"
+            + HelpExampleCli("walletpassphrase", "\"my pass phrase\" 0 true") +
             "\nAs json rpc call\n"
             + HelpExampleRpc("walletpassphrase", "\"my pass phrase\", 60")
         );
     }
 
-    LOCK2(cs_main, pwallet->cs_wallet);
+    LOCK(cs_main);
 
     if (request.fHelp)
         return true;
@@ -2405,14 +2416,34 @@ UniValue walletpassphrase(const JSONRPCRequest& request)
     }
     else
         throw std::runtime_error(
-            "walletpassphrase <passphrase> <timeout>\n"
+            "walletpassphrase <passphrase> <timeout> [stakingonly]\n"
             "Stores the wallet decryption key in memory for <timeout> seconds.");
 
-    pwallet->TopUpKeyPool();
+    {
+        LOCK(pwallet->cs_wallet);
+        pwallet->TopUpKeyPool();
 
-    pwallet->nRelockTime = GetTime() + nSleepTime;
-    RPCRunLater(strprintf("lockwallet(%s)", pwallet->GetName()), boost::bind(LockWallet, pwallet), nSleepTime);
+        bool fWalletUnlockStakingOnly = false;
+        if (request.params.size() > 2)
+            fWalletUnlockStakingOnly = request.params[2].get_bool();
 
+        if ((pwallet->IsHDEnabled()))
+        {
+            LOCK(pwallet->cs_wallet);
+            pwallet->fUnlockForStakingOnly = fWalletUnlockStakingOnly;
+        }
+
+        // Only allow unlimited timeout (nSleepTime=0) on staking.
+        if (nSleepTime > 0 || !fWalletUnlockStakingOnly)
+        {
+            pwallet->nRelockTime = GetTime() + nSleepTime;
+            RPCRunLater(strprintf("lockwallet(%s)", pwallet->GetName()), boost::bind(LockWallet, pwallet), nSleepTime);
+        } else
+        {
+            RPCRunLaterErase(strprintf("lockwallet(%s)", pwallet->GetName()));
+            pwallet->nRelockTime = 0;
+        }
+    }
     return NullUniValue;
 }
 
@@ -2832,12 +2863,20 @@ UniValue getwalletinfo(const JSONRPCRequest& request)
     if (!masterKeyID.IsNull() && pwallet->CanSupportFeature(FEATURE_HD_SPLIT)) {
         obj.push_back(Pair("keypoolsize_hd_internal",   (int64_t)(pwallet->GetKeyPoolSize() - kpExternalSize)));
     }
+
+    obj.push_back(Pair("reserve",   ValueFromAmount(pwallet->nReserveBalance)));
+
+    obj.push_back(Pair("encryptionstatus", !pwallet->IsCrypted()
+    ? "Unencrypted" : pwallet->IsLocked() ? "Locked" : pwallet->fUnlockForStakingOnly ? "Unlocked, staking only" : "Unlocked"));
+
     if (pwallet->IsCrypted()) {
         obj.push_back(Pair("unlocked_until", pwallet->nRelockTime));
     }
     obj.push_back(Pair("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK())));
     if (!masterKeyID.IsNull())
          obj.push_back(Pair("hdmasterkeyid", masterKeyID.GetHex()));
+
+
     return obj;
 }
 
@@ -4466,6 +4505,547 @@ UniValue liststealthaddresses(const JSONRPCRequest &request)
     return result;
 }
 
+/*********************/
+/* Staking Protocol */
+
+UniValue getstakinginfo(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "getstakinginfo\n"
+            "Returns an object containing staking-related information."
+            "\nResult:\n"
+            "{\n"
+            "  \"enabled\": true|false,         (boolean) if staking is enabled or not on this wallet\n"
+            "  \"staking\": true|false,         (boolean) if this wallet is staking or not\n"
+            "  \"errors\": \"...\"              (string) any error messages\n"
+            "  \"percentyearreward\": xxxxxxx,  (numeric) current stake reward percentage\n"
+            "  \"moneysupply\": xxxxxxx,        (numeric) the total amount of NIX in the network\n"
+            "  \"reserve\": xxxxxxx,            (numeric) the total amount of NIX in the network\n"
+            "  \"walletdonationpercent\": xxxxxxx,\n    (numeric) user set percentage of the block reward ceded to development\n"
+            "  \"currentblocksize\": nnn,       (numeric) the last block size in bytes\n"
+            "  \"currentblockweight\": nnn,     (numeric) the last block weight\n"
+            "  \"currentblocktx\": nnn,         (numeric) the number of transactions in the last block\n"
+            "  \"pooledtx\": n                  (numeric) the number of transactions in the mempool\n"
+            "  \"difficulty\": xxx.xxxxx        (numeric) the current difficulty\n"
+            "  \"lastsearchtime\": xxxxxxx      (numeric) the last time this wallet searched for a coinstake\n"
+            "  \"weight\": xxxxxxx              (numeric) the current stake weight of this wallet\n"
+            "  \"netstakeweight\": xxxxxxx      (numeric) the current stake weight of the network\n"
+            "  \"expectedtime\": xxxxxxx        (numeric) estimated time for next stake\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getstakinginfo", "")
+            + HelpExampleRpc("getstakinginfo", ""));
+
+    ObserveSafeMode();
+
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    UniValue obj(UniValue::VOBJ);
+
+    int64_t nTipTime;
+    float rCoinYearReward;
+    CAmount nMoneySupply;
+    {
+        LOCK(cs_main);
+        nTipTime = chainActive.Tip()->nTime;
+        rCoinYearReward = Params().GetCoinYearReward(nTipTime) / CENT;
+        nMoneySupply = chainActive.Tip()->nMoneySupply;
+    }
+
+    uint64_t nWeight = pwallet->GetStakeWeight();
+
+    uint64_t nNetworkWeight = GetPoSKernelPS();
+
+    bool fStaking = nWeight && fIsStaking;
+    uint64_t nExpectedTime = fStaking ? (Params().GetTargetSpacing() * nNetworkWeight / nWeight) : 0;
+
+    obj.pushKV("enabled", gArgs.GetBoolArg("-staking", true));
+    obj.pushKV("staking", fStaking && pwallet->nIsStaking == CWallet::IS_STAKING);
+    switch (pwallet->nIsStaking)
+    {
+        case CWallet::NOT_STAKING_BALANCE:
+            obj.pushKV("cause", "low_balance");
+            break;
+        case CWallet::NOT_STAKING_DEPTH:
+            obj.pushKV("cause", "low_depth");
+            break;
+        case CWallet::NOT_STAKING_LOCKED:
+            obj.pushKV("cause", "locked");
+            break;
+        case CWallet::NOT_STAKING_LIMITED:
+            obj.pushKV("cause", "limited");
+            break;
+        default:
+            break;
+    };
+
+    obj.pushKV("errors", GetWarnings("statusbar"));
+
+    obj.pushKV("percentyearreward", rCoinYearReward);
+    obj.pushKV("moneysupply", ValueFromAmount(nMoneySupply));
+
+    if (pwallet->nReserveBalance > 0)
+        obj.pushKV("reserve", ValueFromAmount(pwallet->nReserveBalance));
+
+    if (pwallet->nWalletDevFundCedePercent > 0)
+        obj.pushKV("walletdonationpercent", pwallet->nWalletDevFundCedePercent);
+
+    obj.pushKV("currentblocksize", (uint64_t)nLastBlockSize);
+    obj.pushKV("currentblocktx", (uint64_t)nLastBlockTx);
+    obj.pushKV("pooledtx", (uint64_t)mempool.size());
+
+    obj.pushKV("difficulty", GetDifficulty());
+    obj.pushKV("lastsearchtime", (uint64_t)pwallet->nLastCoinStakeSearchTime);
+
+    obj.pushKV("weight", (uint64_t)nWeight);
+    obj.pushKV("netstakeweight", (uint64_t)nNetworkWeight);
+
+    obj.pushKV("expectedtime", nExpectedTime);
+
+    return obj;
+}
+
+UniValue getcoldstakinginfo(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "getcoldstakinginfo\n"
+            "Returns an object containing coldstaking related information."
+            "\nResult:\n"
+            "{\n"
+            "  \"enabled\": true|false,             (boolean) If a valid coldstakingaddress is loaded or not on this wallet.\n"
+            "  \"coldstaking_key_id\"            (string) The id of the current coldstakingaddress.\n"
+            "  \"coin_in_stakeable_script\"         (numeric) Current amount of coin in scripts stakeable by this wallet.\n"
+            "  \"coin_in_coldstakeable_script\"     (numeric) Current amount of coin in scripts stakeable by the wallet with the coldstakingaddress.\n"
+            "  \"percent_in_coldstakeable_script\"  (numeric) Percentage of coin in coldstakeable scripts.\n"
+            "  \"currently_staking\"                (numeric) Amount of coin estimated to be currently staking by this wallet.\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getcoldstakinginfo", "")
+            + HelpExampleRpc("getcoldstakinginfo", ""));
+
+    ObserveSafeMode();
+
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    UniValue obj(UniValue::VOBJ);
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+    std::vector<COutput> vecOutputs;
+
+    bool include_unsafe = false;
+    //bool fIncludeImmature = true;
+    CAmount nMinimumAmount = 0;
+    CAmount nMaximumAmount = MAX_MONEY;
+    CAmount nMinimumSumAmount = MAX_MONEY;
+    uint64_t nMaximumCount = 0;
+    int nMinDepth = 0;
+    int nMaxDepth = 0x7FFFFFFF;
+
+    int nHeight = chainActive.Tip()->nHeight;
+    int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(nHeight / 2));
+
+    pwallet->AvailableCoins(vecOutputs, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
+
+    CAmount nStakeable = 0;
+    CAmount nColdStakeable = 0;
+    CAmount nWalletStaking = 0;
+
+    CKeyID keyID;
+    CScript coinstakePath;
+    for (const auto &out : vecOutputs)
+    {
+        const CScript scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+        CAmount nValue = out.tx->tx->vout[out.i].nValue;
+
+        if (scriptPubKey.IsPayToPublicKeyHash() || scriptPubKey.IsPayToPublicKeyHash256())
+        {
+            if (!out.fSpendable)
+                continue;
+            nStakeable += nValue;
+        } else
+        if (scriptPubKey.IsPayToPublicKeyHash256_CS() || scriptPubKey.IsPayToScriptHash256_CS() || scriptPubKey.IsPayToScriptHash_CS())
+        {
+            // Show output on both the spending and staking wallets
+            if (!out.fSpendable)
+            {
+                if (!ExtractStakingKeyID(scriptPubKey, keyID)
+                    || !pwallet->HaveKey(keyID))
+                    continue;
+            };
+            nColdStakeable += nValue;
+        } else
+        {
+            continue;
+        };
+
+        if (out.nDepth < nRequiredDepth)
+            continue;
+
+        if (!ExtractStakingKeyID(scriptPubKey, keyID))
+            continue;
+        if (pwallet->HaveKey(keyID))
+            nWalletStaking += nValue;
+    };
+
+
+    bool fEnabled = false;
+    UniValue jsonSettings;
+    CBitcoinAddress addrColdStaking;
+    if (pwallet->GetSetting("changeaddress", jsonSettings)
+        && jsonSettings["coldstakingaddress"].isStr())
+    {
+        std::string sAddress;
+        try { sAddress = jsonSettings["coldstakingaddress"].get_str();
+        } catch (std::exception &e) {
+            return error("%s: Get coldstakingaddress failed %s.", __func__, e.what());
+        };
+
+        addrColdStaking = sAddress;
+        if (addrColdStaking.IsValid())
+            fEnabled = true;
+    };
+
+    obj.pushKV("enabled", fEnabled);
+    if (addrColdStaking.IsValid(CChainParams::SCRIPT_ADDRESS))
+    {
+        CTxDestination dest = addrColdStaking.Get();
+        CScriptID kp = boost::get<CScriptID>(dest);
+        CBitcoinAddress addr(dest);
+        obj.pushKV("coldstaking_extkey_id", addr.ToString());
+    };
+    obj.pushKV("coin_in_stakeable_script", ValueFromAmount(nStakeable));
+    obj.pushKV("coin_in_coldstakeable_script", ValueFromAmount(nColdStakeable));
+    CAmount nTotal = nColdStakeable + nStakeable;
+    obj.pushKV("percent_in_coldstakeable_script",
+        UniValue(UniValue::VNUM, strprintf("%.2f", nTotal == 0 ? 0.0 : (nColdStakeable * 10000 / nTotal) / 100.0)));
+    obj.pushKV("currently_staking", ValueFromAmount(nWalletStaking));
+
+    return obj;
+}
+
+UniValue walletsettings(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
+        throw std::runtime_error(
+            "walletsettings \"setting\" json\n"
+            "\nManage wallet settings.\n"
+            + HelpRequiringPassphrase(pwallet) +
+            "\nchangeaddress {\"address_standard\":,\"coldstakingaddress\":}.\n"
+            "   - \"address_standard\": Change address for standard inputs.\n"
+            "   - \"coldstakingaddress\": Cold staking address for standard inputs.\n"
+            "\nstakingoptions {\"stakecombinethreshold\":str,\"stakesplitthreshold\":str,\"donationpercent\":int,\"rewardaddress\":str}.\n"
+            "   - \"stakecombinethreshold\": Join outputs below this value.\n"
+            "   - \"stakesplitthreshold\": Split outputs above this value.\n"
+            "   - \"donationpercent\": .\n"
+            "\nstakelimit {\"height\":int}.\n"
+            "   Don't stake above height, used in functional testing.\n"
+            "\nUse an empty json object to clear the setting."
+            "\nstakelimit {}.\n"
+
+            "\nExamples\n"
+            "Set coldstaking changeaddress public key:\n"
+            + HelpExampleCli("walletsettings", "changeaddress \"{\\\"coldstakingaddress\\\":\\\"pubkey\\\"}\"") + "\n"
+            "Clear changeaddress settings\n"
+            + HelpExampleCli("walletsettings", "changeaddress \"{}\"") + "\n"
+        );
+
+    ObserveSafeMode();
+
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    UniValue result(UniValue::VOBJ);
+
+    std::string sSetting = request.params[0].get_str();
+
+    if (sSetting == "changeaddress")
+    {
+        UniValue json;
+        UniValue warnings(UniValue::VARR);
+
+        if (request.params.size() == 1)
+        {
+            if (!pwallet->GetSetting("changeaddress", json))
+            {
+                result.pushKV(sSetting, "default");
+            } else
+            {
+                result.pushKV(sSetting, json);
+            };
+            return result;
+        };
+
+        if (request.params[1].isObject())
+        {
+            json = request.params[1].get_obj();
+
+            const std::vector<std::string> &vKeys = json.getKeys();
+            if (vKeys.size() < 1)
+            {
+                if (!pwallet->EraseSetting(sSetting))
+                    throw JSONRPCError(RPC_WALLET_ERROR, _("EraseSetting failed."));
+                result.pushKV(sSetting, "cleared");
+                return result;
+            };
+
+            for (const auto &sKey : vKeys)
+            {
+                if (sKey == "address_standard")
+                {
+                    if (!json["address_standard"].isStr())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("address_standard must be a string."));
+
+                    std::string sAddress = json["address_standard"].get_str();
+                    CBitcoinAddress addr(sAddress);
+                    if (!addr.IsValid())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid address_standard.");
+                } else
+                if (sKey == "coldstakingaddress")
+                {
+                    if (!json["coldstakingaddress"].isStr())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("coldstakingaddress must be a string."));
+
+                    std::string sAddress = json["coldstakingaddress"].get_str();
+                    CBitcoinAddress addr(sAddress);
+                    if (!addr.IsValid())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Invalid coldstakingaddress."));
+                    if (addr.IsValidStealthAddress())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("coldstakingaddress can't be a ghostaddress."));
+
+                    // TODO: override option?
+
+                    const CWallet *pwalletconst = GetWalletForJSONRPCRequest(request);
+                    if (IsMine(*pwalletconst, addr.Get()))
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, sAddress + _(" is spendable from this wallet."));
+                    if (pwallet->idDefaultAccount.IsNull())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Wallet must have a default account set."));
+
+                    const Consensus::Params& consensusParams = Params().GetConsensus();
+                    if (GetAdjustedTime() < consensusParams.OpIsCoinstakeTime)
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("OpIsCoinstake is not active yet."));
+                } else
+                {
+                    warnings.push_back("Unknown key " + sKey);
+                };
+            };
+
+            json.pushKV("time", GetTime());
+            if (!pwallet->SetSetting(sSetting, json))
+                throw JSONRPCError(RPC_WALLET_ERROR, _("SetSetting failed."));
+
+            if (warnings.size() > 0)
+                result.pushKV("warnings", warnings);
+        } else
+        {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Must be json object."));
+        };
+        result.pushKV(sSetting, json);
+    } else
+    if (sSetting == "stakingoptions")
+    {
+        UniValue json;
+        UniValue warnings(UniValue::VARR);
+
+        if (request.params.size() == 1)
+        {
+            if (!pwallet->GetSetting("stakingoptions", json))
+                result.pushKV(sSetting, "default");
+            else
+                result.pushKV(sSetting, json);
+            return result;
+        };
+
+        if (request.params[1].isObject())
+        {
+            json = request.params[1].get_obj();
+
+            const std::vector<std::string> &vKeys = json.getKeys();
+            if (vKeys.size() < 1)
+            {
+                if (!pwallet->EraseSetting(sSetting))
+                    throw JSONRPCError(RPC_WALLET_ERROR, _("EraseSetting failed."));
+                result.pushKV(sSetting, "cleared");
+                return result;
+            };
+
+            UniValue jsonOld;
+            bool fHaveOldSetting = pwallet->GetSetting(sSetting, jsonOld);
+
+            for (const auto &sKey : vKeys)
+            {
+                if (sKey == "stakecombinethreshold")
+                {
+                    CAmount test = AmountFromValue(json["stakecombinethreshold"]);
+                    if (test < 0)
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("stakecombinethreshold can't be negative."));
+                } else
+                if (sKey == "stakesplitthreshold")
+                {
+                    CAmount test = AmountFromValue(json["stakesplitthreshold"]);
+                    if (test < 0)
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("stakesplitthreshold can't be negative."));
+                } else
+                if (sKey == "donationpercent")
+                {
+                    if (!json["donationpercent"].isNum())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("donationpercent must be a number."));
+                } else
+                if (sKey == "rewardaddress")
+                {
+                    if (!json["rewardaddress"].isStr())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("rewardaddress must be a string."));
+
+                    CBitcoinAddress addr(json["rewardaddress"].get_str());
+                    if (!addr.IsValid())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Invalid rewardaddress."));
+                } else
+                {
+                    warnings.push_back("Unknown key " + sKey);
+                };
+            };
+
+            json.pushKV("time", GetTime());
+            if (!pwallet->SetSetting(sSetting, json))
+                throw JSONRPCError(RPC_WALLET_ERROR, _("SetSetting failed."));
+
+            std::string sError;
+            pwallet->ProcessStakingSettings(sError);
+            if (!sError.empty())
+            {
+                result.pushKV("error", sError);
+                if (fHaveOldSetting)
+                    pwallet->SetSetting(sSetting, jsonOld);
+            };
+
+            if (warnings.size() > 0)
+                result.pushKV("warnings", warnings);
+        } else
+        {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Must be json object."));
+        };
+        result.pushKV(sSetting, json);
+    } else
+    if (sSetting == "stakelimit")
+    {
+        UniValue json;
+        UniValue warnings(UniValue::VARR);
+
+        if (request.params.size() == 1)
+        {
+            result.pushKV(sSetting, pwallet->nStakeLimitHeight);
+            return result;
+        };
+
+        if (request.params[1].isObject())
+        {
+            json = request.params[1].get_obj();
+
+            const std::vector<std::string> &vKeys = json.getKeys();
+            if (vKeys.size() < 1)
+            {
+                pwallet->nStakeLimitHeight = 0;
+                result.pushKV(sSetting, "cleared");
+                return result;
+            };
+
+            for (const auto &sKey : vKeys)
+            {
+                if (sKey == "height")
+                {
+                    if (!json["height"].isNum())
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, _("height must be a number."));
+
+                    pwallet->nStakeLimitHeight = json["height"].get_int();
+                    result.pushKV(sSetting, pwallet->nStakeLimitHeight);
+                } else
+                {
+                    warnings.push_back("Unknown key " + sKey);
+                };
+            };
+
+            if (warnings.size() > 0)
+                result.pushKV("warnings", warnings);
+        } else
+        {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Must be json object."));
+        };
+
+        WakeThreadStakeMiner(pwallet);
+    } else
+    {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Unknown setting"));
+    };
+
+    return result;
+}
+
+UniValue reservebalance(const JSONRPCRequest &request)
+{
+    // Reserve balance from being staked for network protection
+
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 2)
+        throw std::runtime_error(
+            "reservebalance reserve ( amount )\n"
+            "reserve is true or false to turn balance reserve on or off.\n"
+            "amount is a real and rounded to cent.\n"
+            "Set reserve amount not participating in network protection.\n"
+            "If no parameters provided current setting is printed.\n"
+            "Wallet must be unlocked to modify.\n");
+
+    if (request.params.size() > 0)
+    {
+        EnsureWalletIsUnlocked(pwallet);
+
+        bool fReserve = request.params[0].get_bool();
+        if (fReserve)
+        {
+            if (request.params.size() == 1)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "must provide amount to reserve balance.");
+            int64_t nAmount = AmountFromValue(request.params[1]);
+            nAmount = (nAmount / CENT) * CENT;  // round to cent
+            if (nAmount < 0)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "amount cannot be negative.");
+            pwallet->SetReserveBalance(nAmount);
+        } else
+        {
+            if (request.params.size() > 1)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "cannot specify amount to turn off reserve.");
+            pwallet->SetReserveBalance(0);
+        };
+        WakeThreadStakeMiner(pwallet);
+    };
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("reserve", (pwallet->nReserveBalance > 0));
+    result.pushKV("amount", ValueFromAmount(pwallet->nReserveBalance));
+    return result;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -4532,9 +5112,17 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrase",         &walletpassphrase,         {"passphrase","timeout"} },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        {"txid"} },
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
+
+    // NIX Staking functions
+    { "wallet",             "getstakinginfo",                   &getstakinginfo,                {} },
+    { "wallet",             "getcoldstakinginfo",               &getcoldstakinginfo,            {} },
+    { "wallet",             "reservebalance",                   &reservebalance,                {"enabled","amount"} },
+    { "wallet",             "walletsettings",                   &walletsettings,                {"setting","json"} },
+
+
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
-    // NIX ghost functions (experimental)
+    // NIX Ghost functions (experimental)
     { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
     { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
     { "NIX Ghost Protocol",             "ghostamount",             &ghostamount,             {"amount"} },

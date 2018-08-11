@@ -138,7 +138,6 @@ protected:
 
 public:
     /* POS params */
-    uint32_t nSwitchToPOSBlock;
     uint32_t nModifierInterval;         // seconds to elapse before new modifier is computed
     uint32_t nStakeMinConfirmations;    // min depth in chain before staked output is spendable
     uint32_t nTargetSpacing;            // targeted number of seconds between blocks

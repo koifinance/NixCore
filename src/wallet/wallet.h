@@ -1554,7 +1554,7 @@ public:
     bool SetReserveBalance(CAmount nNewReserveBalance);
     void AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTime, int nHeight) const;
     bool SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHeight, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64_t& nValueRet) const;
-    bool CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key);
+    bool CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key, CBlockTemplate *pblocktemplate);
     bool SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSearchTime);
 
     /* Return a script for a simple address type (normal/extended) */

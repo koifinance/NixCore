@@ -235,7 +235,7 @@ void Shutdown()
     StopRPC();
     StopHTTPServer();
 #ifdef ENABLE_WALLET
-    if(chainActive.Height() >= Params().nSwitchToPOSBlock){
+    if(GetAdjustedTime() >= Params().GetConsensus().OpIsCoinstakeTime){
         ShutdownThreadStakeMiner();
     }
     FlushWallets();
@@ -2011,8 +2011,7 @@ bool AppInitMain()
 
 
     // ********************************************************* Step 11e: start staking
-
-    if(chainActive.Height() >= Params().nSwitchToPOSBlock){
+    if(GetAdjustedTime() >= Params().GetConsensus().OpIsCoinstakeTime){
         #ifdef ENABLE_WALLET
         nMinStakeInterval = gArgs.GetArg("-minstakeinterval", 0);
         nMinerSleep = gArgs.GetArg("-minersleep", 500);

@@ -146,7 +146,7 @@ public:
         consensus.nGhostnodeInitialize = 800; //~24 hours after mainnet release
 
         // POS params
-        nSwitchToPOSBlock = 60000;
+        consensus.OpIsCoinstakeTime = 1600000000;
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 501;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes

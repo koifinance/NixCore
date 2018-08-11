@@ -198,6 +198,8 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
         if (!CheckDevFundInputs(tx, state, nHeight, fTestNet))
             return false;
+    } else if(tx.IsCoinStake()){
+
     }
     else
     {

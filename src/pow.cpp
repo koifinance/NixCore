@@ -10,6 +10,7 @@
 #include <primitives/block.h>
 #include <uint256.h>
 #include <chainparams.h>
+#include <timedata.h>
 
 /*Forward declarations*/
 /*********************/
@@ -30,7 +31,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex *pindexLast)
     unsigned int nProofOfWorkLimit;
     int nHeight = pindexLast ? pindexLast->nHeight+1 : 0;
 
-    if (nHeight < Params().nSwitchToPOSBlock)
+    if (GetAdjustedTime() < Params().GetConsensus().OpIsCoinstakeTime)
     {
         return DarkGravityWave(pindexLast, consensus);
 

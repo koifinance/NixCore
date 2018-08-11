@@ -200,6 +200,7 @@ extern std::map<COutPoint, uint256> mapStakeSeen;
 extern std::list<COutPoint> listStakeSeen;
 extern uint64_t nLastBlockTx;
 extern uint64_t nLastBlockWeight;
+extern uint64_t nLastBlockSize;
 extern const std::string strMessageMagic;
 extern CWaitableCriticalSection csBestBlock;
 extern CConditionVariable cvBlockChange;

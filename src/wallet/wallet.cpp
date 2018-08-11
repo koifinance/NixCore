@@ -37,6 +37,7 @@
 #include "ghostnode/darksend.h"
 #include "ghostnode/instantx.h"
 #include "ghostnode/ghostnode.h"
+#include "ghostnode/ghostnode-payments.h"
 #include "random.h"
 
 #include <rpc/server.h>
@@ -9709,7 +9710,7 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHe
     return true;
 }
 
-bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key)
+bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key, CBlockTemplate *pblocktemplate)
 {
     CBlockIndex *pindexPrev = chainActive.Tip();
     arith_uint256 bnTargetPerCoinDay;
@@ -9717,6 +9718,10 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
     CAmount nBalance = GetStakeableBalance();
     if (nBalance <= nReserveBalance)
+        return false;
+
+    //need block template for ghostnode payouts
+    if(!pblocktemplate.get())
         return false;
 
     // Choose coins to use
@@ -9919,7 +9924,9 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         LogPrint(BCLog::POS, "%s: Combining kernel %s, %d.\n", __func__, pcoin.first->GetHash().ToString(), pcoin.second);
         nStakesCombined++;
         setCoins.erase(itc);
-    };
+    }
+
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
 
     // Get block reward
     CAmount nReward = Params().GetProofOfStakeReward(pindexPrev, nFees);
@@ -9928,7 +9935,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
     // Process development fund
     CAmount nRewardOut;
-
+    nRewardOut = nReward;
 
     if (!rewardAddress.IsValid())
         nCredit += nRewardOut;
@@ -9954,6 +9961,29 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         txNew.vout.push_back(CTxOut(nRewardOut,scriptReward));
     };
 
+
+    // Place dev fund output
+    CScript DEV_1_SCRIPT;
+    CScript DEV_2_SCRIPT;
+    if (!fTestNet) {
+        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+    }
+    else {
+        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
+    }
+
+    //Push dev block reward of 0.07% based on coinbase rewards
+    txNew.vout.insert(txNew.vout.begin()+1, CTxOut(0.05 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+    txNew.vout.insert(txNew.vout.begin()+2, CTxOut(0.02 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+
+    CBlock *pblock = &pblocktemplate->block; // pointer for convenience
+    //Push ghostnode reward
+    if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
+        FillBlockPayments(txNew, chainActive.Height(), ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
+    }
 
     // Sign
     int nIn = 0;
@@ -10000,7 +10030,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     LogPrint(BCLog::POS, "%s, nBits %d\n", __func__, pblock->nBits);
 
     CMutableTransaction txCoinStake;
-    if (CreateCoinStake(pblock->nBits, nSearchTime, nHeight, nFees, txCoinStake, key))
+    if (CreateCoinStake(pblock->nBits, nSearchTime, nHeight, nFees, txCoinStake, key, pblocktemplate))
     {
         LogPrint(BCLog::POS, "%s: Kernel found.\n", __func__);
 

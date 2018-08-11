@@ -49,6 +49,7 @@
 
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockWeight = 0;
+uint64_t nLastBlockSize = 0;
 
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
 {
@@ -239,6 +240,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     int64_t nTime1 = GetTimeMicros();
 
     nLastBlockTx = nBlockTx;
+    nLastBlockSize = nBlockSize;
     nLastBlockWeight = nBlockWeight;
 
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
@@ -314,6 +316,8 @@ void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
     nBlockSigOpsCost += iter->GetSigOpCost();
     nFees += iter->GetFee();
     inBlock.insert(iter);
+
+    nBlockSize += ::GetSerializeSize(iter->GetTx(), SER_NETWORK, PROTOCOL_VERSION);
 
     bool fPrintPriority = gArgs.GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
     if (fPrintPriority) {
