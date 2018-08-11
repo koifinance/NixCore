@@ -198,15 +198,13 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
         if (!CheckDevFundInputs(tx, state, nHeight, fTestNet))
             return false;
-    } else if(tx.IsCoinStake()){
-
     }
     else
     {
         for (const auto& txin : tx.vin)
             if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
-        if (!CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
+        if (!tx.IsCoinStake() && !CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
                     return false;
     }
 

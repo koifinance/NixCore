@@ -9553,6 +9553,8 @@ bool CWallet::GetScriptForAddress(CScript &script, const CBitcoinAddress &addr, 
     {
         CKeyID idk = boost::get<CKeyID>(dest);
         script = GetScriptForDestination(idk);
+    } else if(dest.type() == typeid(CScriptID)){
+        script = GetScriptForDestination(dest);
     } else
     {
         return error("%s: Unknown destination type.", __func__);
@@ -9720,10 +9722,6 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     if (nBalance <= nReserveBalance)
         return false;
 
-    //need block template for ghostnode payouts
-    if(!pblocktemplate.get())
-        return false;
-
     // Choose coins to use
     std::vector<const CWalletTx*> vwtxPrev;
     std::set<std::pair<const CWalletTx*,unsigned int> > setCoins;
@@ -9840,7 +9838,9 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                         return error("%s: No coinbase script available.", __func__);
                     }
                     scriptPubKeyKernel = coinbaseScript->reserveScript;
-                    if (scriptStaking.IsPayToPublicKeyHash())
+
+                    //payout to script
+                    if (scriptStaking.IsPayToScriptHash())
                     {
                         CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
                         script += scriptStaking;
@@ -9851,7 +9851,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                         scriptPubKeyKernel = script;
                     } else
                     {
-                        return error("%s: Unknown scriptStaking type, must be pay-to-public-key-hash.", __func__);
+                        return error("%s: Unknown scriptStaking type, must be pay-to-script-hash.", __func__);
                     };
                 };
             };
