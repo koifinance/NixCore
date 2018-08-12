@@ -120,8 +120,8 @@ public:
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
 
-        //if nVersion shifted to 3
-        if (nVersion == NIX_BLOCK_VERSION)
+        //Write PoS owner signature to block
+        if (this->IsProofOfStake())
             READWRITE(vchBlockSig);
     }
 

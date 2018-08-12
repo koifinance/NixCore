@@ -13,6 +13,7 @@
 #include <util.h>
 #include <ui_interface.h>
 #include <init.h>
+#include <pos/miner.h>
 #include "validation.h"
 
 #include <stdint.h>
@@ -445,8 +446,20 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
                 pindexNew->mintedPubCoins     = diskindex.mintedPubCoins;
                 pindexNew->spentSerials       = diskindex.spentSerials;
 
-                if (!CheckProofOfWork(pindexNew->GetBlockPoWHash(), pindexNew->nBits, consensusParams))
-                    return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());
+                pindexNew->nFlags                   = diskindex.nFlags;
+                pindexNew->bnStakeModifier          = diskindex.bnStakeModifier;
+                pindexNew->prevoutStake             = diskindex.prevoutStake;
+
+                pindexNew->nMoneySupply             = diskindex.nMoneySupply;
+
+
+                //Check POW limits before PoS onchain
+                if (!diskindex.IsProofOfStake())
+                {
+                    if (!CheckProofOfWork(pindexNew->GetBlockPoWHash(), pindexNew->nBits, consensusParams))
+                        return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());
+
+                }
 
                 pcursor->Next();
             } else {
