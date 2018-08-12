@@ -12,6 +12,7 @@
 #include <crypto/sha256.h>
 
 #include <wallet/wallet.h>
+#include <ghostnode/ghostnodeman.h>
 
 #include <fs.h>
 
@@ -90,6 +91,15 @@ bool CheckStake(CBlock *pblock)
 
     if (!CheckStakeUnique(*pblock, false)) // Check in SignBlock also
         return error("%s: %s CheckStakeUnique failed.", __func__, hashBlock.GetHex());
+
+    //Deny Ghostnode Stakes, first output transaction
+    std::vector<CGhostnode> vGnodes = mnodeman.GetFullGhostnodeVector();
+    for(CGhostnode gn: vGnodes){
+        CScript gnScript;
+        gnScript << OP_DUP << OP_HASH160 << ToByteVector(gn.pubKeyGhostnode.GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
+        if(pblock->vtx[0]->vout[0].scriptPubKey == gnScript)
+            return error("%s: %s Cannot stake ghostnode.", __func__, hashBlock.GetHex());
+    }
 
     BlockMap::const_iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
     if (mi == mapBlockIndex.end())

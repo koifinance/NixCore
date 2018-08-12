@@ -90,6 +90,8 @@ bool CheckStakeKernelHash(const CBlockIndex *pindexPrev,
     int nStakeModifierHeight = pindexPrev->nHeight;
     int64_t nStakeModifierTime = pindexPrev->nTime;
 
+    LogPrintf("CheckStakeKernelHash(): Height=%d, StakeModifier=%s \n", nStakeModifierHeight, bnStakeModifier.ToString());
+
     CDataStream ss(SER_GETHASH, 0);
     ss << bnStakeModifier;
     ss << nBlockFromTime << prevout.hash << prevout.n << nTime;

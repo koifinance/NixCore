@@ -9806,7 +9806,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 LogPrint(BCLog::POS, "%s: Failed to get key for kernel type=%d.\n", __func__, whichType);
                 break;  // unable to find corresponding key
             }
-            else if(!GetKey(GetKeyForDestination(*pw, idScript), key)){
+            else if((whichType == TX_SCRIPTHASH) && !GetKey(GetKeyForDestination(*pw, idScript), key)){
                 LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
                 break;  // unable to find corresponding key
             }
