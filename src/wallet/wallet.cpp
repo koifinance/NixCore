@@ -9779,31 +9779,49 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
             LogPrint(BCLog::POS, "%s: Parsed kernel type=%d.\n", __func__, whichType);
             CKeyID spendId;
+            CScriptID idScript;
             if (whichType == TX_PUBKEYHASH)
             {
                 spendId = CKeyID(uint160(vSolutions[0]));
-            } else
-            if (whichType == TX_PUBKEYHASH256)
+            }
+            else if (whichType == TX_PUBKEYHASH256)
             {
                 spendId = CKeyID(uint256(vSolutions[0]));
-            } else
+            }
+            else if(whichType == TX_SCRIPTHASH){
+                if (vSolutions[0].size() == 20)
+                    idScript = CScriptID(uint160(vSolutions[0]));
+                else
+                    break;
+            }
+            else
             {
                 LogPrint(BCLog::POS, "%s: No support for kernel type=%d.\n", __func__, whichType);
                 break;  // only support pay to address (pay to pubkey hash)
-            };
+            }
 
-            if (!GetKey(spendId, key))
+            const CWallet *pw = this;
+            if ((whichType != TX_SCRIPTHASH) && !GetKey(spendId, key))
             {
                 LogPrint(BCLog::POS, "%s: Failed to get key for kernel type=%d.\n", __func__, whichType);
                 break;  // unable to find corresponding key
-            };
+            }
+            else if(!GetKey(GetKeyForDestination(*pw, idScript), key)){
+                LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
+                break;  // unable to find corresponding key
+            }
 
             if (fConditionalStake)
             {
                 scriptPubKeyKernel = kernelOut.scriptPubKey;
             } else
             {
-                scriptPubKeyKernel << OP_DUP << OP_HASH160 << ToByteVector(spendId) << OP_EQUALVERIFY << OP_CHECKSIG;
+                //payment to scripthash
+                if(whichType == TX_SCRIPTHASH)
+                    scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
+                //payment to pubkey
+                else
+                    scriptPubKeyKernel << OP_DUP << OP_HASH160 << ToByteVector(spendId) << OP_EQUALVERIFY << OP_CHECKSIG;
 
                 // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
                 UniValue jsonSettings;
@@ -9975,8 +9993,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     }
 
     //Push dev block reward of 0.07% based on coinbase rewards
-    txNew.vout.insert(txNew.vout.begin()+1, CTxOut(0.05 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
-    txNew.vout.insert(txNew.vout.begin()+2, CTxOut(0.02 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+    txNew.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+    txNew.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
     //Push ghostnode reward
@@ -10025,7 +10043,8 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     CBlockIndex *pindexPrev = chainActive.Tip();
 
     CKey key;
-    pblock->nVersion = NIX_BLOCK_VERSION;
+    pblock->nVersion = ComputeBlockVersion(pindexPrev, Params().GetConsensus());
+    // pblock->nVersion = NIX_BLOCK_VERSION;
     pblock->nBits = GetNextTargetRequired(pindexPrev);
     LogPrint(BCLog::POS, "%s, nBits %d\n", __func__, pblock->nBits);
 

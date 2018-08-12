@@ -14,6 +14,7 @@
 #include <utilmoneystr.h>
 #include <util.h>
 #include <base58.h>
+#include <chainparams.h>
 
 bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
@@ -239,18 +240,42 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         }
     }
 
-    const CAmount value_out = tx.GetValueOut();
-    if (nValueIn < value_out) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
-            strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(value_out)));
+    //We need to account for noninput i.e. coinbase creation for devfund and ghostnodes
+    const CAmount value_out= tx.GetValueOut();
+    nValueIn += DEVELOPMENT_REWARD * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
+
+    if (chainActive.Height() >= pParams()->GetConsensus().nGhostnodePaymentsStartBlock) {
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
+        nValueIn += ghostnodePayment;
     }
 
-    // Tally transaction fees
-    const CAmount txfee_aux = nValueIn - value_out;
-    if (!MoneyRange(txfee_aux)) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+    if(tx.IsCoinStake()){
+
+        // Return stake reward in nTxFee
+        txfee = value_out - nValueIn;
+
+        // Tally transaction fees
+        const CAmount txfee_aux =  txfee;
+        if (!MoneyRange(txfee_aux)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+        }
+
+    }
+    else
+    {
+        if (nValueIn < value_out) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
+                strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(value_out)));
+        }
+
+        // Tally transaction fees
+        const CAmount txfee_aux = nValueIn - value_out;
+        if (!MoneyRange(txfee_aux)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+        }
+
+        txfee = txfee_aux;
     }
 
-    txfee = txfee_aux;
     return true;
 }

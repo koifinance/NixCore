@@ -12,6 +12,8 @@
 #include <utilstrencodings.h>
 #include <assert.h>
 #include "arith_uint256.h"
+#include <validation.h>
+#include <utilmoneystr.h>
 
 #include <chainparamsseeds.h>
 
@@ -80,10 +82,17 @@ int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64
 {
     int64_t nSubsidy;
 
-    nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+    //first block of PoS, add regular block amounts and airdrop amount
+    if(!pindexPrev->IsProofOfStake()){
+        CAmount nTotal = pindexPrev->nHeight * GetBlockSubsidy(pindexPrev->nHeight, Params().GetConsensus()) + GetBlockSubsidy(1, Params().GetConsensus());
+        nSubsidy = (nTotal / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+        LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
+    }else{
+        nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+    }
 
     //if (LogAcceptCategory(BCLog::POS) && gArgs.GetBoolArg("-printcreation", false))
-        //LogPrintf("GetProofOfStakeReward(): create=%s\n", FormatMoney(nSubsidy).c_str());
+        LogPrintf("GetProofOfStakeReward(): create=%s\n", FormatMoney(nSubsidy).c_str());
 
     return nSubsidy + nFees;
 }
@@ -393,8 +402,9 @@ public:
         consensus.nGhostnodeInitialize = 600;
 
         // POS params
-        nModifierInterval = 2 * 60;    // 10 minutes
-        nStakeMinConfirmations = 225;   // 225 * 2 minutes
+        consensus.OpIsCoinstakeTime = 0; //always active
+        nModifierInterval = 10 * 60;    // 10 minutes
+        nStakeMinConfirmations = 501;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 

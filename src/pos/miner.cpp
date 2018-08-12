@@ -211,14 +211,17 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
             };
         };
 
-        if (g_connman->vNodes.empty() || IsInitialBlockDownload())
-        {
-            fIsStaking = false;
-            fTryToSync = true;
-            LogPrint(BCLog::POS, "%s: IsInitialBlockDownload\n", __func__);
-            condWaitFor(nThreadID, 2000);
-            continue;
-        };
+        //test pos on regtest
+        if(Params().NetworkIDString() != CBaseChainParams::REGTEST){
+            if (g_connman->vNodes.empty() || IsInitialBlockDownload())
+            {
+                fIsStaking = false;
+                fTryToSync = true;
+                LogPrint(BCLog::POS, "%s: IsInitialBlockDownload\n", __func__);
+                condWaitFor(nThreadID, 2000);
+                continue;
+            }
+        }
 
 
         {
