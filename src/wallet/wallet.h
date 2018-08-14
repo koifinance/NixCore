@@ -846,8 +846,10 @@ public:
     CAmount GetChange() const;
     CAmount GetAnonymizedCredit(bool fUseCache=true) const;
 
-    void GetAmounts(std::list<COutputEntry>& listReceived,
-                    std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
+    void GetAmounts(std::list<COutputEntry> &listReceived,
+                    std::list<COutputEntry> &listSent,
+                    std::list<COutputEntry> &listStaked,
+                    CAmount& nFee, std::string& strSentAccount, const isminefilter& filter, bool fForFilterTx=false) const;
 
     bool IsFromMe(const isminefilter& filter) const
     {

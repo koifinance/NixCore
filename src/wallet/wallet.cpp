@@ -1641,7 +1641,7 @@ int CWalletTx::GetRequestCount() const
     int nRequests = -1;
     {
         LOCK(pwallet->cs_wallet);
-        if (IsCoinBase())
+        if (IsCoinBase() || IsCoinStake())
         {
             // Generated block
             if (!hashUnset())
@@ -1675,7 +1675,7 @@ int CWalletTx::GetRequestCount() const
 }
 
 void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
-                           std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const
+                           std::list<COutputEntry>& listSent, std::list<COutputEntry> &listStaked, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter, bool fForFilterTx) const
 {
     nFee = 0;
     listReceived.clear();
@@ -1688,6 +1688,52 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
     {
         CAmount nValueOut = tx->GetValueOut();
         nFee = nDebit - nValueOut;
+    }
+
+    // staked
+    if (tx->IsCoinStake())
+    {
+        CAmount nCredit = 0;
+        CTxDestination address = CNoDestination();
+        CTxDestination addressStake = CNoDestination();
+
+        isminetype isMineAll = ISMINE_NO;
+        for (unsigned int i = 0; i < tx->vout.size(); ++i)
+        {
+            isminetype mine = pwallet->IsMine(tx->vout[i]);
+            if (!(mine & filter))
+                continue;
+            isMineAll = (isminetype)((uint8_t)isMineAll |(uint8_t)mine);
+
+            if (fForFilterTx || address.type() == typeid(CNoDestination))
+            {
+                const CScript &scriptPubKey = tx->vout[i].scriptPubKey;
+                ExtractDestination(scriptPubKey, address);
+
+                if (HasIsCoinstakeOp(scriptPubKey))
+                {
+                    CScript scriptOut;
+                    if (GetCoinstakeScriptPath(scriptPubKey, scriptOut))
+                        ExtractDestination(scriptOut, addressStake);
+                };
+            };
+            nCredit += tx->vout[i].nValue;
+
+            if (fForFilterTx)
+            {
+                COutputEntry output = {address, tx->vout[i].nValue, (int)i, mine, addressStake};
+                listStaked.push_back(output);
+            };
+        };
+        // Recalc fee as GetValueOut might include foundation fund output
+        nFee = nDebit - nCredit;
+
+        if (fForFilterTx || !(isMineAll & filter))
+            return;
+
+        COutputEntry output = {address, nCredit, 1, isMineAll, addressStake};
+        listStaked.push_back(output);
+        return;
     }
 
     // Sent/received.
@@ -1868,7 +1914,7 @@ void CWallet::ReacceptWalletTransactions()
 
         int nDepth = wtx.GetDepthInMainChain();
 
-        if ((!wtx.IsCoinBase() || !wtx.tx->IsZerocoinSpend()) && (nDepth == 0 && !wtx.isAbandoned())) {
+        if ((!wtx.IsCoinBase() && !wtx.tx->IsZerocoinSpend()) && !wtx.IsCoinStake() && (nDepth == 0 && !wtx.isAbandoned())) {
             mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
         }
     }
@@ -1884,7 +1930,7 @@ void CWallet::ReacceptWalletTransactions()
 bool CWalletTx::RelayWalletTransaction(CConnman* connman)
 {
     assert(pwallet->GetBroadcastTransactions());
-    if (!IsCoinBase() && !isAbandoned() && GetDepthInMainChain() == 0)
+    if (!IsCoinBase() && !IsCoinStake() && !isAbandoned() && GetDepthInMainChain() == 0)
     {
         CValidationState state;
         /* GetDepthInMainChain already catches known conflicts. */
@@ -2084,6 +2130,8 @@ bool CWalletTx::IsTrusted() const
 {
     // Quick answer in most cases
     if (!CheckFinalTx(*tx))
+        return false;
+    if (tx->IsCoinStake() && hashUnset()) // ignore failed stakes
         return false;
     int nDepth = GetDepthInMainChain();
     if (nDepth >= 1)
@@ -4520,8 +4568,9 @@ int CMerkleTx::GetDepthInMainChain(const CBlockIndex* &pindexRet) const
 
 int CMerkleTx::GetBlocksToMaturity() const
 {
-    if (!IsCoinBase())
+    if (!(IsCoinBase() || IsCoinStake()))
         return 0;
+
     return std::max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
 }
 

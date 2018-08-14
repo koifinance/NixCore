@@ -4226,7 +4226,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     {
         pindex->SetProofOfStake();
         pindex->prevoutStake = pblock->vtx[0]->vin[0].prevout;
-        if (pindex->pprev && pindex->pprev->bnStakeModifier.IsNull()) // block received out of order
+        if (pindex->pprev && pindex->pprev->IsProofOfStake() && pindex->pprev->bnStakeModifier.IsNull()) // block received out of order
         {
             if (!IsInitialBlockDownload())
                 LogPrintf("Warning: %s - Previous stake modifier is null.\n", __func__);
