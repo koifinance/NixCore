@@ -569,6 +569,8 @@ struct COutputEntry
     CTxDestination destination;
     CAmount amount;
     int vout;
+    isminetype ismine;
+    CTxDestination destStake;
 };
 
 /** A transaction with a merkle branch linking it to the block chain. */

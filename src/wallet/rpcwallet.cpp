@@ -1671,8 +1671,10 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
     std::string strSentAccount;
     std::list<COutputEntry> listReceived;
     std::list<COutputEntry> listSent;
+    std::list<COutputEntry> listStaked;
 
-    wtx.GetAmounts(listReceived, listSent, nFee, strSentAccount, filter);
+
+    wtx.GetAmounts(listReceived, listSent, listStaked, nFee, strSentAccount, filter);
 
     bool fAllAccounts = (strAccount == std::string("*"));
     bool involvesWatchonly = wtx.IsFromMe(ISMINE_WATCH_ONLY);
@@ -1741,6 +1743,36 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
                     WalletTxToJSON(wtx, entry);
                 ret.push_back(entry);
             }
+        }
+    }
+
+    // Staked
+    if (listStaked.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
+    {
+        for (const auto &s : listStaked)
+        {
+            UniValue entry(UniValue::VOBJ);
+            if (involvesWatchonly || (s.ismine & ISMINE_WATCH_ONLY))
+                entry.push_back(Pair("involvesWatchonly", true));
+            //entry.push_back(Pair("account", strSentAccount));
+            MaybePushAddress(entry, s.destination);
+            if (s.destStake.type() != typeid(CNoDestination))
+                entry.push_back(Pair("coldstake_address", CBitcoinAddress(s.destStake).ToString()));
+
+            if (wtx.GetDepthInMainChain() < 1)
+                entry.push_back(Pair("category", "orphaned_stake"));
+            else
+                entry.push_back(Pair("category", "stake"));
+
+            entry.push_back(Pair("amount", ValueFromAmount(s.amount)));
+            if (pwallet->mapAddressBook.count(s.destination))
+                entry.push_back(Pair("label", pwallet->mapAddressBook[s.destination].name));
+            entry.push_back(Pair("vout", s.vout));
+            entry.push_back(Pair("reward", ValueFromAmount(-nFee)));
+            if (fLong)
+                WalletTxToJSON(wtx, entry);
+            entry.push_back(Pair("abandoned", wtx.isAbandoned()));
+            ret.push_back(entry);
         }
     }
 }
@@ -1957,10 +1989,11 @@ UniValue listaccounts(const JSONRPCRequest& request)
         std::string strSentAccount;
         std::list<COutputEntry> listReceived;
         std::list<COutputEntry> listSent;
+        std::list<COutputEntry> listStaked;
         int nDepth = wtx.GetDepthInMainChain();
         if (wtx.GetBlocksToMaturity() > 0 || nDepth < 0)
             continue;
-        wtx.GetAmounts(listReceived, listSent, nFee, strSentAccount, includeWatchonly);
+        wtx.GetAmounts(listReceived, listSent, listStaked, nFee, strSentAccount, includeWatchonly);
         mapAccountBalances[strSentAccount] -= nFee;
         for (const COutputEntry& s : listSent)
             mapAccountBalances[strSentAccount] -= s.amount;
