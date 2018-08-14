@@ -9652,12 +9652,14 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 if (!ExtractDestination(pscriptPubKey, dest))
                     continue;
 
-                // for staking we support P2PKH, P2SH Segwit
+                // for staking we ONLY support P2SH Segwit
+                /*
                 if(boost::get<CKeyID>(&dest)){
                     const CKeyID& destKeyID = boost::get<CKeyID>(dest);
                     if (HaveKey(destKeyID))
                         vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
                 }
+                */
                 else if(boost::get<CScriptID>(&dest)){
                     const CScriptID& destScriptID = boost::get<CScriptID>(dest);
                     if (HaveCScript(destScriptID))
@@ -9780,6 +9782,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             LogPrint(BCLog::POS, "%s: Parsed kernel type=%d.\n", __func__, whichType);
             CKeyID spendId;
             CScriptID idScript;
+            /*
             if (whichType == TX_PUBKEYHASH)
             {
                 spendId = CKeyID(uint160(vSolutions[0]));
@@ -9788,7 +9791,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             {
                 spendId = CKeyID(uint256(vSolutions[0]));
             }
-            else if(whichType == TX_SCRIPTHASH){
+            */
+            if(whichType == TX_SCRIPTHASH){
                 if (vSolutions[0].size() == 20)
                     idScript = CScriptID(uint160(vSolutions[0]));
                 else
@@ -9801,12 +9805,14 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             }
 
             const CWallet *pw = this;
+            /*
             if ((whichType != TX_SCRIPTHASH) && !GetKey(spendId, key))
             {
                 LogPrint(BCLog::POS, "%s: Failed to get key for kernel type=%d.\n", __func__, whichType);
                 break;  // unable to find corresponding key
             }
-            else if((whichType == TX_SCRIPTHASH) && !GetKey(GetKeyForDestination(*pw, idScript), key)){
+            */
+            if((whichType == TX_SCRIPTHASH) && !GetKey(GetKeyForDestination(*pw, idScript), key)){
                 LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
                 break;  // unable to find corresponding key
             }
@@ -9819,9 +9825,11 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 //payment to scripthash
                 if(whichType == TX_SCRIPTHASH)
                     scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
-                //payment to pubkey
                 else
-                    scriptPubKeyKernel << OP_DUP << OP_HASH160 << ToByteVector(spendId) << OP_EQUALVERIFY << OP_CHECKSIG;
+                    break;
+                //payment to pubkey
+                //else
+                    //scriptPubKeyKernel << OP_DUP << OP_HASH160 << ToByteVector(spendId) << OP_EQUALVERIFY << OP_CHECKSIG;
 
                 // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
                 UniValue jsonSettings;
