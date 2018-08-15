@@ -20,6 +20,9 @@ using namespace std;
 enum eBlockFlags
 {
     BLOCK_PROOF_OF_STAKE            = (1 << 0), // is proof-of-stake block
+    BLOCK_STAKE_ENTROPY             = (1 << 1), // entropy bit for stake modifier
+    BLOCK_STAKE_MODIFIER            = (1 << 2), // regenerated stake modifier
+
     BLOCK_FAILED_DUPLICATE_STAKE    = (1 << 3),
 };
 
@@ -355,6 +358,19 @@ public:
         nFlags |= BLOCK_PROOF_OF_STAKE;
     }
 
+    unsigned int GetStakeEntropyBit() const
+    {
+        return ((nFlags & BLOCK_STAKE_ENTROPY) >> 1);
+    }
+
+    bool SetStakeEntropyBit(unsigned int nEntropyBit)
+    {
+        if (nEntropyBit > 1)
+            return false;
+        nFlags |= (nEntropyBit? BLOCK_STAKE_ENTROPY : 0);
+        return true;
+    }
+
     static constexpr int nMedianTimeSpan = 11;
 
     int64_t GetMedianTimePast() const
@@ -463,10 +479,12 @@ public:
         READWRITE(spentSerials);
 
         //POS params
-        READWRITE(nFlags);
-        READWRITE(bnStakeModifier);
-        READWRITE(prevoutStake);
-        READWRITE(nMoneySupply);
+        if(IsProofOfStake()){
+            READWRITE(nFlags);
+            READWRITE(bnStakeModifier);
+            READWRITE(prevoutStake);
+            READWRITE(nMoneySupply);
+        }
 
     }
 

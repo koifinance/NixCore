@@ -446,19 +446,18 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
                 pindexNew->mintedPubCoins     = diskindex.mintedPubCoins;
                 pindexNew->spentSerials       = diskindex.spentSerials;
 
-                pindexNew->nFlags                   = diskindex.nFlags;
-                pindexNew->bnStakeModifier          = diskindex.bnStakeModifier;
-                pindexNew->prevoutStake             = diskindex.prevoutStake;
-
-                pindexNew->nMoneySupply             = diskindex.nMoneySupply;
-
-
+                //PoS
+                if(pindexNew->IsProofOfStake()){
+                    pindexNew->nFlags                   = diskindex.nFlags;
+                    pindexNew->bnStakeModifier          = diskindex.bnStakeModifier;
+                    pindexNew->prevoutStake             = diskindex.prevoutStake;
+                    pindexNew->nMoneySupply             = diskindex.nMoneySupply;
+                }
                 //Check POW limits before PoS onchain
-                if (!diskindex.IsProofOfStake())
+                else
                 {
                     if (!CheckProofOfWork(pindexNew->GetBlockPoWHash(), pindexNew->nBits, consensusParams))
                         return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());
-
                 }
 
                 pcursor->Next();
