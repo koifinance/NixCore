@@ -103,7 +103,9 @@ public Q_SLOTS:
     /** Change encrypted wallet passphrase */
     void changePassphrase();
     /** Ask for passphrase to unlock wallet temporarily */
-    void unlockWallet();
+    void unlockWallet(bool iconClicked=false);
+    /** lock wallet */
+    void lockWallet();
 
     /** Show used sending addresses */
     void usedSendingAddresses();
@@ -132,6 +134,10 @@ Q_SIGNALS:
     void incomingTransaction(const QString& date, int unit, const CAmount& amount, const QString& type, const QString& address, const QString& label);
     /** Notify that the out of sync warning icon has been pressed */
     void outOfSyncWarningClicked();
+
+public:
+
+    WalletModel* getWalletModel();
 };
 
 #endif // BITCOIN_QT_WALLETVIEW_H

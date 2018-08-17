@@ -7,6 +7,7 @@
 
 #include <util.h>
 #include <crypto/hmac_sha512.h>
+#include <crypto/hmac_sha256.h>
 #include <crypto/sha256.h>
 
 #include <unilib/uninorms.h>
@@ -437,23 +438,23 @@ static int mnemonicKdf(const uint8_t *password, size_t lenPassword,
     if (nIterations < 1)
         return 1;
 
-    uint8_t r[64];
+    uint8_t r[32];
 
     int one = 0x01000000;
-    CHMAC_SHA512 ctx(password, lenPassword);
-    CHMAC_SHA512 ctx_state = ctx;
+    CHMAC_SHA256 ctx(password, lenPassword);
+    CHMAC_SHA256 ctx_state = ctx;
     ctx.Write(salt, lenSalt);
     ctx.Write((uint8_t*)&one, 4);
     ctx.Finalize(r);
-    memcpy(out, r, 64);
+    memcpy(out, r, 32);
 
     for (size_t k = 1; k < nIterations; ++k)
     {
         ctx= ctx_state;
-        ctx.Write(r, 64);
+        ctx.Write(r, 32);
         ctx.Finalize(r);
 
-        for (size_t i = 0; i < 64; ++i)
+        for (size_t i = 0; i < 32; ++i)
             out[i] ^= r[i];
     };
 
@@ -464,7 +465,7 @@ int MnemonicToSeed(const std::string &sMnemonic, const std::string &sPasswordIn,
 {
     LogPrint(BCLog::HDWALLET, "%s\n", __func__);
 
-    vSeed.resize(64);
+    vSeed.resize(32);
 
     std::string sWordList = sMnemonic;
     NormaliseInput(sWordList);

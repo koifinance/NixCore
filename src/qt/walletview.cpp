@@ -20,6 +20,7 @@
 #include <qt/walletmodel.h>
 #include <qt/ghostnode.h>
 #include <qt/ghostvault.h>
+#include <timedata.h>
 
 #include <ui_interface.h>
 
@@ -287,17 +288,28 @@ void WalletView::changePassphrase()
     dlg.exec();
 }
 
-void WalletView::unlockWallet()
+void WalletView::unlockWallet(bool iconClicked)
 {
     if(!walletModel)
         return;
     // Unlock wallet when requested by wallet model
-    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked
+        || (!iconClicked && walletModel->getEncryptionStatus() == WalletModel::UnlockedForStaking))
     {
-        AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+        AskPassphraseDialog dlg(
+            iconClicked ? AskPassphraseDialog::UnlockManual : AskPassphraseDialog::Unlock, this, (GetAdjustedTime() >= Params().GetConsensus().OpIsCoinstakeTime) ? overviewPage->isStaking: nullptr);
         dlg.setModel(walletModel);
         dlg.exec();
     }
+}
+
+void WalletView::lockWallet()
+{
+    if(!walletModel)
+        return;
+    walletModel->lockWallet();
+    overviewPage->isStaking->setStyleSheet("color: red;");
+    overviewPage->isStaking->setText("Disabled");
 }
 
 void WalletView::usedSendingAddresses()
@@ -346,4 +358,8 @@ void WalletView::showProgress(const QString &title, int nProgress)
 void WalletView::requestedSyncWarningInfo()
 {
     Q_EMIT outOfSyncWarningClicked();
+}
+
+WalletModel* WalletView::getWalletModel(){
+    return walletModel;
 }

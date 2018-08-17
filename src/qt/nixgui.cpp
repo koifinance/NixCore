@@ -24,6 +24,8 @@
 #ifdef ENABLE_WALLET
 #include <qt/walletframe.h>
 #include <qt/walletmodel.h>
+#include <qt/walletview.h>
+#include <qt/mnemonicdialog.h>
 #endif // ENABLE_WALLET
 
 #ifdef Q_OS_MAC
@@ -202,7 +204,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
     frameBlocksLayout->setContentsMargins(3,0,3,0);
     frameBlocksLayout->setSpacing(3);
     unitDisplayControl = new UnitDisplayStatusBarControl(platformStyle);
-    labelWalletEncryptionIcon = new QLabel();
+    labelWalletEncryptionIcon = new GUIUtil::ClickableLabel();
     labelWalletHDStatusIcon = new QLabel();
     blockCount = new QLabel();
     connectionsControl = new GUIUtil::ClickableLabel();
@@ -258,6 +260,8 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
         connect(walletFrame, SIGNAL(requestedSyncWarningInfo()), this, SLOT(showModalOverlay()));
         connect(labelBlocksIcon, SIGNAL(clicked(QPoint)), this, SLOT(showModalOverlay()));
         connect(progressBar, SIGNAL(clicked(QPoint)), this, SLOT(showModalOverlay()));
+
+        connect(labelWalletEncryptionIcon, SIGNAL(clicked(QPoint)), this, SLOT(toggleLockState()));
     }
 #endif
 }
@@ -1173,6 +1177,16 @@ void BitcoinGUI::setEncryptionStatus(int status)
         labelWalletEncryptionIcon->show();
         labelWalletEncryptionIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
+        labelWalletEncryptionIcon->setStyleSheet("background-color: rgba(255, 165, 0, 0);");
+        encryptWalletAction->setChecked(true);
+        changePassphraseAction->setEnabled(true);
+        encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        break;
+    case WalletModel::UnlockedForStaking:
+        labelWalletEncryptionIcon->show();
+        labelWalletEncryptionIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
+        labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b> for staking only"));
+        labelWalletEncryptionIcon->setStyleSheet("background-color: rgba(124, 252, 0, 255);");
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
@@ -1181,11 +1195,36 @@ void BitcoinGUI::setEncryptionStatus(int status)
         labelWalletEncryptionIcon->show();
         labelWalletEncryptionIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/lock_closed").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>locked</b>"));
+        labelWalletEncryptionIcon->setStyleSheet("background-color: rgba(255, 165, 0, 0);");
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
         break;
     }
+}
+
+void BitcoinGUI::toggleLockState()
+{
+
+    WalletView *walletView = walletFrame->currentWalletView();
+    if (!walletView)
+        return;
+    WalletModel *walletModel = walletView->getWalletModel();
+    if (!walletModel)
+        return;
+
+    switch (walletModel->getEncryptionStatus())
+    {
+        case WalletModel::Locked:
+            walletView->unlockWallet(true);
+            break;
+        case WalletModel::Unlocked:
+        case WalletModel::UnlockedForStaking:
+            walletView->lockWallet();
+            break;
+        default:
+            break;
+    };
 }
 #endif // ENABLE_WALLET
 

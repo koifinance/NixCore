@@ -8,6 +8,7 @@
 #include <amount.h>
 
 #include <QWidget>
+#include <QLabel>
 #include <memory>
 
 class ClientModel;
@@ -36,10 +37,12 @@ public:
     void setClientModel(ClientModel *clientModel);
     void setWalletModel(WalletModel *walletModel);
     void showOutOfSyncWarning(bool fShow);
+    QLabel *isStaking;
 
 public Q_SLOTS:
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& ghostBalance, const CAmount& ghostBalanceUnconfirmed);
+                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& ghostBalance, const CAmount& ghostBalanceUnconfirmed, const CAmount& staked, const CAmount& watchStakedBalance);
+    void setReservedBalance(CAmount reservedBalance);
 
 Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);
@@ -58,6 +61,10 @@ private:
     CAmount currentWatchOnlyBalance;
     CAmount currentWatchUnconfBalance;
     CAmount currentWatchImmatureBalance;
+    CAmount currentStaked;
+    CAmount currentWatchStakedBalance;
+    CAmount currentReservedBalance;
+
 
     TxViewDelegate *txdelegate;
     std::unique_ptr<TransactionFilterProxy> filter;

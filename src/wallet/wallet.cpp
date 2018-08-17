@@ -6354,6 +6354,12 @@ bool CWallet::InitLoadWallet()
         if (!pwallet)
             return false;
 
+        if (!ParseMoney(gArgs.GetArg("-reservebalance", ""), pwallet->nReserveBalance))
+        {
+            delete pwallet;
+            return InitError(_("Invalid amount for -reservebalance=<amount>"));
+        };
+
         std::string sError;
         pwallet->ProcessStakingSettings(sError);
 

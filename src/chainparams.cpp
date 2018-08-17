@@ -402,7 +402,7 @@ public:
         consensus.nGhostnodeInitialize = 600;
 
         // POS params
-        consensus.OpIsCoinstakeTime = 0; //always active
+        consensus.OpIsCoinstakeTime = 9999999999; //always active
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 501;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes

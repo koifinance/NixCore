@@ -6,6 +6,7 @@
 #define BITCOIN_QT_ASKPASSPHRASEDIALOG_H
 
 #include <QDialog>
+#include <QLabel>
 
 class WalletModel;
 
@@ -23,16 +24,19 @@ public:
     enum Mode {
         Encrypt,    /**< Ask passphrase twice and encrypt */
         Unlock,     /**< Ask passphrase and unlock */
+        UnlockManual,
         ChangePass, /**< Ask old passphrase + new passphrase twice */
         Decrypt     /**< Ask passphrase and decrypt wallet */
     };
 
-    explicit AskPassphraseDialog(Mode mode, QWidget *parent);
+    explicit AskPassphraseDialog(Mode mode, QWidget *parent, QLabel *isStaking=nullptr);
     ~AskPassphraseDialog();
 
     void accept();
 
     void setModel(WalletModel *model);
+
+    QLabel* _isStaking;
 
 private:
     Ui::AskPassphraseDialog *ui;
