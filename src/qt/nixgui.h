@@ -106,6 +106,8 @@ private:
     QAction *optionsAction;
     QAction *toggleHideAction;
     QAction *encryptWalletAction;
+    QAction *unlockWalletForStakingAction;
+    QAction *lockWalletAction;
     QAction *backupWalletAction;
     QAction *changePassphraseAction;
     QAction *aboutQtAction;
