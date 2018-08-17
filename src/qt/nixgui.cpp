@@ -437,8 +437,8 @@ void BitcoinGUI::createActions()
     if(walletFrame)
     {
         connect(encryptWalletAction, SIGNAL(triggered(bool)), walletFrame, SLOT(encryptWallet(bool)));
-        connect(unlockWalletForStakingAction, SIGNAL(triggered(bool)), walletFrame, SLOT(unlockForStaking(bool)));
-        connect(lockWalletAction, SIGNAL(triggered(bool)), walletFrame, SLOT(lockWallet(bool)));
+        connect(unlockWalletForStakingAction, SIGNAL(triggered()), walletFrame, SLOT(unlockForStaking()));
+        connect(lockWalletAction, SIGNAL(triggered()), walletFrame, SLOT(lockWallet()));
         connect(backupWalletAction, SIGNAL(triggered()), walletFrame, SLOT(backupWallet()));
         connect(changePassphraseAction, SIGNAL(triggered()), walletFrame, SLOT(changePassphrase()));
         connect(signMessageAction, SIGNAL(triggered()), this, SLOT(gotoSignMessageTab()));
@@ -482,8 +482,8 @@ void BitcoinGUI::createMenuBar()
     if(walletFrame)
     {
         settings->addAction(encryptWalletAction);
-        settings->addAction(unlockWalletForStakingAction);
         settings->addAction(lockWalletAction);
+        settings->addAction(unlockWalletForStakingAction);
         settings->addAction(changePassphraseAction);
         settings->addSeparator();
     }

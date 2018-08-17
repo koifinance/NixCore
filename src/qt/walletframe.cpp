@@ -172,6 +172,20 @@ void WalletFrame::encryptWallet(bool status)
         walletView->encryptWallet(status);
 }
 
+void WalletFrame::unlockForStaking()
+{
+    WalletView *walletView = currentWalletView();
+    if (walletView)
+        walletView->unlockWallet(true);
+}
+
+void WalletFrame::lockWallet()
+{
+    WalletView *walletView = currentWalletView();
+    if (walletView)
+        walletView->lockWallet();
+}
+
 void WalletFrame::backupWallet()
 {
     WalletView *walletView = currentWalletView();

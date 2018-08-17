@@ -95,6 +95,9 @@ public Q_SLOTS:
 
     void gotoGhostnodePage();
     void gotoGhostVaultPage();
+
+    void unlockForStaking();
+    void lockWallet();
 };
 
 #endif // BITCOIN_QT_WALLETFRAME_H
