@@ -186,8 +186,8 @@ void AskPassphraseDialog::accept()
         else
         {
             if(_isStaking != nullptr){
-            _isStaking->setStyleSheet("color: green;");
-            _isStaking->setText("Enabled");
+                _isStaking->setStyleSheet("color: green;");
+                _isStaking->setText("Enabled");
             }
             QDialog::accept(); // Success
         }

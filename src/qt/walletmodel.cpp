@@ -602,8 +602,13 @@ WalletModel::UnlockContext WalletModel::requestUnlock()
         // Request UI to unlock wallet
         Q_EMIT requireUnlock();
     }
+
+    if(was_unlocked_for_staking){
+        Q_EMIT message(tr("Send Failed"), tr("You cannot send a transaction when the wallet is unlocked for staking.\nLock the wallet and try again."), CClientUIInterface::MSG_ERROR);
+
+    }
     // If wallet is still locked, unlock was failed or cancelled, mark context as invalid
-    bool valid = getEncryptionStatus() != Locked;
+    bool valid = getEncryptionStatus() != Locked && !was_unlocked_for_staking;
 
     return UnlockContext(this, valid, was_locked, was_unlocked_for_staking);
 }
