@@ -253,7 +253,7 @@ public:
         strNetworkID = "test";
         consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0; // 00000000040b4e986385315e14bee30ad876d8b47f748025b26683116d21aa65
-        consensus.BIP34Height = 0;
+        consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41");
         consensus.BIP65Height = 0; // 00000000007f6655f22f98e72ed80d8b06dc761d5da09df0fa1dc4be4f861eb6
         consensus.BIP66Height = 0; // 000000002104c8c45e99a8853285a3b592602a3ccde2b832481da85e9e4ba182
@@ -374,7 +374,7 @@ public:
         strNetworkID = "regtest";
         consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0; // always enforce P2SH BIP16 on regtest
-        consensus.BIP34Height = 0; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
+        consensus.BIP34Height = 1; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
         consensus.BIP34Hash = uint256();
         consensus.BIP65Height = 0; // BIP65 activated on regtest (Used in rpc activation tests)
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in rpc activation tests)
@@ -403,6 +403,7 @@ public:
 
         // POS params
         consensus.OpIsCoinstakeTime = 9999999999; //always active
+        //consensus.OpIsCoinstakeTime = 0; //always active
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 501;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes

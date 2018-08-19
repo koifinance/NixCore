@@ -2039,13 +2039,13 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     return 0;
 }
 
-CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
+CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
 {
     if (pwallet == nullptr)
         return 0;
 
     // Must wait until coinbase is safely deep enough in the chain before valuing it
-    if (IsCoinBase() && GetBlocksToMaturity() > 0)
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
         return 0;
 
     if (fUseCache && fAvailableCreditCached)
@@ -2058,9 +2058,28 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache) const
         if (!pwallet->IsSpent(hashTx, i))
         {
             const CTxOut &txout = tx->vout[i];
-            nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
-            if (!MoneyRange(nCredit))
-                throw std::runtime_error(std::string(__func__) + " : value out of range");
+
+            const CScript pscriptPubKey = txout.scriptPubKey;
+
+            CTxDestination dest;
+            if (!ExtractDestination(pscriptPubKey, dest))
+                continue;
+
+            //only check p2sh balances for staking
+            if(fForStaking){
+                if(boost::get<CScriptID>(&dest)){
+                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
+                    if (!MoneyRange(nCredit))
+                        throw std::runtime_error(std::string(__func__) + " : value out of range");
+                }
+                else
+                    continue;
+            }
+            else{
+                nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
+                if (!MoneyRange(nCredit))
+                    throw std::runtime_error(std::string(__func__) + " : value out of range");
+            }
         }
     }
 
@@ -5595,7 +5614,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
         list <CZerocoinEntry> listPubCoin = list<CZerocoinEntry>();
         CWalletDB walletdb(*dbw);
         walletdb.ListPubCoin(listPubCoin);
-        LogPrintf("listPubCoin.size()=%s\n", listPubCoin.size());
+        //LogPrintf("listPubCoin.size()=%s\n", listPubCoin.size());
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it) {
             const CWalletTx *pcoin = &(*it).second;
 //            LogPrintf("pcoin=%s\n", pcoin->GetHash().ToString());
@@ -5619,7 +5638,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
                 LogPrintf("nDepth=%s\n", nDepth);
                 continue;
             }
-            LogPrintf("pcoin->vout.size()=%s\n", pcoin->tx->vout.size());
+            //LogPrintf("pcoin->vout.size()=%s\n", pcoin->tx->vout.size());
 
             for (unsigned int i = 0; i < pcoin->tx->vout.size(); i++) {
                 if (pcoin->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
@@ -9675,7 +9694,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
         LOCK2(cs_main, cs_wallet);
 
         int nHeight = chainActive.Tip()->nHeight;
-        int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(nHeight / 2));
+        int nRequiredDepth = std::min(COINBASE_MATURITY + 1, (int)(nHeight / 2));
 
         for (MapWallet_t::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
@@ -9715,7 +9734,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                         vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
                 }
                 */
-                else if(boost::get<CScriptID>(&dest)){
+                if(boost::get<CScriptID>(&dest)){
                     const CScriptID& destScriptID = boost::get<CScriptID>(dest);
                     if (HaveCScript(destScriptID))
                         vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
@@ -9842,10 +9861,6 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             {
                 spendId = CKeyID(uint160(vSolutions[0]));
             }
-            else if (whichType == TX_PUBKEYHASH256)
-            {
-                spendId = CKeyID(uint256(vSolutions[0]));
-            }
             */
             if(whichType == TX_SCRIPTHASH){
                 if (vSolutions[0].size() == 20)
@@ -9867,7 +9882,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 break;  // unable to find corresponding key
             }
             */
-            if((whichType == TX_SCRIPTHASH) && !GetKey(GetKeyForDestination(*pw, idScript), key)){
+            if(!GetKey(GetKeyForDestination(*pw, idScript), key)){
                 LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
                 break;  // unable to find corresponding key
             }
@@ -10055,7 +10070,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
     }
 
-    //Push dev block reward of 0.07% based on coinbase rewards
+    //Push dev block reward of 7% based on coinbase rewards
     txNew.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
     txNew.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
 
@@ -10228,7 +10243,7 @@ CAmount CWallet::GetStakeableBalance() const
         const CWalletTx* pcoin = &(*it).second;
         if (!pcoin->IsTrusted())
             continue;
-        nBalance += pcoin->GetAvailableCredit();
+        nBalance += pcoin->GetAvailableCredit(true, true);
     };
 
     return nBalance;

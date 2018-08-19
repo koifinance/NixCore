@@ -252,7 +252,9 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[0].nValue == 3800000*COIN))
+    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[0].nValue == 380000*COIN))
+        nHeight = 1;
+    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[1].nValue == 380000*COIN))
         nHeight = 1;
     if(nHeight == INT_MAX)
         nHeight = 2;

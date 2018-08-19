@@ -1195,7 +1195,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         labelWalletEncryptionIcon->show();
         labelWalletEncryptionIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
-        labelWalletEncryptionIcon->setStyleSheet("background-color: rgba(255, 165, 0, 0);");
+        labelWalletEncryptionIcon->setStyleSheet("");
         encryptWalletAction->setChecked(true);
         unlockWalletForStakingAction->setChecked(true);
         lockWalletAction->setChecked(false);
@@ -1207,7 +1207,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
     case WalletModel::UnlockedForStaking:
         labelWalletEncryptionIcon->show();
         labelWalletEncryptionIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-        labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b> for staking only"));
+        labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b> for <b>staking only</b>"));
         labelWalletEncryptionIcon->setStyleSheet("background-color: rgba(124, 252, 0, 255);");
         encryptWalletAction->setChecked(true);
         unlockWalletForStakingAction->setChecked(true);
@@ -1221,7 +1221,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         labelWalletEncryptionIcon->show();
         labelWalletEncryptionIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/lock_closed").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
         labelWalletEncryptionIcon->setToolTip(tr("Wallet is <b>encrypted</b> and currently <b>locked</b>"));
-        labelWalletEncryptionIcon->setStyleSheet("background-color: rgba(255, 165, 0, 0);");
+        labelWalletEncryptionIcon->setStyleSheet("");
         encryptWalletAction->setChecked(true);
         unlockWalletForStakingAction->setChecked(false);
         lockWalletAction->setChecked(true);
