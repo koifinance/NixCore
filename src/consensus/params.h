@@ -59,7 +59,10 @@ struct Params {
     /** Block height at which BIP66 becomes active */
     int BIP66Height;
     /** Time at which OP_ISCOINSTAKE becomes active */
-    int64_t OpIsCoinstakeTime;
+    int64_t nPosTimeActivation;
+
+    int nPosHeightActivate;
+
     bool fAllowOpIsCoinstakeWithP2PKH;
 
     /**

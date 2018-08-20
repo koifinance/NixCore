@@ -371,6 +371,10 @@ public:
         return true;
     }
 
+    bool IsProofOfStakeHeightActive(int Height){
+        return nHeight >= Height;
+    }
+
     static constexpr int nMedianTimeSpan = 11;
 
     int64_t GetMedianTimePast() const
@@ -479,7 +483,7 @@ public:
         READWRITE(spentSerials);
 
         //POS params
-        if(IsProofOfStake()){
+        if(IsProofOfStakeHeightActive(26)){
             READWRITE(nFlags);
             READWRITE(bnStakeModifier);
             READWRITE(prevoutStake);

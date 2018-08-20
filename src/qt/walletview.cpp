@@ -21,6 +21,7 @@
 #include <qt/ghostnode.h>
 #include <qt/ghostvault.h>
 #include <timedata.h>
+#include <validation.h>
 
 #include <ui_interface.h>
 
@@ -297,7 +298,9 @@ void WalletView::unlockWallet(bool iconClicked)
         || (!iconClicked && walletModel->getEncryptionStatus() == WalletModel::UnlockedForStaking))
     {
         AskPassphraseDialog dlg(
-            iconClicked ? AskPassphraseDialog::UnlockManual : AskPassphraseDialog::Unlock, this, (GetAdjustedTime() >= Params().GetConsensus().OpIsCoinstakeTime) ? overviewPage->isStaking: nullptr);
+            iconClicked ? AskPassphraseDialog::UnlockManual : AskPassphraseDialog::Unlock, this,
+            (GetAdjustedTime() >= Params().GetConsensus().nPosTimeActivation || chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate)
+            ? overviewPage->isStaking: nullptr);
         dlg.setModel(walletModel);
         dlg.exec();
     }

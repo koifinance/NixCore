@@ -4875,7 +4875,7 @@ UniValue walletsettings(const JSONRPCRequest &request)
                         throw JSONRPCError(RPC_INVALID_PARAMETER, _("Wallet must have a default account set."));
 
                     const Consensus::Params& consensusParams = Params().GetConsensus();
-                    if (GetAdjustedTime() < consensusParams.OpIsCoinstakeTime)
+                    if (GetAdjustedTime() < consensusParams.nPosTimeActivation && chainActive.Height() < consensusParams.nPosHeightActivate)
                         throw JSONRPCError(RPC_INVALID_PARAMETER, _("OpIsCoinstake is not active yet."));
                 } else
                 {

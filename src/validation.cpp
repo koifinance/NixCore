@@ -3651,7 +3651,7 @@ static bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state,
     }
 
     // Check proof of work matches claimed amount
-    if(GetAdjustedTime() < consensusParams.OpIsCoinstakeTime){
+    if(nHeight < consensusParams.nPosHeightActivate){
         if (fCheckPOW && !CheckProofOfWork(block.GetPoWHash(nHeight), block.nBits, consensusParams))
             return state.DoS(50, false, REJECT_INVALID, "high-hash", false, "proof of work failed");
     }
@@ -3800,6 +3800,9 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         if (!CheckBlockSignature(block))
             return state.DoS(100, false, REJECT_INVALID, "bad-block-signature", false, "bad block signature");
     }
+    else if(!block.IsProofOfStake() && nHeight >= Params().GetConsensus().nPosHeightActivate){
+        return state.DoS(100, false, REJECT_INVALID, "bad-pos-switch", false, "bad pow block");
+    }
     else{
         // First transaction must be coinbase, the rest must not be
         if (block.vtx.empty() || !block.vtx[0]->IsCoinBase())
@@ -3935,7 +3938,7 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationSta
 
     // Check proof of work
     const Consensus::Params& consensusParams = params.GetConsensus();
-    if (GetAdjustedTime() >= consensusParams.OpIsCoinstakeTime)
+    if (nHeight >= consensusParams.nPosHeightActivate)
     {
         // Check proof-of-stake
         if (block.nBits != GetNextTargetRequired(pindexPrev))
@@ -4005,7 +4008,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
     if (block.IsProofOfStake())
     {
         // Limit the number of outputs in a coinstake
-        if (GetAdjustedTime() >= consensusParams.OpIsCoinstakeTime)
+        if (nHeight >= consensusParams.nPosHeightActivate)
         {
             if (block.vtx[0]->vout.size() > 6)
                 return state.DoS(100, false, REJECT_INVALID, "bad-cs-outputs", false, "Too many outputs in coinstake");

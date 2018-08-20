@@ -155,7 +155,8 @@ public:
         consensus.nGhostnodeInitialize = 800; //~24 hours after mainnet release
 
         // POS params
-        consensus.OpIsCoinstakeTime = 1600000000;
+        consensus.nPosTimeActivation = 1600000000;
+        consensus.nPosHeightActivate = 25;
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 501;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
@@ -402,8 +403,8 @@ public:
         consensus.nGhostnodeInitialize = 600;
 
         // POS params
-        consensus.OpIsCoinstakeTime = 9999999999; //always active
-        //consensus.OpIsCoinstakeTime = 0; //always active
+        consensus.nPosTimeActivation = 9999999999; //always active
+        consensus.nPosHeightActivate = 26;
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 501;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
