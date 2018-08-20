@@ -5109,7 +5109,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
 
                 //min fee value of 0.01
                 //add 0.25% tx fee to all ghostprotocol transaction
-                int64_t nMinFee = (nValue * 0.0025) > 0.01 ? (nValue * 0.0025) : 0.01;
+                int64_t nMinFee = (nValue * (int64_t)0.0025) > (int64_t)0.01 ? (nValue * (int64_t)0.0025) : (int64_t)0.01;
 
                 if (nFeeNeeded < nMinFee) {
                     nFeeNeeded = nMinFee;
@@ -10125,9 +10125,9 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     //check for zerocoin mints, start after coinbase
     if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
         for(int i = 1; i < pblock->vtx.size(); i++){
-            if(pblock->vtx[i]->IsZerocoinMint(pblock->vtx[i])){
+            if(pblock->vtx[i]->IsZerocoinMint(*pblock->vtx[i])){
                 //scrape fees payouts, 0.25% or minimum of 0.01 coins
-                nGhostFees =  (pblock->vtx[i]->GetValueOut() * 0.0025) > 0.01 ? (pblock->vtx[i]->GetValueOut() * 0.0025) : 0.01;
+                nGhostFees =  (pblock->vtx[i]->GetValueOut() * (int64_t)0.0025) > (int64_t)0.01 ? (pblock->vtx[i]->GetValueOut() * (int64_t)0.0025) : (int64_t)0.01;
             }
         }
     }
