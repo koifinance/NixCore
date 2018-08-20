@@ -511,7 +511,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
             if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
                 if(MAX_SPEND_ZC_TX_PER_BLOCK >= COUNT_SPEND_ZC_TX)
                     AddToBlock(sortedEntries[i]);
-                COUNT_SPEND_ZC_TX++;
+                //COUNT_SPEND_ZC_TX++;
             }
             else{
                 if (packageFees < blockMinFeeRate.GetFee(packageSize)) {

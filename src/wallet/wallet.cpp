@@ -9788,7 +9788,7 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHe
     return true;
 }
 
-bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key, CBlockTemplate *pblocktemplate)
+bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key, CBlockTemplate *pblocktemplate, int64_t nGhostFees)
 {
     CBlockIndex *pindexPrev = chainActive.Tip();
     arith_uint256 bnTargetPerCoinDay;
@@ -10075,9 +10075,9 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     txNew.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
-    //Push ghostnode reward
+    //Push ghostnode reward with ghost fees
     if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0) + nGhostFees;
         FillBlockPayments(txNew, chainActive.Height(), ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
 
@@ -10120,6 +10120,24 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     int64_t nFees = -pblocktemplate->vTxFees[0];
     CBlockIndex *pindexPrev = chainActive.Tip();
 
+    int64_t nGhostFees = 0;
+
+    //check for zerocoin mints, start after coinbase
+    if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
+        for(int i = 1; i < pblock->vtx.size(); i++){
+            if(pblock->vtx[i]->IsZerocoinMint(pblock->vtx[i])){
+                //scrape fees payouts, 0.25% or minimum of 0.01 coins
+                nGhostFees =  (pblock->vtx[i]->GetValueOut() * 0.0025) > 0.01 ? (pblock->vtx[i]->GetValueOut() * 0.0025) : 0.01;
+            }
+        }
+    }
+    if(nGhostFees > nFees){
+        LogPrintf("\nCWallet::SignBlock() ERROR: nGhostFees not able to payout, reverting to 0, nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
+        nGhostFees = 0;
+    }
+    else
+        nFees =- nGhostFees;
+
     CKey key;
     pblock->nVersion = ComputeBlockVersion(pindexPrev, Params().GetConsensus());
     // pblock->nVersion = NIX_BLOCK_VERSION;
@@ -10127,7 +10145,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     LogPrint(BCLog::POS, "%s, nBits %d\n", __func__, pblock->nBits);
 
     CMutableTransaction txCoinStake;
-    if (CreateCoinStake(pblock->nBits, nSearchTime, nHeight, nFees, txCoinStake, key, pblocktemplate))
+    if (CreateCoinStake(pblock->nBits, nSearchTime, nHeight, nFees, txCoinStake, key, pblocktemplate, nGhostFees))
     {
         LogPrint(BCLog::POS, "%s: Kernel found.\n", __func__);
 

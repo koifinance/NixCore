@@ -2443,11 +2443,30 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(), MILLI * (nTime3 - nTime2), MILLI * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : MILLI * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * MICRO, nTimeConnect * MILLI / nBlocksTotal);
 
+    CAmount nGhostFees = 0;
+
     CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
 
     if (block.IsProofOfStake()) // check payment information on staked blocks
     {
         CTransactionRef txCoinstake = block.vtx[0];
+
+        //check zerocoin mints for fees, start after coinstake
+        if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
+            for(int i = 1; i < block.vtx.size(); i++){
+                if(block.vtx[i]->IsZerocoinMint(*block.vtx[i])){
+                    //scrape fees payouts, 0.25% or minimum of 0.01 coins
+                    nGhostFees =  (block.vtx[i]->GetValueOut() * 0.0025) > 0.01 ? (block.vtx[i]->GetValueOut() * 0.0025) : 0.01;
+                }
+            }
+        }
+
+        if(nGhostFees > nFees){
+            LogPrintf("\nConnectBlock() ERROR: nGhostFees not able to payout, reverting to 0, nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
+            nGhostFees = 0;
+        }
+        else
+            nFees =- nGhostFees;
 
         //less than 4 outputs misses development fund and or ghostnode payments
         if(txCoinstake->vout.size() < 3)
@@ -2508,13 +2527,15 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
 
         found_1 = false;
+        CAmount ghostnodeReward = (int64_t)(GHOSTNODE_REWARD * GetBlockSubsidy(nHeight, Params().GetConsensus()));
         //check ghostnode payout,
         if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
             found_1 = true;
         }
         else{
             BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
-                if (output.nValue == (int64_t)(GHOSTNODE_REWARD * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                //check that ghostnode reward is in range
+                if (output.nValue >= ghostnodeReward && output.nValue <= ghostnodeReward + nGhostFees) {
                     found_1 = true;
                 }
             }
