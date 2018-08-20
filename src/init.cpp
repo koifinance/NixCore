@@ -1997,7 +1997,7 @@ bool AppInitMain()
     flatdb4.Load(netfulfilledman);
 
 
-    // ********************************************************* Step 11c: update block tip in Dash modules
+    // ********************************************************* Step 11c: update block tip in nix modules
 
 
     mnodeman.UpdatedBlockTip(chainActive.Tip());
@@ -2011,7 +2011,9 @@ bool AppInitMain()
 
 
     // ********************************************************* Step 11e: start staking
-    if(GetAdjustedTime() >= Params().GetConsensus().nPosTimeActivation || chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate){
+
+    //do not allow ghostnodes to run staking threads to avoid bandwidth issues
+    if((GetAdjustedTime() >= Params().GetConsensus().nPosTimeActivation || chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate) && !fGhostNode){
         #ifdef ENABLE_WALLET
         nMinStakeInterval = gArgs.GetArg("-minstakeinterval", 0);
         nMinerSleep = gArgs.GetArg("-minersleep", 500);
