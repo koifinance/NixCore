@@ -242,14 +242,15 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
 
     //We need to account for noninput i.e. coinbase creation for devfund and ghostnodes
     const CAmount value_out= tx.GetValueOut();
-    nValueIn += DEVELOPMENT_REWARD * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
-
-    if (chainActive.Height() >= pParams()->GetConsensus().nGhostnodePaymentsStartBlock) {
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
-        nValueIn += ghostnodePayment;
-    }
 
     if(tx.IsCoinStake()){
+
+        nValueIn += DEVELOPMENT_REWARD * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
+
+        if (chainActive.Height() >= pParams()->GetConsensus().nGhostnodePaymentsStartBlock) {
+            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
+            nValueIn += ghostnodePayment;
+        }
 
         // Return stake reward in nTxFee
         txfee = value_out - nValueIn;
