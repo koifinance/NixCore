@@ -36,7 +36,7 @@ CCriticalSection cs_mapGhostnodePaymentVotes;
 bool IsBlockValueValid(const CBlock &block, int nBlockHeight, CAmount blockReward, std::string &strErrorRet) {
     strErrorRet = "";
     bool isBlockRewardValueMet = block.vtx[0]->IsCoinStake() ? true :  (block.vtx[0]->GetValueOut() <= blockReward);
-    LogPrintf("IsBlockValueValid(): value-out=%llf, block-reward=%llf \n", block.vtx[0]->GetValueOut(), blockReward);
+    //LogPrintf("IsBlockValueValid(): value-out=%llf, block-reward=%llf \n", block.vtx[0]->GetValueOut(), blockReward);
     //if (fDebug) //LogPrint("block.vtx[0].GetValueOut() %lld <= blockReward %lld\n", block.vtx[0]->GetValueOut(), blockReward);
 
 
