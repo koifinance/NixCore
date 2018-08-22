@@ -2456,7 +2456,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             for(int i = 1; i < block.vtx.size(); i++){
                 if(block.vtx[i]->IsZerocoinMint(*block.vtx[i])){
                     //scrape fees payouts, 0.25% or minimum of 0.01 coins
-                    nGhostFees =  (block.vtx[i]->GetValueOut() * (int64_t)0.0025) > (int64_t)0.01 ? (block.vtx[i]->GetValueOut() * (int64_t)0.0025) : (int64_t)0.01;
+                    nGhostFees =  ((block.vtx[i]->GetValueOut() * 0.0025) > 0.01) ? (block.vtx[i]->GetValueOut() * 0.0025) : 0.01;
                 }
             }
         }

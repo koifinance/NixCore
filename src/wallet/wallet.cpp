@@ -486,7 +486,8 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, _vMasterKey))
                 continue; // try another master key
             if (CCryptoKeyStore::Unlock(_vMasterKey)){
-                WakeThreadStakeMiner(this);
+                if(this->fUnlockForStakingOnly)
+                    WakeThreadStakeMiner(this);
                 return true;
             }
         }
@@ -4803,6 +4804,106 @@ bool CWallet::CreateZerocoinMintModel(string &stringError, string denomAmount) {
     }
 }
 
+bool CWallet::CreateZerocoinMintModelBatch(string &stringError, vector <string> denomAmount) {
+
+    int64_t nAmount = 0;
+    libzerocoin::CoinDenomination denomination;
+    vector <CScript> scriptBatch;
+    vector <int64_t> nAmountBatch;
+    vector <libzerocoin::PrivateCoin> privCoinBatch;
+    vector <libzerocoin::PublicCoin> pubCoinBatch;
+
+    //Batch zerocoins
+    for(auto denomAmountString: denomAmount){
+        // Amount
+        if (denomAmountString == "1") {
+            denomination = libzerocoin::ZQ_ONE;
+            nAmount = roundint64(1 * COIN);
+        } else if (denomAmountString == "5") {
+            denomination = libzerocoin::ZQ_FIVE;
+            nAmount = roundint64(5 * COIN);
+        } else if (denomAmountString == "10") {
+            denomination = libzerocoin::ZQ_TEN;
+            nAmount = roundint64(10 * COIN);
+        } else if (denomAmountString == "50") {
+            denomination = libzerocoin::ZQ_FIFTY;
+            nAmount = roundint64(50 * COIN);
+        } else if (denomAmountString == "100") {
+            denomination = libzerocoin::ZQ_ONE_HUNDRED;
+            nAmount = roundint64(100 * COIN);
+        }  else if (denomAmountString == "500") {
+            denomination = libzerocoin::ZQ_FIVE_HUNDRED;
+            nAmount = roundint64(500 * COIN);
+        } else if (denomAmountString == "1000") {
+            denomination = libzerocoin::ZQ_ONE_THOUSAND;
+            nAmount = roundint64(1000 * COIN);
+        } else if (denomAmountString == "5000") {
+            denomination = libzerocoin::ZQ_FIVE_THOUSAND;
+            nAmount = roundint64(5000 * COIN);
+        } else {
+            return false;
+        }
+
+        // Set up the Zerocoin Params object
+        libzerocoin::Params *zcParams = ZCParams;
+
+        int mintVersion = 1;
+
+        // The following constructor does all the work of minting a brand
+        // new zerocoin. It stores all the private values inside the
+        // PrivateCoin object. This includes the coin secrets, which must be
+        // stored in a secure location (wallet) at the client.
+        libzerocoin::PrivateCoin newCoin(zcParams, denomination, mintVersion);
+
+        // Get a copy of the 'public' portion of the coin. You should
+        // embed this into a Zerocoin 'MINT' transaction along with a series
+        // of currency inputs totaling the assigned value of one zerocoin.
+        libzerocoin::PublicCoin pubCoin = newCoin.getPublicCoin();
+
+        // Validate
+        if (pubCoin.validate()) {
+            //TODOS
+            CScript scriptSerializedCoin =
+                    CScript() << OP_ZEROCOINMINT << pubCoin.getValue().getvch().size() << pubCoin.getValue().getvch();
+
+
+            privCoinBatch.push_back(newCoin);
+            pubCoinBatch.push_back(pubCoin);
+            scriptBatch.push_back(scriptSerializedCoin);
+            nAmountBatch.push_back(nAmount);
+
+        } else {
+            return false;
+        }
+    }
+
+    // Wallet comments
+    CWalletTx wtx;
+
+    stringError = MintZerocoinBatch(scriptBatch, nAmountBatch, wtx);
+
+    if (stringError != "")
+        return false;
+
+    for(int i = 0; i < nAmountBatch.size(); i++){
+        const unsigned char *ecdsaSecretKey = privCoinBatch[i].getEcdsaSeckey();
+        CZerocoinEntry zerocoinTx;
+        zerocoinTx.IsUsed = false;
+        zerocoinTx.denomination = denomination;
+        zerocoinTx.value = pubCoinBatch[i].getValue();
+        zerocoinTx.randomness = privCoinBatch[i].getRandomness();
+        zerocoinTx.serialNumber = privCoinBatch[i].getSerialNumber();
+        zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
+        LogPrintf("CreateZerocoinMintModel() -> NotifyZerocoinChanged\n");
+        LogPrintf("pubcoin=%s, isUsed=%s\n", zerocoinTx.value.GetHex(), zerocoinTx.IsUsed);
+        LogPrintf("randomness=%s, serialNumber=%s\n", zerocoinTx.randomness.ToString(), zerocoinTx.serialNumber.ToString());
+        NotifyZerocoinChanged(this, zerocoinTx.value.GetHex(), zerocoinTx.denomination, zerocoinTx.IsUsed ? "Used" : "New", CT_NEW);
+        if (!CWalletDB(*dbw).WriteZerocoinEntry(zerocoinTx))
+            return false;
+        return true;
+    }
+}
+
 bool CWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount, string toAddr) {
 
     int64_t nAmount = 0;
@@ -5109,7 +5210,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
 
                 //min fee value of 0.01
                 //add 0.25% tx fee to all ghostprotocol transaction
-                int64_t nMinFee = (nValue * (int64_t)0.0025) > (int64_t)0.01 ? (nValue * (int64_t)0.0025) : (int64_t)0.01;
+                int64_t nMinFee = ((nValue * 0.0025) > 0.01) ? (nValue * 0.0025) : 0.01;
 
                 if (nFeeNeeded < nMinFee) {
                     nFeeNeeded = nMinFee;
@@ -5183,6 +5284,19 @@ bool CWallet::CreateZerocoinMintTransaction(CScript pubCoin, int64_t nValue, CWa
     vector <CRecipient> vecSend;
     CRecipient recipient = {pubCoin, nValue, false};
     vecSend.push_back(recipient);
+    int nChangePosRet = -1;
+    return CreateZerocoinMintTransaction(vecSend, wtxNew, reservekey, nFeeRet, nChangePosRet, strFailReason,
+                                         coinControl);
+}
+
+bool CWallet::CreateZerocoinMintTransactionBatch(vector <CScript> pubCoin, vector <int64_t> nValue, CWalletTx &wtxNew, CReserveKey &reservekey,
+                                       int64_t &nFeeRet, std::string &strFailReason,
+                                       const CCoinControl &coinControl) {
+    vector <CRecipient> vecSend;
+    for(int i = 0; i < pubCoin.size(); i++){
+        CRecipient recipient = {pubCoin[i], nValue[i], false};
+        vecSend.push_back(recipient);
+    }
     int nChangePosRet = -1;
     return CreateZerocoinMintTransaction(vecSend, wtxNew, reservekey, nFeeRet, nChangePosRet, strFailReason,
                                          coinControl);
@@ -5511,6 +5625,58 @@ string CWallet::MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx &wtxNew,
     if (!CreateZerocoinMintTransaction(pubCoin, nValue, wtxNew, reservekey, nFeeRequired, strError, coin_control)) {
         LogPrintf("nFeeRequired=%s\n", nFeeRequired);
         if (nValue + nFeeRequired > GetBalance())
+            return strprintf(
+                    _("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"),
+                    FormatMoney(nFeeRequired).c_str());
+        return strError;
+    }
+
+    if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired))
+        return "ABORTED";
+
+    CValidationState state;
+
+    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+        return _(
+                "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    } else {
+        LogPrintf("CommitTransaction success!\n");
+    }
+
+    return "";
+}
+
+string CWallet::MintZerocoinBatch(vector <CScript> pubCoinBatch, vector <int64_t> nValueBatch, CWalletTx &wtxNew, bool fAskFee) {
+    // Do not allow mint to take place until fully synced
+    // Temporary measure: we can remove this limitation when well after spend v1.5 HF block
+    if (fImporting || fReindex)// || !znodeSync.IsBlockchainSynced())
+        return _("Not fully synced yet");
+
+    int64_t nTotalValue = 0;
+    for(auto i: nValueBatch)
+        nTotalValue += i;
+
+    LogPrintf("MintZerocoinBatch: value = %s\n", nTotalValue);
+    // Check amount
+    if (nTotalValue <= 0)
+        return _("Invalid amount");
+    if ((nTotalValue * 1.0025)  > GetBalance())
+        return _("Insufficient funds");
+
+    CReserveKey reservekey(this);
+    int64_t nFeeRequired;
+
+    if (IsLocked()) {
+        string strError = _("Error: Wallet locked, unable to create transaction!");
+        LogPrintf("MintZerocoin() : %s", strError);
+        return strError;
+    }
+
+    string strError;
+    CCoinControl coin_control;
+    if (!CreateZerocoinMintTransactionBatch(pubCoinBatch, nValueBatch, wtxNew, reservekey, nFeeRequired, strError, coin_control)) {
+        LogPrintf("nFeeRequired=%s\n", nFeeRequired);
+        if (nTotalValue + nFeeRequired > GetBalance())
             return strprintf(
                     _("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"),
                     FormatMoney(nFeeRequired).c_str());
@@ -8593,17 +8759,19 @@ bool CWallet::GhostModeMintTrigger(string totalAmount){
     if (!MoneyRange(amount))
         return error("%s: Error: Amount out of range.", __func__);
 
+    vector<string> denominationBatch;
     //TODO: Create timer function to mint and recognize freshly finished mints to spend
     denomination = libzerocoin::AmountToClosestDenomination(amount, amount);
     while(denomination != libzerocoin::ZQ_ERROR){
-        if (this->IsLocked())
-            return error("%s: Error: The wallet needs to be unlocked.", __func__);
-        if(!CreateZerocoinMintModel(stringError, std::to_string((int)denomination)))
-            return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
         //amount = nRemaining;
+        denominationBatch.push_back(std::to_string((int)denomination));
         denomination = libzerocoin::AmountToClosestDenomination(amount * COIN, amount);
-
     }
+
+    if (this->IsLocked())
+        return error("%s: Error: The wallet needs to be unlocked.", __func__);
+    if(!CreateZerocoinMintModelBatch(stringError, denominationBatch))
+        return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
 
     return true;
 }
@@ -10127,7 +10295,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
         for(int i = 1; i < pblock->vtx.size(); i++){
             if(pblock->vtx[i]->IsZerocoinMint(*pblock->vtx[i])){
                 //scrape fees payouts, 0.25% or minimum of 0.01 coins
-                nGhostFees =  (pblock->vtx[i]->GetValueOut() * (int64_t)0.0025) > (int64_t)0.01 ? (pblock->vtx[i]->GetValueOut() * (int64_t)0.0025) : (int64_t)0.01;
+                nGhostFees =  ((pblock->vtx[i]->GetValueOut() * 0.0025) > 0.01) ? (pblock->vtx[i]->GetValueOut() * 0.0025) : 0.01;
             }
         }
     }

@@ -10,6 +10,7 @@
 class AddressTableModel;
 class OptionsModel;
 class PlatformStyle;
+class WalletModel;
 
 namespace Ui {
     class GhostVault;
@@ -40,6 +41,7 @@ public:
     ~GhostVault();
 
     void setModel(AddressTableModel *model);
+    void setWalletModel(WalletModel *walletmodel);
     const QString &getReturnValue() const { return returnValue; }
 
 //public Q_SLOTS:
@@ -48,6 +50,7 @@ public:
 private:
     Ui::GhostVault *ui;
     AddressTableModel *model;
+    WalletModel *walletModel;
     Mode mode;
     QString returnValue;
     QSortFilterProxyModel *proxyModel;

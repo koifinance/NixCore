@@ -1439,6 +1439,14 @@ public:
     bool CreateZerocoinMintModel(string &stringError, string denomAmount);
     bool CreateZerocoinSpendModel(string &stringError, string denomAmount, string toAddr="");
     bool SetZerocoinBook(const CZerocoinEntry& zerocoinEntry);
+
+    bool CreateZerocoinMintTransactionBatch(vector <CScript> pubCoinBatch, vector <int64_t> nValueBatch, CWalletTx &wtxNew, CReserveKey &reservekey,
+                                           int64_t &nFeeRet, std::string &strFailReason,
+                                           const CCoinControl &coinControl);
+
+    std::string MintZerocoinBatch(vector <CScript> pubCoinBatch, vector <int64_t> nValueBatch, CWalletTx &wtxNew, bool fAskFee=false);
+
+    bool CreateZerocoinMintModelBatch(string &stringError, vector <string> denomAmount);
     /**
      * Add ghost functions
      */
