@@ -1453,8 +1453,8 @@ public:
                                    bool &zcSelectedIsUsed);
 
     bool CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch,
-                                             CWalletTx &wtxNew, CReserveKey &reservekey, CBigNum &coinSerial,
-                                             uint256 &txHash, CBigNum &zcSelectedValue, bool &zcSelectedIsUsed,
+                                             CWalletTx &wtxNew, CReserveKey &reservekey, vector <CBigNum> &coinSerialBatch,
+                                             vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch, bool &zcSelectedIsUsed,
                                              std::string &strFailReason);
 
     bool CreateZerocoinSpendModelBatch(string &stringError, vector <string> denomAmountBatch, string toAddr);
