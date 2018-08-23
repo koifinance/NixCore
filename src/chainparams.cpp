@@ -412,9 +412,9 @@ public:
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 50;
+        consensus.nPosHeightActivate = 30;
         nModifierInterval = 10 * 60;    // 10 minutes
-        nStakeMinConfirmations = 501;   // 501 * 2 minutes
+        nStakeMinConfirmations = 2;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 

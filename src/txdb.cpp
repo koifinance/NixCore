@@ -447,7 +447,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
                 pindexNew->spentSerials       = diskindex.spentSerials;
 
                 //PoS
-                if(diskindex.IsProofOfStake()){
+                if(diskindex.IsProofOfStake() || Params().GetConsensus().nPosHeightActivate >= diskindex.nHeight){
                     pindexNew->nFlags                   = diskindex.nFlags;
                     pindexNew->bnStakeModifier          = diskindex.bnStakeModifier;
                     pindexNew->prevoutStake             = diskindex.prevoutStake;

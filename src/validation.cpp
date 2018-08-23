@@ -1892,9 +1892,17 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         return DISCONNECT_FAILED;
     }
 
-    if (blockUndo.vtxundo.size() + 1 != block.vtx.size()) {
-        error("DisconnectBlock(): block and undo data inconsistent");
-        return DISCONNECT_FAILED;
+    if(!block.IsProofOfStake()){
+        if (blockUndo.vtxundo.size() + 1 != block.vtx.size()) {
+            error("DisconnectBlock(): block and undo data inconsistent");
+            return DISCONNECT_FAILED;
+        }
+    }
+    else{
+        if (blockUndo.vtxundo.size() != block.vtx.size()) {
+            error("DisconnectBlock(): block and undo data inconsistent");
+            return DISCONNECT_FAILED;
+        }
     }
 
     // undo transactions in reverse order
@@ -1912,8 +1920,8 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                 bool is_spent = view.SpendCoin(out, &coin);
                 if (!is_spent || tx.vout[o] != coin.out || pindex->nHeight != coin.nHeight || is_coinbase != coin.fCoinBase) {
                     fClean = false; // transaction output mismatch
-                    LogPrintf("isSpent=%s, voutIsCoin=%s, sameHeight=%s, isCoinbase=%s \n", is_spent, tx.vout[o] != coin.out, pindex->nHeight != coin.nHeight, is_coinbase);
-                    LogPrintf("Error for vout: vout: %d, amount: %d", o, tx.vout[o].nValue);
+                    LogPrintf("\nisSpent=%s, voutIsCoin=%s, sameHeight=%d!=%d, isCoinbase=%s \n", is_spent, tx.vout[o] != coin.out, pindex->nHeight, coin.nHeight, is_coinbase);
+                    LogPrintf("\nError for vout: vout: %d, amount: %d\n", o, tx.vout[o].nValue);
                 }
             }
         }
@@ -1949,10 +1957,10 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         }
 
         // restore inputs
-        if (i > 0 && !tx.IsZerocoinSpend()) { // not coinbases
-            CTxUndo &txundo = blockUndo.vtxundo[i-1];
+        if (!tx.IsCoinBase() && !tx.IsZerocoinSpend()) { // not coinbases
+            CTxUndo &txundo = blockUndo.vtxundo[tx.IsCoinStake() ? i: i-1];
             if (txundo.vprevout.size() != tx.vin.size()) {
-                error("DisconnectBlock(): transaction and undo data inconsistent");
+                error("DisconnectBlock(): transaction and undo data inconsistent %d, %d, %d \n", txundo.vprevout.size(), blockUndo.vtxundo[i].vprevout.size(), tx.vin.size());
                 return DISCONNECT_FAILED;
             }
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
@@ -2254,6 +2262,11 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // initial block download.
     bool fEnforceBIP30 = (!pindex->phashBlock);
 
+    if (block.IsProofOfStake())
+    {
+        fEnforceBIP30 = true;
+    }
+
     // Once BIP34 activated it was not possible to create new duplicate coinbases and thus other than starting
     // with the 2 existing duplicate coinbase pairs, not possible to create overwriting txs.  But by the
     // time BIP34 activated, in each of the existing pairs the duplicate coinbase had overwritten the first
@@ -2414,10 +2427,13 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
 
         CTxUndo undoDummy;
-        if (i > 0) {
+        if (!tx.IsCoinBase()) {
             blockundo.vtxundo.push_back(CTxUndo());
+            UpdateCoins(tx, view, blockundo.vtxundo.back(), pindex->nHeight);
         }
-        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
+        if(tx.IsCoinBase())
+            UpdateCoins(tx, view, undoDummy , pindex->nHeight);
+
 
 
         if (fAddressIndex)
