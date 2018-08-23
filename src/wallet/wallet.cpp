@@ -5713,17 +5713,11 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
         scriptChange = GetScriptForDestination(CBitcoinAddress(toKey).Get());
     }
 
-    int64_t totalAmount = 0;
-
     for(int i = 0; i < nValueBatch.size(); i++){
-        totalAmount += nValueBatch[i];
+        CTxOut newTxOut(nValueBatch[i], scriptChange);
+        txNew.vout.push_back(newTxOut);
+        txNewTemp.vout.push_back(newTxOut);
     }
-
-    CTxOut newTxOut(totalAmount, scriptChange);
-    // Insert change txn at random position:
-    txNew.vout.push_back(newTxOut);
-    txNewTemp.vout.push_back(newTxOut);
-
 
     //empty vins
     vector <int> coinIdBatch;

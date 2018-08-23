@@ -708,16 +708,19 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     }
 
     CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
-    CBigNum zcSpendSerial;
+    vector <CBigNum> zcSpendSerialBatch;
     // Check for conflicts with in-memory transactions
     std::set<uint256> setConflicts;
     if (tx.IsZerocoinSpend()) {
-        zcSpendSerial = ZerocoinGetSpendSerialNumber(tx);
-        if (!zcSpendSerial)
-            return state.Invalid(false, REJECT_INVALID, "txn-invalid-zerocoin-spend");
-        if (!zcState->CanAddSpendToMempool(zcSpendSerial)) {
-            LogPrintf("AcceptToMemoryPool(): serial number %s has been used\n", zcSpendSerial.ToString());
-            return state.Invalid(false, REJECT_INVALID, "txn-mempool-conflict");
+
+        for(int i = 0; i < tx.vin.size(); i++){
+            zcSpendSerialBatch.push_back(ZerocoinGetSpendSerialNumber(tx, i));
+            if (!zcSpendSerialBatch[i])
+                return state.Invalid(false, REJECT_INVALID, "txn-invalid-zerocoin-spend");
+            if (!zcState->CanAddSpendToMempool(zcSpendSerialBatch[i])) {
+                LogPrintf("AcceptToMemoryPool(): serial number %s has been used\n", zcSpendSerialBatch[i].ToString());
+                return state.Invalid(false, REJECT_INVALID, "txn-mempool-conflict");
+            }
         }
     }
     if(!tx.IsZerocoinSpend())
@@ -1139,8 +1142,10 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         }
     }
 
-    if (tx.IsZerocoinSpend())
-        zcState->AddSpendToMempool(zcSpendSerial, hash);
+    if (tx.IsZerocoinSpend()){
+        for(int i = 0; i < zcSpendSerialBatch.size(); i++)
+            zcState->AddSpendToMempool(zcSpendSerialBatch[i], hash);
+    }
 
     GetMainSignals().TransactionAddedToMempool(ptx);
 
@@ -2627,19 +2632,21 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
     BOOST_FOREACH(const CTransactionRef &tx, block.vtx) {
         if (tx->IsZerocoinSpend()) {
-            CBigNum zcSpendSerial = ZerocoinGetSpendSerialNumber(*tx);
-            uint256 thisTxHash = tx->GetHash();
-            uint256 conflictingTxHash = zcState->GetMempoolConflictingTxHash(zcSpendSerial);
-            if (!conflictingTxHash.IsNull() && conflictingTxHash != thisTxHash) {
-                auto pTx = mempool.get(conflictingTxHash);
-                if (pTx)
-                    mempool.removeRecursive(*pTx, MemPoolRemovalReason::BLOCK);
-                LogPrintf("ConnectBlock: removed conflicting zerocoin spend tx %s from the mempool\n",
-                          conflictingTxHash.ToString());
-            }
+            for(int i = 0; i < tx->vin.size(); i++){
+                CBigNum zcSpendSerial = ZerocoinGetSpendSerialNumber(*tx, i);
+                uint256 thisTxHash = tx->GetHash();
+                uint256 conflictingTxHash = zcState->GetMempoolConflictingTxHash(zcSpendSerial);
+                if (!conflictingTxHash.IsNull() && conflictingTxHash != thisTxHash) {
+                    auto pTx = mempool.get(conflictingTxHash);
+                    if (pTx)
+                        mempool.removeRecursive(*pTx, MemPoolRemovalReason::BLOCK);
+                    LogPrintf("ConnectBlock: removed conflicting zerocoin spend tx %s from the mempool\n",
+                              conflictingTxHash.ToString());
+                }
 
-            // In any case we need to remove serial from mempool set
-            zcState->RemoveSpendFromMempool(zcSpendSerial);
+                // In any case we need to remove serial from mempool set
+                zcState->RemoveSpendFromMempool(zcSpendSerial);
+            }
         }
     }
 
