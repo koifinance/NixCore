@@ -2475,10 +2475,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
         //less than 4 outputs misses development fund and or ghostnode payments
         if(txCoinstake->vout.size() < 3)
-            return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=4)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
+            return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=3)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
 
-        if(chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock && txCoinstake->vout.size() < 4)
-            return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=4)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
+        //if(chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock && txCoinstake->vout.size() < 4)
+            //return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=4)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
 
         CAmount nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) + ((DEVELOPMENT_REWARD + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
         blockReward = nCalculatedStakeReward;
@@ -2546,7 +2546,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
         }
 
-        if(!found_1){
+        if(!found_1 && txCoinstake->vout.size() > 3){
             return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
                              "CTransaction::CheckTransaction() : ghostnode reward missing");
         }
