@@ -31,7 +31,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex *pindexLast)
     unsigned int nProofOfWorkLimit;
     int nHeight = pindexLast ? pindexLast->nHeight+1 : 0;
 
-    if (GetAdjustedTime() < Params().GetConsensus().nPosTimeActivation || nHeight < Params().GetConsensus().nPosHeightActivate)
+    if (GetAdjustedTime() < Params().GetConsensus().nPosTimeActivation && nHeight < Params().GetConsensus().nPosHeightActivate)
     {
         return DarkGravityWave(pindexLast, consensus);
 
