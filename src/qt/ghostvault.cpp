@@ -123,11 +123,9 @@ void GhostVault::on_ghostNIXButton_clicked() {
             (walletModel->getWallet())->ListAvailableCoinsMintCoins(vCoins, true);
             int nAmount = 0;
             for(int i = 0; i < vCoins.size(); i++){
-                for (unsigned int j = 0; j < vCoins[i].tx->tx->vout.size(); j++) {
-                    if (vCoins[i].tx->tx->vout[j].scriptPubKey.IsZerocoinMint()) {
-                        nAmount += vCoins[i].tx->tx->vout[j].nValue/COIN;
+                    if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
+                        nAmount += vCoins[i].tx->tx->vout[vCoins[i].i].nValue/COIN;
                     }
-                }
             }
             ui->total->setText(QString::number(nAmount) + tr(" Ghosted NIX"));
             ui->convertNIXAmount->clear();

@@ -1958,7 +1958,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
 
         // restore inputs
         if (!tx.IsCoinBase() && !tx.IsZerocoinSpend()) { // not coinbases
-            CTxUndo &txundo = blockUndo.vtxundo[tx.IsCoinStake() ? i: i-1];
+            CTxUndo &txundo = blockUndo.vtxundo[block.IsProofOfStake() ? i: i-1];
             if (txundo.vprevout.size() != tx.vin.size()) {
                 error("DisconnectBlock(): transaction and undo data inconsistent %d, %d, %d \n", txundo.vprevout.size(), blockUndo.vtxundo[i].vprevout.size(), tx.vin.size());
                 return DISCONNECT_FAILED;
@@ -3872,21 +3872,24 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     }
 
     /* Check for Ghostprotocol fee payment in block */
+    /*
     if(nHeight != INT_MAX && nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock && blockHasMint){
         int i = 0;
         for (const auto& tx : block.vtx){
-            if(!tx->IsCoinBase())
+            if(!tx->IsCoinBase() && !tx->IsCoinStake())
                 continue;
             BOOST_FOREACH(const CTxOut &output, tx->vout) {
                 i++;
             }
         }
         //pay to 10+ recipients
-        if(i < 10){
+        //Limit to 1 node for now
+        if(i < 1){
             return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
                              "CTransaction::CheckTransaction() : invalid ghostnode fee payment");
         }
     }
+    */
 
     block.zerocoinTxInfo->Complete();
 
