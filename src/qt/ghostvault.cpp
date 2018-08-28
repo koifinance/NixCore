@@ -47,15 +47,8 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
 
     ui->convertNIXAmount->clear();
 
-    std::vector <COutput> vCoins;
-    vpwallets.front()->ListAvailableCoinsMintCoins(vCoins, true);
-    int nAmount = 0;
-    for(int i = 0; i < vCoins.size(); i++){
-            if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
-                nAmount += vCoins[i].tx->tx->vout[vCoins[i].i].nValue/COIN;
-            }
-    }
-    ui->total->setText(QString::number(nAmount) + tr(" Ghosted NIX"));
+    ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+    ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
 
     // Build context menu
     contextMenu = new QMenu(this);
@@ -144,16 +137,10 @@ void GhostVault::on_ghostNIXButton_clicked() {
                                           tr("You have successfully ghosted NIX from your wallet"),
                                           QMessageBox::Ok, QMessageBox::Ok);
 
-            std::vector <COutput> vCoins;
-            (walletModel->getWallet())->ListAvailableCoinsMintCoins(vCoins, true);
-            int nAmount = 0;
-            for(int i = 0; i < vCoins.size(); i++){
-                    if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
-                        nAmount += vCoins[i].tx->tx->vout[vCoins[i].i].nValue/COIN;
-                    }
-            }
 
-            ui->total->setText(QString::number(nAmount) + tr(" Ghosted NIX"));
+            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
+            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+
             ui->convertNIXAmount->clear();
             ui->ghostAmount->clear();
         }
@@ -222,15 +209,10 @@ void GhostVault::on_convertGhostButton_clicked() {
             QMessageBox::information(this, tr("Success"),
                                           tr("You have successfully converted your ghosted NIX from your wallet"),
                                           QMessageBox::Ok, QMessageBox::Ok);
-            std::vector <COutput> vCoins;
-            (walletModel->getWallet())->ListAvailableCoinsMintCoins(vCoins, true);
-            int nAmount = 0;
-            for(int i = 0; i < vCoins.size(); i++){
-                    if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
-                        nAmount += vCoins[i].tx->tx->vout[vCoins[i].i].nValue/COIN;
-                    }
-            }
-            ui->total->setText(QString::number(nAmount) + tr(" Ghosted NIX"));
+
+            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+
+            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
         }
 
         ui->convertGhostToThirdPartyAddress->clear();

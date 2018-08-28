@@ -21,6 +21,7 @@ static const int64_t MAX_BLOCK_SIGOPS_COST = 80000;
 static const int COINBASE_MATURITY = 2;  //testnet
 /** Ghostnode block percent */
 static const double GHOSTNODE_REWARD = 0.28;
+static const double GHOSTNODE_REWARD_POST_POS = 0.23;
 /** Development block percent */
 static const double DEVELOPMENT_REWARD = 0.07;
 

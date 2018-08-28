@@ -299,6 +299,13 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
                 continue;
             }
 
+            if (!pwallet->fUnlockForStakingOnly)
+            {
+                pwallet->nIsStaking = CWallet::NOT_STAKING_NOT_UNLOCKED_FOR_STAKING_ONLY;
+                nWaitFor = std::min(nWaitFor, (size_t)30000);
+                continue;
+            }
+
             if (pwallet->GetStakeableBalance() <= pwallet->nReserveBalance)
             {
                 pwallet->nIsStaking = CWallet::NOT_STAKING_BALANCE;

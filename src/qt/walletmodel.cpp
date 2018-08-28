@@ -104,7 +104,7 @@ CAmount WalletModel::getGhostBalanceUnconfirmed() const
 
 CAmount WalletModel::getStakeBalance() const
 {
-    return wallet->GetStakeableBalance();
+    return wallet->GetStakeWeight();
 }
 
 CAmount WalletModel::getReservedBalance() const

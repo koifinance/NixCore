@@ -4615,6 +4615,9 @@ UniValue getstakinginfo(const JSONRPCRequest &request)
         case CWallet::NOT_STAKING_LIMITED:
             obj.pushKV("cause", "limited");
             break;
+        case CWallet::NOT_STAKING_NOT_UNLOCKED_FOR_STAKING_ONLY:
+            obj.pushKV("cause", "not unlocked for staking");
+            break;
         default:
             break;
     };

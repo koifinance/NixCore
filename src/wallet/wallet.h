@@ -1607,6 +1607,7 @@ public:
         NOT_STAKING_LOCKED = -3,
         NOT_STAKING_LIMITED = -4,
         NOT_STAKING_DISABLED = -5,
+        NOT_STAKING_NOT_UNLOCKED_FOR_STAKING_ONLY = -6,
     } nIsStaking = NOT_STAKING;
 
 

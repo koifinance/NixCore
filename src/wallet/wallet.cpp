@@ -2296,17 +2296,27 @@ CAmount CWallet::GetGhostBalance() const
 {
     std::vector<COutput> vCoins;
     ListAvailableCoinsMintCoins(vCoins);
+    int nRequiredDepth = 0;
 
     CAmount nTotal = 0;
-    for(COutput n: vCoins){
-        for (unsigned int i = 0; i < n.tx->tx->vout.size(); i++) {
-            if (n.tx->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
-                CTxOut txout = n.tx->tx->vout[i];
-                nTotal += txout.nValue;
-            }
-        }
-    }
+    for(int i = 0; i < vCoins.size(); i++){
+            if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
 
+                const uint256& prevHash = vCoins[i].tx->GetHash();
+                CTransactionRef tx;
+                uint256 hashBlock;
+                bool fFound = GetTransaction(prevHash, tx, Params().GetConsensus(), hashBlock);
+                if(fFound)
+                {
+                    if(mapBlockIndex.find(hashBlock) != mapBlockIndex.end())
+                    {
+                        if(chainActive.Height() - mapBlockIndex[hashBlock]->nHeight >= nRequiredDepth)
+                            nTotal += vCoins[i].tx->tx->vout[vCoins[i].i].nValue;
+
+                    }
+                }
+            }
+    }
     return nTotal;
 }
 
@@ -2316,15 +2326,11 @@ CAmount CWallet::GetGhostBalanceUnconfirmed() const
     ListAvailableCoinsMintCoins(vCoins, false);
 
     CAmount nTotal = 0;
-    for(COutput n: vCoins){
-        for (unsigned int i = 0; i < n.tx->tx->vout.size(); i++) {
-            if (n.tx->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
-                CTxOut txout = n.tx->tx->vout[i];
-                nTotal += txout.nValue;
+    for(int i = 0; i < vCoins.size(); i++){
+            if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
+                nTotal += vCoins[i].tx->tx->vout[vCoins[i].i].nValue;
             }
-        }
     }
-
     return nTotal - GetGhostBalance();
 }
 
@@ -5865,8 +5871,8 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
         }
     }
 
-    for(int i = 0; i < nValueBatch.size(); i++)
-        LogPrintf("\nCreateZerocoinSpendTransactionBatch(): tx.vin[%d] = \n%s\n", i, txNew.vin[i].ToString());
+    //for(int i = 0; i < nValueBatch.size(); i++)
+        //LogPrintf("\nCreateZerocoinSpendTransactionBatch(): tx.vin[%d] = \n%s\n", i, txNew.vin[i].ToString());
 
 
     // Embed the constructed transaction data in wtxNew.
@@ -6216,18 +6222,18 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
             }
 
             if (fOnlyConfirmed && !pcoin->IsTrusted()) {
-                LogPrintf("fOnlyConfirmed = %s, !pcoin->IsTrusted(): %s\n", fOnlyConfirmed, !pcoin->IsTrusted());
+                //LogPrintf("fOnlyConfirmed = %s, !pcoin->IsTrusted(): %s\n", fOnlyConfirmed, !pcoin->IsTrusted());
                 continue;
             }
 
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0) {
-                LogPrintf("Not trusted\n");
+                //LogPrintf("Not trusted\n");
                 continue;
             }
 
             int nDepth = pcoin->GetDepthInMainChain();
             if (nDepth < 0) {
-                LogPrintf("nDepth=%s\n", nDepth);
+                //LogPrintf("nDepth=%s\n", nDepth);
                 continue;
             }
             //LogPrintf("pcoin->vout.size()=%s\n", pcoin->tx->vout.size());
@@ -6241,7 +6247,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
 
                     CBigNum pubCoin;
                     pubCoin.setvch(vchZeroMint);
-                    LogPrintf("Pubcoin=%s\n", pubCoin.ToString());
+                    //LogPrintf("Pubcoin=%s\n", pubCoin.ToString());
                     // CHECKING PROCESS
                     BOOST_FOREACH(const CZerocoinEntry &pubCoinItem, listPubCoin) {
 //                        LogPrintf("*******\n");
@@ -6252,7 +6258,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
                         if (pubCoinItem.value == pubCoin && pubCoinItem.IsUsed == false &&
                             pubCoinItem.randomness != 0 && pubCoinItem.serialNumber != 0) {
                             vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
-                            LogPrintf("-->OK\n");
+                            //LogPrintf("-->OK\n");
                         }
                     }
 
@@ -10721,11 +10727,17 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     int64_t nGhostFees = 0;
 
     //check for zerocoin mints, start after coinbase
-    if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
+    if(chainActive.Height() + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock){
         for(int i = 1; i < pblock->vtx.size(); i++){
             if(pblock->vtx[i]->IsZerocoinMint(*pblock->vtx[i])){
                 //scrape fees payouts, 0.25% or minimum of 0.01 coins
-                nGhostFees =  ((pblock->vtx[i]->GetValueOut() * 0.0025) > 0.01) ? (pblock->vtx[i]->GetValueOut() * 0.0025) : 0.01;
+                //whole block is zerocoin mint
+                CAmount mintAmount = 0;
+                for(int k = 0; k < pblock->vtx[i]->vout.size(); k++){
+                    mintAmount += pblock->vtx[i]->vout[k].nValue;
+                }
+                nGhostFees += ((mintAmount * 0.0025) > 0.01) ? (mintAmount * 0.0025) : 0.01;
+
             }
         }
     }
@@ -10735,6 +10747,8 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     }
     else
         nFees =- nGhostFees;
+
+    LogPrintf("\nGhost Fees: nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
 
     CKey key;
     pblock->nVersion = ComputeBlockVersion(pindexPrev, Params().GetConsensus());
@@ -10869,8 +10883,8 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
 {
     LogPrint(BCLog::HDWALLET, "ProcessStakingSettings\n");
 
-    nStakeCombineThreshold = 1000 * COIN;
-    nStakeSplitThreshold = 2000 * COIN;
+    nStakeCombineThreshold = 5000 * COIN;
+    nStakeSplitThreshold = 10000 * COIN;
     nMaxStakeCombine = 3;
     nWalletDevFundCedePercent = gArgs.GetArg("-donationpercent", 0);
 

@@ -82,6 +82,11 @@ CAmount GetGhostnodePayment(int nHeight, CAmount blockValue) {
     const Consensus::Params &consensusParams = Params().GetConsensus();
     CAmount ret = GetBlockSubsidy(nHeight, consensusParams) * GHOSTNODE_REWARD;
 
+    //Switch node subsidy upon PoS upgrade
+    if(nHeight >= consensusParams.nPosHeightActivate)
+        ret = GetBlockSubsidy(nHeight, consensusParams) * GHOSTNODE_REWARD_POST_POS;
+
+
     return ret;
 }
 

@@ -73,6 +73,23 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QLabel" name="unconfirmed_label">
+         <property name="font">
+          <font>
+           <pointsize>15</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>0 Unconfirmed </string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>
