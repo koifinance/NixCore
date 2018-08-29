@@ -12,7 +12,6 @@
 #include <utilstrencodings.h>
 #include <assert.h>
 #include "arith_uint256.h"
-#include <validation.h>
 #include <utilmoneystr.h>
 
 #include <chainparamsseeds.h>
@@ -62,6 +61,27 @@ void CChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64
     consensus.vDeployments[d].nTimeout = nTimeout;
 }
 
+CAmount GetInitialRewards(int nHeight, const Consensus::Params& consensusParams)
+{
+    int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+    // Force block reward to zero when right shift is undefined.
+    if (halvings >= 64)
+        return 0;
+
+    CAmount nSubsidy = 64 * COIN;
+    // Subsidy is cut in half every 1,050,000 blocks which will occur approximately every 4 years.
+    nSubsidy >>= halvings;
+    //On genesis, create 38 million NIX for the Zoin airdrop
+    if(nHeight == 1)
+        nSubsidy = 38000000 * COIN;
+
+    //stop halving when subsidy reaches 1 coin per block
+    if(nSubsidy < (1 * COIN))
+        nSubsidy = 1*COIN;
+
+    return nSubsidy;
+}
+
 int64_t CChainParams::GetCoinYearReward(int64_t nTime) const
 {
     static const int64_t nSecondsInYear = 365 * 24 * 60 * 60;
@@ -84,7 +104,7 @@ int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64
 
     //first block of PoS, add regular block amounts and airdrop amount
     if(!pindexPrev->IsProofOfStake()){
-        CAmount nTotal = pindexPrev->nHeight * GetBlockSubsidy(pindexPrev->nHeight, Params().GetConsensus()) + GetBlockSubsidy(1, Params().GetConsensus());
+        CAmount nTotal = pindexPrev->nHeight * GetInitialRewards(pindexPrev->nHeight, Params().GetConsensus()) + GetInitialRewards(1, Params().GetConsensus());
         nSubsidy = (nTotal / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
         LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
     }else{
