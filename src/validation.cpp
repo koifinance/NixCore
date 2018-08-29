@@ -2567,7 +2567,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
         }
 
-        if(!found_1 && txCoinstake->vout.size() > 3){
+        if(!found_1){
             return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
                              "CTransaction::CheckTransaction() : ghostnode reward missing");
         }
