@@ -2555,7 +2555,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         found_1 = false;
         CAmount ghostnodeReward = (int64_t)(GHOSTNODE_REWARD * GetBlockSubsidy(nHeight, Params().GetConsensus()));
         //check ghostnode payout,
-        if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
+        if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock || (mnodeman.GetFullGhostnodeVector().size() < 10)){
             found_1 = true;
         }
         else{
