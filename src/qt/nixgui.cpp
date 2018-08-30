@@ -835,6 +835,8 @@ void BitcoinGUI::updateHeadersSyncProgressLabel()
 
 void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, bool header)
 {
+
+    /*
     if (modalOverlay)
     {
         if (header)
@@ -842,6 +844,8 @@ void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVer
         else
             modalOverlay->tipUpdate(count, blockDate, nVerificationProgress);
     }
+    */
+
     if (!clientModel)
         return;
 
