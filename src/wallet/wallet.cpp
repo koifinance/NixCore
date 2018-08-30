@@ -6139,7 +6139,7 @@ string CWallet::SpendZerocoinBatch(std::string &toKey, vector <int64_t> nValueBa
 
     CValidationState state;
 
-    if (!!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
         for(int i = 0; i < coinSerialBatch.size(); i++){
             LogPrintf("CommitZerocoinSpendTransaction() -> FAILED!\n");
             CZerocoinEntry pubCoinTx;
