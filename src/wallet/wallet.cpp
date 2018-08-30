@@ -5632,37 +5632,6 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
     return true;
 }
 
-bool CWallet::CommitZerocoinSpendTransaction(CWalletTx &wtxNew, CReserveKey &reservekey) {
-    {
-        LOCK2(cs_main, cs_wallet);
-        LogPrintf("CommitZerocoinSpendTransaction \n");
-        {
-            // Take key pair from key pool so it won't be used again
-            reservekey.KeepKey();
-
-            // Add tx to wallet, because if it has change it's also ours,
-            // otherwise just for transaction history.
-            AddToWallet(wtxNew);
-
-        }
-        // Track how many getdata requests our transaction gets
-        mapRequestCount[wtxNew.GetHash()] = 0;
-
-        if (fBroadcastTransactions) {
-            CValidationState state;
-            // Broadcast
-            if (!wtxNew.AcceptToMemoryPool(maxTxFee, state)) {
-                LogPrintf("CommitZerocoinSpendTransaction(): Transaction cannot be broadcast immediately, %s\n",
-                          state.GetRejectReason());
-                // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
-            } else {
-                wtxNew.RelayWalletTransaction(NULL);
-            }
-        }
-    }
-    return true;
-}
-
 bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch,
                                              CWalletTx &wtxNew, CReserveKey &reservekey, vector <CBigNum> &coinSerialBatch,
                                              vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch, bool &zcSelectedIsUsed,
@@ -6097,7 +6066,9 @@ string CWallet::SpendZerocoin(std::string &toKey, int64_t nValue, libzerocoin::C
         return strError;
     }
 
-    if (!CommitZerocoinSpendTransaction(wtxNew, reservekey)) {
+    CValidationState state;
+
+    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
         LogPrintf("CommitZerocoinSpendTransaction() -> FAILED!\n");
         CZerocoinEntry pubCoinTx;
         list <CZerocoinEntry> listPubCoin;
@@ -6166,7 +6137,9 @@ string CWallet::SpendZerocoinBatch(std::string &toKey, vector <int64_t> nValueBa
         return strError;
     }
 
-    if (!CommitZerocoinSpendTransaction(wtxNew, reservekey)) {
+    CValidationState state;
+
+    if (!!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
         for(int i = 0; i < coinSerialBatch.size(); i++){
             LogPrintf("CommitZerocoinSpendTransaction() -> FAILED!\n");
             CZerocoinEntry pubCoinTx;
