@@ -3846,7 +3846,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             if ((i > 1 && block.vtx[i]->IsCoinBase()) || block.vtx[i]->IsCoinStake())
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
 
-        if (!block.vchBlockSig.empty() && !CheckBlockSignature(block))
+        if (!CheckBlockSignature(block))
             return state.DoS(100, false, REJECT_INVALID, "bad-block-signature", false, "bad block signature");
     }
     else if(!block.IsProofOfStake() && nHeight >= Params().GetConsensus().nPosHeightActivate){
