@@ -1936,13 +1936,13 @@ bool CWalletTx::RelayWalletTransaction(CConnman* connman)
         CValidationState state;
         /* GetDepthInMainChain already catches known conflicts. */
         if (InMempool() || AcceptToMemoryPool(maxTxFee, state)) {
-            LogPrintf("Relaying wtx %s\n", GetHash().ToString());
             if (connman) {
                 CInv inv(MSG_TX, GetHash());
                 connman->ForEachNode([&inv](CNode* pnode)
                 {
                     pnode->PushInventory(inv);
                 });
+                LogPrintf("Relaying wtx %s\n", GetHash().ToString());
                 return true;
             }
         }
@@ -3402,7 +3402,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
 {
     {
         LOCK2(cs_main, cs_wallet);
-        LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());
+        //LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());
         {
             // Take key pair from key pool so it won't be used again
             reservekey.KeepKey();
@@ -3435,6 +3435,49 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
                 // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
             } else {
                 wtx.RelayWalletTransaction(connman);
+            }
+        }
+    }
+    return true;
+}
+
+bool CWallet::CommitZerocoinSpendTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state)
+{
+    {
+        LOCK2(cs_main, cs_wallet);
+        LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());
+        {
+            // Take key pair from key pool so it won't be used again
+            reservekey.KeepKey();
+
+            // Add tx to wallet, because if it has change it's also ours,
+            // otherwise just for transaction history.
+            AddToWallet(wtxNew);
+
+            // Notify that old coins are spent
+            for (const CTxIn& txin : wtxNew.tx->vin)
+            {
+                CWalletTx &coin = mapWallet[txin.prevout.hash];
+                coin.BindWallet(this);
+                NotifyTransactionChanged(this, coin.GetHash(), CT_UPDATED);
+            }
+        }
+
+        // Track how many getdata requests our transaction gets
+        mapRequestCount[wtxNew.GetHash()] = 0;
+
+        // Get the inserted-CWalletTx from mapWallet so that the
+        // fInMempool flag is cached properly
+        CWalletTx& wtx = mapWallet[wtxNew.GetHash()];
+
+        if (fBroadcastTransactions)
+        {
+            // Broadcast
+            if (!wtxNew.AcceptToMemoryPool(maxTxFee, state)) {
+                LogPrintf("CommitTransaction(): Transaction cannot be broadcast immediately, %s\n", state.GetRejectReason());
+                // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
+            } else {
+                wtxNew.RelayWalletTransaction(connman);
             }
         }
     }
@@ -6068,7 +6111,7 @@ string CWallet::SpendZerocoin(std::string &toKey, int64_t nValue, libzerocoin::C
 
     CValidationState state;
 
-    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+    if (!CommitZerocoinSpendTransaction(wtxNew, reservekey, g_connman.get(), state)) {
         LogPrintf("CommitZerocoinSpendTransaction() -> FAILED!\n");
         CZerocoinEntry pubCoinTx;
         list <CZerocoinEntry> listPubCoin;
@@ -6139,7 +6182,7 @@ string CWallet::SpendZerocoinBatch(std::string &toKey, vector <int64_t> nValueBa
 
     CValidationState state;
 
-    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+    if (!CommitZerocoinSpendTransaction(wtxNew, reservekey, g_connman.get(), state)) {
         for(int i = 0; i < coinSerialBatch.size(); i++){
             LogPrintf("CommitZerocoinSpendTransaction() -> FAILED!\n");
             CZerocoinEntry pubCoinTx;

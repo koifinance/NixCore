@@ -3829,9 +3829,11 @@ bool PeerLogicValidation::SendMessages(CNode* pto, std::atomic<bool>& interruptM
                     if (!txinfo.tx) {
                         continue;
                     }
-                    if (filterrate && txinfo.feeRate.GetFeePerK() < filterrate) {
-                        continue;
-                    }
+                    //LogPrintf("\nFEERATE: %llf, *** %llf \n", txinfo.feeRate.GetFeePerK(), filterrate);
+                    if(!txinfo.tx->IsZerocoinSpend())
+                        if (filterrate && txinfo.feeRate.GetFeePerK() < filterrate) {
+                            continue;
+                        }
                     if (pto->pfilter && !pto->pfilter->IsRelevantAndUpdate(*txinfo.tx)) continue;
                     // Send
                     vInv.push_back(CInv(MSG_TX, hash));

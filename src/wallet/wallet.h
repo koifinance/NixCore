@@ -1431,7 +1431,7 @@ public:
                                        CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet, std::string& strFailReason, const CCoinControl &coinControl);
     bool CreateZerocoinSpendTransaction(std::string &toKey,int64_t nValue, libzerocoin::CoinDenomination denomination,
                                         CWalletTx& wtxNew, CReserveKey& reservekey, CBigNum& coinSerial, uint256& txHash, CBigNum& zcSelectedValue, bool& zcSelectedIsUsed,  std::string& strFailReason);
-    bool CommitZerocoinSpendTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
+    bool CommitZerocoinSpendTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
     std::string SendMoney(CScript scriptPubKey, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToDestination(const CTxDestination &address, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string MintZerocoin(CScript pubCoin, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
