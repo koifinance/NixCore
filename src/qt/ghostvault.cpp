@@ -40,7 +40,7 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
 
     ui->ghostAmount->setValidator( new QIntValidator(1, 9999999, this) );
     ui->labelExplanation->setText(
-            tr("These are your private coins from ghosting NIX, You can convert ghosted NIX to public coins."));
+            tr("These are your private coins from ghosting NIX. You can convert ghosted NIX to public coins. The longer your coins are here, the more private they become."));
     ui->ghostAmount->setVisible(true);
     ui->ghostNIXButton->setVisible(true);
     ui->convertGhostButton->setVisible(true);

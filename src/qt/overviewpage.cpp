@@ -280,13 +280,13 @@ void OverviewPage::setWalletModel(WalletModel *model)
         connect(model, SIGNAL(notifyWatchonlyChanged(bool)), this, SLOT(updateWatchOnlyLabels(bool)));
 
         if(chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate){
-            if(walletModel->getWallet()->IsLocked()){
-                ui->isStakingLabel->setStyleSheet("color: red;");
-                ui->isStakingLabel->setText("Disabled");
-            }
-            else{
+            if(walletModel->getWallet()->fUnlockForStakingOnly){
                 ui->isStakingLabel->setStyleSheet("color: green;");
                 ui->isStakingLabel->setText("Enabled");
+            }
+            else{
+                ui->isStakingLabel->setStyleSheet("color: red;");
+                ui->isStakingLabel->setText("Disabled");
             }
         }
         else{

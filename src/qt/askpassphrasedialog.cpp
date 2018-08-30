@@ -14,6 +14,7 @@
 
 #include <support/allocators/secure.h>
 #include <qt/overviewpage.h>
+#include <wallet/wallet.h>
 
 #include <QKeyEvent>
 #include <QMessageBox>
@@ -179,15 +180,17 @@ void AskPassphraseDialog::accept()
             if(_isStaking != nullptr){
             _isStaking->setStyleSheet("color: red;");
             _isStaking->setText("Disabled");
+            model->getWallet()->fUnlockForStakingOnly = false;
             }
             QMessageBox::critical(this, tr("Wallet unlock failed"),
                                   tr("The passphrase entered for the wallet decryption was incorrect."));
         }
         else
         {
-            if(_isStaking != nullptr){
+            if(_isStaking != nullptr && fForStakingOnly){
                 _isStaking->setStyleSheet("color: green;");
                 _isStaking->setText("Enabled");
+                model->getWallet()->fUnlockForStakingOnly = true;
             }
             QDialog::accept(); // Success
         }

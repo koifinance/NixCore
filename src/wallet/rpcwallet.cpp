@@ -2887,6 +2887,8 @@ UniValue getwalletinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("walletname", pwallet->GetName()));
     obj.push_back(Pair("walletversion", pwallet->GetVersion()));
     obj.push_back(Pair("balance",       ValueFromAmount(pwallet->GetBalance())));
+    obj.push_back(Pair("ghost_vault",       ValueFromAmount(pwallet->GetGhostBalance())));
+    obj.push_back(Pair("ghost_vault_unconfirmed",       ValueFromAmount(pwallet->GetGhostBalanceUnconfirmed())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwallet->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwallet->GetImmatureBalance())));
     obj.push_back(Pair("txcount",       (int)pwallet->mapWallet.size()));
@@ -3710,7 +3712,7 @@ UniValue unghostamount(const JSONRPCRequest& request)
 {
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    if (request.fHelp || request.params.size() > 1)
+    if (request.fHelp || request.params.size() > 2)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
 
