@@ -9198,6 +9198,31 @@ bool CWallet::SpendAllZerocoins(){
 bool CWallet::GhostModeMintTrigger(string totalAmount){
 
     string stringError;
+    //Autobackup wallet into ghostbackups
+    string backupDir = GetDataDir().string() + "/ghostbackups/wallet-" + std::to_string(GetTime()) + ".dat";
+    fs::create_directories(fs::path(GetDataDir().string() + "/ghostbackups/"));
+
+    //only maintain max of 20 backups
+    std::string path = GetDataDir().string() + "/ghostbackups/";
+    int m = 0;
+    int t = 0;
+    for (auto & p : fs::directory_iterator(path)){
+        if(m > 17){
+            t++;
+        }
+        m++;
+    }
+    for (auto & p : fs::directory_iterator(path)){
+        if(t > 1){
+            fs::remove(p.path());
+            t--;
+        }
+        else
+            break;
+    }
+
+    if(!this->GetDBHandle().Backup(backupDir))
+        return error("%s: Error: Cannot create wallet backup.", __func__);
 
     CAmount amount = 0;
     CAmount nRemaining = 0;
@@ -9295,6 +9320,31 @@ bool ClosestDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[8
 }
 //ghost timer spend responder
 std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
+
+    //Autobackup wallet into ghostbackups
+    string backupDir = GetDataDir().string() + "/ghostbackups/wallet-" + std::to_string(GetTime()) + ".dat";
+    fs::create_directories(fs::path(GetDataDir().string() + "/ghostbackups/"));
+    //only maintain max of 20 backups
+    std::string path = GetDataDir().string() + "/ghostbackups/";
+    int m = 0;
+    int t = 0;
+    for (auto & p : fs::directory_iterator(path)){
+        if(m > 17){
+            t++;
+        }
+        m++;
+    }
+    for (auto & p : fs::directory_iterator(path)){
+        if(t > 1){
+            fs::remove(p.path());
+            t--;
+        }
+        else
+            break;
+    }
+
+    if(!this->GetDBHandle().Backup(backupDir))
+        return "GhostModeSpendTrigger(): Error: Cannot create wallet backup.";
 
     /*                          *
      *     Convert amount       *
