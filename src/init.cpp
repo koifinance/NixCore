@@ -235,7 +235,7 @@ void Shutdown()
     StopRPC();
     StopHTTPServer();
 #ifdef ENABLE_WALLET
-    if(GetAdjustedTime() >= Params().GetConsensus().nPosTimeActivation || chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate){
+    if(!fGhostNode){
         ShutdownThreadStakeMiner();
     }
     FlushWallets();
@@ -2013,7 +2013,7 @@ bool AppInitMain()
     // ********************************************************* Step 11e: start staking
 
     //do not allow ghostnodes to run staking threads to avoid bandwidth issues
-    if((GetAdjustedTime() >= Params().GetConsensus().nPosTimeActivation || chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate) && !fGhostNode){
+    if(!fGhostNode){
         #ifdef ENABLE_WALLET
         nMinStakeInterval = gArgs.GetArg("-minstakeinterval", 0);
         nMinerSleep = gArgs.GetArg("-minersleep", 500);

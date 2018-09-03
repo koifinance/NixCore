@@ -248,6 +248,14 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
             continue;
         };
 
+        if (nBestHeight < Params().GetConsensus().nPosHeightActivate)
+        {
+            fIsStaking = false;
+            LogPrint(BCLog::POS, "%s: nBestHeight < nPosHeightActivate(), %d, %d\n", __func__, nBestHeight, GetNumBlocksOfPeers());
+            condWaitFor(nThreadID, nMinerSleep * 4);
+            continue;
+        };
+
         if (nMinStakeInterval > 0 && nTimeLastStake + (int64_t)nMinStakeInterval > GetTime())
         {
             LogPrint(BCLog::POS, "%s: Rate limited to 1 / %d seconds.\n", __func__, nMinStakeInterval);

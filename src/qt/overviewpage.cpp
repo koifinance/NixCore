@@ -14,6 +14,7 @@
 #include <qt/transactionfilterproxy.h>
 #include <qt/transactiontablemodel.h>
 #include <qt/walletmodel.h>
+#include <qt/ghostvault.h>
 #include <../../wallet/wallet.h>
 #include "util.h"
 #include <timedata.h>
@@ -223,6 +224,8 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     ui->labelWatchGhostUnconfirmed->setVisible(false);
     ui->labelImmatureText->setVisible(showImmature || showWatchOnlyImmature);
     ui->labelWatchImmature->setVisible(showWatchOnlyImmature); // show watch-only immature balance
+
+    ghostVaultPage->setVaultBalance(ghostBalance, ghostBalanceUnconfirmed);
 }
 
 // show/hide watch-only labels

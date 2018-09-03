@@ -228,6 +228,8 @@ void AskPassphraseDialog::accept()
         }
         break;
     }
+
+    model->checkBalanceChanged();
 }
 
 void AskPassphraseDialog::textChanged()

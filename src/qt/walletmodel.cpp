@@ -187,7 +187,7 @@ void WalletModel::checkBalanceChanged()
     }
 
     if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance ||
-        cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance)
+        cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance || cachedStaked != newStaked)
     {
         cachedBalance = newBalance;
         cachedStaked = newStaked;
@@ -475,6 +475,7 @@ bool WalletModel::setWalletLocked(bool locked, const SecureString &passPhrase, b
     if(locked)
     {
         // Lock
+        wallet->fUnlockForStakingOnly = false;
         return wallet->Lock();
     }
     else
@@ -935,5 +936,6 @@ void WalletModel::lockWallet()
         LOCK(wallet->cs_wallet);
         wallet->nRelockTime = 0;
         wallet->Lock();
+        wallet->fUnlockForStakingOnly = false;
     }
 }

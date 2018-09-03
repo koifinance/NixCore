@@ -6,6 +6,7 @@
 #define BITCOIN_QT_GHOSTVAULT_H
 
 #include <QWidget>
+#include <amount.h>
 
 class AddressTableModel;
 class OptionsModel;
@@ -43,6 +44,7 @@ public:
     void setModel(AddressTableModel *model);
     void setWalletModel(WalletModel *walletmodel);
     const QString &getReturnValue() const { return returnValue; }
+    void setVaultBalance(CAmount confirmed, CAmount unconfirmed);
 
 //public Q_SLOTS:
 //    void done(int retval);

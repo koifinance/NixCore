@@ -3444,7 +3444,6 @@ bool CWallet::CommitZerocoinSpendTransaction(CWalletTx& wtxNew, CReserveKey& res
 {
     {
         LOCK2(cs_main, cs_wallet);
-        LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());
         {
             // Take key pair from key pool so it won't be used again
             reservekey.KeepKey();

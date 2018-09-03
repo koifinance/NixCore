@@ -66,6 +66,8 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     ghostnodePage = new GhostNode(platformStyle);
     ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
 
+    overviewPage->ghostVaultPage = ghostVaultPage;
+
     addWidget(overviewPage);
     addWidget(transactionsPage);
     addWidget(receiveCoinsPage);
@@ -314,6 +316,8 @@ void WalletView::lockWallet()
     walletModel->lockWallet();
     overviewPage->isStaking->setStyleSheet("color: red;");
     overviewPage->isStaking->setText("Disabled");
+    walletModel->checkBalanceChanged();
+
 }
 
 void WalletView::usedSendingAddresses()

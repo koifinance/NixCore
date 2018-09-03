@@ -234,6 +234,7 @@ public:
     CWallet* getWallet(){return wallet;}
 
     void lockWallet();
+    void checkBalanceChanged();
 
 private:
     CWallet *wallet;
@@ -264,7 +265,6 @@ private:
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged();
 
 Q_SIGNALS:
     // Signal that balance in wallet changed

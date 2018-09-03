@@ -16,6 +16,7 @@ class TransactionFilterProxy;
 class TxViewDelegate;
 class PlatformStyle;
 class WalletModel;
+class GhostVault;
 
 namespace Ui {
     class OverviewPage;
@@ -38,6 +39,8 @@ public:
     void setWalletModel(WalletModel *walletModel);
     void showOutOfSyncWarning(bool fShow);
     QLabel *isStaking;
+
+    GhostVault *ghostVaultPage;
 
 public Q_SLOTS:
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
