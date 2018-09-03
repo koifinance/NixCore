@@ -89,7 +89,7 @@ public:
     mutable bool fChecked;
 
     // memory only, zerocoin tx info
-    mutable CZerocoinTxInfo *zerocoinTxInfo;
+    mutable std::shared_ptr<CZerocoinTxInfo> zerocoinTxInfo;
 
     CBlock()
     {

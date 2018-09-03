@@ -175,7 +175,7 @@ void WalletModel::checkBalanceChanged()
     CAmount newWatchOnlyBalance = 0;
     CAmount newWatchUnconfBalance = 0;
     CAmount newWatchImmatureBalance = 0;
-    CAmount newStaked = getStakeBalance();
+    CAmount newStaked = wallet->fUnlockForStakingOnly ? getStakeBalance() : 0;
     CAmount newWatchStakedBalance = 0;
 
     if (haveWatchOnly())

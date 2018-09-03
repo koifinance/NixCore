@@ -369,7 +369,7 @@ UniValue ghostnode(const JSONRPCRequest& req) {
 
     if (strCommand == "list-conf") {
         UniValue resultObj(UniValue::VOBJ);
-
+        int i = 0;
         BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
             CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CGhostnode *pmn = mnodeman.Find(vin);
@@ -383,7 +383,8 @@ UniValue ghostnode(const JSONRPCRequest& req) {
             mnObj.push_back(Pair("txHash", mne.getTxHash()));
             mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
             mnObj.push_back(Pair("status", strStatus));
-            resultObj.push_back(Pair("ghostnode", mnObj));
+            resultObj.push_back(Pair("ghostnode_" + std::to_string(i), mnObj));
+            i++;
         }
 
         return resultObj;

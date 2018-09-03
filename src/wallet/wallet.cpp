@@ -2062,12 +2062,11 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
 
             const CScript pscriptPubKey = txout.scriptPubKey;
 
-            CTxDestination dest;
-            if (!ExtractDestination(pscriptPubKey, dest))
-                continue;
-
             //only check p2sh balances for staking
             if(fForStaking){
+                CTxDestination dest;
+                if (!ExtractDestination(pscriptPubKey, dest))
+                    continue;
                 if(boost::get<CScriptID>(&dest)){
                     nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
                     if (!MoneyRange(nCredit))
@@ -6233,7 +6232,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
             const CWalletTx *pcoin = &(*it).second;
 //            LogPrintf("pcoin=%s\n", pcoin->GetHash().ToString());
             if (!CheckFinalTx(*pcoin->tx,0)) {
-                LogPrintf("!CheckFinalTx(*pcoin)=%s\n", !CheckFinalTx(*pcoin->tx,0));
+                //LogPrintf("!CheckFinalTx(*pcoin)=%s\n", !CheckFinalTx(*pcoin->tx,0));
                 continue;
             }
 
@@ -10458,7 +10457,7 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHe
     return true;
 }
 
-bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key, CBlockTemplate *pblocktemplate, int64_t nGhostFees)
+bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeight, int64_t nFees, CMutableTransaction &txNew, CKey &key, CBlockTemplate *pblocktemplate, int64_t nGhostFees, std::vector<unsigned char> &commitment, uint256 witnessroot)
 {
     CBlockIndex *pindexPrev = chainActive.Tip();
     arith_uint256 bnTargetPerCoinDay;
@@ -10751,6 +10750,22 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         FillBlockPayments(txNew, chainActive.Height(), ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
 
+    //insert witness tx
+    std::vector<unsigned char> ret(32, 0x00);
+    CHash256().Write(witnessroot.begin(), 32).Write(ret.data(), 32).Finalize(witnessroot.begin());
+    CTxOut out;
+    out.nValue = 0;
+    out.scriptPubKey.resize(38);
+    out.scriptPubKey[0] = OP_RETURN;
+    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[2] = 0xaa;
+    out.scriptPubKey[3] = 0x21;
+    out.scriptPubKey[4] = 0xa9;
+    out.scriptPubKey[5] = 0xed;
+    memcpy(&out.scriptPubKey[6], witnessroot.begin(), 32);
+    commitment = std::vector<unsigned char>(out.scriptPubKey.begin(), out.scriptPubKey.end());
+    txNew.vout.push_back(out);
+
     // Sign
     int nIn = 0;
     for (const auto &pcoin : vwtxPrev)
@@ -10822,8 +10837,11 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     pblock->nBits = GetNextTargetRequired(pindexPrev);
     LogPrint(BCLog::POS, "%s, nBits %d\n", __func__, pblock->nBits);
 
+    std::vector<unsigned char> commitment;
+    uint256 witnessroot = BlockWitnessMerkleRoot(*pblock, nullptr);
+
     CMutableTransaction txCoinStake;
-    if (CreateCoinStake(pblock->nBits, nSearchTime, nHeight, nFees, txCoinStake, key, pblocktemplate, nGhostFees))
+    if (CreateCoinStake(pblock->nBits, nSearchTime, nHeight, nFees, txCoinStake, key, pblocktemplate, nGhostFees, commitment, witnessroot))
     {
         LogPrint(BCLog::POS, "%s: Kernel found.\n", __func__);
 
@@ -10839,6 +10857,8 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
 
             // Insert coinstake as txn0
             pblock->vtx.insert(pblock->vtx.begin(), MakeTransactionRef(txCoinStake));
+            //Insert blockwitness commitment
+            pblocktemplate->vchCoinbaseCommitment = commitment;
 
             bool mutated;
             pblock->hashMerkleRoot = BlockMerkleRoot(*pblock, &mutated);

@@ -394,6 +394,8 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               bool isCheckWallet,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
+
+    LogPrintf("\nCheckZerocoinTransaction: height %d\n", nHeight);
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
         if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsZerocoinMint()) {
@@ -451,7 +453,7 @@ bool ConnectBlockGhost(CValidationState &state, const CChainParams &chainparams,
 
         BOOST_FOREACH(const PAIRTYPE(CBigNum,int) &serial, pblock->zerocoinTxInfo->spentSerials) {
             pindexNew->spentSerials.insert(serial.first);
-            if (!CheckZerocoinSpendSerial(state, pblock->zerocoinTxInfo, (libzerocoin::CoinDenomination)serial.second, serial.first, pindexNew->nHeight, true))
+            if (!CheckZerocoinSpendSerial(state, pblock->zerocoinTxInfo.get(), (libzerocoin::CoinDenomination)serial.second, serial.first, pindexNew->nHeight, true))
                 return false;
             zerocoinState.AddSpend(serial.first);
         }

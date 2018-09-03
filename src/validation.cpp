@@ -1502,6 +1502,9 @@ bool IsInitialBlockDownload()
         return true;
     if (chainActive.Tip()->nChainWork < nMinimumChainWork)
         return true;
+    if (GetNumPeers() < 1
+        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
+        return true;
     LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
     latchToFalse.store(true, std::memory_order_relaxed);
     return false;
@@ -2315,10 +2318,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     int nInputs = 0;
     int64_t nSigOpsCost = 0;
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
-
-    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
-    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
-    std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
 
     // NOTE: Be careful tracking coin created, block reward is based on nMoneySupply
     CAmount nMoneyCreated = 0;
@@ -3865,11 +3864,11 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     if (nHeight == INT_MAX)
         nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
     if (block.zerocoinTxInfo == NULL)
-        block.zerocoinTxInfo = new CZerocoinTxInfo();
+        block.zerocoinTxInfo = std::make_shared<CZerocoinTxInfo>();
     bool blockHasMint = false;
     // Check transactions
     for (const auto& tx : block.vtx){
-        if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo))
+        if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo.get()))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
         if(tx->IsZerocoinMint(*tx))
@@ -4325,7 +4324,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     }
     if (fNewBlock) *fNewBlock = true;
 
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), true, true, pindex->nHeight, false) ||
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), true, true, pindex->nHeight, fReindex) ||
         !ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -4769,6 +4768,13 @@ bool static LoadBlockIndexDB(const CChainParams& chainparams)
     pblocktree->ReadFlag("spentindex", fSpentIndex);
     LogPrintf("%s: spent index %s\n", __func__, fSpentIndex ? "enabled" : "disabled");
 
+    // some blocks in index can change as a result of ZerocoinBuildStateFromIndex() call
+    set<CBlockIndex *> changes;
+    ZerocoinBuildStateFromIndex(&chainActive, changes);
+    if (!changes.empty()) {
+        setDirtyBlockIndex.insert(changes.begin(), changes.end());
+        FlushStateToDisk();
+    }
 
 
     return true;
@@ -5305,8 +5311,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                     while (range.first != range.second) {
                         std::multimap<uint256, CDiskBlockPos>::iterator it = range.first;
                         std::shared_ptr<CBlock> pblockrecursive = std::make_shared<CBlock>();
-                        const uint256 hash = pblockrecursive->GetHash();
-                        const int nHeight = mapBlockIndex[hash]->nHeight;
+                        const int nHeight = mapBlockIndex[it->first]->nHeight;
                         if (ReadBlockFromDisk(*pblockrecursive, it->second, nHeight, chainparams.GetConsensus()))
                         {
                             LogPrint(BCLog::REINDEX, "%s: Processing out of order child %s of %s\n", __func__, pblockrecursive->GetHash().ToString(),
