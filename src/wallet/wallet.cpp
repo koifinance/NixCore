@@ -5744,13 +5744,14 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
     vector <libzerocoin::CoinSpend> spendBatch;
     vector <int> coinHeightBatch;
 
+    list <CZerocoinEntry> listPubCoin;
+    CWalletDB(*dbw).ListPubCoin(listPubCoin);
+    listPubCoin.sort(CompHeight);
+
     for(int i = 0; i < nValueBatch.size(); i++){
         {
             LOCK2(cs_main, cs_wallet);
             {
-                list <CZerocoinEntry> listPubCoin;
-                CWalletDB(*dbw).ListPubCoin(listPubCoin);
-                listPubCoin.sort(CompHeight);
                 CZerocoinEntry coinToUse;
 
                 CBigNum accumulatorValue;
@@ -5778,6 +5779,11 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                                                                                accumulatorValue,
                                                                                accumulatorBlockHash) > 1
                                 ) {
+
+                            //remove this zerocoin from the list to avoid double serial spends
+                            std::list<CZerocoinEntry>::iterator findIter = std::find(listPubCoin.begin(), listPubCoin.end(), minIdPubcoin);
+                            findIter->IsUsed = true;
+
                             coinId = id;
                             coinToUse = minIdPubcoin;
                             coinIdBatch.push_back(coinId);
