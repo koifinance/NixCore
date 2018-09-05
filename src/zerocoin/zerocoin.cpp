@@ -165,6 +165,11 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
                 return false;
         }
 
+        if (tx.vout.size() > 1) {
+            if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
+                return false;
+        }
+
         if(!isVerifyDB && !isCheckWallet) {
             if (zerocoinTxInfo && !zerocoinTxInfo->fInfoIsComplete) {
                 // add spend information to the index

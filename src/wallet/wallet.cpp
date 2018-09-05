@@ -5744,13 +5744,16 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
     vector <libzerocoin::CoinSpend> spendBatch;
     vector <int> coinHeightBatch;
 
+    list <CZerocoinEntry> listPubCoin;
+    CWalletDB(*dbw).ListPubCoin(listPubCoin);
+    listPubCoin.sort(CompHeight);
+
+    vector <CBigNum> usedSerials;
+
     for(int i = 0; i < nValueBatch.size(); i++){
         {
             LOCK2(cs_main, cs_wallet);
             {
-                list <CZerocoinEntry> listPubCoin;
-                CWalletDB(*dbw).ListPubCoin(listPubCoin);
-                listPubCoin.sort(CompHeight);
                 CZerocoinEntry coinToUse;
 
                 CBigNum accumulatorValue;
@@ -5764,7 +5767,8 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                     if (minIdPubcoin.denomination == denominationBatch[i]
                             && minIdPubcoin.IsUsed == false
                             && minIdPubcoin.randomness != 0
-                            && minIdPubcoin.serialNumber != 0) {
+                            && minIdPubcoin.serialNumber != 0
+                            && std::find(usedSerials.begin(), usedSerials.end(), minIdPubcoin.serialNumber) == usedSerials.end()) {
 
                         int id;
                         coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
@@ -5778,6 +5782,8 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                                                                                accumulatorValue,
                                                                                accumulatorBlockHash) > 1
                                 ) {
+                            //log the serial number and check on next iteration
+                            usedSerials.push_back(minIdPubcoin.serialNumber);
                             coinId = id;
                             coinToUse = minIdPubcoin;
                             coinIdBatch.push_back(coinId);
@@ -5785,7 +5791,7 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                             accumulatorValueBatch.push_back(accumulatorValue);
                             accumulatorBlockHashBatch.push_back(accumulatorBlockHash);
                             coinHeightBatch.push_back(coinHeight);
-
+                            break;
                         }
                     }
                 }
