@@ -6,10 +6,12 @@
 #define BITCOIN_QT_GHOSTVAULT_H
 
 #include <QWidget>
+#include <amount.h>
 
 class AddressTableModel;
 class OptionsModel;
 class PlatformStyle;
+class WalletModel;
 
 namespace Ui {
     class GhostVault;
@@ -40,7 +42,9 @@ public:
     ~GhostVault();
 
     void setModel(AddressTableModel *model);
+    void setWalletModel(WalletModel *walletmodel);
     const QString &getReturnValue() const { return returnValue; }
+    void setVaultBalance(CAmount confirmed, CAmount unconfirmed);
 
 //public Q_SLOTS:
 //    void done(int retval);
@@ -48,6 +52,7 @@ public:
 private:
     Ui::GhostVault *ui;
     AddressTableModel *model;
+    WalletModel *walletModel;
     Mode mode;
     QString returnValue;
     QSortFilterProxyModel *proxyModel;

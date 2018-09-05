@@ -364,6 +364,9 @@ public:
      */
     void NotifyGhostnodeUpdates();
 
+    //Called to create ghsotnode fee addresses every 720 blocks
+    bool GhostProtocolFeeDepositAddress();
+
 };
 
 #endif

@@ -570,4 +570,9 @@ int RPCSerializationFlags()
     return flag;
 }
 
+void RPCRunLaterErase(const std::string &name)
+{
+    deadlineTimers.erase(name);
+}
+
 CRPCTable tableRPC;

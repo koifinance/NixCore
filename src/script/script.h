@@ -180,6 +180,7 @@ enum opcodetype
     OP_NOP8 = 0xb7,
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
+    OP_ISCOINSTAKE = OP_NOP9,
 
 
     // template matching params

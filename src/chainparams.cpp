@@ -12,6 +12,7 @@
 #include <utilstrencodings.h>
 #include <assert.h>
 #include "arith_uint256.h"
+#include <utilmoneystr.h>
 
 #include <chainparamsseeds.h>
 
@@ -58,6 +59,66 @@ void CChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64
 {
     consensus.vDeployments[d].nStartTime = nStartTime;
     consensus.vDeployments[d].nTimeout = nTimeout;
+}
+
+CAmount GetInitialRewards(int nHeight, const Consensus::Params& consensusParams)
+{
+    int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+    // Force block reward to zero when right shift is undefined.
+    if (halvings >= 64)
+        return 0;
+
+    CAmount nSubsidy = 64 * COIN;
+    // Subsidy is cut in half every 1,050,000 blocks which will occur approximately every 4 years.
+    nSubsidy >>= halvings;
+    //On genesis, create 38 million NIX for the Zoin airdrop
+    if(nHeight == 1)
+        nSubsidy = 38000000 * COIN;
+
+    //stop halving when subsidy reaches 1 coin per block
+    if(nSubsidy < (1 * COIN))
+        nSubsidy = 1*COIN;
+
+    return nSubsidy;
+}
+
+int64_t CChainParams::GetCoinYearReward(int64_t nTime) const
+{
+    static const int64_t nSecondsInYear = 365 * 24 * 60 * 60;
+
+    if (strNetworkID == "mainnet")
+    {
+        return nCoinYearReward;
+    }
+    else if (strNetworkID != "regtest")
+    {
+        // Y1 5%, Y2 4%, Y3 3%, Y4 2%, ... YN 2%
+        int64_t nYearsSinceGenesis = (nTime - genesis.nTime) / nSecondsInYear;
+
+        if (nYearsSinceGenesis >= 0 && nYearsSinceGenesis < 3)
+            return (5 - nYearsSinceGenesis) * CENT;
+    }
+
+    return nCoinYearReward;
+}
+
+int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64_t nFees) const
+{
+    int64_t nSubsidy;
+
+    //first block of PoS, add regular block amounts and airdrop amount
+    if(!pindexPrev->IsProofOfStake()){
+        CAmount nTotal = pindexPrev->nHeight * GetInitialRewards(pindexPrev->nHeight, Params().GetConsensus()) + GetInitialRewards(1, Params().GetConsensus());
+        nSubsidy = (nTotal / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+        LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
+    }else{
+        nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+    }
+
+    //if (LogAcceptCategory(BCLog::POS) && gArgs.GetBoolArg("-printcreation", false))
+        LogPrintf("GetProofOfStakeReward(): create=%s\n", FormatMoney(nSubsidy).c_str());
+
+    return nSubsidy + nFees;
 }
 
 /**
@@ -116,6 +177,14 @@ public:
         consensus.nGhostnodeMinimumConfirmations = 1;
         consensus.nGhostnodePaymentsStartBlock = 1080; //1.2 days after mainnet release
         consensus.nGhostnodeInitialize = 800; //~24 hours after mainnet release
+
+        // POS params
+        consensus.nPosTimeActivation = 9999999999; //always active
+        consensus.nPosHeightActivate = 53000;
+        nModifierInterval = 10 * 60;    // 10 minutes
+        nStakeMinConfirmations = 500;   // 500 * 2 minutes
+        nTargetSpacing = 120;           // 2 minutes
+        nTargetTimespan = 24 * 60;      // 24 mins
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -185,13 +254,14 @@ public:
                 { 0, uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41")},
                 { 820, uint256S("0x9d48684e77bc21913aa4c3ea949bb3019ecb33fe7765c08c97e086345cc5aab2")},
                 { 1238, uint256S("0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e")},
+                { 47800, uint256S("0xc450d288e8018faae33c669b0fe2dc2dd1a2aa97ee34e263de8964ce8cc7d549")},
             }
         };
 
         chainTxData = ChainTxData{
                 //block 1238 (0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e)
-            1530222982, // * UNIX timestamp of last known number of transactions
-            1238,  // * total number of transactions between genesis and that timestamp
+            1536123729, // * UNIX timestamp of last known number of transactions
+            60000,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
             0.1         // * estimated number of transactions per second after that timestamp
         };
@@ -209,7 +279,7 @@ public:
         strNetworkID = "test";
         consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0; // 00000000040b4e986385315e14bee30ad876d8b47f748025b26683116d21aa65
-        consensus.BIP34Height = 0;
+        consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41");
         consensus.BIP65Height = 0; // 00000000007f6655f22f98e72ed80d8b06dc761d5da09df0fa1dc4be4f861eb6
         consensus.BIP66Height = 0; // 000000002104c8c45e99a8853285a3b592602a3ccde2b832481da85e9e4ba182
@@ -223,17 +293,17 @@ public:
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1475020800; // January 1, 2008
-        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1530415442; // December 31, 2008
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1544865861; // December 31, 2008
 
         // Deployment of BIP68, BIP112, and BIP113.
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 1462060800; // May 1st, 2016
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1530415442; // May 1st, 2017
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1544865861; // May 1st, 2017
 
         // Deployment of SegWit (BIP141, BIP143, and BIP147)
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1479168000; // November 15th, 2016.
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1530415442; // November 15th, 2017.
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1544865861; // November 15th, 2017.
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000000100010");
@@ -244,6 +314,14 @@ public:
         // ghostnode params
         consensus.nGhostnodePaymentsStartBlock = 720;
         consensus.nGhostnodeInitialize = 600;
+
+        // POS params
+        consensus.nPosTimeActivation = 9999999999; //always active
+        consensus.nPosHeightActivate = 1000;
+        nModifierInterval = 10 * 60;    // 10 minutes
+        nStakeMinConfirmations = 2;   // 501 * 2 minutes
+        nTargetSpacing = 120;           // 2 minutes
+        nTargetTimespan = 24 * 60;      // 24 mins
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 
@@ -268,7 +346,7 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
         // nodes with support for servicebits filtering should be at the top
-        vSeeds.emplace_back("testnetnode1.nixplatform.io");
+        vSeeds.emplace_back("testnet.nixplatform.io");
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,1);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,3);
@@ -330,7 +408,7 @@ public:
         strNetworkID = "regtest";
         consensus.nSubsidyHalvingInterval = 1050000;
         consensus.BIP16Height = 0; // always enforce P2SH BIP16 on regtest
-        consensus.BIP34Height = 0; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
+        consensus.BIP34Height = 1; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
         consensus.BIP34Hash = uint256();
         consensus.BIP65Height = 0; // BIP65 activated on regtest (Used in rpc activation tests)
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in rpc activation tests)
@@ -343,23 +421,27 @@ public:
         consensus.nMinerConfirmationWindow = 2; // Faster than normal for regtest (144 instead of 2016)
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
-        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1475020800; // January 1, 2008
-        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1530415442; // December 31, 2008
-
-        // Deployment of BIP68, BIP112, and BIP113.
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 0;
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 1462060800; // May 1st, 2016
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1530415442; // May 1st, 2017
-
-        // Deployment of SegWit (BIP141, BIP143, and BIP147)
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 0;
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1479168000; // November 15th, 2016.
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1530415442; // November 15th, 2017.
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = Consensus::BIP9Deployment::ALWAYS_ACTIVE;
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
 
 
         // ghostnode params
         consensus.nGhostnodePaymentsStartBlock = 720;
         consensus.nGhostnodeInitialize = 600;
+
+        // POS params
+        consensus.nPosTimeActivation = 9999999999; //always active
+        consensus.nPosHeightActivate = 30;
+        nModifierInterval = 10 * 60;    // 10 minutes
+        nStakeMinConfirmations = 2;   // 501 * 2 minutes
+        nTargetSpacing = 120;           // 2 minutes
+        nTargetTimespan = 24 * 60;      // 24 mins
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 

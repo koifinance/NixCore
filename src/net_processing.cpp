@@ -962,6 +962,41 @@ void PeerLogicValidation::BlockChecked(const CBlock& block, const CValidationSta
         mapBlockSource.erase(it);
 }
 
+bool IncomingBlockChecked(const CBlock &block, CValidationState &state)
+{
+    LOCK(cs_main);
+
+    const uint256 hash(block.GetHash());
+    std::map<uint256, std::pair<NodeId, bool>>::iterator it = mapBlockSource.find(hash);
+
+    bool rv = true;
+    int nDoS = 0;
+    if (state.IsInvalid(nDoS)) {
+        if (it != mapBlockSource.end() && State(it->second.first)) {
+            assert (state.GetRejectCode() < REJECT_INTERNAL); // Blocks are never rejected with internal reject codes
+            CBlockReject reject = {(unsigned char)state.GetRejectCode(), state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), hash};
+            State(it->second.first)->rejects.push_back(reject);
+            state.nodeId = it->second.first;
+            if (nDoS > 0 && it->second.second)
+                Misbehaving(it->second.first, nDoS);
+        }
+        rv = false;
+    } else
+    if (state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
+    {
+        if (it != mapBlockSource.end() && State(it->second.first))
+            Misbehaving(it->second.first, 10);
+        rv = false;
+    };
+
+    if (!rv)
+    if (it != mapBlockSource.end())
+        mapBlockSource.erase(it);
+
+    return rv;
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Messages
@@ -1754,7 +1789,14 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             }
         }
 
-        if (nVersion < MIN_PEER_PROTO_VERSION)
+        int nHeight = chainActive.Height();
+
+        if(GetNumBlocksOfPeers() > nHeight)
+            nHeight = GetNumBlocksOfPeers();
+
+        static const int FORK_MIN_PEER_PROTO_VERSION = nHeight >= Params().GetConsensus().nPosHeightActivate ? MIN_PEER_POS_PROTO_VERSION : MIN_PEER_PROTO_VERSION;
+
+        if (nVersion < FORK_MIN_PEER_PROTO_VERSION)
         {
             // disconnect from peers older than this proto version
             LogPrint(BCLog::NET, "peer=%d using obsolete version %i; disconnecting\n", pfrom->GetId(), nVersion);
@@ -1806,6 +1848,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         connman->PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERACK));
 
         pfrom->nServices = nServices;
+
         pfrom->SetAddrLocal(addrMe);
         {
             LOCK(pfrom->cs_SubVer);
@@ -1813,6 +1856,11 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             pfrom->cleanSubVer = cleanSubVer;
         }
         pfrom->nStartingHeight = nStartingHeight;
+        pfrom->nChainHeight = nStartingHeight;
+        {
+            LOCK(cs_main);
+            connman->cPeerBlockCounts.input(pfrom->nChainHeight);
+        }
         pfrom->fClient = !(nServices & NODE_NETWORK);
         {
             LOCK(pfrom->cs_filter);
@@ -2948,6 +2996,15 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             // it, if the remote node sends a ping once per second and this node takes 5
             // seconds to respond to each, the 5th ping the remote sends would appear to
             // return very quickly.
+
+            int nChainHeight;
+            vRecv >> nChainHeight;
+            pfrom->nChainHeight = nChainHeight;
+            {
+                LOCK(cs_main);
+                connman->cPeerBlockCounts.input(nChainHeight);
+            }
+
             connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::PONG, nonce));
         }
     }
@@ -3440,9 +3497,16 @@ bool PeerLogicValidation::SendMessages(CNode* pto, std::atomic<bool>& interruptM
             }
             pto->fPingQueued = false;
             pto->nPingUsecStart = GetTimeMicros();
+
+            int nChainHeight;
+            {
+                LOCK(cs_main);
+                nChainHeight = (int)chainActive.Height();
+            }
+
             if (pto->nVersion > BIP0031_VERSION) {
                 pto->nPingNonceSent = nonce;
-                connman->PushMessage(pto, msgMaker.Make(NetMsgType::PING, nonce));
+                connman->PushMessage(pto, msgMaker.Make(NetMsgType::PING, nonce, nChainHeight));
             } else {
                 // Peer is too old to support ping command with nonce, pong will never arrive.
                 pto->nPingNonceSent = 0;
@@ -3772,9 +3836,11 @@ bool PeerLogicValidation::SendMessages(CNode* pto, std::atomic<bool>& interruptM
                     if (!txinfo.tx) {
                         continue;
                     }
-                    if (filterrate && txinfo.feeRate.GetFeePerK() < filterrate) {
-                        continue;
-                    }
+                    //LogPrintf("\nFEERATE: %llf, *** %llf \n", txinfo.feeRate.GetFeePerK(), filterrate);
+                    if(!txinfo.tx->IsZerocoinSpend())
+                        if (filterrate && txinfo.feeRate.GetFeePerK() < filterrate) {
+                            continue;
+                        }
                     if (pto->pfilter && !pto->pfilter->IsRelevantAndUpdate(*txinfo.tx)) continue;
                     // Send
                     vInv.push_back(CInv(MSG_TX, hash));

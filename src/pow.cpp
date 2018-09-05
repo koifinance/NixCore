@@ -9,6 +9,8 @@
 #include <chain.h>
 #include <primitives/block.h>
 #include <uint256.h>
+#include <chainparams.h>
+#include <timedata.h>
 
 /*Forward declarations*/
 /*********************/
@@ -21,6 +23,57 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     return DarkGravityWave(pindexLast, params);
 }
 
+unsigned int GetNextTargetRequired(const CBlockIndex *pindexLast)
+{
+    const Consensus::Params &consensus = Params().GetConsensus();
+
+    arith_uint256 bnProofOfWorkLimit;
+    unsigned int nProofOfWorkLimit;
+    int nHeight = pindexLast ? pindexLast->nHeight+1 : 0;
+
+    if (GetAdjustedTime() < Params().GetConsensus().nPosTimeActivation && nHeight < Params().GetConsensus().nPosHeightActivate)
+    {
+        return DarkGravityWave(pindexLast, consensus);
+
+    } else
+    {
+        bnProofOfWorkLimit = UintToArith256(consensus.powLimit);
+        nProofOfWorkLimit = bnProofOfWorkLimit.GetCompact();
+    }
+
+
+    if (pindexLast == nullptr)
+        return nProofOfWorkLimit; // Genesis block
+
+    const CBlockIndex* pindexPrev = pindexLast;
+    if (pindexPrev->pprev == nullptr)
+        return nProofOfWorkLimit; // first block
+    const CBlockIndex *pindexPrevPrev = pindexPrev->pprev;
+    if (pindexPrevPrev->pprev == nullptr)
+        return nProofOfWorkLimit; // second block
+
+    int64_t nTargetSpacing = Params().GetTargetSpacing();
+    int64_t nTargetTimespan = Params().GetTargetTimespan();
+    int64_t nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
+
+    if (nActualSpacing > nTargetSpacing * 10)
+        nActualSpacing = nTargetSpacing * 10;
+
+    // pos: target change every block
+    // pos: retarget with exponential moving toward target spacing
+    arith_uint256 bnNew;
+    bnNew.SetCompact(pindexLast->nBits);
+
+    int64_t nInterval = nTargetTimespan / nTargetSpacing;
+    bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
+    bnNew /= ((nInterval + 1) * nTargetSpacing);
+
+
+    if (bnNew <= 0 || bnNew > bnProofOfWorkLimit)
+        return nProofOfWorkLimit;
+
+    return bnNew.GetCompact();
+}
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params& params)
 {

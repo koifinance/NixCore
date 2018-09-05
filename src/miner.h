@@ -136,6 +136,7 @@ private:
     // Information on the current status of the block
     uint64_t nBlockWeight;
     uint64_t nBlockTx;
+    uint64_t nBlockSize;
     uint64_t nBlockSigOpsCost;
     CAmount nFees;
     CTxMemPool::setEntries inBlock;

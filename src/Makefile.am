@@ -131,6 +131,8 @@ NIX_CORE_H = \
   consensus/tx_verify.h \
   core_io.h \
   core_memusage.h \
+  pos/kernel.h \
+  pos/miner.h \
   cuckoocache.h \
   fs.h \
   ghostnode/activeghostnode.h \
@@ -272,6 +274,7 @@ libnix_server_a_SOURCES = \
   policy/fees.cpp \
   policy/policy.cpp \
   policy/rbf.cpp \
+  pos/kernel.cpp \
   pow.cpp \
   rest.cpp \
   rpc/blockchain.cpp \
@@ -337,6 +340,7 @@ libnix_wallet_a_SOURCES = \
   ghostnode/ghostnodeman.cpp \
   ghostnode/ghostnodeconfig.cpp \
   ghostnode/instantx.cpp \
+  pos/miner.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
   wallet/feebumper.cpp \

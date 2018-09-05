@@ -691,7 +691,7 @@ bool CInstantSend::IsInstantSendReadyToLock(const uint256& txHash)
 //    if(!fEnableInstantSend || fLargeWorkForkFound || fLargeWorkInvalidChainFound ||
 //        !sporkManager.IsSporkActive(SPORK_2_INSTANTSEND_ENABLED)) return false;
 
-    LOCK(cs_instantsend);
+     LOCK2(cs_main, cs_instantsend);
     // There must be a successfully verified lock request
     // and all outputs must be locked (i.e. have enough signatures)
     std::map<uint256, CTxLockCandidate>::iterator it = mapTxLockCandidates.find(txHash);

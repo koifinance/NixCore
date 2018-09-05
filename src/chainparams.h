@@ -12,6 +12,7 @@
 #include <protocol.h>
 #include <memory>
 #include <vector>
+#include <chain.h>
 
 static const uint32_t CHAIN_NO_GENESIS = 444444;
 static const uint32_t CHAIN_NO_STEALTH_SPEND = 444445; // used hardened
@@ -58,6 +59,18 @@ public:
         SCRIPT_ADDRESS_256,
         MAX_BASE58_TYPES
     };
+
+    //pos
+    int32_t GetStakeMinConfirmations() const { return nStakeMinConfirmations; }
+
+    uint32_t GetModifierInterval() const { return nModifierInterval; }
+    uint32_t GetTargetSpacing() const { return nTargetSpacing; }
+    uint32_t GetTargetTimespan() const { return nTargetTimespan; }
+
+    uint32_t GetStakeTimestampMask(int nHeight) const { return nStakeTimestampMask; }
+    int64_t GetCoinYearReward(int64_t nTime) const;
+    int64_t GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64_t nFees) const;
+
 
     const Consensus::Params& GetConsensus() const { return consensus; }
     const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
@@ -122,6 +135,15 @@ protected:
     int nFulfilledRequestExpireTime;
     std::string strSporkPubKey;
     std::string strGhostnodePaymentsPubKey;
+
+public:
+    /* POS params */
+    uint32_t nModifierInterval;         // seconds to elapse before new modifier is computed
+    uint32_t nStakeMinConfirmations;    // min depth in chain before staked output is spendable
+    uint32_t nTargetSpacing;            // targeted number of seconds between blocks
+    uint32_t nTargetTimespan;
+    uint32_t nStakeTimestampMask = (1 << 4) -1; // 4 bits, every kernel stake hash will change every 16 seconds
+    int64_t nCoinYearReward = 1.5 * CENT; // 1.5% per year based on a 30% staking model
 };
 
 /**

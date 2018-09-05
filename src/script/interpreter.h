@@ -148,6 +148,10 @@ public:
     {
          return false;
     }
+    virtual bool IsCoinStake() const
+    {
+        return false;
+    }
 
     virtual ~BaseSignatureChecker() {}
 };
@@ -169,6 +173,10 @@ public:
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override;
     bool CheckLockTime(const CScriptNum& nLockTime) const override;
     bool CheckSequence(const CScriptNum& nSequence) const override;
+    virtual bool IsCoinStake() const override
+    {
+        return txTo && txTo->IsCoinStake();
+    }
 };
 
 class MutableTransactionSignatureChecker : public TransactionSignatureChecker
@@ -184,5 +192,11 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
 
 size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
+
+bool HasIsCoinstakeOp(const CScript &script);
+
+bool GetCoinstakeScriptPath(const CScript &scriptIn, CScript &scriptOut);
+bool GetNonCoinstakeScriptPath(const CScript &scriptIn, CScript &scriptOut);
+bool SplitConditionalCoinstakeScript(const CScript &scriptIn, CScript &scriptOutA, CScript &scriptOutB);
 
 #endif // BITCOIN_SCRIPT_INTERPRETER_H

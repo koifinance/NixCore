@@ -14,6 +14,7 @@
 #include <utilmoneystr.h>
 #include <util.h>
 #include <base58.h>
+#include <chainparams.h>
 
 bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
@@ -182,7 +183,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
     }
 
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
-    if (fCheckDuplicateInputs) {
+    if (fCheckDuplicateInputs && !tx.IsZerocoinSpend()) {
         std::set<COutPoint> vInOutPoints;
         for (const auto& txin : tx.vin)
         {
@@ -204,7 +205,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
         for (const auto& txin : tx.vin)
             if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
-        if (!CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
+        if (!tx.IsCoinStake() && !CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
                     return false;
     }
 
@@ -239,18 +240,62 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         }
     }
 
-    const CAmount value_out = tx.GetValueOut();
-    if (nValueIn < value_out) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
-            strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(value_out)));
+    //We need to account for noninput i.e. coinbase creation for devfund and ghostnodes
+    const CAmount value_out= tx.GetValueOut();
+
+    if(tx.IsCoinStake()){
+
+        nValueIn += DEVELOPMENT_REWARD * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
+
+        if (chainActive.Height() >= pParams()->GetConsensus().nGhostnodePaymentsStartBlock) {
+            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
+            nValueIn += ghostnodePayment;
+
+            // Return stake reward in nTxFee
+            txfee = value_out - nValueIn;
+
+            // Tally transaction fees
+            const CAmount txfee_aux =  txfee;
+            if (!MoneyRange(txfee_aux)) {
+                //If ghostnode was not paid out
+                nValueIn -= ghostnodePayment;
+                // Return stake reward in nTxFee
+                txfee = value_out - nValueIn;
+                const CAmount txfee_aux2 =  txfee;
+                if (!MoneyRange(txfee_aux2)) {
+                    return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+                }
+            }
+
+            return true;
+        }
+
+        // Return stake reward in nTxFee
+        txfee = value_out - nValueIn;
+
+        // Tally transaction fees
+        const CAmount txfee_aux =  txfee;
+        if (!MoneyRange(txfee_aux)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+        }
+
+
+    }
+    else
+    {
+        if (nValueIn < value_out) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
+                strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(value_out)));
+        }
+
+        // Tally transaction fees
+        const CAmount txfee_aux = nValueIn - value_out;
+        if (!MoneyRange(txfee_aux)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+        }
+
+        txfee = txfee_aux;
     }
 
-    // Tally transaction fees
-    const CAmount txfee_aux = nValueIn - value_out;
-    if (!MoneyRange(txfee_aux)) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
-    }
-
-    txfee = txfee_aux;
     return true;
 }

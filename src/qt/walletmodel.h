@@ -125,7 +125,8 @@ public:
         Unencrypted,  // !wallet->IsCrypted()
         Locked,       // wallet->IsCrypted() && wallet->IsLocked()
         UnlockedForMixingOnly,
-        Unlocked      // wallet->IsCrypted() && !wallet->IsLocked()
+        Unlocked,     // wallet->IsCrypted() && !wallet->IsLocked()
+        UnlockedForStaking
     };
 
     OptionsModel *getOptionsModel();
@@ -136,6 +137,10 @@ public:
     CAmount getBalance(const CCoinControl *coinControl = nullptr) const;
     CAmount getUnconfirmedBalance() const;
     CAmount getImmatureBalance() const;
+    CAmount getGhostBalance() const;
+    CAmount getGhostBalanceUnconfirmed() const;
+    CAmount getStakeBalance() const;
+    CAmount getReservedBalance() const;
     bool haveWatchOnly() const;
     CAmount getWatchBalance() const;
     CAmount getWatchUnconfirmedBalance() const;
@@ -166,7 +171,8 @@ public:
     // Wallet encryption
     bool setWalletEncrypted(bool encrypted, const SecureString &passphrase);
     // Passphrase only needed when unlocking
-    bool setWalletLocked(bool locked, const SecureString &passPhrase=SecureString());
+    bool setWalletLocked(bool locked, const SecureString &passPhrase=SecureString(), bool stakingOnly=false);
+    bool setUnlockedForStaking();
     bool changePassphrase(const SecureString &oldPass, const SecureString &newPass);
     // Wallet backup
     bool backupWallet(const QString &filename);
@@ -175,7 +181,7 @@ public:
     class UnlockContext
     {
     public:
-        UnlockContext(WalletModel *wallet, bool valid, bool relock);
+        UnlockContext(WalletModel *wallet, bool valid, bool relock, bool was_unlocked_for_staking);
         ~UnlockContext();
 
         bool isValid() const { return valid; }
@@ -187,6 +193,7 @@ public:
         WalletModel *wallet;
         bool valid;
         mutable bool relock; // mutable, as it can be set to false by copying
+        bool was_unlocked_for_staking;
 
         void CopyFrom(const UnlockContext& rhs);
     };
@@ -226,6 +233,9 @@ public:
 
     CWallet* getWallet(){return wallet;}
 
+    void lockWallet();
+    void checkBalanceChanged();
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
@@ -246,6 +256,8 @@ private:
     CAmount cachedWatchOnlyBalance;
     CAmount cachedWatchUnconfBalance;
     CAmount cachedWatchImmatureBalance;
+    CAmount cachedStaked;
+    CAmount cachedWatchStakedBalance;
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
 
@@ -253,12 +265,11 @@ private:
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged();
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
     void balanceChanged(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                        const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+                        const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& ghostBalance, const CAmount& ghostBalanceUnconfirmed, const CAmount& stakeBalance, const CAmount& watchStakeBalance);
 
     // Encryption status of wallet changed
     void encryptionStatusChanged(int status);

@@ -106,7 +106,7 @@ UniValue mnemonic(const JSONRPCRequest &request)
             if (!sstr)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid num bytes entropy");
 
-            if (nBytesEntropy < 16 || nBytesEntropy > 64)
+            if (nBytesEntropy < 16 || nBytesEntropy > 32)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Num bytes entropy out of range [16,64].");
         };
 
@@ -130,7 +130,7 @@ UniValue mnemonic(const JSONRPCRequest &request)
 
         for (uint32_t i = 0; i < MAX_DERIVE_TRIES; ++i)
         {
-            GetStrongRandBytes2(&vEntropy[0], nBytesEntropy);
+            GetStrongRandBytes(&vEntropy[0], nBytesEntropy);
 
             if (0 != MnemonicEncode(nLanguage, vEntropy, sMnemonic, sError))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("MnemonicEncode failed %s.", sError.c_str()).c_str());

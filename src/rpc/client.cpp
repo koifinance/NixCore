@@ -63,6 +63,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "listaccounts", 0, "minconf" },
     { "listaccounts", 1, "include_watchonly" },
     { "walletpassphrase", 1, "timeout" },
+    { "walletpassphrase", 2, "stakingonly" },
     { "getblocktemplate", 0, "template_request" },
     { "listsinceblock", 1, "target_confirmations" },
     { "listsinceblock", 2, "include_watchonly" },
@@ -134,7 +135,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getaddressdeltas", 0},
     { "getaddressutxos", 0},
     { "getaddressmempool", 0},
-    //insight
+    //
     { "bumpfee", 1, "options" },
     { "logging", 0, "include" },
     { "logging", 1, "exclude" },
@@ -154,21 +155,27 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "rescanblockchain", 0, "start_height"},
     { "rescanblockchain", 1, "stop_height"},
 
-    //NIX Privacy commands
+    //NIX Privacy functions
     { "setmininput", 0 , "amount"},
-    { "mintzerocoin", 0 , "amount"},
-    { "spendzerocoin", 0 , "amount"},
+    { "ghostnix", 0 , "amount"},
+    { "ghostamount", 0 , "amount"},
+    { "unghostamount", 0 , "amount"},
+    { "spendghostednix", 0 , "amount"},
     { "setgenerate", 0 , "bool"},
     { "setgenerate", 1 , "bool"},
-    { "setmintzerocoinstatus", 2 ,""},
-    { "setmintzerocoinstatus", 1 ,""},
-    { "listmintzerocoins", 0 ,""},
+    { "setghostednixstatus", 2 ,""},
+    { "setghostednixstatus", 1 ,""},
+    { "listunspentghostednix", 0 ,""},
     { "listpubcoins", 0, ""},
     { "getnewstealthaddress", 1 ,"label"},
     { "importstealthaddress", 0 ,"scan_secret"},
     { "liststealthaddresses", 0, "show_secrets"},
     { "enabletor", 0 ,""},
     { "torstatus", 0, ""},
+
+    //NIX Staking functions
+    { "walletsettings", 1, "json" },
+    { "reservebalance", 0, "enabled" },
 };
 
 class CRPCConvertTable

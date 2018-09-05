@@ -15,6 +15,9 @@
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 static const int32_t NIX_TXN_VERSION = 2;
 
+//check when POS is activated
+static const uint8_t NIX_BLOCK_VERSION = 3;
+
 enum OutputTypes
 {
     OUTPUT_NULL             = 0, // marker for CCoinsView (0.14)
@@ -28,6 +31,8 @@ enum TransactionTypes
     TXN_STANDARD            = 0,
     TXN_COINBASE            = 1,
     TXN_ZEROCOIN            = 2,
+    TXN_COINSTAKE           = 3,
+
 };
 
 enum DataOutputTypes
@@ -372,14 +377,25 @@ public:
      */
     unsigned int GetTotalSize() const;
 
+    //checking for POS
+    int GetType() const {
+        return (nVersion >> 8) & 0xFF;
+    }
+
     bool IsCoinBase() const
     {
         return (vin.size() == 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] != OP_ZEROCOINSPEND));
     }
 
+    bool IsCoinStake() const
+    {
+        return GetType() == TXN_COINSTAKE
+            && vin.size() > 0 && vout.size() > 1;
+    }
+
     bool IsZerocoinSpend() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] == OP_ZEROCOINSPEND) && (vout.size() == 1) );
+        return (vin.size() >= 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] == OP_ZEROCOINSPEND) && (vout.size() == vin.size()) );
     }
 
     bool IsZerocoinMint(const CTransaction& tx) const
@@ -440,6 +456,20 @@ struct CMutableTransaction
     template <typename Stream>
     CMutableTransaction(deserialize_type, Stream& s) {
         Unserialize(s);
+    }
+
+    void SetType(int type) {
+        nVersion |= (type & 0xFF) << 8;
+    }
+
+    int GetType() const {
+        return (nVersion >> 8) & 0xFF;
+    }
+
+    bool IsCoinStake() const
+    {
+        return GetType() == TXN_COINSTAKE
+            && vin.size() > 0 && vout.size() > 1;
     }
 
     /** Compute the hash of this CMutableTransaction. This is computed on the

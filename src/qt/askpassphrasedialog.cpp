@@ -13,12 +13,14 @@
 #include <qt/walletmodel.h>
 
 #include <support/allocators/secure.h>
+#include <qt/overviewpage.h>
+#include <wallet/wallet.h>
 
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QPushButton>
 
-AskPassphraseDialog::AskPassphraseDialog(Mode _mode, QWidget *parent) :
+AskPassphraseDialog::AskPassphraseDialog(Mode _mode, QWidget *parent, QLabel *isStaking) :
     QDialog(parent),
     ui(new Ui::AskPassphraseDialog),
     mode(_mode),
@@ -40,6 +42,11 @@ AskPassphraseDialog::AskPassphraseDialog(Mode _mode, QWidget *parent) :
     ui->passEdit2->installEventFilter(this);
     ui->passEdit3->installEventFilter(this);
 
+    ui->unlockForStakingOnlyCheckBox->setChecked(false);
+    ui->unlockForStakingOnlyCheckBox->hide();
+    ui->unlockForStakingOnlyLabel->hide();
+
+    _isStaking = isStaking;
     switch(mode)
     {
         case Encrypt: // Ask passphrase x2
@@ -55,6 +62,18 @@ AskPassphraseDialog::AskPassphraseDialog(Mode _mode, QWidget *parent) :
             ui->passLabel3->hide();
             ui->passEdit3->hide();
             setWindowTitle(tr("Unlock wallet"));
+            break;
+        case UnlockManual: // Ask passphrase with staking only option
+            ui->warningLabel->setText(tr("This operation needs your wallet passphrase to unlock the wallet."));
+            ui->passLabel2->hide();
+            ui->passEdit2->hide();
+            ui->passLabel3->hide();
+            ui->passEdit3->hide();
+            ui->unlockForStakingOnlyCheckBox->show();
+            ui->unlockForStakingOnlyLabel->show();
+            ui->unlockForStakingOnlyCheckBox->setChecked(1);
+            ui->unlockForStakingOnlyCheckBox->setEnabled(false);
+            setWindowTitle(tr("Unlock wallet for staking"));
             break;
         case Decrypt:   // Ask passphrase
             ui->warningLabel->setText(tr("This operation needs your wallet passphrase to decrypt the wallet."));
@@ -102,6 +121,8 @@ void AskPassphraseDialog::accept()
     newpass2.assign(ui->passEdit3->text().toStdString().c_str());
 
     secureClearPassFields();
+
+    bool fForStakingOnly = ui->unlockForStakingOnlyCheckBox->isChecked();
 
     switch(mode)
     {
@@ -153,13 +174,24 @@ void AskPassphraseDialog::accept()
         }
         } break;
     case Unlock:
-        if(!model->setWalletLocked(false, oldpass))
+    case UnlockManual:
+        if(!model->setWalletLocked(false, oldpass, fForStakingOnly))
         {
+            if(_isStaking != nullptr){
+            _isStaking->setStyleSheet("color: red;");
+            _isStaking->setText("Disabled");
+            model->getWallet()->fUnlockForStakingOnly = false;
+            }
             QMessageBox::critical(this, tr("Wallet unlock failed"),
                                   tr("The passphrase entered for the wallet decryption was incorrect."));
         }
         else
         {
+            if(_isStaking != nullptr && fForStakingOnly){
+                _isStaking->setStyleSheet("color: green;");
+                _isStaking->setText("Enabled");
+                model->getWallet()->fUnlockForStakingOnly = true;
+            }
             QDialog::accept(); // Success
         }
         break;
@@ -196,6 +228,8 @@ void AskPassphraseDialog::accept()
         }
         break;
     }
+
+    model->checkBalanceChanged();
 }
 
 void AskPassphraseDialog::textChanged()
@@ -208,6 +242,7 @@ void AskPassphraseDialog::textChanged()
         acceptable = !ui->passEdit2->text().isEmpty() && !ui->passEdit3->text().isEmpty();
         break;
     case Unlock: // Old passphrase x1
+    case UnlockManual: // Old passphrase x1
     case Decrypt:
         acceptable = !ui->passEdit1->text().isEmpty();
         break;

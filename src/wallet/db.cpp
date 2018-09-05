@@ -691,6 +691,7 @@ bool CWalletDBWrapper::Backup(const std::string& strDest)
     if (IsDummy()) {
         return false;
     }
+
     while (true)
     {
         {

@@ -325,6 +325,7 @@ public:
     std::vector<CNode *> CopyNodeVector();
     void ReleaseNodeVector(const std::vector<CNode *> &vecNodes);
     CAddrMan addrman;
+    CMedianFilter<int> cPeerBlockCounts;
 private:
     struct ListenSocket {
         SOCKET socket;
@@ -692,6 +693,7 @@ protected:
 public:
     uint256 hashContinue;
     std::atomic<int> nStartingHeight;
+    std::atomic<int> nChainHeight; // updated from ping messages
 
     // flood relay
     std::vector<CAddress> vAddrToSend;

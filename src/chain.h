@@ -16,6 +16,16 @@
 #include <vector>
 
 using namespace std;
+
+enum eBlockFlags
+{
+    BLOCK_PROOF_OF_STAKE            = (1 << 0), // is proof-of-stake block
+    BLOCK_STAKE_ENTROPY             = (1 << 1), // entropy bit for stake modifier
+    BLOCK_STAKE_MODIFIER            = (1 << 2), // regenerated stake modifier
+
+    BLOCK_FAILED_DUPLICATE_STAKE    = (1 << 3),
+};
+
 /**
  * Maximum amount of time that a block timestamp is allowed to exceed the
  * current network-adjusted time before the block will be accepted.
@@ -208,6 +218,12 @@ public:
     //! Verification status of this block. See enum BlockStatus
     uint32_t nStatus;
 
+    // proof-of-stake specific fields
+    unsigned int nFlags;  // pos: block index flags
+    uint256 bnStakeModifier; // hash modifier for proof-of-stake
+    COutPoint prevoutStake;
+    CAmount nMoneySupply;
+
     //! block header
     int32_t nVersion;
     uint256 hashMerkleRoot;
@@ -247,6 +263,11 @@ public:
         nStatus = 0;
         nSequenceId = 0;
         nTimeMax = 0;
+
+        nFlags = 0;
+        bnStakeModifier = uint256();
+        prevoutStake.SetNull();
+        nMoneySupply = 0;
 
         nVersion       = 0;
         hashMerkleRoot = uint256();
@@ -325,6 +346,33 @@ public:
     int64_t GetBlockTimeMax() const
     {
         return (int64_t)nTimeMax;
+    }
+
+    bool IsProofOfStake() const
+    {
+        return (nFlags & BLOCK_PROOF_OF_STAKE);
+    }
+
+    void SetProofOfStake()
+    {
+        nFlags |= BLOCK_PROOF_OF_STAKE;
+    }
+
+    unsigned int GetStakeEntropyBit() const
+    {
+        return ((nFlags & BLOCK_STAKE_ENTROPY) >> 1);
+    }
+
+    bool SetStakeEntropyBit(unsigned int nEntropyBit)
+    {
+        if (nEntropyBit > 1)
+            return false;
+        nFlags |= (nEntropyBit? BLOCK_STAKE_ENTROPY : 0);
+        return true;
+    }
+
+    bool IsProofOfStakeHeightActive(int Height){
+        return nHeight >= Height;
     }
 
     static constexpr int nMedianTimeSpan = 11;
@@ -433,6 +481,14 @@ public:
         READWRITE(mintedPubCoins);
         READWRITE(accumulatorChanges);
         READWRITE(spentSerials);
+
+        //POS params
+        if(IsProofOfStakeHeightActive(53000)){
+            READWRITE(nFlags);
+            READWRITE(bnStakeModifier);
+            READWRITE(prevoutStake);
+            READWRITE(nMoneySupply);
+        }
 
     }
 

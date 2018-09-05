@@ -10,6 +10,7 @@
 #include <qt/forms/ui_ghostvault.h>
 
 #include "addresstablemodel.h"
+#include "walletmodel.h"
 #include "nixgui.h"
 #include "csvmodelwriter.h"
 #include "editaddressdialog.h"
@@ -29,52 +30,29 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
         mode(mode){
     ui->setupUi(this);
 
-    if (!platformStyle->getImagesOnButtons()) {
-        ui->exportButton->setIcon(QIcon());
-    } else {
-        ui->exportButton->setIcon(platformStyle->SingleColorIcon(":/icons/export"));
-    }
-
     switch (mode) {
         case ForSelection:
             setWindowTitle(tr("Ghost Vault"));
-            connect(ui->tableView, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(accept()));
-            ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-            ui->tableView->setFocus();
-            ui->exportButton->hide();
             break;
         case ForEditing:
             setWindowTitle(tr("Ghost Vault"));
     }
+
+    ui->ghostAmount->setValidator( new QIntValidator(1, 9999999, this) );
     ui->labelExplanation->setText(
-            tr("These are your private coins from ghosting NIX, You can convert ghosted NIX to public coins."));
+            tr("These are your private coins from ghosting NIX. You can convert ghosted NIX to public coins. The longer your coins are here, the more private they become."));
     ui->ghostAmount->setVisible(true);
     ui->ghostNIXButton->setVisible(true);
     ui->convertGhostButton->setVisible(true);
-    ui->ghostAmount->addItem("1");
-    ui->ghostAmount->addItem("5");
-    ui->ghostAmount->addItem("10");
-    ui->ghostAmount->addItem("50");
-    ui->ghostAmount->addItem("100");
-    ui->ghostAmount->addItem("500");
-    ui->ghostAmount->addItem("1000");
-    ui->ghostAmount->addItem("5000");
 
     ui->convertNIXAmount->clear();
 
-    std::vector <COutput> vCoins;
-    vpwallets.front()->ListAvailableCoinsMintCoins(vCoins, true);
-    ui->total->setText(QString::number(vCoins.size()) + tr(" Ghosted NIX"));
+    ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+    ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
 
-    if(vCoins.size() == 0)
-        ui->convertNIXAmount->addItem("None");
-    else
-        for(int i = 0; i < vCoins.size(); i++)
-            ui->convertNIXAmount->addItem(QString::number(vCoins[i].tx->tx->vout[vCoins[i].i].nValue));
     // Build context menu
     contextMenu = new QMenu(this);
 
-    connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextualMenu(QPoint)));
     connect(ui->convertGhostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(convertGhostToMeCheckBoxChecked(int)));
 
 }
@@ -96,80 +74,141 @@ void GhostVault::setModel(AddressTableModel *model) {
     proxyModel->setFilterRole(AddressTableModel::TypeRole);
     proxyModel->setFilterFixedString(AddressTableModel::GhostVault);
 
-    ui->tableView->setModel(proxyModel);
-    ui->tableView->sortByColumn(0, Qt::AscendingOrder);
-
-    // Set column widths
-#if QT_VERSION < 0x050000
-    ui->tableView->horizontalHeader()->setResizeMode(AddressTableModel::Label, QHeaderView::Stretch);
-    ui->tableView->horizontalHeader()->setResizeMode(AddressTableModel::Address, QHeaderView::ResizeToContents);
-#else
-    ui->tableView->horizontalHeader()->setSectionResizeMode(AddressTableModel::Label, QHeaderView::Stretch);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(AddressTableModel::Address, QHeaderView::ResizeToContents);
-#endif
-
-//    connect(ui->tableView->selectionModel(), SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
-//            this, SLOT(selectionChanged()));
-
     // Select row for newly created address
     connect(model, SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(selectNewAddress(QModelIndex, int, int)));
 
-//    selectionChanged();
+}
+
+void GhostVault::setWalletModel(WalletModel *walletmodel) {
+    if (!walletmodel)
+        return;
+    this->walletModel = walletmodel;
 }
 
 void GhostVault::on_ghostNIXButton_clicked() {
-    QString amount = ui->ghostAmount->currentText();
+    QString amount = ui->ghostAmount->text();
     std::string denomAmount = amount.toStdString();
     std::string stringError;
-    if(!model->ghostNIX(stringError, denomAmount)){
-        QString t = tr(stringError.c_str());
 
+    if(amount.toInt() < 1)
         QMessageBox::critical(this, tr("Error"),
-                              tr("You cannot ghost NIX because %1").arg(t),
-                              QMessageBox::Ok, QMessageBox::Ok);
-    }else{
-        QMessageBox::information(this, tr("Success"),
-                                      tr("You have been successfully ghosted NIX from your wallet"),
+                                      tr("You must ghost more than 0 coins."),
                                       QMessageBox::Ok, QMessageBox::Ok);
-        std::vector <COutput> vCoins;
-        (vpwallets.front())->ListAvailableCoinsMintCoins(vCoins, true);
-        ui->total->setText(QString::number(vCoins.size()) + tr(" Ghosted NIX"));
-        ui->convertNIXAmount->clear();
-        if(vCoins.size() == 0)
-            ui->convertNIXAmount->addItem("None");
-        else
-            for(int i = 0; i < vCoins.size(); i++)
-                ui->convertNIXAmount->addItem(QString::number(vCoins[i].tx->tx->vout[vCoins[i].i].nValue));
 
+    if(walletModel->getWallet()->IsLocked()){
+        WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+        if(!ctx.isValid())
+        {
+            return;
+        }
+        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount)){
+
+            QMessageBox::critical(this, tr("Error"),
+                                  tr("You cannot ghost NIX at the moment. Please check the debug.log for errors."),
+                                  QMessageBox::Ok, QMessageBox::Ok);
+
+        }else{
+            QMessageBox::information(this, tr("Success"),
+                                          tr("You have successfully ghosted NIX from your wallet"),
+                                          QMessageBox::Ok, QMessageBox::Ok);
+
+            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
+            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+
+            ui->convertNIXAmount->clear();
+            ui->ghostAmount->clear();
+        }
+    }
+    else{
+        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount)){
+
+            QMessageBox::critical(this, tr("Error"),
+                                  tr("You cannot ghost NIX at the moment. Please check the debug.log for errors."),
+                                  QMessageBox::Ok, QMessageBox::Ok);
+
+        }else{
+            QMessageBox::information(this, tr("Success"),
+                                          tr("You have successfully ghosted NIX from your wallet"),
+                                          QMessageBox::Ok, QMessageBox::Ok);
+
+
+            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
+            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+
+            ui->convertNIXAmount->clear();
+            ui->ghostAmount->clear();
+        }
     }
 }
 
 void GhostVault::on_convertGhostButton_clicked() {
 
-    QString amount = ui->convertNIXAmount->currentText();
+    QString amount = ui->convertNIXAmount->text();
     QString address = ui->convertGhostToThirdPartyAddress->text();
     std::string denomAmount = amount.toStdString();
     std::string thirdPartyAddress = address.toStdString();
     std::string stringError;
 
+    CBitcoinAddress nixAddress;
+
+    // Address
+    nixAddress = CBitcoinAddress(thirdPartyAddress);
+
+
+
+
     if(ui->convertGhostToMeCheckBox->isChecked() == false && thirdPartyAddress == ""){
         QMessageBox::critical(this, tr("Error"),
                                       tr("Your \"Spend To\" field is empty, please check again"),
                                       QMessageBox::Ok, QMessageBox::Ok);
+        return;
     }else{
+        if(ui->convertGhostToMeCheckBox->isChecked() == false)
+            if(!IsStealthAddress(thirdPartyAddress))
+                if (!nixAddress.IsValid()){
+                    QMessageBox::critical(this, tr("Error"),
+                                                  tr("Your \"Spend To\" address is not valid, please check again"),
+                                                  QMessageBox::Ok, QMessageBox::Ok);
+                    return;
+                }
 
-        if(!model->convertGhost(stringError, thirdPartyAddress, denomAmount)){
+        if(amount.toInt() < 1){
+            QMessageBox::critical(this, tr("Error"),
+                                          tr("You must ghost more than 0 coins."),
+                                          QMessageBox::Ok, QMessageBox::Ok);
+            return;
+        }
+
+        std::string successfulString = "Sucessfully sent " + denomAmount + " ghosted NIX";
+
+        if(walletModel->getWallet()->IsLocked()){
+            WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+            if(!ctx.isValid())
+            {
+                return;
+            }
+
+            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
+
+        } else
+            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
+
+        if(stringError != successfulString){
             QString t = tr(stringError.c_str());
 
             QMessageBox::critical(this, tr("Error"),
-                                  tr("You cannot convert ghosted NIX because %1").arg(t),
+                                  tr("You cannot convert ghosted NIX at the moment. %1").arg(t),
                                   QMessageBox::Ok, QMessageBox::Ok);
         }else{
             QMessageBox::information(this, tr("Success"),
-                                          tr("You have been successfully converted your ghosted NIX from the wallet"),
+                                          tr("You have successfully converted your ghosted NIX from your wallet"),
                                           QMessageBox::Ok, QMessageBox::Ok);
 
+            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+
+            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
         }
+
         ui->convertGhostToThirdPartyAddress->clear();
         ui->convertGhostToThirdPartyAddress->setEnabled(false);
 
@@ -209,18 +248,18 @@ void GhostVault::on_exportButton_clicked() {
 }
 
 void GhostVault::contextualMenu(const QPoint &point) {
-    QModelIndex index = ui->tableView->indexAt(point);
-    if (index.isValid()) {
-        contextMenu->exec(QCursor::pos());
-    }
+
 }
 
 void GhostVault::selectNewAddress(const QModelIndex &parent, int begin, int /*end*/) {
     QModelIndex idx = proxyModel->mapFromSource(model->index(begin, AddressTableModel::Address, parent));
     if (idx.isValid() && (idx.data(Qt::EditRole).toString() == newAddressToSelect)) {
         // Select row of newly created address, once
-        ui->tableView->setFocus();
-        ui->tableView->selectRow(idx.row());
         newAddressToSelect.clear();
     }
+}
+
+void GhostVault::setVaultBalance(CAmount confirmed, CAmount unconfirmed){
+    ui->total->setText(QString::number(confirmed/COIN) + tr(" Ghosted NIX"));
+    ui->unconfirmed_label->setText(QString::number(unconfirmed/COIN) + tr(" Unconfirmed NIX"));
 }

@@ -45,6 +45,8 @@ public:
 
     void showOutOfSyncWarning(bool fShow);
 
+    WalletView *currentWalletView();
+
 Q_SIGNALS:
     /** Notify that the user has requested more information about the out-of-sync warning */
     void requestedSyncWarningInfo();
@@ -58,8 +60,6 @@ private:
     bool bOutOfSync;
 
     const PlatformStyle *platformStyle;
-
-    WalletView *currentWalletView();
 
 public Q_SLOTS:
     /** Switch to overview (home) page */
@@ -95,6 +95,9 @@ public Q_SLOTS:
 
     void gotoGhostnodePage();
     void gotoGhostVaultPage();
+
+    void unlockForStaking();
+    void lockWallet();
 };
 
 #endif // BITCOIN_QT_WALLETFRAME_H

@@ -42,6 +42,15 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
                                " " + _("(1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)"));
 
+    strUsage += HelpMessageGroup(_("Wallet staking options:"));
+    strUsage += HelpMessageOpt("-staking", _("Stake your coins to support network and gain reward (default: true)"));
+    strUsage += HelpMessageOpt("-stakingthreads", _("Number of threads to start for staking, max 1 per active wallet, will divide wallets evenly between threads (default: 1)"));
+    strUsage += HelpMessageOpt("-minstakeinterval=<n>", _("Minimum time in seconds between successful stakes (default: 0)"));
+    strUsage += HelpMessageOpt("-minersleep=<n>", _("Milliseconds between stake attempts. Lowering this param will not result in more stakes. (default: 500)"));
+    strUsage += HelpMessageOpt("-reservebalance=<amount>", _("Ensure available balance remains above reservebalance. (default: 0)"));
+    strUsage += HelpMessageOpt("-donationpercent=<n>", _("Percentage of block reward donated to the development fund, overridden by system minimum. (default: 0)"));
+
+
     if (showDebug)
     {
         strUsage += HelpMessageGroup(_("Wallet debugging/testing options:"));

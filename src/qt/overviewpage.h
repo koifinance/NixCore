@@ -8,6 +8,7 @@
 #include <amount.h>
 
 #include <QWidget>
+#include <QLabel>
 #include <memory>
 
 class ClientModel;
@@ -15,6 +16,7 @@ class TransactionFilterProxy;
 class TxViewDelegate;
 class PlatformStyle;
 class WalletModel;
+class GhostVault;
 
 namespace Ui {
     class OverviewPage;
@@ -36,10 +38,14 @@ public:
     void setClientModel(ClientModel *clientModel);
     void setWalletModel(WalletModel *walletModel);
     void showOutOfSyncWarning(bool fShow);
+    QLabel *isStaking;
+
+    GhostVault *ghostVaultPage;
 
 public Q_SLOTS:
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& ghostBalance, const CAmount& ghostBalanceUnconfirmed, const CAmount& staked, const CAmount& watchStakedBalance);
+    void setReservedBalance(CAmount reservedBalance);
 
 Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);
@@ -52,10 +58,16 @@ private:
     WalletModel *walletModel;
     CAmount currentBalance;
     CAmount currentUnconfirmedBalance;
+    CAmount currentGhostBalance;
+    CAmount currentGhostBalanceUnconfirmed;
     CAmount currentImmatureBalance;
     CAmount currentWatchOnlyBalance;
     CAmount currentWatchUnconfBalance;
     CAmount currentWatchImmatureBalance;
+    CAmount currentStaked;
+    CAmount currentWatchStakedBalance;
+    CAmount currentReservedBalance;
+
 
     TxViewDelegate *txdelegate;
     std::unique_ptr<TransactionFilterProxy> filter;

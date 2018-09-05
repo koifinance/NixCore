@@ -17,8 +17,9 @@ using namespace boost;
 // btzc: add zerocoin init
 // zerocoin init
 static CBigNum bnTrustedModulus(ZEROCOIN_MODULUS);
+static CBigNum bnTrustedSeed(ZEROCOIN_SEED);
 // Set up the Zerocoin Params object
-libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus);
+libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus, bnTrustedSeed);
 
 
 static CZerocoinState zerocoinState;
@@ -47,134 +48,137 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
                                 bool isVerifyDB,
                                 int nHeight,
                                 bool isCheckWallet,
-                                CZerocoinTxInfo *zerocoinTxInfo) {
+                                CZerocoinTxInfo *zerocoinTxInfo, int indexOfSpend) {
 
     // Check for inputs only, everything else was checked before
     LogPrintf("CheckSpendZerocoinTransaction denomination=%d nHeight=%d\n", targetDenomination, nHeight);
 
-    BOOST_FOREACH(const CTxIn &txin, tx.vin)
-    {
-        if (!txin.scriptSig.IsZerocoinSpend())
-            continue;
+    const CTxIn &txin = tx.vin[indexOfSpend];
 
-        uint32_t pubcoinId = txin.nSequence;
-        if (pubcoinId < 1 || pubcoinId >= INT_MAX) {
-             // coin id should be positive integer
-            return state.DoS(100,
-                false,
-                NSEQUENCE_INCORRECT,
-                "CTransaction::CheckTransaction() : Error: zerocoin spend nSequence is incorrect");
-        }
+    if (!txin.scriptSig.IsZerocoinSpend())
+        return state.DoS(100,
+                         false,
+                         NSEQUENCE_INCORRECT,
+                         "CTransaction::CheckTransaction() : Error: zerocoin spend txin not a zerocoin spend script");
 
-        if (txin.scriptSig.size() < 4)
-            return state.DoS(100,
-                             false,
-                             REJECT_MALFORMED,
-                             "CheckSpendZerocoinTransaction: invalid spend transaction");
+    uint32_t pubcoinId = txin.nSequence;
+    if (pubcoinId < 1 || pubcoinId >= INT_MAX) {
+        // coin id should be positive integer
+        return state.DoS(100,
+                         false,
+                         NSEQUENCE_INCORRECT,
+                         "CTransaction::CheckTransaction() : Error: zerocoin spend nSequence is incorrect");
+    }
 
-        // Deserialize the CoinSpend intro a fresh object
-        CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 4),
-                                        (const char *)&*txin.scriptSig.end(),
-                                        SER_NETWORK, PROTOCOL_VERSION);
-        libzerocoin::CoinSpend newSpend(ZCParams, serializedCoinSpend);
+    if (txin.scriptSig.size() < 4)
+        return state.DoS(100,
+                         false,
+                         REJECT_MALFORMED,
+                         "CheckSpendZerocoinTransaction: invalid spend transaction");
 
-        int spendVersion = newSpend.getVersion();
-        if (spendVersion != ZEROCOIN_VERSION_1) {
-            return state.DoS(100,
-                             false,
-                             NSEQUENCE_INCORRECT,
-                             "CTransaction::CheckTransaction() : Error: incorrect spend transaction verion");
-        }
+    // Deserialize the CoinSpend intro a fresh object
+    CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 4),
+                                    (const char *)&*txin.scriptSig.end(),
+                                    SER_NETWORK, PROTOCOL_VERSION);
+    libzerocoin::CoinSpend newSpend(ZCParams, serializedCoinSpend);
 
-
-
-
-        spendVersion = ZEROCOIN_VERSION_1;
-        newSpend.setVersion(ZEROCOIN_VERSION_1);
+    int spendVersion = newSpend.getVersion();
+    if (spendVersion != ZEROCOIN_VERSION_1) {
+        return state.DoS(100,
+                         false,
+                         NSEQUENCE_INCORRECT,
+                         "CTransaction::CheckTransaction() : Error: incorrect spend transaction verion");
+    }
 
 
 
-        uint256 txHashForMetadata;
 
-        if (spendVersion >= ZEROCOIN_VERSION_1) {
-            // Obtain the hash of the transaction sans the zerocoin part
-            CMutableTransaction txTemp = tx;
-            BOOST_FOREACH(CTxIn &txTempIn, txTemp.vin) {
-                if (txTempIn.scriptSig.IsZerocoinSpend()) {
-                    txTempIn.scriptSig.clear();
-                    txTempIn.prevout.SetNull();
-                }
-            }
-            txHashForMetadata = txTemp.GetHash();
-        }
+    spendVersion = ZEROCOIN_VERSION_1;
+    newSpend.setVersion(ZEROCOIN_VERSION_1);
 
 
-        libzerocoin::SpendMetaData newMetadata(txin.nSequence, txHashForMetadata);
 
+    uint256 txHashForMetadata;
 
-        CZerocoinState::CoinGroupInfo coinGroup;
-        if (!zerocoinState.GetCoinGroupInfo(targetDenomination, pubcoinId, coinGroup))
-                return state.DoS(100, false, NO_MINT_ZEROCOIN, "CheckSpendZerocoinTransaction: Error: no coins were minted with such parameters at height %d", nHeight);
-
-        bool passVerify = false;
-        CBlockIndex *index = coinGroup.lastBlock;
-        pair<int,int> denominationAndId = make_pair(targetDenomination, pubcoinId);
-
-
-        bool spendHasBlockHash;
-
-        // Zerocoin  transaction can cointain block hash of the last mint tx seen at the moment of spend. It speeds
-        // up verification
-        if (spendVersion >= ZEROCOIN_VERSION_1 && !newSpend.getAccumulatorBlockHash().IsNull()) {
-            spendHasBlockHash = true;
-            uint256 accumulatorBlockHash = newSpend.getAccumulatorBlockHash();
-
-            // find index for block with hash of accumulatorBlockHash or set index to the coinGroup.firstBlock if not found
-            while (index != coinGroup.firstBlock && index->GetBlockHash() != accumulatorBlockHash)
-                index = index->pprev;
-        }
-
-        // Enumerate all the accumulator changes seen in the blockchain starting with the latest block
-        // In most cases the latest accumulator value will be used for verification
-        do {
-            if (index->accumulatorChanges.count(denominationAndId) > 0) {
-                libzerocoin::Accumulator accumulator(ZCParams,
-                                                     index->accumulatorChanges[denominationAndId].first,
-                                                     targetDenomination);
-                LogPrintf("CheckSpendZerocoinTransaction: accumulator=%s\n", accumulator.getValue().ToString().substr(0,15));
-                passVerify = newSpend.Verify(accumulator, newMetadata);
-
-            }
-
-            if (index == coinGroup.firstBlock || spendHasBlockHash)
-                break;
-            else
-                index = index->pprev;
-        } while (!passVerify);
-
-        if (passVerify) {
-
-            CBigNum serial = newSpend.getCoinSerialNumber();
-            // do not check for duplicates in case we've seen exact copy of this tx in this block before
-            if (!(zerocoinTxInfo && zerocoinTxInfo->zcTransactions.count(hashTx) > 0)) {
-                if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
-                    return false;
-            }
-
-            if(!isVerifyDB && !isCheckWallet) {
-                if (zerocoinTxInfo && !zerocoinTxInfo->fInfoIsComplete) {
-                    // add spend information to the index
-                    zerocoinTxInfo->spentSerials[serial] = (int)newSpend.getDenomination();
-                    zerocoinTxInfo->zcTransactions.insert(hashTx);
-
-                }
+    if (spendVersion >= ZEROCOIN_VERSION_1) {
+        // Obtain the hash of the transaction sans the zerocoin part
+        CMutableTransaction txTemp = tx;
+        BOOST_FOREACH(CTxIn &txTempIn, txTemp.vin) {
+            if (txTempIn.scriptSig.IsZerocoinSpend()) {
+                txTempIn.scriptSig.clear();
+                txTempIn.prevout.SetNull();
             }
         }
-        else {
-            LogPrintf("CheckSpendZerocoinTransaction: verification failed at block %d\n", nHeight);
-            return false;
+        txHashForMetadata = txTemp.GetHash();
+    }
+
+
+    libzerocoin::SpendMetaData newMetadata(txin.nSequence, txHashForMetadata);
+
+
+    CZerocoinState::CoinGroupInfo coinGroup;
+    if (!zerocoinState.GetCoinGroupInfo(targetDenomination, pubcoinId, coinGroup))
+        return state.DoS(100, false, NO_MINT_ZEROCOIN, "CheckSpendZerocoinTransaction: Error: no coins were minted with such parameters at height %d", nHeight);
+
+    bool passVerify = false;
+    CBlockIndex *index = coinGroup.lastBlock;
+    pair<int,int> denominationAndId = make_pair(targetDenomination, pubcoinId);
+
+
+    bool spendHasBlockHash;
+
+    // Zerocoin  transaction can cointain block hash of the last mint tx seen at the moment of spend. It speeds
+    // up verification
+    if (spendVersion >= ZEROCOIN_VERSION_1 && !newSpend.getAccumulatorBlockHash().IsNull()) {
+        spendHasBlockHash = true;
+        uint256 accumulatorBlockHash = newSpend.getAccumulatorBlockHash();
+
+        // find index for block with hash of accumulatorBlockHash or set index to the coinGroup.firstBlock if not found
+        while (index != coinGroup.firstBlock && index->GetBlockHash() != accumulatorBlockHash)
+            index = index->pprev;
+    }
+
+    // Enumerate all the accumulator changes seen in the blockchain starting with the latest block
+    // In most cases the latest accumulator value will be used for verification
+    do {
+        if (index->accumulatorChanges.count(denominationAndId) > 0) {
+            libzerocoin::Accumulator accumulator(ZCParams,
+                                                 index->accumulatorChanges[denominationAndId].first,
+                                                 targetDenomination);
+            LogPrintf("CheckSpendZerocoinTransaction: accumulator=%s\n", accumulator.getValue().ToString().substr(0,15));
+            passVerify = newSpend.Verify(accumulator, newMetadata);
+
+        }
+
+        if (index == coinGroup.firstBlock || spendHasBlockHash)
+            break;
+        else
+            index = index->pprev;
+    } while (!passVerify);
+
+    if (passVerify) {
+
+        CBigNum serial = newSpend.getCoinSerialNumber();
+        // do not check for duplicates in case we've seen exact copy of this tx in this block before
+        if (!(zerocoinTxInfo && zerocoinTxInfo->zcTransactions.count(hashTx) > 0)) {
+            if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
+                return false;
+        }
+
+        if(!isVerifyDB && !isCheckWallet) {
+            if (zerocoinTxInfo && !zerocoinTxInfo->fInfoIsComplete) {
+                // add spend information to the index
+                zerocoinTxInfo->spentSerials[serial] = (int)newSpend.getDenomination();
+                zerocoinTxInfo->zcTransactions.insert(hashTx);
+
+            }
         }
     }
+    else {
+        LogPrintf("CheckSpendZerocoinTransaction: verification failed at block %d\n", nHeight);
+        return false;
+    }
+
     return true;
 }
 
@@ -245,46 +249,63 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
         break;
     }
 
+
     return true;
 }
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[0].nValue == 3800000*COIN))
-        nHeight = 1;
+    //checks blocks on startup, no need to verify
     if(nHeight == INT_MAX)
-        nHeight = 2;
+        return true;
 
     // To airdrop
-    if (nHeight == 1) {
+    if(Params().GetConsensus().nPosHeightActivate > nHeight){
+        if (nHeight == 1) {
 
-        //Split 38m into 100 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
+            //Split 38m into 100 unique addresses for faster tx processing
+            CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
 
-        bool found_1 = false;
+            bool found_1 = false;
 
-        CScript AIRDROP_SCRIPT;
+            CScript AIRDROP_SCRIPT;
 
-        std::string addresses;
+            std::string addresses;
 
-        if (!fTestNet) {
-            for(int i = 0; i < 100; i++){
-                addresses = airdrop_addresses[i];
-                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+            if (!fTestNet) {
+                for(int i = 0; i < 100; i++){
+                    addresses = airdrop_addresses[i];
+                    AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+                    found_1 = false;
+                    BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                        //check for first 93 address with 3.8m
+                        if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
+                            found_1 = true;
+                            break;
+                        }
+                        //check for the stacked address
+                        else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
+                            found_1 = true;
+                            break;
+                        }
+                        //check for 6 ghosnode outputs
+                        else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
+                            found_1 = true;
+                            break;
+                        }
+                    }
+                    if (!(found_1)) {
+                        return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                         "CTransaction::CheckTransaction() : airdrop funds missing");
+                    }
+                }
+            }
+            else{
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
                 found_1 = false;
                 BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                    //check for first 93 address with 3.8m
-                    if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
-                        found_1 = true;
-                        break;
-                    }
-                    //check for the stacked address
-                    else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
-                        found_1 = true;
-                        break;
-                    }
-                    //check for 6 ghosnode outputs
-                    else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
+                    //check for first testnet drop
+                    if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                         found_1 = true;
                         break;
                     }
@@ -294,26 +315,65 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                                      "CTransaction::CheckTransaction() : airdrop funds missing");
                 }
             }
+
         }
-        else{
-            AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-            found_1 = false;
+
+        if (nHeight >= 2) {
+            bool found_1 = false;
+            bool found_2 = false;
+
+            CScript DEV_1_SCRIPT;
+            CScript DEV_2_SCRIPT;
+
+            if (!fTestNet) {
+                DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+                DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            }
+            else {
+                DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+                DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
+            }
+            //7% development fee total
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                //check for first testnet drop
-                if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                //5% for first address
+                if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                     found_1 = true;
-                    break;
+                }
+                //2% for second address
+                if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                    found_2 = true;
                 }
             }
-            if (!(found_1)) {
+
+            if (!(found_1 && found_2)) {
                 return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                                 "CTransaction::CheckTransaction() : airdrop funds missing");
+                                 "CTransaction::CheckTransaction() : dev reward missing");
             }
+
         }
 
-    }
+        /* Check for Ghostnode payment in block */
 
-    if (nHeight >= 2) {
+        if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
+
+            int total_payment_tx = 0;
+            CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
+
+            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                if (ghostnodePayment == output.nValue) {
+                    total_payment_tx = total_payment_tx + 1;
+                }
+            }
+            // no more than 1 output for payment, possible no winner if list is not populated
+            if (total_payment_tx > 1) {
+                return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
+                                 "CTransaction::CheckTransaction() : invalid ghostnode payment");
+            }
+        }
+    }
+    //PoS reward distribution
+    else{
+
         bool found_1 = false;
         bool found_2 = false;
 
@@ -331,11 +391,11 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         //7% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
             //5% for first address
-            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
             //2% for second address
-            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_2 = true;
             }
         }
@@ -345,25 +405,25 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                              "CTransaction::CheckTransaction() : dev reward missing");
         }
 
-    }
+        /* Check for Ghostnode payment in block */
 
-    /* Check for Ghostnode payment in block */
+        if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
 
-    if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
+            int total_payment_tx = 0;
+            CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
 
-        int total_payment_tx = 0;
-        CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
-
-        BOOST_FOREACH(const CTxOut &output, tx.vout) {
-            if (ghostnodePayment == output.nValue) {
-                total_payment_tx = total_payment_tx + 1;
+            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                if (output.nValue >= ghostnodePayment) {
+                    total_payment_tx = total_payment_tx + 1;
+                }
+            }
+            // no more than 1 output for payment, possible no winner if list is not populated
+            if (total_payment_tx > 1) {
+                return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
+                                 "CTransaction::CheckTransaction() : invalid ghostnode payment");
             }
         }
-        // no more than 1 output for payment, possible no winner if list is not populated
-        if (total_payment_tx > 1) {
-            return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
-                             "CTransaction::CheckTransaction() : invalid ghostnode payment");
-        }
+
     }
 
     return true;
@@ -377,6 +437,8 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               bool isCheckWallet,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
+
+    LogPrintf("\nCheckZerocoinTransaction: height %d\n", nHeight);
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
         if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsZerocoinMint()) {
@@ -389,6 +451,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     if(tx.IsZerocoinSpend()) {
         // Check vOut
         // Only one loop, we checked on the format before enter this case
+        int i = 0;
         BOOST_FOREACH(const CTxOut &txout, tx.vout)
         {
             if (!isVerifyDB) {
@@ -401,13 +464,14 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                 case libzerocoin::ZQ_FIVE_HUNDRED*COIN:
                 case libzerocoin::ZQ_ONE_THOUSAND*COIN:
                 case libzerocoin::ZQ_FIVE_THOUSAND*COIN:
-                    if(!CheckSpendZerocoinTransaction(tx, (libzerocoin::CoinDenomination)(txout.nValue / COIN), state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
+                    if(!CheckSpendZerocoinTransaction(tx, (libzerocoin::CoinDenomination)(txout.nValue / COIN), state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo, i))
                             return false;
                     break;
                 default:
                     return state.DoS(100, error("CheckZerocoinTransaction : invalid spending txout value"));
                 }
             }
+            i++;
         }
     }
 
@@ -432,7 +496,7 @@ bool ConnectBlockGhost(CValidationState &state, const CChainParams &chainparams,
 
         BOOST_FOREACH(const PAIRTYPE(CBigNum,int) &serial, pblock->zerocoinTxInfo->spentSerials) {
             pindexNew->spentSerials.insert(serial.first);
-            if (!CheckZerocoinSpendSerial(state, pblock->zerocoinTxInfo, (libzerocoin::CoinDenomination)serial.second, serial.first, pindexNew->nHeight, true))
+            if (!CheckZerocoinSpendSerial(state, pblock->zerocoinTxInfo.get(), (libzerocoin::CoinDenomination)serial.second, serial.first, pindexNew->nHeight, true))
                 return false;
             zerocoinState.AddSpend(serial.first);
         }
@@ -766,58 +830,6 @@ int CZerocoinState::GetMintedCoinHeightAndId(const CBigNum &pubCoin, int denomin
         return -1;
 }
 
-void CZerocoinState::Reset() {
-    coinGroups.clear();
-    usedCoinSerials.clear();
-    mintedPubCoins.clear();
-    latestCoinIds.clear();
-}
-
-CZerocoinState *CZerocoinState::GetZerocoinState() {
-    return &zerocoinState;
-}
-
-
-set<CBlockIndex *> CZerocoinState::RecalculateAccumulators(CChain *chain) {
-    set<CBlockIndex *> changes;
-
-    BOOST_FOREACH(const PAIRTYPE(PAIRTYPE(int,int), CoinGroupInfo) &coinGroup, coinGroups) {
-        // Skip non-modulusv2 groups
-
-        libzerocoin::Accumulator acc(&ZCParams->accumulatorParams, (libzerocoin::CoinDenomination)coinGroup.first.first);
-
-        // Try to calculate accumulator for the first batch of mints. If it doesn't match we need to recalculate the rest of it
-        CBlockIndex *block = coinGroup.second.firstBlock;
-        for (;;) {
-            if (block->accumulatorChanges.count(coinGroup.first) > 0) {
-                BOOST_FOREACH(const CBigNum &pubCoin, block->mintedPubCoins[coinGroup.first]) {
-                    acc += libzerocoin::PublicCoin(ZCParams, pubCoin, (libzerocoin::CoinDenomination)coinGroup.first.first);
-                }
-
-                // First block case is special: do the check
-                if (block == coinGroup.second.firstBlock) {
-                    if (acc.getValue() != block->accumulatorChanges[coinGroup.first].first)
-                        // recalculation is needed
-                        LogPrintf("ZerocoinState: accumulator recalculation for denomination=%d, id=%d\n", coinGroup.first.first, coinGroup.first.second);
-                    else
-                        // everything's ok
-                        break;
-                }
-
-                block->accumulatorChanges[coinGroup.first] = make_pair(acc.getValue(), (int)block->mintedPubCoins[coinGroup.first].size());
-                changes.insert(block);
-            }
-
-            if (block != coinGroup.second.lastBlock)
-                block = (*chain)[block->nHeight+1];
-            else
-                break;
-        }
-    }
-
-    return changes;
-}
-
 bool ZerocoinUpgradeBlockIndex(CChain *chain) {
     CBlockIndex	*blockIndex = chain->Genesis();
     if (blockIndex->nVersion != 130500)
@@ -906,4 +918,95 @@ bool CZerocoinState::TestValidity(CChain *chain) {
     }
 
     return true;
+}
+
+set<CBlockIndex *> CZerocoinState::RecalculateAccumulators(CChain *chain) {
+    set<CBlockIndex *> changes;
+
+    BOOST_FOREACH(const PAIRTYPE(PAIRTYPE(int,int), CoinGroupInfo) &coinGroup, coinGroups) {
+
+        libzerocoin::Accumulator acc(&ZCParams->accumulatorParams, (libzerocoin::CoinDenomination)coinGroup.first.first);
+
+        // Try to calculate accumulator for the first batch of mints. If it doesn't match we need to recalculate the rest of it
+        CBlockIndex *block = coinGroup.second.firstBlock;
+        for (;;) {
+            if (block->accumulatorChanges.count(coinGroup.first) > 0) {
+                BOOST_FOREACH(const CBigNum &pubCoin, block->mintedPubCoins[coinGroup.first]) {
+                    acc += libzerocoin::PublicCoin(ZCParams, pubCoin, (libzerocoin::CoinDenomination)coinGroup.first.first);
+                }
+
+                // First block case is special: do the check
+                if (block == coinGroup.second.firstBlock) {
+                    if (acc.getValue() != block->accumulatorChanges[coinGroup.first].first)
+                        // recalculation is needed
+                        LogPrintf("ZerocoinState: accumulator recalculation for denomination=%d, id=%d\n", coinGroup.first.first, coinGroup.first.second);
+                    else
+                        // everything's ok
+                        break;
+                }
+
+                block->accumulatorChanges[coinGroup.first] = make_pair(acc.getValue(), (int)block->mintedPubCoins[coinGroup.first].size());
+                changes.insert(block);
+            }
+
+            if (block != coinGroup.second.lastBlock)
+                block = (*chain)[block->nHeight+1];
+            else
+                break;
+        }
+    }
+
+    return changes;
+}
+
+bool CZerocoinState::AddSpendToMempool(const CBigNum &coinSerial, uint256 txHash) {
+    if (IsUsedCoinSerial(coinSerial) || mempoolCoinSerials.count(coinSerial))
+        return false;
+
+    mempoolCoinSerials[coinSerial] = txHash;
+    return true;
+}
+
+void CZerocoinState::RemoveSpendFromMempool(const CBigNum &coinSerial) {
+    mempoolCoinSerials.erase(coinSerial);
+}
+
+uint256 CZerocoinState::GetMempoolConflictingTxHash(const CBigNum &coinSerial) {
+    if (mempoolCoinSerials.count(coinSerial) == 0)
+        return uint256();
+
+    return mempoolCoinSerials[coinSerial];
+}
+
+bool CZerocoinState::CanAddSpendToMempool(const CBigNum &coinSerial) {
+    return !IsUsedCoinSerial(coinSerial) && mempoolCoinSerials.count(coinSerial) == 0;
+}
+
+void CZerocoinState::Reset() {
+    coinGroups.clear();
+    usedCoinSerials.clear();
+    mintedPubCoins.clear();
+    latestCoinIds.clear();
+    mempoolCoinSerials.clear();
+}
+
+CZerocoinState *CZerocoinState::GetZerocoinState() {
+    return &zerocoinState;
+}
+
+CBigNum ZerocoinGetSpendSerialNumber(const CTransaction &tx, int i) {
+    if (!tx.IsZerocoinSpend())
+        return CBigNum(0);
+
+    const CTxIn &txin = tx.vin[i];
+    try {
+        CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 4),
+                                        (const char *)&*txin.scriptSig.end(),
+                                        SER_NETWORK, PROTOCOL_VERSION);
+        libzerocoin::CoinSpend spend(ZCParams, serializedCoinSpend);
+        return spend.getCoinSerialNumber();
+    }
+    catch (const std::runtime_error &) {
+        return CBigNum(0);
+    }
 }

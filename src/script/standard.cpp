@@ -53,6 +53,8 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_TIMELOCKED_PUBKEYHASH: return "timelocked_pubkeyhash";
     case TX_TIMELOCKED_MULTISIG: return "timelocked_multisig";
     case TX_ZEROCOINMINT: return "zerocoinmint";
+    case TX_CONDITIONAL_STAKE: return "conditional_stake";
+
     }
     return nullptr;
 }
@@ -308,6 +310,16 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     std::vector<valtype> vSolutions;
     txnouttype whichType;
 
+    if (HasIsCoinstakeOp(scriptPubKey))
+    {
+        CScript scriptB;
+        if (!GetNonCoinstakeScriptPath(scriptPubKey, scriptB))
+            return false;
+
+        // Return only the spending address
+        return ExtractDestination(scriptB, addressRet);
+    }
+
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
@@ -366,6 +378,19 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::
     addressRet.clear();
     typeRet = TX_NONSTANDARD;
     std::vector<valtype> vSolutions;
+
+
+    if (HasIsCoinstakeOp(scriptPubKey))
+    {
+        CScript scriptB;
+        if (!GetNonCoinstakeScriptPath(scriptPubKey, scriptB))
+            return false;
+
+        // Return only the spending address to keep insight working
+        ExtractDestinations(scriptB, typeRet, addressRet, nRequiredRet);
+
+        return true;
+    }
 
     if (!Solver(scriptPubKey, typeRet, vSolutions))
         return false;
@@ -520,4 +545,30 @@ CScript GetScriptForWitness(const CScript& redeemscript)
 
 bool IsValidDestination(const CTxDestination& dest) {
     return dest.which() != 0;
+}
+
+bool ExtractStakingKeyID(const CScript &scriptPubKey, CKeyID &keyID)
+{
+    if (scriptPubKey.IsPayToPublicKeyHash())
+    {
+        keyID = CKeyID(uint160(&scriptPubKey[3], 20));
+        return true;
+    };
+
+    if (scriptPubKey.IsPayToPublicKeyHash256())
+    {
+        keyID = CKeyID(uint256(&scriptPubKey[3], 32));
+        return true;
+    };
+
+    if (scriptPubKey.IsPayToPublicKeyHash256_CS()
+        || scriptPubKey.IsPayToScriptHash256_CS()
+        || scriptPubKey.IsPayToScriptHash_CS()
+        )
+    {
+        keyID = CKeyID(uint160(&scriptPubKey[5], 20));
+        return true;
+    };
+
+    return false;
 }

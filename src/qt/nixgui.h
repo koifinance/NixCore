@@ -106,6 +106,8 @@ private:
     QAction *optionsAction;
     QAction *toggleHideAction;
     QAction *encryptWalletAction;
+    QAction *unlockWalletForStakingAction;
+    QAction *lockWalletAction;
     QAction *backupWalletAction;
     QAction *changePassphraseAction;
     QAction *aboutQtAction;
@@ -183,6 +185,7 @@ public Q_SLOTS:
        @see WalletModel::EncryptionStatus
     */
     void setEncryptionStatus(int status);
+    void toggleLockState();
 
     /** Set the hd-enabled status as shown in the UI.
      @param[in] status            current hd enabled status

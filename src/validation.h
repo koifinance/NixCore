@@ -162,14 +162,45 @@ struct BlockHasher
     size_t operator()(const uint256& hash) const { return hash.GetCheapHash(); }
 };
 
+static const size_t MAX_STAKE_SEEN_SIZE = 1000;
+
+typedef int64_t NodeId;
+class StakeConflict
+{
+public:
+    int64_t nLastUpdated = 0;
+    //COutPoint kernel;
+    std::map<NodeId, int> peerCount;
+
+    //int SetKernel(const COutPoint &kernel_);
+    int Add(NodeId id);
+};
+
+/** Cache recently seen coinstake transactions */
+class CoinStakeCache
+{
+public:
+    size_t nMaxSize = 10;
+    std::list<std::pair<uint256, CTransactionRef> > lData;
+
+    bool GetCoinStake(const uint256 &blockHash, CTransactionRef &tx);
+    bool InsertCoinStake(const uint256 &blockHash, const CTransactionRef &tx);
+};
+
+extern std::map<uint256, StakeConflict> mapStakeConflict;
+extern CoinStakeCache coinStakeCache;
+
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CBlockPolicyEstimator feeEstimator;
 extern CTxMemPool mempool;
 typedef std::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap& mapBlockIndex;
+extern std::map<COutPoint, uint256> mapStakeSeen;
+extern std::list<COutPoint> listStakeSeen;
 extern uint64_t nLastBlockTx;
 extern uint64_t nLastBlockWeight;
+extern uint64_t nLastBlockSize;
 extern const std::string strMessageMagic;
 extern CWaitableCriticalSection csBestBlock;
 extern CConditionVariable cvBlockChange;
@@ -289,10 +320,13 @@ bool LoadChainTip(const CChainParams& chainparams);
 void UnloadBlockIndex();
 /** Run an instance of the script checking thread */
 void ThreadScriptCheck();
+/** Return the average number of blocks that other nodes claim to have */
+int GetNumBlocksOfPeers();
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
 bool IsInitialBlockDownload();
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
 bool GetTransaction(const uint256& hash, CTransactionRef& tx, const Consensus::Params& params, uint256& hashBlock, bool fAllowSlow = false, CBlockIndex* blockIndex = nullptr);
+bool GetTransaction(const uint256 &hash, CTransactionRef &txOut, const Consensus::Params& params, CBlock &block, bool fAllowSlow = false, CBlockIndex* blockIndex = nullptr);
 /** Find the best known block, and make it the tip of the block chain */
 bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams, std::shared_ptr<const CBlock> pblock = std::shared_ptr<const CBlock>());
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
@@ -423,6 +457,10 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, int nHeight, con
 bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus::Params& consensusParams);
 
 /** Functions for validating blocks and updating the block tree */
+
+bool AddToMapStakeSeen(const COutPoint &kernel, const uint256 &blockHash);
+bool CheckStakeUnused(const COutPoint &kernel);
+bool CheckStakeUnique(const CBlock &block, bool fUpdate=true);
 
 /** Context-independent validity checks */
 bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true, bool fCheckMerkleRoot = true, int nHeight = INT_MAX, bool isVerifyDB = false);

@@ -20,6 +20,8 @@
 #include <qt/walletmodel.h>
 #include <qt/ghostnode.h>
 #include <qt/ghostvault.h>
+#include <timedata.h>
+#include <validation.h>
 
 #include <ui_interface.h>
 
@@ -63,6 +65,8 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
 
     ghostnodePage = new GhostNode(platformStyle);
     ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
+
+    overviewPage->ghostVaultPage = ghostVaultPage;
 
     addWidget(overviewPage);
     addWidget(transactionsPage);
@@ -130,8 +134,10 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
     ghostVaultPage->setModel(_walletModel->getAddressTableModel());
+    ghostVaultPage->setWalletModel(_walletModel);
     ghostnodePage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
+    usedReceivingAddressesPage->setWalletModel(_walletModel);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
 
     if (_walletModel)
@@ -286,17 +292,32 @@ void WalletView::changePassphrase()
     dlg.exec();
 }
 
-void WalletView::unlockWallet()
+void WalletView::unlockWallet(bool iconClicked)
 {
     if(!walletModel)
         return;
     // Unlock wallet when requested by wallet model
-    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked
+        || (!iconClicked && walletModel->getEncryptionStatus() == WalletModel::UnlockedForStaking))
     {
-        AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+        AskPassphraseDialog dlg(
+            iconClicked ? AskPassphraseDialog::UnlockManual : AskPassphraseDialog::Unlock, this,
+            (GetAdjustedTime() >= Params().GetConsensus().nPosTimeActivation || chainActive.Height() + 1 >= Params().GetConsensus().nPosHeightActivate)
+            ? overviewPage->isStaking: nullptr);
         dlg.setModel(walletModel);
         dlg.exec();
     }
+}
+
+void WalletView::lockWallet()
+{
+    if(!walletModel)
+        return;
+    walletModel->lockWallet();
+    overviewPage->isStaking->setStyleSheet("color: red;");
+    overviewPage->isStaking->setText("Disabled");
+    walletModel->checkBalanceChanged();
+
 }
 
 void WalletView::usedSendingAddresses()
@@ -345,4 +366,8 @@ void WalletView::showProgress(const QString &title, int nProgress)
 void WalletView::requestedSyncWarningInfo()
 {
     Q_EMIT outOfSyncWarningClicked();
+}
+
+WalletModel* WalletView::getWalletModel(){
+    return walletModel;
 }
