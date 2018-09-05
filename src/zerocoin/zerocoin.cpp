@@ -165,7 +165,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
                 return false;
         }
 
-        if (tx.vout.size() > 1) {
+        if (tx.vout.size() > 1 && chainActive.Height() > 6510) {
             if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
                 return false;
         }
