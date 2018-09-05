@@ -5763,7 +5763,7 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                 int coinHeight;
 
                 // Select not yet used coin from the wallet with minimal possible id
-                BOOST_FOREACH(const CZerocoinEntry &minIdPubcoin, listPubCoin) {
+                BOOST_FOREACH(CZerocoinEntry &minIdPubcoin, listPubCoin) {
                     if (minIdPubcoin.denomination == denominationBatch[i]
                             && minIdPubcoin.IsUsed == false
                             && minIdPubcoin.randomness != 0
