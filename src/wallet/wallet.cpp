@@ -5748,6 +5748,8 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
     CWalletDB(*dbw).ListPubCoin(listPubCoin);
     listPubCoin.sort(CompHeight);
 
+    vector <CBigNum> usedSerials;
+
     for(int i = 0; i < nValueBatch.size(); i++){
         {
             LOCK2(cs_main, cs_wallet);
@@ -5761,11 +5763,12 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                 int coinHeight;
 
                 // Select not yet used coin from the wallet with minimal possible id
-                BOOST_FOREACH(const CZerocoinEntry &minIdPubcoin, listPubCoin) {
+                BOOST_FOREACH(CZerocoinEntry &minIdPubcoin, listPubCoin) {
                     if (minIdPubcoin.denomination == denominationBatch[i]
                             && minIdPubcoin.IsUsed == false
                             && minIdPubcoin.randomness != 0
-                            && minIdPubcoin.serialNumber != 0) {
+                            && minIdPubcoin.serialNumber != 0
+                            && std::find(usedSerials.begin(), usedSerials.end(), minIdPubcoin.serialNumber) == usedSerials.end()) {
 
                         int id;
                         coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
@@ -5780,9 +5783,8 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                                                                                accumulatorBlockHash) > 1
                                 ) {
 
-                            //remove this zerocoin from the list to avoid double serial spends
-                            std::list<CZerocoinEntry>::iterator findIter = std::find(listPubCoin.begin(), listPubCoin.end(), minIdPubcoin);
-                            findIter->IsUsed = true;
+                            //log the serial number and check on next iteration
+                            usedSerials.push_back(minIdPubcoin.serialNumber);
 
                             coinId = id;
                             coinToUse = minIdPubcoin;
@@ -5791,7 +5793,7 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                             accumulatorValueBatch.push_back(accumulatorValue);
                             accumulatorBlockHashBatch.push_back(accumulatorBlockHash);
                             coinHeightBatch.push_back(coinHeight);
-
+                            break;
                         }
                     }
                 }
