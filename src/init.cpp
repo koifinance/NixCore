@@ -1478,8 +1478,8 @@ bool AppInitMain()
 
     //Enable tor on default
     if(torEnabledArg.second == ""){
-        LogPrintf("AppInitMain(): Initial startup, Tor networking enabled \n");
-        WriteBinaryFileTor(pathTorSetting.string().c_str(), "1");
+        LogPrintf("AppInitMain(): Initial startup, Tor networking disabled \n");
+        WriteBinaryFileTor(pathTorSetting.string().c_str(), "0");
     }
     /*
     if(torEnabledArg.second != "0"){

@@ -88,11 +88,7 @@ int64_t CChainParams::GetCoinYearReward(int64_t nTime) const
 
     if (strNetworkID == "mainnet")
     {
-        // Y1 2% ... YN 1.5%
-        int64_t nYearsSinceGenesis = (nTime - genesis.nTime) / nSecondsInYear;
-
-        if (nYearsSinceGenesis >= 0 && nYearsSinceGenesis < 1)
-            return (2 - nYearsSinceGenesis) * CENT;
+        return nCoinYearReward;
     }
     else if (strNetworkID != "regtest")
     {
