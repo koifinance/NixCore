@@ -162,8 +162,6 @@ public:
         READWRITE(header);
         READWRITE(nonce);
 
-        READWRITE(vchBlockSig);
-
         uint64_t shorttxids_size = (uint64_t)shorttxids.size();
         READWRITE(COMPACTSIZE(shorttxids_size));
         if (ser_action.ForRead()) {
@@ -191,6 +189,8 @@ public:
 
         if (ser_action.ForRead())
             FillShortTxIDSelector();
+
+        READWRITE(vchBlockSig);
     }
 };
 

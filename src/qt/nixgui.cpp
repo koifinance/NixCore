@@ -20,6 +20,7 @@
 #include <ghostnode/ghostnode-sync.h>
 #include <qt/ghostnode.h>
 #include <qt/ghostvault.h>
+#include <validation.h>
 
 #ifdef ENABLE_WALLET
 #include <qt/walletframe.h>
@@ -326,7 +327,7 @@ void BitcoinGUI::createActions()
     tabGroup->addAction(historyAction);
 
     ghostVaultAction = new QAction(platformStyle->SingleColorIcon(":/icons/eye"), tr("&Ghost Vault"), this);
-    ghostVaultAction->setStatusTip(tr("Your personal vault of privatized funds (coming soon)"));
+    ghostVaultAction->setStatusTip(tr("Your personal vault of privatized funds"));
     ghostVaultAction->setToolTip(ghostVaultAction->statusTip());
     ghostVaultAction->setCheckable(true);
     ghostVaultAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
@@ -626,6 +627,8 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedReceivingAddressesAction->setEnabled(enabled);
     ghostnodeAction->setEnabled(enabled);
     ghostVaultAction->setEnabled(enabled);
+    if(((GetNumBlocksOfPeers() > chainActive.Height()) ? GetNumBlocksOfPeers() : chainActive.Height()) < Params().GetConsensus().nPosHeightActivate)
+        ghostVaultAction->setEnabled(false);
     openAction->setEnabled(enabled);
 }
 
