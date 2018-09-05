@@ -483,7 +483,7 @@ public:
         READWRITE(spentSerials);
 
         //POS params
-        if(IsProofOfStakeHeightActive(26)){
+        if(IsProofOfStakeHeightActive(53000)){
             READWRITE(nFlags);
             READWRITE(bnStakeModifier);
             READWRITE(prevoutStake);

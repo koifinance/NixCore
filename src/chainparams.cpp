@@ -180,7 +180,7 @@ public:
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 52000;
+        consensus.nPosHeightActivate = 53000;
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 500;   // 500 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
@@ -254,13 +254,14 @@ public:
                 { 0, uint256S("0xdd28ad86def767c3cfc34267a950d871fc7462bc57ea4a929fc3596d9b598e41")},
                 { 820, uint256S("0x9d48684e77bc21913aa4c3ea949bb3019ecb33fe7765c08c97e086345cc5aab2")},
                 { 1238, uint256S("0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e")},
+                { 47800, uint256s("0xc450d288e8018faae33c669b0fe2dc2dd1a2aa97ee34e263de8964ce8cc7d549")},
             }
         };
 
         chainTxData = ChainTxData{
                 //block 1238 (0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e)
-            1530222982, // * UNIX timestamp of last known number of transactions
-            1238,  // * total number of transactions between genesis and that timestamp
+            1536123729, // * UNIX timestamp of last known number of transactions
+            60000,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
             0.1         // * estimated number of transactions per second after that timestamp
         };

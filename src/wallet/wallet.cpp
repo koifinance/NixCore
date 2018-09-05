@@ -10738,9 +10738,9 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
     }
 
-    //Push dev block reward of 7% based on coinbase rewards
-    txNew.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
-    txNew.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+    //Push dev block reward of 2% based on coinbase rewards, 1% each
+    txNew.vout.push_back(CTxOut(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+    txNew.vout.push_back(CTxOut(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
     //Push ghostnode reward with ghost fees

@@ -255,53 +255,57 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
-    if(!fTestNet){
-    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[0].nValue == 380000*COIN))
-        nHeight = 1;
-    if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[1].nValue == 380000*COIN))
-        nHeight = 1;
-    if(nHeight == INT_MAX)
-        nHeight = 2;
-    }
-    else{
-        if(nHeight == INT_MAX && tx.vout.size() >= 1 && (tx.vout[0].nValue == 38000000*COIN))
-            nHeight = 1;
-        if(nHeight == INT_MAX && tx.vout.size() > 1 && (tx.vout[1].nValue == 38000000*COIN))
-            nHeight = 1;
-        if(nHeight == INT_MAX)
-            nHeight = 2;
-    }
+    //checks blocks on startup, no need to verify
+    if(nHeight = INT_MAX)
+        return true;
 
     // To airdrop
-    if (nHeight == 1) {
+    if(Params().GetConsensus().nPosHeightActivate > nHeight){
+        if (nHeight == 1) {
 
-        //Split 38m into 100 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
+            //Split 38m into 100 unique addresses for faster tx processing
+            CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, Params().GetConsensus())/100;
 
-        bool found_1 = false;
+            bool found_1 = false;
 
-        CScript AIRDROP_SCRIPT;
+            CScript AIRDROP_SCRIPT;
 
-        std::string addresses;
+            std::string addresses;
 
-        if (!fTestNet) {
-            for(int i = 0; i < 100; i++){
-                addresses = airdrop_addresses[i];
-                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+            if (!fTestNet) {
+                for(int i = 0; i < 100; i++){
+                    addresses = airdrop_addresses[i];
+                    AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
+                    found_1 = false;
+                    BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                        //check for first 93 address with 3.8m
+                        if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
+                            found_1 = true;
+                            break;
+                        }
+                        //check for the stacked address
+                        else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
+                            found_1 = true;
+                            break;
+                        }
+                        //check for 6 ghosnode outputs
+                        else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
+                            found_1 = true;
+                            break;
+                        }
+                    }
+                    if (!(found_1)) {
+                        return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                         "CTransaction::CheckTransaction() : airdrop funds missing");
+                    }
+                }
+            }
+            else{
+                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
                 found_1 = false;
                 BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                    //check for first 93 address with 3.8m
-                    if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(airdropValuePerAddress)) {
-                        found_1 = true;
-                        break;
-                    }
-                    //check for the stacked address
-                    else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)((airdropValuePerAddress * 7) - (240000*COIN))) {
-                        found_1 = true;
-                        break;
-                    }
-                    //check for 6 ghosnode outputs
-                    else if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(40000*COIN)) {
+                    //check for first testnet drop
+                    if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                         found_1 = true;
                         break;
                     }
@@ -311,26 +315,65 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                                      "CTransaction::CheckTransaction() : airdrop funds missing");
                 }
             }
+
         }
-        else{
-            AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-            found_1 = false;
+
+        if (nHeight >= 2) {
+            bool found_1 = false;
+            bool found_2 = false;
+
+            CScript DEV_1_SCRIPT;
+            CScript DEV_2_SCRIPT;
+
+            if (!fTestNet) {
+                DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+                DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            }
+            else {
+                DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+                DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
+            }
+            //7% development fee total
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                //check for first testnet drop
-                if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                //5% for first address
+                if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                     found_1 = true;
-                    break;
+                }
+                //2% for second address
+                if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                    found_2 = true;
                 }
             }
-            if (!(found_1)) {
+
+            if (!(found_1 && found_2)) {
                 return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                                 "CTransaction::CheckTransaction() : airdrop funds missing");
+                                 "CTransaction::CheckTransaction() : dev reward missing");
             }
+
         }
 
-    }
+        /* Check for Ghostnode payment in block */
 
-    if (nHeight >= 2) {
+        if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
+
+            int total_payment_tx = 0;
+            CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
+
+            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                if (ghostnodePayment == output.nValue) {
+                    total_payment_tx = total_payment_tx + 1;
+                }
+            }
+            // no more than 1 output for payment, possible no winner if list is not populated
+            if (total_payment_tx > 1) {
+                return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
+                                 "CTransaction::CheckTransaction() : invalid ghostnode payment");
+            }
+        }
+    }
+    //PoS reward distribution
+    else{
+
         bool found_1 = false;
         bool found_2 = false;
 
@@ -348,11 +391,11 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         //7% development fee total
         BOOST_FOREACH(const CTxOut &output, tx.vout) {
             //5% for first address
-            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
             //2% for second address
-            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_2 = true;
             }
         }
@@ -362,25 +405,25 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                              "CTransaction::CheckTransaction() : dev reward missing");
         }
 
-    }
+        /* Check for Ghostnode payment in block */
 
-    /* Check for Ghostnode payment in block */
+        if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
 
-    if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
+            int total_payment_tx = 0;
+            CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
 
-        int total_payment_tx = 0;
-        CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
-
-        BOOST_FOREACH(const CTxOut &output, tx.vout) {
-            if (ghostnodePayment == output.nValue) {
-                total_payment_tx = total_payment_tx + 1;
+            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                if (ghostnodePayment <= output.nValue) {
+                    total_payment_tx = total_payment_tx + 1;
+                }
+            }
+            // no more than 1 output for payment, possible no winner if list is not populated
+            if (total_payment_tx > 1) {
+                return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
+                                 "CTransaction::CheckTransaction() : invalid ghostnode payment");
             }
         }
-        // no more than 1 output for payment, possible no winner if list is not populated
-        if (total_payment_tx > 1) {
-            return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
-                             "CTransaction::CheckTransaction() : invalid ghostnode payment");
-        }
+
     }
 
     return true;
