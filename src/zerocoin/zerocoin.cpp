@@ -256,7 +256,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
     //checks blocks on startup, no need to verify
-    if(nHeight = INT_MAX)
+    if(nHeight == INT_MAX)
         return true;
 
     // To airdrop
@@ -413,7 +413,7 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
 
             BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                if (ghostnodePayment <= output.nValue) {
+                if (output.nValue >= ghostnodePayment) {
                     total_payment_tx = total_payment_tx + 1;
                 }
             }
