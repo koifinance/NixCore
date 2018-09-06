@@ -2537,14 +2537,14 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
 
         int nHeight = pindex->nHeight;
-        //7% development fee total
+        //2% development fee total
         BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
-            //5% for first address
-            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            //1% for first address
+            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.01 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
-            //2% for second address
-            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            //1% for second address
+            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.01 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_2 = true;
             }
         }
@@ -2615,11 +2615,11 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     if(!pindex->pprev->IsProofOfStake() && pindex->IsProofOfStake()){
         CAmount nTotalSupply = pindex->pprev->nHeight * GetBlockSubsidy(pindex->pprev->nHeight, Params().GetConsensus()) + GetBlockSubsidy(1, Params().GetConsensus());
         pindex->nMoneySupply = nTotalSupply;
-        LogPrintf("NIX Money Supply: %llf", pindex->nMoneySupply/COIN);
+        //LogPrintf("NIX Money Supply: %llf", pindex->nMoneySupply/COIN);
     }
     else if(pindex->IsProofOfStake()){
         pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nMoneyCreated;
-        LogPrintf("NIX Money Supply: %llf", pindex->nMoneySupply/COIN);
+        //LogPrintf("NIX Money Supply: %llf", pindex->nMoneySupply/COIN);
     }
 
     if (fJustCheck)

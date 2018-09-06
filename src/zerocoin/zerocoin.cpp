@@ -192,9 +192,6 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
                                uint256 hashTx,
                                CZerocoinTxInfo *zerocoinTxInfo) {
 
-    LogPrintf("CheckMintZerocoinTransaction txHash = %s\n", txout.GetHash().ToString());
-    LogPrintf("nValue = %d\n", txout.nValue);
-
     if (txout.scriptPubKey.size() < 6)
         return state.DoS(100,
             false,
@@ -442,8 +439,6 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               bool isCheckWallet,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
-
-    LogPrintf("\nCheckZerocoinTransaction: height %d\n", nHeight);
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
         if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsZerocoinMint()) {
