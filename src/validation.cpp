@@ -2540,11 +2540,11 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         //2% development fee total
         BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
             //1% for first address
-            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.01 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_1 = true;
             }
             //1% for second address
-            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.01 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
                 found_2 = true;
             }
         }
