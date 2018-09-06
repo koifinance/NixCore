@@ -37,7 +37,8 @@ public:
         /// Generated (mined) transactions
         Immature,           /**< Mined but waiting for maturity */
         MaturesWarning,     /**< Transaction will likely not mature because no nodes have confirmed */
-        NotAccepted         /**< Mined but not accepted */
+        NotAccepted,         /**< Mined but not accepted */
+        Ghosting
     };
 
     /// Transaction counts towards available balance
@@ -79,7 +80,9 @@ public:
         SendToOther,
         RecvWithAddress,
         RecvFromOther,
-        SendToSelf
+        SendToSelf,
+        Ghosted,
+        UnGhosted
     };
 
     /** Number of confirmation recommended for accepting a transaction */

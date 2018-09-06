@@ -164,6 +164,11 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
             if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
                 return false;
         }
+        //batching transactions, make sure the same serial is not used twice
+        else if(tx.vout.size() > 1){
+            if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
+                return false;
+        }
 
         if(!isVerifyDB && !isCheckWallet) {
             if (zerocoinTxInfo && !zerocoinTxInfo->fInfoIsComplete) {
@@ -186,9 +191,6 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
                                CValidationState &state,
                                uint256 hashTx,
                                CZerocoinTxInfo *zerocoinTxInfo) {
-
-    LogPrintf("CheckMintZerocoinTransaction txHash = %s\n", txout.GetHash().ToString());
-    LogPrintf("nValue = %d\n", txout.nValue);
 
     if (txout.scriptPubKey.size() < 6)
         return state.DoS(100,
@@ -437,8 +439,6 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               bool isCheckWallet,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
-
-    LogPrintf("\nCheckZerocoinTransaction: height %d\n", nHeight);
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
         if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsZerocoinMint()) {
@@ -450,7 +450,6 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     // Check Spend Zerocoin Transaction
     if(tx.IsZerocoinSpend()) {
         // Check vOut
-        // Only one loop, we checked on the format before enter this case
         int i = 0;
         BOOST_FOREACH(const CTxOut &txout, tx.vout)
         {

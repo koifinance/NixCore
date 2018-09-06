@@ -254,7 +254,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
 
         std::string strError = "";
         if (!vote.IsValid(pfrom, pCurrentBlockIndex->nHeight, strError)) {
-            LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- invalid message, error: %s\n", strError);
+            //LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- invalid message, error: %s\n", strError);
             return;
         }
 

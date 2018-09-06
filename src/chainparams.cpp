@@ -414,7 +414,7 @@ public:
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in rpc activation tests)
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-        consensus.nPowTargetSpacing = 10 * 60;
+        consensus.nPowTargetSpacing = 1;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
         consensus.nRuleChangeActivationThreshold = 1; // 75% for testchains
@@ -437,7 +437,7 @@ public:
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 30;
+        consensus.nPosHeightActivate = 800;
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 2;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
@@ -548,8 +548,6 @@ static CRegTestParams regTestParams;
 static std::unique_ptr<CChainParams> globalChainParams;
 
 const CChainParams &Params() {
-    if(!globalChainParams)
-        globalChainParams = std::unique_ptr<CChainParams>(new CMainParams());
     assert(globalChainParams);
     return *globalChainParams;
 }
