@@ -3177,13 +3177,17 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                             // Reserve a new key pair from key pool
                             CPubKey vchPubKey;
                             bool ret;
-                            ret = reservekey.GetReservedKey(vchPubKey);
-                            if (!ret) {
+                            ret = reservekey.GetReservedKey(vchPubKey, true);
+                            if (!ret)
+                            {
                                 strFailReason = _("Keypool ran out, please call keypoolrefill first");
                                 return false;
                             }
 
-                            scriptChange = GetScriptForDestination(vchPubKey.GetID());
+                            const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+
+                            LearnRelatedScripts(vchPubKey, change_type);
+                            scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
                         }
 
                         CTxOut newTxOut(nChange, scriptChange);
