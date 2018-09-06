@@ -335,6 +335,8 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
     case TransactionStatus::NotAccepted:
         status = tr("Generated but not accepted");
         break;
+    case TransactionStatus::Ghosting:
+        status = tr("Ghosting (%1 of 1 recommended confirmations)").arg(wtx->status.depth);
     }
 
     return status;
@@ -378,6 +380,10 @@ QString TransactionTableModel::formatTxType(const TransactionRecord *wtx) const
     case TransactionRecord::SendToAddress:
     case TransactionRecord::SendToOther:
         return tr("Sent to");
+    case TransactionRecord::Ghosted:
+        return tr("Sent to Ghost Vault");
+    case TransactionRecord::UnGhosted:
+        return tr("Sent from Ghost Vault");
     case TransactionRecord::SendToSelf:
         return tr("Payment to yourself");
     case TransactionRecord::Generated:
@@ -396,9 +402,12 @@ QVariant TransactionTableModel::txAddressDecoration(const TransactionRecord *wtx
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::RecvFromOther:
         return QIcon(":/icons/tx_input");
+    case TransactionRecord::UnGhosted:
     case TransactionRecord::SendToAddress:
     case TransactionRecord::SendToOther:
         return QIcon(":/icons/tx_output");
+    case TransactionRecord::Ghosted:
+        return QIcon(":/icons/eye");
     default:
         return QIcon(":/icons/tx_inout");
     }
@@ -420,6 +429,10 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord *wtx, b
     case TransactionRecord::SendToAddress:
     case TransactionRecord::Generated:
         return lookupAddress(wtx->address, tooltip) + watchAddress;
+    case TransactionRecord::Ghosted:
+        return tr("Ghosted");
+    case TransactionRecord::UnGhosted:
+        return tr("UnGhosted");
     case TransactionRecord::SendToOther:
         return QString::fromStdString(wtx->address) + watchAddress;
     case TransactionRecord::SendToSelf:
@@ -441,6 +454,8 @@ QVariant TransactionTableModel::addressColor(const TransactionRecord *wtx) const
         if(label.isEmpty())
             return COLOR_BAREADDRESS;
         } break;
+    case TransactionRecord::Ghosted:
+    case TransactionRecord::UnGhosted:
     case TransactionRecord::SendToSelf:
         return COLOR_BAREADDRESS;
     default:

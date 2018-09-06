@@ -34,6 +34,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
     CAmount nNet = nCredit - nDebit;
     uint256 hash = wtx.GetHash();
     std::map<std::string, std::string> mapValue = wtx.mapValue;
+    const CTransaction *tempTx;
+    tempTx = wtx.tx.get();
 
     if (nNet > 0 || wtx.IsCoinBase())
     {
@@ -51,7 +53,10 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 sub.idx = i; // vout index
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
-                if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
+                if(tempTx->IsZerocoinMint(*tempTx)){
+                    sub.type = TransactionRecord::Ghosted;
+                }
+                else if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
                 {
                     // Received by Bitcoin Address
                     sub.type = TransactionRecord::RecvWithAddress;
@@ -98,7 +103,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             CAmount nChange = wtx.GetChange();
 
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::SendToSelf, "",
-                            -(nDebit - nChange), nCredit - nChange));
+                                -(nDebit - nChange), nCredit - nChange));
             parts.last().involvesWatchAddress = involvesWatchAddress;   // maybe pass to TransactionRecord as constructor argument
         }
         else if (fAllFromMe)
@@ -125,15 +130,27 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 CTxDestination address;
                 if (ExtractDestination(txout.scriptPubKey, address))
                 {
+                    if(tempTx->IsZerocoinMint(*tempTx)){
+                        sub.type = TransactionRecord::Ghosted;
+                        sub.address = mapValue["to"];
+                    }
                     // Sent to Bitcoin Address
-                    sub.type = TransactionRecord::SendToAddress;
-                    sub.address = EncodeDestination(address);
+                    else{
+                        sub.type = TransactionRecord::SendToAddress;
+                        sub.address = EncodeDestination(address);
+                    }
                 }
                 else
                 {
+                    if(tempTx->IsZerocoinMint(*tempTx)){
+                        sub.type = TransactionRecord::Ghosted;
+                        sub.address = mapValue["to"];
+                    }
                     // Sent to IP, or other non-address transaction like OP_EVAL
-                    sub.type = TransactionRecord::SendToOther;
-                    sub.address = mapValue["to"];
+                    else{
+                        sub.type = TransactionRecord::SendToOther;
+                        sub.address = mapValue["to"];
+                    }
                 }
 
                 CAmount nValue = txout.nValue;
@@ -155,6 +172,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             //
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
             parts.last().involvesWatchAddress = involvesWatchAddress;
+
         }
     }
 
