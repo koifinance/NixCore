@@ -628,7 +628,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     ghostnodeAction->setEnabled(enabled);
     ghostVaultAction->setEnabled(enabled);
     if(((GetNumBlocksOfPeers() > chainActive.Height()) ? GetNumBlocksOfPeers() : chainActive.Height()) < Params().GetConsensus().nPosHeightActivate)
-        ghostVaultAction->setEnabled(true);
+        ghostVaultAction->setEnabled(false);
     openAction->setEnabled(enabled);
 }
 
