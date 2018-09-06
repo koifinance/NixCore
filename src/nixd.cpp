@@ -89,13 +89,6 @@ bool AppInit(int argc, char* argv[])
 
     try
     {
-        // parse ghostnode.conf
-        std::string strErr;
-        if(!ghostnodeConfig.read(strErr)) {
-            fprintf(stderr,"Error reading ghostnode configuration file: %s\n", strErr.c_str());
-            return false;
-        }
-
         if (!fs::is_directory(GetDataDir(false)))
         {
             fprintf(stderr, "Error: Specified data directory \"%s\" does not exist.\n", gArgs.GetArg("-datadir", "").c_str());
@@ -113,6 +106,13 @@ bool AppInit(int argc, char* argv[])
             SelectParams(ChainNameFromCommandLine());
         } catch (const std::exception& e) {
             fprintf(stderr, "Error: %s\n", e.what());
+            return false;
+        }
+
+        // parse ghostnode.conf
+        std::string strErr;
+        if(!ghostnodeConfig.read(strErr)) {
+            fprintf(stderr,"Error reading ghostnode configuration file: %s\n", strErr.c_str());
             return false;
         }
 
