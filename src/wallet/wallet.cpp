@@ -5464,6 +5464,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
 
             //On empty key input, creates and send to stealthkey default - UI should require toKey input
             if(toKey == ""){
+                /*
                 CEKAStealthKey akStealth;
                 if (0 != this->NewStealthKeyFromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32)){
                     strFailReason = _("zerocoin stealth output creation failed!");
@@ -5472,10 +5473,21 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
                 CStealthAddress sxAddr;
                 akStealth.SetSxAddr(sxAddr);
                 scriptChange = GetScriptForDestination(sxAddr);
-                // Reserve a new key pair from key pool
-                //CPubKey vchPubKey;
-                //assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
-                //criptChange = GetScriptForDestination(vchPubKey.GetID());
+                */
+
+                CPubKey vchPubKey;
+                bool ret;
+                ret = reservekey.GetReservedKey(vchPubKey, true);
+                if (!ret)
+                {
+                    strFailReason = _("Keypool ran out, please call keypoolrefill first");
+                    return false;
+                }
+
+                const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+
+                LearnRelatedScripts(vchPubKey, change_type);
+                scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
             }
             //Check if output key is a stealth address
             else if(IsStealthAddress(toKey)){
@@ -5712,7 +5724,9 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
     CScript scriptChange;
 
     //On empty key input, creates and send to stealthkey default - UI should require toKey input
+    //For now send to personal segwit
     if(toKey == ""){
+        /*
         CEKAStealthKey akStealth;
         if (0 != this->NewStealthKeyFromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32)){
             strFailReason = _("zerocoin stealth output creation failed!");
@@ -5721,6 +5735,21 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
         CStealthAddress sxAddr;
         akStealth.SetSxAddr(sxAddr);
         scriptChange = GetScriptForDestination(sxAddr);
+        */
+
+        CPubKey vchPubKey;
+        bool ret;
+        ret = reservekey.GetReservedKey(vchPubKey, true);
+        if (!ret)
+        {
+            strFailReason = _("Keypool ran out, please call keypoolrefill first");
+            return false;
+        }
+
+        const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+
+        LearnRelatedScripts(vchPubKey, change_type);
+        scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
     }
     //Check if output key is a stealth address
     else if(IsStealthAddress(toKey)){
