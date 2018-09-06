@@ -3697,6 +3697,8 @@ UniValue ghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
+    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
+        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -3715,6 +3717,8 @@ UniValue unghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
+    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
+        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -5162,10 +5166,10 @@ static const CRPCCommand commands[] =
 
     // NIX Ghost functions (experimental)
     { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
-    { "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
+    //{ "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
     { "NIX Ghost Protocol",             "ghostamount",             &ghostamount,             {"amount"} },
     { "NIX Ghost Protocol",             "unghostamount",             &unghostamount,             {"amount"} },
-    { "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
+    //{ "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
     { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
     { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
     { "NIX Ghost Protocol",             "listghostednix",        &listmintzerocoins,        {} },

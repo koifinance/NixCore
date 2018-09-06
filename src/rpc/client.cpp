@@ -157,10 +157,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
 
     //NIX Privacy functions
     { "setmininput", 0 , "amount"},
-    { "ghostnix", 0 , "amount"},
+    //{ "ghostnix", 0 , "amount"},
     { "ghostamount", 0 , "amount"},
     { "unghostamount", 0 , "amount"},
-    { "spendghostednix", 0 , "amount"},
+    //{ "spendghostednix", 0 , "amount"},
     { "setgenerate", 0 , "bool"},
     { "setgenerate", 1 , "bool"},
     { "setghostednixstatus", 2 ,""},
