@@ -2084,7 +2084,8 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
     }
 
     nAvailableCreditCached = nCredit;
-    fAvailableCreditCached = true;
+    if(!fForStaking)
+        fAvailableCreditCached = true;
     return nCredit;
 }
 
@@ -2255,7 +2256,7 @@ CAmount CWallet::GetBalance() const
         {
             const CWalletTx* pcoin = &entry.second;
             if (pcoin->IsTrusted())
-                nTotal += pcoin->GetAvailableCredit();
+                nTotal += pcoin->GetAvailableCredit(true, false);
         }
     }
 
@@ -2271,7 +2272,7 @@ CAmount CWallet::GetUnconfirmedBalance() const
         {
             const CWalletTx* pcoin = &entry.second;
             if (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
-                nTotal += pcoin->GetAvailableCredit();
+                nTotal += pcoin->GetAvailableCredit(true, false);
         }
     }
     return nTotal;
