@@ -72,10 +72,10 @@ script:
     - if [ -z "$NO_DEPENDS" ]; then ccache --max-size=$CCACHE_SIZE; fi
     - test -n "$USE_SHELL" && eval '"$USE_SHELL" -c "./autogen.sh"' || ./autogen.sh
     - mkdir build && cd build
-    - ../configure --disable-tests --disable-gui-tests —disable-bench --cache-file=config.cache $NIX_CONFIG_ALL $NIX_CONFIG || ( cat config.log && false)
+    - ../configure --cache-file=config.cache $NIX_CONFIG_ALL $NIX_CONFIG || ( cat config.log && false)
     - make distdir VERSION=$HOST
     - cd nix-$HOST
-    - ./configure --disable-tests --disable-gui-tests —disable-bench --cache-file=../config.cache $NIX_CONFIG_ALL $NIX_CONFIG || ( cat config.log && false)
+    - ./configure --cache-file=../config.cache $NIX_CONFIG_ALL $NIX_CONFIG || ( cat config.log && false)
     - make $MAKEJOBS $GOAL || ( echo "Build failure. Verbose build follows." && make $GOAL V=1 ; false )
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/depends/$HOST/lib
     - if [ "$RUN_TESTS" = "true" ]; then travis_wait 50 make $MAKEJOBS check VERBOSE=1; fi
