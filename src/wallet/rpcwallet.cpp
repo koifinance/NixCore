@@ -3697,8 +3697,8 @@ UniValue ghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
-    //if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
-     //   return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to ghost NIX";
+    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
+        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -3717,8 +3717,8 @@ UniValue unghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
-    //if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
-     //   return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
+    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
+        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
