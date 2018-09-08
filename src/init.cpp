@@ -909,7 +909,7 @@ void RunTor(){
             convert_str);
 
     //TODO: linking error for linux&windows, order in makefile
-    //tor_main(argv_c.size(), &argv_c[0]);
+    tor_main(argv_c.size(), &argv_c[0]);
 
 }
 
@@ -1479,10 +1479,10 @@ bool AppInitMain()
     //Enable tor on default
     if(torEnabledArg.second == ""){
         LogPrintf("AppInitMain(): Initial startup, Tor networking disabled \n");
-        WriteBinaryFileTor(pathTorSetting.string().c_str(), "0");
+        WriteBinaryFileTor(pathTorSetting.string().c_str(), "disabled");
     }
-    /*
-    if(torEnabledArg.second != "0"){
+
+    if(torEnabledArg.second == "enabled"){
         StartTorEnabled(threadGroup, scheduler);
         SetLimited(NET_TOR);
         SetLimited(NET_IPV4);
@@ -1500,7 +1500,7 @@ bool AppInitMain()
         SetLimited(NET_IPV6, false);
         SetLimited(NET_TOR, false);
     }
-    */
+
     bool proxyRandomize = gArgs.GetBoolArg("-proxyrandomize", DEFAULT_PROXYRANDOMIZE);
     // -proxy sets a proxy for all outgoing network traffic
     // -noproxy (or -proxy=0) as well as the empty string can be used to not set a proxy, this is the default

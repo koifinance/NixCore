@@ -131,7 +131,7 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
     std::pair<bool,std::string> torEnabled = ReadBinaryFileTor(pathTorSetting.string().c_str());
     if(torEnabled.first){
-        if(torEnabled.second == "1"){
+        if(torEnabled.second == "enabled"){
             ui->checkboxEnabledTor->setChecked(true);
         }else{
             ui->checkboxEnabledTor->setChecked(false);
@@ -351,13 +351,13 @@ void OverviewPage::handleEnabledTorChanged(){
     QMessageBox msgBox;
     boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
     if(ui->checkboxEnabledTor->isChecked()){
-        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "1")) {
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "enabled")) {
             msgBox.setText("Please restart the NIX Core wallet to route your connection to obfuscate your IP address. \nSyncing your wallet might be slower.");
         }else{
             msgBox.setText("Obfuscation cannot enable");
         }
     }else{
-        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "0")) {
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "disabled")) {
             msgBox.setText("Please restart the NIX Core wallet to disable IP obfuscation.");
         } else {
             msgBox.setText("Obfuscation cannot disable");
