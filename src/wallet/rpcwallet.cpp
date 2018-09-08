@@ -3697,8 +3697,8 @@ UniValue ghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
-    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
-        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to ghost NIX";
+    //if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
+     //   return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -3717,8 +3717,8 @@ UniValue unghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
-    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
-        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
+    //if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
+     //   return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -4077,6 +4077,16 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
     }
 
     return results;
+}
+
+UniValue totalghosted(const JSONRPCRequest& request) {
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "totalghosted\n"
+                        "Returns total amount of ghosted NIX on the network\n");
+
+    return TotalGhosted();
 }
 
 //TOR/I2P Config
@@ -5174,6 +5184,7 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
     { "NIX Ghost Protocol",             "listghostednix",        &listmintzerocoins,        {} },
     { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
+    {"NIX Ghost Protocol",             "totalghosted",             &totalghosted,             {} },
 
 
       //NIX Ghost address functions

@@ -152,6 +152,11 @@ public:
     // Remove spend from the mempool (usually as the result of adding tx to the block)
 
     static CZerocoinState *GetZerocoinState();
+
+    uint64_t GetTotalZerocoins();
+
 };
+
+uint64_t TotalGhosted();
 
 #endif //ZEROCOIN_H
