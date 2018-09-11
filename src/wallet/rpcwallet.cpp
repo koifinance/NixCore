@@ -4554,6 +4554,143 @@ UniValue liststealthaddresses(const JSONRPCRequest &request)
     return result;
 }
 
+UniValue listghosttransactions(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() > 4)
+        throw std::runtime_error(
+            "listghosttransactions ( \"account\" count skip include_watchonly)\n"
+            "\nReturns up to 'count' most recent ghost transactions skipping the first 'from' transactions for account 'account'.\n"
+            "\nArguments:\n"
+            "1. \"account\"    (string, optional) DEPRECATED. The account name. Should be \"*\".\n"
+            "2. count          (numeric, optional, default=10) The number of transactions to return\n"
+            "3. skip           (numeric, optional, default=0) The number of transactions to skip\n"
+            "4. include_watchonly (bool, optional, default=false) Include transactions to watch-only addresses (see 'importaddress')\n"
+            "\nResult:\n"
+            "[\n"
+            "  {\n"
+            "    \"account\":\"accountname\",       (string) DEPRECATED. The account name associated with the transaction. \n"
+            "                                                It will be \"\" for the default account.\n"
+            "    \"address\":\"address\",    (string) The bitcoin address of the transaction. Not present for \n"
+            "                                                move transactions (category = move).\n"
+            "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off blockchain)\n"
+            "                                                transaction between accounts, and not associated with an address,\n"
+            "                                                transaction id or block. 'send' and 'receive' transactions are \n"
+            "                                                associated with an address, transaction id and block details\n"
+            "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the\n"
+            "                                         'move' category for moves outbound. It is positive for the 'receive' category,\n"
+            "                                         and for the 'move' category for inbound funds.\n"
+            "    \"label\": \"label\",       (string) A comment for the address/transaction, if any\n"
+            "    \"vout\": n,                (numeric) the vout value\n"
+            "    \"fee\": x.xxx,             (numeric) The amount of the fee in " + CURRENCY_UNIT + ". This is negative and only available for the \n"
+            "                                         'send' category of transactions.\n"
+            "    \"confirmations\": n,       (numeric) The number of confirmations for the transaction. Available for 'send' and \n"
+            "                                         'receive' category of transactions. Negative confirmations indicate the\n"
+            "                                         transaction conflicts with the block chain\n"
+            "    \"trusted\": xxx,           (bool) Whether we consider the outputs of this unconfirmed transaction safe to spend.\n"
+            "    \"blockhash\": \"hashvalue\", (string) The block hash containing the transaction. Available for 'send' and 'receive'\n"
+            "                                          category of transactions.\n"
+            "    \"blockindex\": n,          (numeric) The index of the transaction in the block that includes it. Available for 'send' and 'receive'\n"
+            "                                          category of transactions.\n"
+            "    \"blocktime\": xxx,         (numeric) The block time in seconds since epoch (1 Jan 1970 GMT).\n"
+            "    \"txid\": \"transactionid\", (string) The transaction id. Available for 'send' and 'receive' category of transactions.\n"
+            "    \"time\": xxx,              (numeric) The transaction time in seconds since epoch (midnight Jan 1 1970 GMT).\n"
+            "    \"timereceived\": xxx,      (numeric) The time received in seconds since epoch (midnight Jan 1 1970 GMT). Available \n"
+            "                                          for 'send' and 'receive' category of transactions.\n"
+            "    \"comment\": \"...\",       (string) If a comment is associated with the transaction.\n"
+            "    \"otheraccount\": \"accountname\",  (string) DEPRECATED. For the 'move' category of transactions, the account the funds came \n"
+            "                                          from (for receiving funds, positive amounts), or went to (for sending funds,\n"
+            "                                          negative amounts).\n"
+            "    \"bip125-replaceable\": \"yes|no|unknown\",  (string) Whether this transaction could be replaced due to BIP125 (replace-by-fee);\n"
+            "                                                     may be unknown for unconfirmed transactions not in the mempool\n"
+            "    \"abandoned\": xxx          (bool) 'true' if the transaction has been abandoned (inputs are respendable). Only available for the \n"
+            "                                         'send' category of transactions.\n"
+            "  }\n"
+            "]\n"
+
+            "\nExamples:\n"
+            "\nList the most recent 10 transactions in the systems\n"
+            + HelpExampleCli("listghosttransactions", "") +
+            "\nList transactions 100 to 120\n"
+            + HelpExampleCli("listghosttransactions", "\"*\" 20 100") +
+            "\nAs a json rpc call\n"
+            + HelpExampleRpc("listghosttransactions", "\"*\", 20, 100")
+        );
+
+    ObserveSafeMode();
+
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    std::string strAccount = "*";
+    if (!request.params[0].isNull())
+        strAccount = request.params[0].get_str();
+    int nCount = 10;
+    if (!request.params[1].isNull())
+        nCount = request.params[1].get_int();
+    int nFrom = 0;
+    if (!request.params[2].isNull())
+        nFrom = request.params[2].get_int();
+    isminefilter filter = ISMINE_SPENDABLE;
+    if(!request.params[3].isNull())
+        if(request.params[3].get_bool())
+            filter = filter | ISMINE_WATCH_ONLY;
+
+    if (nCount < 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Negative count");
+    if (nFrom < 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Negative from");
+
+    UniValue ret(UniValue::VARR);
+
+    const CWallet::TxItems & txOrdered = pwallet->wtxOrdered;
+
+    // iterate backwards until we have nCount items to return:
+    for (CWallet::TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
+    {
+        CWalletTx *const pwtx = (*it).second.first;
+        if (pwtx != nullptr)
+            ListTransactions(pwallet, *pwtx, strAccount, 0, true, ret, filter);
+        CAccountingEntry *const pacentry = (*it).second.second;
+        if (pacentry != nullptr)
+            AcentryToJSON(*pacentry, strAccount, ret);
+
+        if ((int)ret.size() >= (nCount+nFrom)) break;
+    }
+    // ret is newest to oldest
+
+    if (nFrom > (int)ret.size())
+        nFrom = ret.size();
+    if ((nFrom + nCount) > (int)ret.size())
+        nCount = ret.size() - nFrom;
+
+    std::vector<UniValue> arrTmp = ret.getValues();
+
+    std::vector<UniValue>::iterator first = arrTmp.begin();
+    std::advance(first, nFrom);
+    std::vector<UniValue>::iterator last = arrTmp.begin();
+    std::advance(last, nFrom+nCount);
+
+    if (last != arrTmp.end()) arrTmp.erase(last, arrTmp.end());
+    if (first != arrTmp.begin()) arrTmp.erase(arrTmp.begin(), first);
+
+    std::reverse(arrTmp.begin(), arrTmp.end()); // Return oldest to newest
+
+    ret.clear();
+    ret.setArray();
+    ret.push_backV(arrTmp);
+
+    return ret;
+}
+
+
 /*********************/
 /* Staking Protocol */
 
@@ -5175,16 +5312,14 @@ static const CRPCCommand commands[] =
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
     // NIX Ghost functions (experimental)
-    { "NIX Ghost Protocol",             "listunspentghostednix", &listunspentmintzerocoins, {} },
-    //{ "NIX Ghost Protocol",             "ghostnix",             &mintzerocoin,             {"amount"} },
-    { "NIX Ghost Protocol",             "ghostamount",             &ghostamount,             {"amount"} },
-    { "NIX Ghost Protocol",             "unghostamount",             &unghostamount,             {"amount"} },
-    //{ "NIX Ghost Protocol",             "spendghostednix",            &spendzerocoin,            {"amount"} },
-    { "NIX Ghost Protocol",             "resetghostednix",        &resetmintzerocoin,        {} },
-    { "NIX Ghost Protocol",             "setghostednixstatus",    &setmintzerocoinstatus,    {} },
-    { "NIX Ghost Protocol",             "listghostednix",        &listmintzerocoins,        {} },
-    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,             {} },
-    {"NIX Ghost Protocol",             "totalghosted",             &totalghosted,             {} },
+    { "NIX Ghost Protocol",             "listunspentghostednix",    &listunspentmintzerocoins,  {} },
+    { "NIX Ghost Protocol",             "ghostamount",              &ghostamount,               {"amount"} },
+    { "NIX Ghost Protocol",             "unghostamount",            &unghostamount,             {"amount"} },
+    { "NIX Ghost Protocol",             "resetghostednix",          &resetmintzerocoin,         {} },
+    { "NIX Ghost Protocol",             "setghostednixstatus",      &setmintzerocoinstatus,     {} },
+    { "NIX Ghost Protocol",             "listghostednix",           &listmintzerocoins,         {} },
+    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,              {} },
+    { "NIX Ghost Protocol",             "totalghosted",             &totalghosted,              {} },
 
 
       //NIX Ghost address functions

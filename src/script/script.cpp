@@ -136,7 +136,6 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP6                   : return "OP_NOP6";
     case OP_NOP7                   : return "OP_NOP7";
     case OP_NOP8                   : return "OP_NOP8";
-    case OP_NOP9                   : return "OP_NOP9";
     case OP_NOP10                  : return "OP_NOP10";
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
@@ -145,6 +144,8 @@ const char* GetOpName(opcodetype opcode)
     // zerocoin
     case OP_ZEROCOINMINT           : return "OP_ZEROCOINMINT";
     case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
+
+    case OP_ISCOINSTAKE            : return "OP_ISCOINSTAKE";
 
     // Note:
     //  The template matching params OP_SMALLINTEGER/etc are defined in opcodetype enum
@@ -339,32 +340,35 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
 bool CScript::IsPayToPublicKeyHash256_CS() const
 {
     return this->size() == 25 + 37 + 4
+        && (*this)[0] == OP_ISCOINSTAKE
         && (*this)[1] == OP_IF
         && MatchPayToPublicKeyHash(2)
         && (*this)[27] == OP_ELSE
         && MatchPayToPublicKeyHash256(28)
         && (*this)[65] == OP_ENDIF;
-};
+}
 
 bool CScript::IsPayToScriptHash256_CS() const
 {
     return this->size() == 25 + 35 + 4
+        && (*this)[0] == OP_ISCOINSTAKE
         && (*this)[1] == OP_IF
         && MatchPayToPublicKeyHash(2)
         && (*this)[27] == OP_ELSE
         && MatchPayToScriptHash256(28)
         && (*this)[63] == OP_ENDIF;
-};
+}
 
 bool CScript::IsPayToScriptHash_CS() const
 {
     return this->size() == 25 + 23 + 4
+        && (*this)[0] == OP_ISCOINSTAKE
         && (*this)[1] == OP_IF
-        && MatchPayToPublicKeyHash(2)
-        && (*this)[27] == OP_ELSE
-        && MatchPayToScriptHash(28)
-        && (*this)[51] == OP_ENDIF;
-};
+        && MatchPayToScriptHash(2)
+        && (*this)[25] == OP_ELSE
+        && MatchPayToScriptHash(26)
+        && (*this)[49] == OP_ENDIF;
+}
 
 
 

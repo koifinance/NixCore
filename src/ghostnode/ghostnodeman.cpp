@@ -671,7 +671,7 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
             delete [] reasonStr;
             continue;
         }
-        LogPrintf("\nNODE Last Paid\n");
+        //LogPrintf("\nNODE Last Paid\n");
         vecGhostnodeLastPaid.push_back(std::make_pair(mn.GetLastPaidBlock(), &mn));
     }
     nCount = (int)vecGhostnodeLastPaid.size();

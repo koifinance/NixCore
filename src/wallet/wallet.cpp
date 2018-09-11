@@ -10787,8 +10787,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
     //Push ghostnode reward with ghost fees
     if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0) + nGhostFees;
-        FillBlockPayments(txNew, chainActive.Height(), ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees;
+        FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
 
     //insert witness tx

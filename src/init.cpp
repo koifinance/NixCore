@@ -136,6 +136,101 @@ static char *convert_str(const std::string &s) {
     return pc;
 }
 
+void RunTor(){
+    printf("TOR thread started.\n");
+
+    boost::optional < std::string > clientTransportPlugin;
+    struct stat sb;
+    if ((stat("obfs4proxy", &sb) == 0 && sb.st_mode & S_IXUSR)
+            || !std::system("which obfs4proxy")) {
+        clientTransportPlugin = "obfs4 exec obfs4proxy";
+    } else if (stat("obfs4proxy.exe", &sb) == 0 && sb.st_mode & S_IXUSR) {
+        clientTransportPlugin = "obfs4 exec obfs4proxy.exe";
+    }
+
+    fs::path tor_dir = GetDataDir() / "tor";
+    fs::create_directory(tor_dir);
+    fs::path log_file = tor_dir / "tor.log";
+
+    std::vector < std::string > argv;
+    argv.push_back("tor");
+    argv.push_back("--Log");
+    argv.push_back("notice file " + log_file.string());
+    argv.push_back("--SocksPort");
+    argv.push_back("9050");
+    argv.push_back("--ignore-missing-torrc");
+    argv.push_back("-f");
+    argv.push_back((tor_dir / "torrc").string());
+    argv.push_back("--HiddenServiceDir");
+    argv.push_back((tor_dir / "onion").string());
+    argv.push_back("--HiddenServicePort");
+    argv.push_back("6214");
+
+    if (clientTransportPlugin) {
+        printf("Using OBFS4.\n");
+        argv.push_back("--ClientTransportPlugin");
+        argv.push_back(*clientTransportPlugin);
+        argv.push_back("--UseBridges");
+        argv.push_back("1");
+    } else {
+        printf("No OBFS4 found, not using it.\n");
+    }
+
+    std::vector<char *> argv_c;
+    std::transform(argv.begin(), argv.end(), std::back_inserter(argv_c),
+            convert_str);
+
+    //TODO: linking error for linux&windows, order in makefile
+    tor_main(argv_c.size(), &argv_c[0]);
+
+}
+
+
+struct event_base *baseTor;
+boost::thread torEnabledThread;
+
+static void TorEnabledThread()
+{
+    RunTor();
+    event_base_dispatch(baseTor);
+}
+
+
+void StartTorEnabled(boost::thread_group& threadGroup, CScheduler& scheduler)
+{
+    assert(!baseTor);
+#ifdef WIN32
+    evthread_use_windows_threads();
+#else
+    evthread_use_pthreads();
+#endif
+    baseTor = event_base_new();
+    if (!baseTor) {
+        LogPrintf("tor: Unable to create event_base\n");
+        return;
+    }
+
+    torEnabledThread = boost::thread(boost::bind(&TraceThread<void (*)()>, "torcontrol", &TorEnabledThread));
+}
+
+void InterruptTorEnabled()
+{
+    if (baseTor) {
+        LogPrintf("tor: Thread interrupt\n");
+        event_base_loopbreak(baseTor);
+    }
+}
+
+void StopTorEnabled()
+{
+    if (baseTor) {
+        torEnabledThread.join();
+        event_base_free(baseTor);
+        baseTor = 0;
+    }
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Shutdown
@@ -862,100 +957,6 @@ void InitParameterInteraction()
 static std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
 {
     return strprintf(_("Cannot resolve -%s address: '%s'"), optname, strBind);
-}
-
-void RunTor(){
-    printf("TOR thread started.\n");
-
-    boost::optional < std::string > clientTransportPlugin;
-    struct stat sb;
-    if ((stat("obfs4proxy", &sb) == 0 && sb.st_mode & S_IXUSR)
-            || !std::system("which obfs4proxy")) {
-        clientTransportPlugin = "obfs4 exec obfs4proxy";
-    } else if (stat("obfs4proxy.exe", &sb) == 0 && sb.st_mode & S_IXUSR) {
-        clientTransportPlugin = "obfs4 exec obfs4proxy.exe";
-    }
-
-    fs::path tor_dir = GetDataDir() / "tor";
-    fs::create_directory(tor_dir);
-    fs::path log_file = tor_dir / "tor.log";
-
-    std::vector < std::string > argv;
-    argv.push_back("tor");
-    argv.push_back("--Log");
-    argv.push_back("notice file " + log_file.string());
-    argv.push_back("--SocksPort");
-    argv.push_back("9050");
-    argv.push_back("--ignore-missing-torrc");
-    argv.push_back("-f");
-    argv.push_back((tor_dir / "torrc").string());
-    argv.push_back("--HiddenServiceDir");
-    argv.push_back((tor_dir / "onion").string());
-    argv.push_back("--HiddenServicePort");
-    argv.push_back("6214");
-
-    if (clientTransportPlugin) {
-        printf("Using OBFS4.\n");
-        argv.push_back("--ClientTransportPlugin");
-        argv.push_back(*clientTransportPlugin);
-        argv.push_back("--UseBridges");
-        argv.push_back("1");
-    } else {
-        printf("No OBFS4 found, not using it.\n");
-    }
-
-    std::vector<char *> argv_c;
-    std::transform(argv.begin(), argv.end(), std::back_inserter(argv_c),
-            convert_str);
-
-    //TODO: linking error for linux&windows, order in makefile
-    tor_main(argv_c.size(), &argv_c[0]);
-
-}
-
-
-struct event_base *baseTor;
-boost::thread torEnabledThread;
-
-static void TorEnabledThread()
-{
-    RunTor();
-    event_base_dispatch(baseTor);
-}
-
-
-void StartTorEnabled(boost::thread_group& threadGroup, CScheduler& scheduler)
-{
-    assert(!baseTor);
-#ifdef WIN32
-    evthread_use_windows_threads();
-#else
-    evthread_use_pthreads();
-#endif
-    baseTor = event_base_new();
-    if (!baseTor) {
-        LogPrintf("tor: Unable to create event_base\n");
-        return;
-    }
-
-    torEnabledThread = boost::thread(boost::bind(&TraceThread<void (*)()>, "torcontrol", &TorEnabledThread));
-}
-
-void InterruptTorEnabled()
-{
-    if (baseTor) {
-        LogPrintf("tor: Thread interrupt\n");
-        event_base_loopbreak(baseTor);
-    }
-}
-
-void StopTorEnabled()
-{
-    if (baseTor) {
-        torEnabledThread.join();
-        event_base_free(baseTor);
-        baseTor = 0;
-    }
 }
 
 void InitLogging()

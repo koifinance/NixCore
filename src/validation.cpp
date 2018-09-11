@@ -91,7 +91,7 @@ CAmount GetGhostnodePayment(int nHeight, CAmount blockValue) {
 }
 
 int GetInputAge(const CTxIn &txin) {
-    LogPrintf("\n GETINPUT \n");
+    //LogPrintf("\n GETINPUT \n");
     CCoinsView viewDummy;
     CCoinsViewCache view(&viewDummy);
     {

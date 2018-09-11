@@ -266,7 +266,7 @@ void AddressBookPage::selectionChanged()
     for (int i = 0; i < row ; ++i)
     {
         QVariant content = table->model()->data(table->model()->index(i, 0), Qt::DisplayRole);
-        LogPrintf("\nTBE: %s \n",content.toString().toStdString());
+        //LogPrintf("\nTBE: %s \n",content.toString().toStdString());
         if(content == QVariant("Default Address"))
         {   
             QVariant address = table->model()->data(table->model()->index(i, 1), Qt::DisplayRole);
