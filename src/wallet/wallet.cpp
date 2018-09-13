@@ -1996,7 +1996,7 @@ CAmount CWalletTx::GetDebit(const isminefilter& filter) const
 CAmount CWalletTx::GetCredit(const isminefilter& filter) const
 {
     // Must wait until coinbase is safely deep enough in the chain before valuing it
-    if (IsCoinBase() && GetBlocksToMaturity() > 0)
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
         return 0;
 
     CAmount credit = 0;
@@ -2091,7 +2091,7 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
 
 CAmount CWalletTx::GetImmatureWatchOnlyCredit(const bool fUseCache) const
 {
-    if (IsCoinBase() && GetBlocksToMaturity() > 0 && IsInMainChain())
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0 && IsInMainChain())
     {
         if (fUseCache && fImmatureWatchCreditCached)
             return nImmatureWatchCreditCached;
@@ -2109,7 +2109,7 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fUseCache) const
         return 0;
 
     // Must wait until coinbase is safely deep enough in the chain before valuing it
-    if (IsCoinBase() && GetBlocksToMaturity() > 0)
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
         return 0;
 
     if (fUseCache && fAvailableWatchCreditCached)
@@ -2454,7 +2454,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
             if (!CheckFinalTx(*pcoin->tx))
                 continue;
 
-            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+            if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
             //int nDepth = pcoin->GetDepthInMainChain();
@@ -3929,7 +3929,7 @@ std::map<CTxDestination, CAmount> CWallet::GetAddressBalances()
             if (!pcoin->IsTrusted())
                 continue;
 
-            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+            if ((pcoin->IsCoinBase() || IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
             int nDepth = pcoin->GetDepthInMainChain();
@@ -6282,7 +6282,7 @@ void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyCo
                 continue;
             }
 
-            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0) {
+            if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0) {
                 //LogPrintf("Not trusted\n");
                 continue;
             }
@@ -9674,7 +9674,7 @@ CAmount CWalletTx::GetAnonymizedCredit(bool fUseCache) const {
         return 0;
 
     // Must wait until coinbase is safely deep enough in the chain before valuing it
-    if (IsCoinBase() && GetBlocksToMaturity() > 0)
+    if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
         return 0;
 
     CAmount nCredit = 0;
@@ -10136,7 +10136,7 @@ bool CWallet::SelectCoinsGrouppedByAddresses(std::vector <CompactTallyItem> &vec
     for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it) {
         const CWalletTx &wtx = (*it).second;
 
-        if (wtx.IsCoinBase() && wtx.GetBlocksToMaturity() > 0) continue;
+        if ((wtx.IsCoinBase() || IsCoinStake()) && wtx.GetBlocksToMaturity() > 0) continue;
         if (!fAnonymizable && !wtx.IsTrusted()) continue;
 
         for (unsigned int i = 0; i < wtx.tx->vout.size(); i++) {
@@ -10785,10 +10785,22 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     txNew.vout.push_back(CTxOut(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
-    //Push ghostnode reward with ghost fees
-    if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees;
+
+    //payout 10 ghostnodes for rewards
+    if(nGhostFees > 0 && chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees/10;
         FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
+
+        for(int g = 2; g < 12; g++){
+            mnpayments.FillBlockPayee(txNew, chainActive.Height() + i, nGhostFees/10, CTxOut());
+        }
+    }
+    //no ghostnode fees
+    else{
+        if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
+            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
+            FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
+        }
     }
 
     //insert witness tx
@@ -10843,7 +10855,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     if (pblock->vtx.size() < 1)
         return error("%s: Malformed block.", __func__);
 
-    int64_t p = -pblocktemplate->vTxFees[0];
+    int64_t nFees = -pblocktemplate->vTxFees[0];
     CBlockIndex *pindexPrev = chainActive.Tip();
 
     int64_t nGhostFees = 0;
