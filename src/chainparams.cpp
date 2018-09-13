@@ -86,7 +86,7 @@ int64_t CChainParams::GetCoinYearReward(int64_t nTime) const
 {
     static const int64_t nSecondsInYear = 365 * 24 * 60 * 60;
 
-    if (strNetworkID == "mainnet")
+    if (strNetworkID == "main")
     {
         return nCoinYearReward;
     }
@@ -102,7 +102,7 @@ int64_t CChainParams::GetCoinYearReward(int64_t nTime) const
     return nCoinYearReward;
 }
 
-int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64_t nFees) const
+int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64_t nFees, bool allowInitial) const
 {
     int64_t nSubsidy;
 
@@ -113,6 +113,10 @@ int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64
         LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
     }else{
         nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+    }
+
+    if(allowInitial && pindexPrev->IsProofOfStake()){
+        nSubsidy = (pindexPrev->nMoneySupply / COIN) * (5 * CENT) / (365 * 24 * (60 * 60 / nTargetSpacing));
     }
 
     //if (LogAcceptCategory(BCLog::POS) && gArgs.GetBoolArg("-printcreation", false))

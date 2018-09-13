@@ -1700,6 +1700,7 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
             if (fLong)
                 WalletTxToJSON(wtx, entry);
             entry.push_back(Pair("abandoned", wtx.isAbandoned()));
+            entry.push_back(Pair("is_ghosted", wtx.tx->IsZerocoinMint(*wtx.tx) || wtx.tx->IsZerocoinSpend()));
             ret.push_back(entry);
         }
     }
@@ -1741,6 +1742,7 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
                 entry.push_back(Pair("vout", r.vout));
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+                entry.push_back(Pair("is_unghosted", wtx.tx->IsZerocoinSpend()));
                 ret.push_back(entry);
             }
         }

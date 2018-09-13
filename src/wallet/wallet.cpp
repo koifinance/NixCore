@@ -10843,7 +10843,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     if (pblock->vtx.size() < 1)
         return error("%s: Malformed block.", __func__);
 
-    int64_t nFees = -pblocktemplate->vTxFees[0];
+    int64_t p = -pblocktemplate->vTxFees[0];
     CBlockIndex *pindexPrev = chainActive.Tip();
 
     int64_t nGhostFees = 0;
@@ -10864,11 +10864,12 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
         }
     }
     if(nGhostFees > nFees){
-        LogPrintf("\nCWallet::SignBlock() ERROR: nGhostFees not able to payout, reverting to 0, nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
-        nGhostFees = 0;
+        LogPrintf("\nCWallet::SignBlock() ERROR: nGhostFees not able to payout, reverting to nFees, nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
+        nGhostFees =  nFees;
+        nFees = 0;
     }
     else
-        nFees =- nGhostFees;
+        nFees -= nGhostFees;
 
     LogPrintf("\nGhost Fees: nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
 

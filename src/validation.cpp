@@ -1487,6 +1487,11 @@ int GetNumBlocksOfPeers()
 
 bool IsInitialBlockDownload()
 {
+
+    if (GetNumPeers() < 1
+        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
+        return true;
+
     // Once this function has returned false, it must remain false.
     static std::atomic<bool> latchToFalse{false};
     // Optimization: pre-test latch before taking the lock.
@@ -1501,9 +1506,6 @@ bool IsInitialBlockDownload()
     if (chainActive.Tip() == nullptr)
         return true;
     if (chainActive.Tip()->nChainWork < nMinimumChainWork)
-        return true;
-    if (GetNumPeers() < 1
-        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
         return true;
     LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
     latchToFalse.store(true, std::memory_order_relaxed);
@@ -2503,7 +2505,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         //if(chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock && txCoinstake->vout.size() < 4)
             //return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=4)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
 
-        CAmount nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) +
+        CAmount nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees, true) +
                 ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
         blockReward = nCalculatedStakeReward;
 
