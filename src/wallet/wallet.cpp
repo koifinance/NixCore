@@ -3929,7 +3929,7 @@ std::map<CTxDestination, CAmount> CWallet::GetAddressBalances()
             if (!pcoin->IsTrusted())
                 continue;
 
-            if ((pcoin->IsCoinBase() || IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
+            if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
             int nDepth = pcoin->GetDepthInMainChain();
@@ -10136,7 +10136,7 @@ bool CWallet::SelectCoinsGrouppedByAddresses(std::vector <CompactTallyItem> &vec
     for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it) {
         const CWalletTx &wtx = (*it).second;
 
-        if ((wtx.IsCoinBase() || IsCoinStake()) && wtx.GetBlocksToMaturity() > 0) continue;
+        if ((wtx.IsCoinBase() || wtx.IsCoinStake()) && wtx.GetBlocksToMaturity() > 0) continue;
         if (!fAnonymizable && !wtx.IsTrusted()) continue;
 
         for (unsigned int i = 0; i < wtx.tx->vout.size(); i++) {
@@ -10792,7 +10792,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
 
         for(int g = 2; g < 12; g++){
-            mnpayments.FillBlockPayee(txNew, chainActive.Height() + i, nGhostFees/10, CTxOut());
+            CTxOut tempTx;
+            mnpayments.FillBlockPayee(txNew, chainActive.Height() + g, nGhostFees/10, tempTx);
         }
     }
     //no ghostnode fees
