@@ -245,7 +245,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
 
     if(tx.IsCoinStake()){
 
-        nValueIn += DEVELOPMENT_REWARD * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
+        nValueIn += DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
 
         if (chainActive.Height() >= pParams()->GetConsensus().nGhostnodePaymentsStartBlock) {
             CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
