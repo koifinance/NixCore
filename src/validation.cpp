@@ -4064,13 +4064,6 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
 
     if (block.IsProofOfStake())
     {
-        // Limit the number of outputs in a coinstake
-        if (nHeight >= consensusParams.nPosHeightActivate)
-        {
-            if (block.vtx[0]->vout.size() > 6)
-                return state.DoS(100, false, REJECT_INVALID, "bad-cs-outputs", false, "Too many outputs in coinstake");
-        }
-
         if (!CheckCoinStakeTimestamp(nHeight, block.GetBlockTime()))
             return state.DoS(50, false, REJECT_INVALID, "bad-coinstake-time", true, strprintf("%s: coinstake timestamp violation nTimeBlock=%d", __func__, block.GetBlockTime()));
 
