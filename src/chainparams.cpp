@@ -109,7 +109,7 @@ int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64
     //first block of PoS, add regular block amounts and airdrop amount
     if(!pindexPrev->IsProofOfStake()){
         CAmount nTotal = pindexPrev->nHeight * GetInitialRewards(pindexPrev->nHeight, Params().GetConsensus()) + GetInitialRewards(1, Params().GetConsensus());
-        nSubsidy = (nTotal / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
+        nSubsidy = (nTotal / COIN) * (5 * CENT) / (365 * 24 * (60 * 60 / nTargetSpacing));
         LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
     }else{
         nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
