@@ -10786,6 +10786,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
+    /*
     //payout 10 ghostnodes for rewards
     if(nGhostFees > 0 && chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
         CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees/10;
@@ -10802,6 +10803,12 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
             FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
         }
+    }
+    */
+
+    if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees;
+        FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
     }
 
     //insert witness tx
@@ -10869,7 +10876,8 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
                 //whole block is zerocoin mint
                 CAmount mintAmount = 0;
                 for(int k = 0; k < pblock->vtx[i]->vout.size(); k++){
-                    mintAmount += pblock->vtx[i]->vout[k].nValue;
+                    if(pblock->vtx[i]->vout[k].scriptPubKey.IsZerocoinMint())
+                        mintAmount += pblock->vtx[i]->vout[k].nValue;
                 }
                 nGhostFees += ((mintAmount * 0.0025) > 0.01) ? (mintAmount * 0.0025) : 0.01;
 
