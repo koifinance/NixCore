@@ -1941,7 +1941,13 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                 const CTxOut &out = tx.vout[k];
 
                 if (out.scriptPubKey.IsPayToScriptHash()) {
-                    vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22);
+                    std::vector<uint8_t> hashBytes;
+                    int scriptType = 0;
+                    const Coin &coin = view.AccessCoin(tx.vin[k].prevout);
+                    const CScript *pScript = &coin.out.scriptPubKey;
+                    if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
+                            || scriptType == 0)
+                        continue;
 
                     // undo receiving activity
                     view.addressIndex.push_back(make_pair(CAddressIndexKey(2, uint256(hashBytes.data(), hashBytes.size()), pindex->nHeight, i, hash, k, false), out.nValue));
@@ -1950,7 +1956,13 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                     view.addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(2, uint256(hashBytes.data(), hashBytes.size()), hash, k), CAddressUnspentValue()));
 
                 } else if (out.scriptPubKey.IsPayToPublicKeyHash()) {
-                    vector<unsigned char> hashBytes(out.scriptPubKey.begin()+3, out.scriptPubKey.begin()+23);
+                    std::vector<uint8_t> hashBytes;
+                    int scriptType = 0;
+                    const Coin &coin = view.AccessCoin(tx.vin[k].prevout);
+                    const CScript *pScript = &coin.out.scriptPubKey;
+                    if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
+                            || scriptType == 0)
+                        continue;
 
                     // undo receiving activity
                     view.addressIndex.push_back(make_pair(CAddressIndexKey(1, uint256(hashBytes.data(), hashBytes.size()), pindex->nHeight, i, hash, k, false), out.nValue));
@@ -2449,10 +2461,11 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             {
                 const CTxOut *out = &tx.vout[k];
 
-                const CScript *pScript;
-                std::vector<unsigned char> hashBytes;
-                int scriptType = 0;
                 CAmount nValue;
+                std::vector<uint8_t> hashBytes;
+                int scriptType = 0;
+                const Coin &coin = view.AccessCoin(tx.vin[k].prevout);
+                const CScript *pScript = &coin.out.scriptPubKey;
                 if (!ExtractIndexInfo(out, scriptType, hashBytes, nValue, pScript)
                         || scriptType == 0)
                     continue;
