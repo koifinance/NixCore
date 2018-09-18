@@ -533,21 +533,21 @@ void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCac
         const CTxIn input = tx.vin[j];
         const Coin &prevout = view.AccessCoin(input.prevout);
         uint256 addressHash;
-        int addressType;
 
-        if (prevout.out.scriptPubKey.IsPayToScriptHash()) {
-            addressHash = uint256(vector<unsigned char> (prevout.out.scriptPubKey.begin()+2, prevout.out.scriptPubKey.begin()+22));
-            addressType = 2;
-        } else if (prevout.out.scriptPubKey.IsPayToPublicKeyHash()) {
-            addressHash = uint256(vector<unsigned char> (prevout.out.scriptPubKey.begin()+3, prevout.out.scriptPubKey.begin()+23));
-            addressType = 1;
-        } else {
-            addressHash.SetNull();
-            addressType = 0;
-        }
+        std::vector<uint8_t> hashBytes;
+        const CScript *pScript = &prevout.out.scriptPubKey;
+        int scriptType = 0;
+        CAmount nValue = prevout.out.nValue;
+        if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
+                || scriptType == 0)
+            continue;
+
+
+        if(scriptType != 0)
+            addressHash = uint256(hashBytes.data(), hashBytes.size());
 
         CSpentIndexKey key = CSpentIndexKey(input.prevout.hash, input.prevout.n);
-        CSpentIndexValue value = CSpentIndexValue(txhash, j, -1, prevout.out.nValue, addressType, addressHash);
+        CSpentIndexValue value = CSpentIndexValue(txhash, j, -1, nValue, scriptType, addressHash);
 
         mapSpent.insert(make_pair(key, value));
         inserted.push_back(key);
