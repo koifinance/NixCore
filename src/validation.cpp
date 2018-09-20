@@ -294,17 +294,17 @@ public:
     void PruneBlockIndexCandidates();
 
     void UnloadBlockIndex();
+    void InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state, const CBlock &block);
+    CBlockIndex* AddToBlockIndex(const CBlockHeader& block);
 
 private:
     bool ActivateBestChainStep(CValidationState& state, const CChainParams& chainparams, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace);
     bool ConnectTip(CValidationState& state, const CChainParams& chainparams, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions &disconnectpool);
 
-    CBlockIndex* AddToBlockIndex(const CBlockHeader& block);
     /** Create a new block index entry for a given block hash */
     CBlockIndex * InsertBlockIndex(const uint256& hash);
     void CheckBlockIndex(const Consensus::Params& consensusParams);
 
-    void InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state);
     CBlockIndex* FindMostWorkChain();
     bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos, const Consensus::Params& consensusParams);
 
@@ -1622,7 +1622,21 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
     CheckForkWarningConditions();
 }
 
-void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state) {
+void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state, const CBlock &block) {
+
+    if (state.GetRejectReason() == "bad-cs-duplicate")
+    {
+        pindex->SetProofOfStake();
+        pindex->prevoutStake = block.vtx[0]->vin[0].prevout;
+        if (pindex->pprev && pindex->pprev->bnStakeModifier.IsNull())
+            LogPrintf("Warning: %s - Previous stake modifier is null.\n", __func__);
+        else
+            pindex->bnStakeModifier = ComputeStakeModifierV2(pindex->pprev, pindex->prevoutStake.hash);
+
+        pindex->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
+        setDirtyBlockIndex.insert(pindex);
+    }
+
     if (!state.CorruptionPossible()) {
         pindex->nStatus |= BLOCK_FAILED_VALID;
         g_failed_blocks.insert(pindex);
@@ -3101,7 +3115,7 @@ bool CChainState::ConnectTip(CValidationState& state, const CChainParams& chainp
                     pindexNew->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
                     setDirtyBlockIndex.insert(pindexNew);
                 }
-                InvalidBlockFound(pindexNew, state);
+                InvalidBlockFound(pindexNew, state, blockConnecting);
             }
 
             return error("ConnectTip(): ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
@@ -3170,6 +3184,9 @@ CBlockIndex* CChainState::FindMostWorkChain() {
                 // Remove the entire chain from the set.
                 while (pindexTest != pindexFailed) {
                     if (fFailedChain) {
+                        if (pindexTest->nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
+                            pindexFailed->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
+
                         pindexFailed->nStatus |= BLOCK_FAILED_CHILD;
                     } else if (fMissingData) {
                         // If we're missing data, then add back to mapBlocksUnlinked,
@@ -4396,8 +4413,19 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
             ret = g_chainstate.AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock);
         }
         if (!ret) {
-            GetMainSignals().BlockChecked(*pblock, state);
+
+            // Mark block as invalid to prevent re-requesting from peer.
+            // Block will have been added to the block index in AcceptBlockHeader
+            CBlockIndex *pindex = g_chainstate.AddToBlockIndex(*pblock);
+            g_chainstate.InvalidBlockFound(pindex, state, *pblock);
+
+            if (IncomingBlockChecked(*pblock, state)) // returns true if it did nothing
+                GetMainSignals().BlockChecked(*pblock, state);
+
             return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
+
+            //GetMainSignals().BlockChecked(*pblock, state);
+            //return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
         }
         if (pindex && state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
         {

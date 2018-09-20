@@ -210,7 +210,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
 
         if (netfulfilledman.HasFulfilledRequest(pfrom->addr, NetMsgType::GHOSTNODEPAYMENTSYNC)) {
             // Asking for the payments list multiple times in a short period of time is no good
-            LogPrintf("GHOSTNODEPAYMENTSYNC -- peer already asked me for the list\n");
+            //LogPrintf("GHOSTNODEPAYMENTSYNC -- peer already asked me for the list\n");
             Misbehaving(pfrom->GetId(), 20);
             return;
         }
@@ -248,7 +248,7 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
 
         int nFirstBlock = pCurrentBlockIndex->nHeight - GetStorageLimit();
         if (vote.nBlockHeight < nFirstBlock || vote.nBlockHeight > pCurrentBlockIndex->nHeight + 20) {
-            LogPrintf("mnpaymentsGHOSTNODEPAYMENTVOTE -- vote out of range: nFirstBlock=%d, nBlockHeight=%d, nHeight=%d\n", nFirstBlock, vote.nBlockHeight, pCurrentBlockIndex->nHeight);
+            //LogPrintf("mnpaymentsGHOSTNODEPAYMENTVOTE -- vote out of range: nFirstBlock=%d, nBlockHeight=%d, nHeight=%d\n", nFirstBlock, vote.nBlockHeight, pCurrentBlockIndex->nHeight);
             return;
         }
 
@@ -259,14 +259,14 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         }
 
         if (!CanVote(vote.vinGhostnode.prevout, vote.nBlockHeight)) {
-            LogPrintf("GHOSTNODEPAYMENTVOTE -- ghostnode already voted, ghostnode\n");
+            //LogPrintf("GHOSTNODEPAYMENTVOTE -- ghostnode already voted, ghostnode\n");
             return;
         }
 
         ghostnode_info_t mnInfo = mnodeman.GetGhostnodeInfo(vote.vinGhostnode);
         if (!mnInfo.fInfoValid) {
             // mn was not found, so we can't check vote, some info is probably missing
-            LogPrintf("GHOSTNODEPAYMENTVOTE -- ghostnode is missing \n");
+            //LogPrintf("GHOSTNODEPAYMENTVOTE -- ghostnode is missing \n");
             mnodeman.AskForMN(pfrom, vote.vinGhostnode);
             return;
         }
@@ -274,11 +274,11 @@ void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, C
         int nDos = 0;
         if (!vote.CheckSignature(mnInfo.pubKeyGhostnode, pCurrentBlockIndex->nHeight, nDos)) {
             if (nDos) {
-                LogPrintf("GHOSTNODEPAYMENTVOTE -- ERROR: invalid signature\n");
+                //LogPrintf("GHOSTNODEPAYMENTVOTE -- ERROR: invalid signature\n");
                 Misbehaving(pfrom->GetId(), nDos);
             } else {
                 // only warn about anything non-critical (i.e. nDos == 0) in debug mode
-                LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- WARNING: invalid signature\n");
+                //LogPrintf("mnpayments GHOSTNODEPAYMENTVOTE -- WARNING: invalid signature\n");
             }
             // Either our info or vote info could be outdated.
             // In case our info is outdated, ask for an update,

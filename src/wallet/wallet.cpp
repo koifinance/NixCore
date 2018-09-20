@@ -1095,6 +1095,17 @@ bool CWallet::LoadToWallet(const CWalletTx& wtxIn)
         }
     }
 
+    int nBestHeight = chainActive.Height();
+    if (wtx.IsCoinStake() && wtx.isAbandoned())
+    {
+        if (wtx.nCachedHeight > 0 && wtx.nCachedHeight < INT_MAX && wtx.nCachedHeight > nBestHeight - (MAX_STAKE_SEEN_SIZE * 1.5))
+        {
+            // Add to MapStakeSeen to prevent node submitting a block that would be rejected.
+            const COutPoint &kernel = wtx.tx->vin[0].prevout;
+            AddToMapStakeSeen(kernel, hash);
+        };
+    };
+
     return true;
 }
 
@@ -5240,13 +5251,17 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                         // Reserve a new key pair from key pool
                         CPubKey vchPubKey;
                         bool ret;
-                        ret = reservekey.GetReservedKey(vchPubKey);
-                        if (!ret) {
+                        ret = reservekey.GetReservedKey(vchPubKey, true);
+                        if (!ret)
+                        {
                             strFailReason = _("Keypool ran out, please call keypoolrefill first");
                             return false;
                         }
 
-                        scriptChange = GetScriptForDestination(vchPubKey.GetID());
+                        const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+
+                        LearnRelatedScripts(vchPubKey, change_type);
+                        scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
                     }
 
                     CTxOut newTxOut(nChange, scriptChange);
