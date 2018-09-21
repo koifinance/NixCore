@@ -354,6 +354,7 @@ libnix_wallet_a_SOURCES = \
   $(NIX_CORE_H)
 
 # crypto primitives library
+crypto_libnix_crypto_a_CFLAGS = $(AM_CFLAGS) $(PIC_FLAGS)
 crypto_libnix_crypto_a_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libnix_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libnix_crypto_a_SOURCES = \
@@ -373,7 +374,7 @@ crypto_libnix_crypto_a_SOURCES = \
   crypto/sha256.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
-  crypto/sha512.h \ 
+  crypto/sha512.h \
   crypto/Lyra2RE/Lyra2RE.c \
   crypto/Lyra2RE/Lyra2RE.h \
   crypto/Lyra2RE/Lyra2.c \
@@ -555,7 +556,7 @@ nixd_LDADD = \
   $(LIBSECP256K1) \
   $(LIBNIX_USBDEVICE)
 
-nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(USB_LIBS) -lz
+nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(USB_LIBS) $(CAP_LIBS) $(SECCOMP_LIBS) -lz
 
 # nix-cli binary #
 nix_cli_SOURCES = nix-cli.cpp
