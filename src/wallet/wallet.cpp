@@ -9572,8 +9572,32 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
 
         if (this->IsLocked())
             return "GhostModeSpendTrigger(): Error: The wallet needs to be unlocked.";
-        if(!CreateZerocoinSpendModelBatch(stringError, denominationBatch, toKey))
-            return "GhostModeSpendTrigger(): Error: Failed to create zerocoin spend model - %s." +  stringError;
+
+        //limit a batch to 4 zerocoins
+        int startIndex = 0;
+        int endIndex = 3;
+        for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/4) + 1); vecSplit++){
+            if(!CreateZerocoinSpendModelBatch(stringError, vector <std::string>(&denominationBatch[startIndex], &denominationBatch[endIndex]), toKey)){
+                if(vecSplit > 0){
+                    CAmount amountGhosted = 0;
+                    for (int x = 0; x < vecSplit; x++){
+                        amountGhosted += currentDenomination[x];
+                        amountGhosted += currentDenomination[x + 1];
+                        amountGhosted += currentDenomination[x + 2];
+                        amountGhosted += currentDenomination[x + 3];
+                    }
+                    return "GhostModeSpendTrigger(): Error: Was only able to unghost %s NIX - %s." + std::to_string(amountGhosted) + stringError;
+                }
+                else
+                    return "GhostModeSpendTrigger(): Error: Failed to unghost ghosted NIX - %s." +  stringError;
+            }
+
+            startIndex = endIndex + 1;
+            endIndex = endIndex + 4;
+
+            if (endIndex > denominationBatch.size() - 1)
+                endIndex = denominationBatch.size() - 1;
+        }
 
         return "Sucessfully sent " + totalAmount + " ghosted NIX";
     }

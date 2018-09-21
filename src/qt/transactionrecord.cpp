@@ -37,45 +37,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
     const CTransaction *tempTx;
     tempTx = wtx.tx.get();
 
-
-    if (wtx.IsCoinStake())
-    {
-        nCredit = 0;
-        bool involvesWatchAddress = false;
-        TransactionRecord sub(hash, nTime);
-
-        sub.type = TransactionRecord::Generated;
-        sub.debit = -nDebit;
-
-        CAmount nCredit = 0;
-        for (size_t i = 0; i < wtx.tx->vout.size(); ++i)
-        {
-            isminetype mine = wallet->IsMine(wtx.tx->vout[i]);
-            if (!mine)
-                continue;
-
-            nCredit += wtx.tx->vout[i].nValue;
-
-            if (sub.address.empty())
-            {
-                CTxDestination address;
-                involvesWatchAddress = involvesWatchAddress || (mine & ISMINE_WATCH_ONLY);
-                if (ExtractDestination(wtx.tx->vout[i].scriptPubKey, address))
-                {
-                    sub.address = CBitcoinAddress(address).ToString();
-                };
-            }
-        };
-
-        sub.involvesWatchAddress = involvesWatchAddress;
-        sub.credit = nCredit;
-        parts.append(sub);
-
-        return parts;
-    };
-
-
-    if (nNet > 0 || wtx.IsCoinBase())
+    if (nNet > 0 || wtx.IsCoinBase() || wtx.IsCoinStake())
     {
         //
         // Credit
@@ -106,7 +68,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.type = TransactionRecord::RecvFromOther;
                     sub.address = mapValue["from"];
                 }
-                if (wtx.IsCoinBase())
+                if (wtx.IsCoinBase() || wtx.IsCoinStake())
                 {
                     // Generated
                     sub.type = TransactionRecord::Generated;

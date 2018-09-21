@@ -169,7 +169,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1530415442; // November 15th, 2017.
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("00000000000000000000000000000000000000000000000000e576a550284f21");
+        consensus.nMinimumChainWork = uint256S("00000000000000000000000000000000000000000000000094d1a70884fcf308");
 
         // By default assume that the signatures in ancestors of this block are valid.
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //506067
@@ -259,12 +259,13 @@ public:
                 { 820, uint256S("0x9d48684e77bc21913aa4c3ea949bb3019ecb33fe7765c08c97e086345cc5aab2")},
                 { 1238, uint256S("0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e")},
                 { 47800, uint256S("0xc450d288e8018faae33c669b0fe2dc2dd1a2aa97ee34e263de8964ce8cc7d549")},
+                { 58420, uint256S("0x4c35760a6e07ec916bee8d6db82cc892e5d2d5f8d24ba60fd088a6f6b5cee540")},
             }
         };
 
         chainTxData = ChainTxData{
                 //block 1238 (0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e)
-            1536123729, // * UNIX timestamp of last known number of transactions
+            1537480992, // * UNIX timestamp of last known number of transactions
             60000,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
             0.1         // * estimated number of transactions per second after that timestamp
