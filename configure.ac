@@ -220,6 +220,9 @@ AC_ARG_ENABLE([debug],
     [enable_debug=$enableval],
     [enable_debug=no])
 
+AC_ARG_ENABLE(seccomp,
+    AS_HELP_STRING(--disable-seccomp, [do not attempt to use libseccomp]))
+
 # Turn warnings into errors
 AC_ARG_ENABLE([werror],
     [AS_HELP_STRING([--enable-werror],
@@ -958,10 +961,6 @@ if test x$use_pkgconfig = xyes; then
       PKG_CHECK_MODULES([SSL], [libssl],, [AC_MSG_ERROR(openssl  not found.)])
       PKG_CHECK_MODULES([CRYPTO], [libcrypto],,[AC_MSG_ERROR(libcrypto  not found.)])
       PKG_CHECK_MODULES(ZLIB, [zlib], [], [AC_MSG_ERROR([zlib not found])])
-      if test x$TARGET_OS = xlinux; then
-        PKG_CHECK_MODULES(CAP, [libcap], [], [AC_MSG_ERROR([libcap not found])])
-        PKG_CHECK_MODULES(SECCOMP, [libseccomp], [], [AC_MSG_ERROR([libseccomp not found])])
-      fi
       NIX_QT_CHECK([PKG_CHECK_MODULES([PROTOBUF], [protobuf], [have_protobuf=yes], [NIX_QT_FAIL(libprotobuf not found)])])
       if test x$use_qr != xno; then
         NIX_QT_CHECK([PKG_CHECK_MODULES([QR], [libqrencode], [have_qrencode=yes], [have_qrencode=no])])
@@ -1001,13 +1000,6 @@ else
 
   AC_CHECK_HEADER([openssl/ssl.h],, AC_MSG_ERROR(libssl headers missing),)
   AC_CHECK_LIB([ssl],         [main],SSL_LIBS=-lssl, AC_MSG_ERROR(libssl missing))
-
-  if test x$TARGET_OS = xlinux; then
-    AC_CHECK_HEADER([sys/capability.h],, AC_MSG_ERROR(libcap headers missing),)
-    AC_CHECK_LIB([cap],         [main],CAP_LIBS=-lcap, AC_MSG_ERROR(libcap missing))
-    AC_CHECK_HEADER([seccomp.h],, AC_MSG_ERROR(libseccomp headers missing),)
-    AC_CHECK_LIB([seccomp],     [main],SECCOMP_LIBS=-lseccomp, AC_MSG_ERROR(libseccomp missing))
-  fi
 
   if test x$build_nix_utils$build_nixd$nix_enable_qt$use_tests != xnononono; then
     AC_CHECK_HEADER([event2/event.h],, AC_MSG_ERROR(libevent headers missing),)
@@ -1111,6 +1103,20 @@ if test x$need_bundled_univalue = xyes ; then
 fi
 
 fi
+
+dnl ============================================================
+dnl Check for libseccomp
+
+if test "x$enable_seccomp" != "xno"; then
+  AC_CHECK_HEADERS([seccomp.h])
+  AC_SEARCH_LIBS(seccomp_init, [seccomp])
+fi
+
+dnl ============================================================
+dnl Check for libcap
+
+AC_CHECK_HEADERS([sys/capability.h])
+AC_SEARCH_LIBS(cap_get_proc, [cap])
 
 ac_configure_args="${ac_configure_args} --disable-shared"
 
@@ -1323,10 +1329,6 @@ AC_SUBST(MINIUPNPC_CPPFLAGS)
 AC_SUBST(MINIUPNPC_LIBS)
 AC_SUBST(CRYPTO_LIBS)
 AC_SUBST(SSL_LIBS)
-if test x$TARGET_OS = xlinux; then
-  AC_SUBST(CAP_LIBS)
-  AC_SUBST(SECCOMP_LIBS)
-fi
 AC_SUBST(EVENT_LIBS)
 AC_SUBST(EVENT_PTHREADS_LIBS)
 AC_SUBST(ZMQ_LIBS)
