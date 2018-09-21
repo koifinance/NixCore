@@ -210,7 +210,7 @@ SendCoinsDialog::~SendCoinsDialog()
 
     delete ui;
 }
-
+/*
 void SendCoinsDialog::on_sendButton_clicked()
 {
     if(!model || !model->getOptionsModel())
@@ -392,8 +392,8 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     fNewRecipientAllowed = true;
 }
+*/
 
-/*
 void SendCoinsDialog::on_sendButton_clicked()
 {
     if(!model || !model->getOptionsModel())
@@ -555,7 +555,7 @@ void SendCoinsDialog::on_sendButton_clicked()
     }
     fNewRecipientAllowed = true;
 }
-*/
+
 
 void SendCoinsDialog::clear()
 {
