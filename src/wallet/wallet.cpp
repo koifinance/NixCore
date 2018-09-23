@@ -1279,8 +1279,40 @@ bool CWallet::AbandonTransaction(const uint256& hashTx)
                     it->second.MarkDirty();
                 }
             }
+
+            if (wtx.tx->IsZerocoinSpend()) {
+                // find out coin serial number
+                for(const CTxIn &txin: wtx.tx->vin){
+                    CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 4),
+                                                    (const char *)&*txin.scriptSig.end(),
+                                                    SER_NETWORK, PROTOCOL_VERSION);
+                    libzerocoin::CoinSpend spend(ZCParams, serializedCoinSpend);
+
+                    CBigNum serial = spend.getCoinSerialNumber();
+
+                    // mark corresponding mint as unspent
+                    list <CZerocoinEntry> pubCoins;
+                    walletdb.ListPubCoin(pubCoins);
+
+                    BOOST_FOREACH(const CZerocoinEntry &zerocoinItem, pubCoins) {
+                        if (zerocoinItem.serialNumber == serial) {
+                            CZerocoinEntry modifiedItem = zerocoinItem;
+                            modifiedItem.IsUsed = false;
+                            NotifyZerocoinChanged(this, zerocoinItem.value.GetHex(), zerocoinItem.denomination, "New", CT_UPDATED);
+
+                            walletdb.WriteZerocoinEntry(modifiedItem);
+
+                            // erase zerocoin spend entry
+                            CZerocoinSpendEntry spendEntry;
+                            spendEntry.coinSerial = serial;
+                            walletdb.EraseCoinSpendSerialEntry(spendEntry);
+                        }
+                    }
+                }
+            }
         }
     }
+
 
     return true;
 }
@@ -9445,55 +9477,54 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
     int totalZerocoins = 0 ;
     int totalZerocoinAmount = 0;
     for(COutput n: vCoins){
-        for (unsigned int i = 0; i < n.tx->tx->vout.size(); i++) {
-            if (n.tx->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
-                CTxOut txout = n.tx->tx->vout[i];
-                switch(txout.nValue){
-                case CAmount(1 * COIN):
-                    demoniationList[0][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount++;
-                    break;
-                case CAmount(5 * COIN):
-                    demoniationList[1][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=5;
-                    break;
-                case CAmount(10 * COIN):
-                    demoniationList[2][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=10;
-                    break;
-                case CAmount(50 * COIN):
-                    demoniationList[3][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=50;
-                    break;
-                case CAmount(100 * COIN):
-                    demoniationList[4][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=100;
-                    break;
-                case CAmount(500 * COIN):
-                    demoniationList[5][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=500;
-                    break;
-                case CAmount(1000 * COIN):
-                    demoniationList[6][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=1000;
-                    break;
-                case CAmount(5000 * COIN):
-                    demoniationList[7][0]++;
-                    totalZerocoins++;
-                    totalZerocoinAmount+=5000;
-                    break;
-                default:
-                    break;
-                }
+        if (n.tx->tx->vout[n.i].scriptPubKey.IsZerocoinMint()) {
+            CTxOut txout = n.tx->tx->vout[n.i];
+            switch(txout.nValue){
+            case CAmount(1 * COIN):
+                demoniationList[0][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount++;
+                break;
+            case CAmount(5 * COIN):
+                demoniationList[1][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=5;
+                break;
+            case CAmount(10 * COIN):
+                demoniationList[2][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=10;
+                break;
+            case CAmount(50 * COIN):
+                demoniationList[3][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=50;
+                break;
+            case CAmount(100 * COIN):
+                demoniationList[4][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=100;
+                break;
+            case CAmount(500 * COIN):
+                demoniationList[5][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=500;
+                break;
+            case CAmount(1000 * COIN):
+                demoniationList[6][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=1000;
+                break;
+            case CAmount(5000 * COIN):
+                demoniationList[7][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=5000;
+                break;
+            default:
+                break;
             }
         }
+
     }
 
     for(int i = 0; i < 7; i++)
@@ -9516,7 +9547,7 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
     CAmount currentDenomination[] = {1,5,10,50,100,500,1000,5000};
     int currentDenominationIndex = 7;
 
-    for (int i = 0; i < totalZerocoins; i++) {
+    for (int i = 0; i <= totalZerocoins; i++) {
 
         //exact match
         if (amount == currentDenomination[currentDenominationIndex]) {
@@ -9525,9 +9556,13 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
                 toSpend[GhostDenom(currentDenomination[currentDenominationIndex])][0]++;
                 demoniationList[GhostDenom(currentDenomination[currentDenominationIndex])][0]--;
                 amount = 0;
+                i = totalZerocoins;
+                break;
             }
-            i = totalZerocoins;
-            break;
+            else{
+                i--;
+                currentDenominationIndex--;
+            }
         }
 
         else if(amount > currentDenomination[currentDenominationIndex]){
@@ -9559,6 +9594,7 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
     if(amount == 0){
         int index = 0;
         vector <std::string> denominationBatch;
+        denominationBatch.clear();
         while(1){
             if(toSpend[index][0] > 0){
                 denominationBatch.push_back(std::to_string(currentDenomination[index]));
@@ -9575,9 +9611,12 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
 
         //limit a batch to 4 zerocoins
         int startIndex = 0;
-        int endIndex = 3;
+        int endIndex = denominationBatch.size() > 4 ? 3 : denominationBatch.size() - 1;
         for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/4) + 1); vecSplit++){
-            if(!CreateZerocoinSpendModelBatch(stringError, vector <std::string>(&denominationBatch[startIndex], &denominationBatch[endIndex]), toKey)){
+            vector <std::string> denominationBatchSub;
+            for(int vecSub = startIndex; vecSub <= endIndex; vecSub++)
+                denominationBatchSub.push_back(denominationBatch[vecSub]);
+            if(!CreateZerocoinSpendModelBatch(stringError, denominationBatchSub, toKey)){
                 if(vecSplit > 0){
                     CAmount amountGhosted = 0;
                     for (int x = 0; x < vecSplit; x++){

@@ -182,7 +182,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
         }
     }
     else {
-        return state.DoS(100, error("CheckZerocoinTransaction : invalid zerocoin spend transaction, verification failed at block %d\n", nHeight));
+        return false;
     }
 
     return true;

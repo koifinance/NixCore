@@ -317,6 +317,11 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
     case TransactionStatus::Abandoned:
         status = tr("Abandoned");
         break;
+    case TransactionStatus::Ghosting:
+        status = tr("Ghosting (%1 of 1 recommended confirmations)").arg(wtx->status.depth);
+        if(wtx->status.depth >= 1)
+            status = tr("Confirmed (%1 confirmations)").arg(wtx->status.depth);
+        break;
     case TransactionStatus::Confirming:
         status = tr("Confirming (%1 of %2 recommended confirmations)").arg(wtx->status.depth).arg(TransactionRecord::RecommendedNumConfirmations);
         break;
@@ -335,10 +340,7 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
     case TransactionStatus::NotAccepted:
         status = tr("Generated but not accepted");
         break;
-    case TransactionStatus::Ghosting:
-        status = tr("Ghosting (%1 of 1 recommended confirmations)").arg(wtx->status.depth);
     }
-
     return status;
 }
 
@@ -490,6 +492,8 @@ QVariant TransactionTableModel::txStatusDecoration(const TransactionRecord *wtx)
         return QIcon(":/icons/transaction_0");
     case TransactionStatus::Abandoned:
         return QIcon(":/icons/transaction_abandoned");
+    case TransactionStatus::Ghosting:
+        return QIcon(":/icons/transaction_confirmed");
     case TransactionStatus::Confirming:
         switch(wtx->status.depth)
         {

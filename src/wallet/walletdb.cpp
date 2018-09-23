@@ -283,8 +283,9 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                     }
                 }
             }
-            if (!(CheckTransaction(*wtx.tx, state, wtx.GetHash(), true, true, nHeight) && (wtx.GetHash() == hash) && state.IsValid()))
+            if (!(CheckTransaction(*wtx.tx, state, wtx.GetHash(), true, true, nHeight) && (wtx.GetHash() == hash) && state.IsValid())){
                 return false;
+            }
 
             // Undo serialize changes in 31600
             if (31404 <= wtx.fTimeReceivedIsTxTime && wtx.fTimeReceivedIsTxTime <= 31703)
@@ -603,12 +604,13 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
     if (fNoncriticalErrors && result == DB_LOAD_OK)
         result = DB_NONCRITICAL_ERROR;
 
+    pwallet->walletVersion = wss.nFileVersion;
+
     // Any wallet corruption at all: skip any rewriting or
     // upgrading, we don't want to make it worse.
     if (result != DB_LOAD_OK)
         return result;
 
-    pwallet->walletVersion = wss.nFileVersion;
 
     LogPrintf("nFileVersion - WALLET_VERSION = %d - %d\n", wss.nFileVersion, pwallet->walletVersion);
 

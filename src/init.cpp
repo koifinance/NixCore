@@ -1784,7 +1784,7 @@ reindex_wallet:
 
     LogPrintf("Wallet version: %d \n", vpwallets.front()->walletVersion);
 
-    if(vpwallets.front()->walletVersion < 2000300){
+    if(vpwallets.front()->walletVersion != 0 && vpwallets.front()->walletVersion < 2000300){
         vpwallets.empty();
         fReindex = true;
         goto reindex_wallet;

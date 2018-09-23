@@ -187,7 +187,9 @@ void WalletModel::checkBalanceChanged()
     }
 
     if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance ||
-        cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance || cachedStaked != newStaked)
+        cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance ||
+            cachedWatchImmatureBalance != newWatchImmatureBalance || cachedStaked != newStaked || cacheGhostBalance != newGhostBalance
+            || cacheGhostBalanceUnconfirmed != newGhostBalanceUnconfirmed)
     {
         cachedBalance = newBalance;
         cachedStaked = newStaked;
@@ -197,6 +199,8 @@ void WalletModel::checkBalanceChanged()
         cachedWatchOnlyBalance = newWatchOnlyBalance;
         cachedWatchUnconfBalance = newWatchUnconfBalance;
         cachedWatchImmatureBalance = newWatchImmatureBalance;
+        cacheGhostBalance = newGhostBalance;
+        cacheGhostBalanceUnconfirmed = newGhostBalanceUnconfirmed;
         Q_EMIT balanceChanged(newBalance, newUnconfirmedBalance, newImmatureBalance,
                             newWatchOnlyBalance, newWatchUnconfBalance, newWatchImmatureBalance, newGhostBalance, newGhostBalanceUnconfirmed, newStaked, newWatchStakedBalance);
     }

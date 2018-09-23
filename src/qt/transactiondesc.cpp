@@ -39,7 +39,7 @@ QString TransactionDesc::FormatTxStatus(const CWalletTx& wtx)
         else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
             return tr("%1/offline").arg(nDepth);
         else if (nDepth == 0)
-            return tr("0/unconfirmed, %1").arg((wtx.InMempool() ? tr("in memory pool") : tr("not in memory pool"))) + (wtx.isAbandoned() ? ", "+tr("abandoned") : "");
+            return tr("0/unconfirmed, %1").arg((wtx.InMempool() ? tr("in memory pool") : tr("not in memory pool"))) + ((wtx.isAbandoned() || wtx.IsCoinStake()) ? ", "+tr("abandoned") : "");
         else if (nDepth < 6)
             return tr("%1/unconfirmed").arg(nDepth);
         else
@@ -137,8 +137,12 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         strHTML += "<b>" + tr("Credit") + ":</b> ";
         if (wtx.IsInMainChain())
             strHTML += BitcoinUnits::formatHtmlWithUnit(unit, nUnmatured)+ " (" + tr("matures in %n more block(s)", "", wtx.GetBlocksToMaturity()) + ")";
-        else
+        else{
             strHTML += "(" + tr("not accepted") + ")";
+            if(wtx.IsCoinStake()){
+                wallet->AbandonTransaction(wtx.GetHash());
+            }
+        }
         strHTML += "<br>";
     }
     else if (nNet > 0)

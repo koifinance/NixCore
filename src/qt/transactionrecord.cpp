@@ -256,7 +256,10 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
         }
         else if (status.depth < RecommendedNumConfirmations)
         {
-            status.status = TransactionStatus::Confirming;
+            if(wtx.tx->IsZerocoinMint(*wtx.tx))
+                status.status = TransactionStatus::Ghosting;
+            else
+                status.status = TransactionStatus::Confirming;
         }
         else
         {
