@@ -66,12 +66,9 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.credit = txout.nValue;
                 }
 
-
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
-                if(tempTx->IsZerocoinMint(*tempTx)){
-                    sub.type = TransactionRecord::Ghosted;
-                }
-                else if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
+
+                if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
                 {
                     // Received by Bitcoin Address
                     sub.type = TransactionRecord::RecvWithAddress;
@@ -83,7 +80,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     sub.type = TransactionRecord::RecvFromOther;
                     sub.address = mapValue["from"];
                 }
-                if (wtx.IsCoinBase() || wtx.IsCoinStake())
+                if (wtx.IsCoinStake())
                 {
                     // Generated
                     sub.type = TransactionRecord::Generated;
@@ -227,8 +224,54 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             //
             // Mixed debit transaction, can't break down payees
             //
-            parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
-            parts.last().involvesWatchAddress = involvesWatchAddress;
+
+            if(wtx.tx->IsZerocoinSpend()){
+
+                CAmount nTxFee = nDebit - wtx.tx->GetValueOut();
+
+                for (unsigned int nOut = 0; nOut < wtx.tx->vout.size(); nOut++)
+                {
+                    const CTxOut& txout = wtx.tx->vout[nOut];
+                    TransactionRecord sub(hash, nTime);
+                    sub.idx = nOut;
+                    sub.involvesWatchAddress = involvesWatchAddress;
+
+                    if(wallet->IsMine(txout))
+                    {
+                        // Ignore parts sent to self, as this is usually the change
+                        // from a transaction sent back to our own address.
+                        continue;
+                    }
+
+                    CTxDestination address;
+                    if (ExtractDestination(txout.scriptPubKey, address))
+                    {
+                        sub.type = TransactionRecord::UnGhosted;
+                        sub.address = EncodeDestination(address);
+
+                    }
+                    else
+                    {
+                        sub.type = TransactionRecord::UnGhosted;
+                        sub.address = mapValue["to"];
+                    }
+
+                    CAmount nValue = txout.nValue;
+                    /* Add fee to first output */
+                    if (nTxFee > 0)
+                    {
+                        nValue += nTxFee;
+                        nTxFee = 0;
+                    }
+                    sub.debit = -nValue;
+
+                    parts.append(sub);
+                }
+            }
+            else{
+                parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
+                parts.last().involvesWatchAddress = involvesWatchAddress;
+            }
 
         }
     }

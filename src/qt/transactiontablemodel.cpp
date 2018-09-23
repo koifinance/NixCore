@@ -434,7 +434,7 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord *wtx, b
     case TransactionRecord::Ghosted:
         return tr("Ghosted");
     case TransactionRecord::UnGhosted:
-        return tr("UnGhosted");
+        return QString::fromStdString(wtx->address) + watchAddress;
     case TransactionRecord::SendToOther:
         return QString::fromStdString(wtx->address) + watchAddress;
     case TransactionRecord::SendToSelf:
@@ -451,13 +451,13 @@ QVariant TransactionTableModel::addressColor(const TransactionRecord *wtx) const
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::SendToAddress:
     case TransactionRecord::Generated:
+    case TransactionRecord::UnGhosted:
         {
         QString label = walletModel->getAddressTableModel()->labelForAddress(QString::fromStdString(wtx->address));
         if(label.isEmpty())
             return COLOR_BAREADDRESS;
         } break;
     case TransactionRecord::Ghosted:
-    case TransactionRecord::UnGhosted:
     case TransactionRecord::SendToSelf:
         return COLOR_BAREADDRESS;
     default:

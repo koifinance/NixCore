@@ -5855,9 +5855,9 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
                         coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
                         if (coinHeight > 0
                                 && id < coinId
-                                && coinHeight + (ZEROCOIN_CONFIRM_HEIGHT) <= chainActive.Height()
+                                && coinHeight + ZEROCOIN_CONFIRM_HEIGHT <= chainActive.Height()
                                 && zerocoinState->GetAccumulatorValueForSpend( &chainActive,
-                                                                               chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
+                                                                               chainActive.Height() - ZEROCOIN_CONFIRM_HEIGHT,
                                                                                denominationBatch[i],
                                                                                id,
                                                                                accumulatorValue,
