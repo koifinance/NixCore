@@ -24,8 +24,8 @@ static const int MNPAYMENTS_SIGNATURES_TOTAL            = 10;
 //  vote for ghostnode and be elected as a payment winner
 // V1 - Last protocol version before update
 // V2 - Newest protocol version
-static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_1 = 70015;
-static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2 = 70015;
+static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_1 = 70020;
+static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2 = 70020;
 
 extern CCriticalSection cs_vecPayees;
 extern CCriticalSection cs_mapGhostnodeBlocks;

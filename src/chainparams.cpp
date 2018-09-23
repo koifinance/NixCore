@@ -110,7 +110,7 @@ int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64
     if(!pindexPrev->IsProofOfStake()){
         CAmount nTotal = pindexPrev->nHeight * GetInitialRewards(pindexPrev->nHeight, Params().GetConsensus()) + GetInitialRewards(1, Params().GetConsensus());
         nSubsidy = (nTotal / COIN) * (5 * CENT) / (365 * 24 * (60 * 60 / nTargetSpacing));
-        LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
+        //LogPrintf("GetProofOfStakeReward(): Initial=%s\n", FormatMoney(nTotal).c_str());
     }else{
         nSubsidy = (pindexPrev->nMoneySupply / COIN) * GetCoinYearReward(pindexPrev->nTime) / (365 * 24 * (60 * 60 / nTargetSpacing));
     }
@@ -120,7 +120,7 @@ int64_t CChainParams::GetProofOfStakeReward(const CBlockIndex *pindexPrev, int64
     }
 
     //if (LogAcceptCategory(BCLog::POS) && gArgs.GetBoolArg("-printcreation", false))
-        LogPrintf("GetProofOfStakeReward(): create=%s\n", FormatMoney(nSubsidy).c_str());
+        //LogPrintf("GetProofOfStakeReward(): create=%s\n", FormatMoney(nSubsidy).c_str());
 
     return nSubsidy + nFees;
 }
@@ -219,6 +219,10 @@ public:
         vSeeds.emplace_back("ny.nixplatform.io");
         vSeeds.emplace_back("sf.nixplatform.io");
         vSeeds.emplace_back("ldn.nixplatform.io");
+        vSeeds.emplace_back("fra.nixplatform.io");
+        vSeeds.emplace_back("tor.nixplatform.io");
+        vSeeds.emplace_back("sgp.nixplatform.io");
+        vSeeds.emplace_back("blr.nixplatform.io");
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,38);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,53);
@@ -259,13 +263,13 @@ public:
                 { 820, uint256S("0x9d48684e77bc21913aa4c3ea949bb3019ecb33fe7765c08c97e086345cc5aab2")},
                 { 1238, uint256S("0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e")},
                 { 47800, uint256S("0xc450d288e8018faae33c669b0fe2dc2dd1a2aa97ee34e263de8964ce8cc7d549")},
-                { 58420, uint256S("0x4c35760a6e07ec916bee8d6db82cc892e5d2d5f8d24ba60fd088a6f6b5cee540")},
+                { 59720, uint256S("0xdf5e54df6e076d66b33d240fad0763195af97830268db69bc4387eb2d6a17119")},
             }
         };
 
         chainTxData = ChainTxData{
                 //block 1238 (0x5f9331a6bee682ee1ce5d98386da83a7ecdae65e18c7c2c5c93c483482c0377e)
-            1537480992, // * UNIX timestamp of last known number of transactions
+            1537648608, // * UNIX timestamp of last known number of transactions
             60000,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
             0.1         // * estimated number of transactions per second after that timestamp

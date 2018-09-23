@@ -21,7 +21,7 @@ static const int PRIVATESEND_QUEUE_TIMEOUT          = 30;
 static const int PRIVATESEND_SIGNING_TIMEOUT        = 15;
 
 //! minimum peer version accepted by mixing pool
-static const int MIN_PRIVATESEND_PEER_PROTO_VERSION = 70015;
+static const int MIN_PRIVATESEND_PEER_PROTO_VERSION = 70020;
 
 static const CAmount PRIVATESEND_COLLATERAL         = 0.001 * COIN;
 static const CAmount PRIVATESEND_POOL_MAX           = 99.999 * COIN;

@@ -2529,11 +2529,15 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         if(txCoinstake->vout.size() < 3)
             return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=3)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
 
-        //if(chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock && txCoinstake->vout.size() < 4)
-            //return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=4)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
-
-        CAmount nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees, true) +
-                ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
+        CAmount nCalculatedStakeReward;
+        if(pindex->nHeight > 61000){
+            nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) +
+                    ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
+        }
+        else{
+            nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees, true) +
+                    ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
+        }
         blockReward = nCalculatedStakeReward;
 
         if (nStakeReward < 0 || nStakeReward > nCalculatedStakeReward)
@@ -3904,9 +3908,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     bool blockHasMint = false;
     // Check transactions
     for (const auto& tx : block.vtx){
-        if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo.get()))
+        if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo.get())){
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
+        }
         if(tx->IsZerocoinMint(*tx))
             blockHasMint = true;
     }
@@ -4399,33 +4404,28 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
     AssertLockNotHeld(cs_main);
 
     {
+        int nHeight = ZerocoinGetNHeight(pblock->GetBlockHeader());
+
         CBlockIndex *pindex = nullptr;
         if (fNewBlock) *fNewBlock = false;
         CValidationState state;
         // Ensure that CheckBlock() passes before calling AcceptBlock, as
         // belt-and-suspenders.
-        bool ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), true, true, ZerocoinGetNHeight(pblock->GetBlockHeader()), false);
+        bool ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), true, true, nHeight, false);
 
         LOCK(cs_main);
+
+        if (nHeight > chainActive.Height() + 1) {
+            return true;
+        }
 
         if (ret) {
             // Store to disk
             ret = g_chainstate.AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock);
         }
         if (!ret) {
-
-            // Mark block as invalid to prevent re-requesting from peer.
-            // Block will have been added to the block index in AcceptBlockHeader
-            CBlockIndex *pindex = g_chainstate.AddToBlockIndex(*pblock);
-            g_chainstate.InvalidBlockFound(pindex, state, *pblock);
-
-            if (IncomingBlockChecked(*pblock, state)) // returns true if it did nothing
-                GetMainSignals().BlockChecked(*pblock, state);
-
+            GetMainSignals().BlockChecked(*pblock, state);
             return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
-
-            //GetMainSignals().BlockChecked(*pblock, state);
-            //return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
         }
         if (pindex && state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
         {

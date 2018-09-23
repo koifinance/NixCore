@@ -245,30 +245,9 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
 
     if(tx.IsCoinStake()){
 
-        nValueIn += DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
-
-        if (chainActive.Height() >= pParams()->GetConsensus().nGhostnodePaymentsStartBlock) {
-            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
-            nValueIn += ghostnodePayment;
-
-            // Return stake reward in nTxFee
-            txfee = value_out - nValueIn;
-
-            // Tally transaction fees
-            const CAmount txfee_aux =  txfee;
-            if (!MoneyRange(txfee_aux)) {
-                //If ghostnode was not paid out
-                nValueIn -= ghostnodePayment;
-                // Return stake reward in nTxFee
-                txfee = value_out - nValueIn;
-                const CAmount txfee_aux2 =  txfee;
-                if (!MoneyRange(txfee_aux2)) {
-                    return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
-                }
-            }
-
-            return true;
-        }
+        //nValueIn += DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
+        //CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
+        //nValueIn += ghostnodePayment;
 
         // Return stake reward in nTxFee
         txfee = value_out - nValueIn;
@@ -279,7 +258,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
         }
 
-
+        return true;
     }
     else
     {

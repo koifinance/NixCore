@@ -1575,7 +1575,7 @@ bool AppInitMain()
 
     fReindex = gArgs.GetBoolArg("-reindex", false);
     bool fReindexChainState = gArgs.GetBoolArg("-reindex-chainstate", false);
-
+reindex_wallet:
     // cache size calculations
     int64_t nTotalCache = (gArgs.GetArg("-dbcache", nDefaultDbCache) << 20);
     nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
@@ -1781,6 +1781,15 @@ bool AppInitMain()
 #else
     LogPrintf("No wallet support compiled in!\n");
 #endif
+
+    LogPrintf("Wallet version: %d \n", vpwallets.front()->walletVersion);
+
+    if(vpwallets.front()->walletVersion < 2000300){
+        vpwallets.empty();
+        fReindex = true;
+        goto reindex_wallet;
+    }
+
 
     // ********************************************************* Step 9: data directory maintenance
 

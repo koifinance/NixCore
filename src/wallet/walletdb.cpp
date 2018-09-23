@@ -608,7 +608,9 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
     if (result != DB_LOAD_OK)
         return result;
 
-    LogPrintf("nFileVersion = %d\n", wss.nFileVersion);
+    pwallet->walletVersion = wss.nFileVersion;
+
+    LogPrintf("nFileVersion - WALLET_VERSION = %d - %d\n", wss.nFileVersion, pwallet->walletVersion);
 
     LogPrintf("Keys: %u plaintext, %u encrypted, %u w/ metadata, %u total\n",
            wss.nKeys, wss.nCKeys, wss.nKeyMeta, wss.nKeys + wss.nCKeys);

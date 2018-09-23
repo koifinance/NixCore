@@ -164,12 +164,12 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
         // do not check for duplicates in case we've seen exact copy of this tx in this block before
         if (!(zerocoinTxInfo && zerocoinTxInfo->zcTransactions.count(hashTx) > 0)) {
             if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
-                return false;
+                return state.DoS(100, error("CheckZerocoinTransaction : invalid zerocoin spend serial"));
         }
         //batching transactions, make sure the same serial is not used twice
         else if(tx.vout.size() > 1){
             if (!CheckZerocoinSpendSerial(state, zerocoinTxInfo, newSpend.getDenomination(), serial, nHeight, false))
-                return false;
+                return state.DoS(100, error("CheckZerocoinTransaction : invalid zerocoin spend, serial used twice"));
         }
 
         if(!isVerifyDB && !isCheckWallet) {
@@ -182,8 +182,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
         }
     }
     else {
-        LogPrintf("CheckSpendZerocoinTransaction: verification failed at block %d\n", nHeight);
-        return false;
+        return state.DoS(100, error("CheckZerocoinTransaction : invalid zerocoin spend transaction, verification failed at block %d\n", nHeight));
     }
 
     return true;

@@ -1154,6 +1154,8 @@ public:
      */
     mutable CCriticalSection cs_wallet;
 
+    int walletVersion;
+
     /** Get database handle used by this wallet. Ideally this function would
      * not be necessary.
      */
@@ -1225,6 +1227,7 @@ public:
         nRelockTime = 0;
         fAbortRescan = false;
         fScanningWallet = false;
+        walletVersion = 0;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
