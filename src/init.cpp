@@ -1575,7 +1575,20 @@ bool AppInitMain()
 
     fReindex = gArgs.GetBoolArg("-reindex", false);
     bool fReindexChainState = gArgs.GetBoolArg("-reindex-chainstate", false);
-reindex_wallet:
+
+    //Enable wallet version checking
+    boost::filesystem::path pathVersionSetting = GetDataDir()/"nixversion.dat";
+    std::pair<bool,std::string> versionArg = ReadBinaryFileTor(pathVersionSetting.string().c_str());
+
+    if(versionArg.second == "" || std::stoi(versionArg.second) < CLIENT_VERSION){
+        LogPrintf("AppInitMain(): Initial %s startup, reindexing \n", std::to_string(CLIENT_VERSION));
+        WriteBinaryFileTor(pathVersionSetting.string().c_str(), std::to_string(CLIENT_VERSION));
+        versionArg.second = std::to_string(CLIENT_VERSION);
+        fReindex = true;
+    }
+
+    LogPrintf("AppInitMain(): Wallet version %s logged to nixversion.dat", versionArg.second);
+
     // cache size calculations
     int64_t nTotalCache = (gArgs.GetArg("-dbcache", nDefaultDbCache) << 20);
     nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
@@ -1781,15 +1794,6 @@ reindex_wallet:
 #else
     LogPrintf("No wallet support compiled in!\n");
 #endif
-
-    LogPrintf("Wallet version: %d \n", vpwallets.front()->walletVersion);
-
-    if(vpwallets.front()->walletVersion != 0 && vpwallets.front()->walletVersion < 2000300){
-        vpwallets.empty();
-        fReindex = true;
-        goto reindex_wallet;
-    }
-
 
     // ********************************************************* Step 9: data directory maintenance
 

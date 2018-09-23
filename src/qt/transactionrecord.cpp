@@ -37,7 +37,64 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
     const CTransaction *tempTx;
     tempTx = wtx.tx.get();
 
-    if (nNet > 0 || wtx.IsCoinBase() || wtx.IsCoinStake())
+    if (wtx.IsCoinStake())
+    {
+        for(unsigned int i = 0; i < wtx.tx->vout.size(); i++)
+        {
+            const CTxOut& txout = wtx.tx->vout[i];
+            isminetype mine = wallet->IsMine(txout);
+            if(mine)
+            {
+                TransactionRecord sub(hash, nTime);
+                CTxDestination address;
+                sub.idx = i; // vout index
+
+                //display coinstake amount only, not total
+                try{
+                    if(i == 0){
+                        const COutPoint& prevout = wtx.tx->vin[0].prevout;
+                        Coin coin;
+                        if (!pcoinsTip->GetCoin(prevout, coin))
+                            sub.credit = txout.nValue;
+                        else
+                            sub.credit = txout.nValue - coin.out.nValue;
+                    }
+                    else
+                        sub.credit = txout.nValue;
+                }
+                catch(...){
+                    sub.credit = txout.nValue;
+                }
+
+
+                sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
+                if(tempTx->IsZerocoinMint(*tempTx)){
+                    sub.type = TransactionRecord::Ghosted;
+                }
+                else if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
+                {
+                    // Received by Bitcoin Address
+                    sub.type = TransactionRecord::RecvWithAddress;
+                    sub.address = EncodeDestination(address);
+                }
+                else
+                {
+                    // Received by IP connection (deprecated features), or a multisignature or other non-simple transaction
+                    sub.type = TransactionRecord::RecvFromOther;
+                    sub.address = mapValue["from"];
+                }
+                if (wtx.IsCoinBase() || wtx.IsCoinStake())
+                {
+                    // Generated
+                    sub.type = TransactionRecord::Generated;
+                }
+
+                parts.append(sub);
+            }
+        }
+    }
+
+    if (nNet > 0 || wtx.IsCoinBase())
     {
         //
         // Credit
