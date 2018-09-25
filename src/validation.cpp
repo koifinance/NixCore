@@ -2530,7 +2530,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=3)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
 
         CAmount nCalculatedStakeReward;
-        if(pindex->nHeight > 61000){
+        if(pindex->nHeight > 64000){
             nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) +
                     ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
         }
