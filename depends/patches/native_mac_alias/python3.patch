@@ -4,7 +4,7 @@ diff -dur a/mac_alias/alias.py b/mac_alias/alias.py
 @@ -258,10 +258,10 @@
          alias = Alias()
          alias.appinfo = appinfo
-
+             
 -        alias.volume = VolumeInfo (volname.replace('/',':'),
 +        alias.volume = VolumeInfo (volname.decode().replace('/',':'),
                                     voldate, fstype, disktype,
@@ -16,7 +16,7 @@ diff -dur a/mac_alias/alias.py b/mac_alias/alias.py
          alias.target.levels_from = levels_from
 @@ -276,9 +276,9 @@
                  b.read(1)
-
+ 
              if tag == TAG_CARBON_FOLDER_NAME:
 -                alias.target.folder_name = value.replace('/',':')
 +                alias.target.folder_name = value.decode().replace('/',':')
@@ -39,7 +39,7 @@ diff -dur a/mac_alias/alias.py b/mac_alias/alias.py
                  alias.volume.disk_image_alias = Alias.from_bytes(value)
              elif tag == TAG_USER_HOME_LENGTH_PREFIX:
 @@ -467,12 +467,12 @@
-
+ 
          b.write(struct.pack(b'>hhQhhQ',
                  TAG_HIGH_RES_VOLUME_CREATION_DATE,
 -                8, long(voldate * 65536),
@@ -47,7 +47,7 @@ diff -dur a/mac_alias/alias.py b/mac_alias/alias.py
                  TAG_HIGH_RES_CREATION_DATE,
 -                8, long(crdate * 65536)))
 +                8, int(crdate * 65536)))
-
+ 
          if self.target.cnid_path:
 -            cnid_path = struct.pack(b'>%uI' % len(self.target.cnid_path),
 +            cnid_path = struct.pack('>%uI' % len(self.target.cnid_path),
