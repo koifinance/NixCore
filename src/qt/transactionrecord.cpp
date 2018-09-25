@@ -91,7 +91,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         }
     }
 
-    if (nNet > 0 || wtx.IsCoinBase())
+    else if (nNet > 0 || wtx.IsCoinBase())
     {
         //
         // Credit

@@ -1001,7 +1001,8 @@ else
 
   AC_CHECK_HEADER([openssl/crypto.h],, [AC_MSG_ERROR(libcrypto headers missing)])
   AC_CHECK_LIB([crypto], [main], [CRYPTO_LIBS=-lcrypto], [AC_MSG_ERROR(libcrypto missing)])
-  AC_CHECK_HEADER([zlib.h],, [AC_MSG_ERROR(zlib headers missing)]
+
+  AC_CHECK_HEADER([zlib.h],, [AC_MSG_ERROR(zlib headers missing)])
   AC_CHECK_LIB([z], [main], [ZLIB_LIBS=-lz], [AC_MSG_ERROR(zlib missing)])
   AC_CHECK_LIB([zstd], [main], [ZSTD_LIBS=-lzstd], [ZSTD_LIBS=])
 

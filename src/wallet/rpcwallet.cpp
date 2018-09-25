@@ -411,6 +411,54 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue getfeeforamount(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "getfeeforamount \"amount\"\n"
+            "\n. Returns the fee needed for the amount needed to send.\n"
+            "\nArguments:\n"
+            "1. \"amount\"        (int, required) The amount you want for fee calculation.\n"
+            "\nResult:\n"
+            "\"fee\"                   (json string of fee)\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getaddressesbyaccount", "\"400\""));
+
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[0]);
+
+    CAmount curBalance = pwallet->GetBalance();
+    LogPrintf("\nCurrent balance: %lf, nValue: %lf \n", curBalance, nValue);
+
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
+
+    if (nValue > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    // Create dummy with correct value
+    CReserveKey reservekey(pwallet);
+    CAmount nFeeRequired;
+    std::string strError;
+    std::vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
+    vecSend.push_back(recipient);
+    if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
+        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+
+}
 static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control, bool isStealth)
 {
     CAmount curBalance = pwallet->GetBalance();
