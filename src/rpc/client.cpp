@@ -154,6 +154,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "echojson", 9, "arg9" },
     { "rescanblockchain", 0, "start_height"},
     { "rescanblockchain", 1, "stop_height"},
+    { "getfeeforamount", 0, "amount" },
 
     //NIX Privacy functions
     { "setmininput", 0 , "amount"},

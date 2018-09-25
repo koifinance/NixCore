@@ -5214,6 +5214,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrase",         &walletpassphrase,         {"passphrase","timeout"} },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        {"txid"} },
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
+    { "wallet",             "getfeeforamount",          &getfeeforamount,          {"amount"} },
 
     // NIX Staking functions
     { "wallet",             "getstakinginfo",                   &getstakinginfo,                {} },
