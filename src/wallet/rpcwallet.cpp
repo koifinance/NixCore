@@ -435,24 +435,23 @@ UniValue getfeeforamount(const JSONRPCRequest& request)
     CAmount nAmount = AmountFromValue(request.params[0]);
 
     CAmount curBalance = pwallet->GetBalance();
-    LogPrintf("\nCurrent balance: %lf, nValue: %lf \n", curBalance, nValue);
 
     if (nAmount <= 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
 
-    if (nValue > curBalance)
+    if (nAmount > curBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
 
     // Create dummy with correct value
-    CReserveKey reservekey(pwallet);
     CAmount nFeeRequired;
     std::string strError;
     std::vector<CRecipient> vecSend;
-    int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
+    CScript scriptPubKey;
+    CRecipient recipient = {scriptPubKey, nValue, false};
     vecSend.push_back(recipient);
-    if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
-        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+    CCoinControl coin_control;
+    if (!pwallet->GetFeeForTransaction(vecSend, nFeeRequired, -1, strError, coin_control)) {
+        if (nAmount + nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
