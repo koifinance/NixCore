@@ -959,9 +959,8 @@ if test x$use_pkgconfig = xyes; then
     [PKG_CHECK_MODULES],
     [
       PKG_CHECK_MODULES([SSL], [libssl],, [AC_MSG_ERROR(openssl  not found.)])
-      PKG_CHECK_MODULES([CRYPTO], [libcrypto],, [AC_MSG_ERROR(libcrypto  not found.)])
-      PKG_CHECK_MODULES([ZLIB], [zlib],, [AC_MSG_ERROR([zlib not found])])
-      PKG_CHECK_MODULES([ZSTD], [libzstd >= 1.1],, [ZSTD_LIBS=])
+      PKG_CHECK_MODULES([CRYPTO], [libcrypto],,[AC_MSG_ERROR(libcrypto  not found.)])
+      PKG_CHECK_MODULES(ZLIB, [zlib], [], [AC_MSG_ERROR([zlib not found])])
       NIX_QT_CHECK([PKG_CHECK_MODULES([PROTOBUF], [protobuf], [have_protobuf=yes], [NIX_QT_FAIL(libprotobuf not found)])])
       if test x$use_qr != xno; then
         NIX_QT_CHECK([PKG_CHECK_MODULES([QR], [libqrencode], [have_qrencode=yes], [have_qrencode=no])])
@@ -996,15 +995,11 @@ if test x$use_pkgconfig = xyes; then
     ]
   )
 else
-  AC_CHECK_HEADER([openssl/ssl.h],, [AC_MSG_ERROR(libssl headers missing)])
-  AC_CHECK_LIB([ssl], [main], [SSL_LIBS=-lssl], [AC_MSG_ERROR(libssl missing)])
+  AC_CHECK_HEADER([openssl/crypto.h],,AC_MSG_ERROR(libcrypto headers missing))
+  AC_CHECK_LIB([crypto],      [main],CRYPTO_LIBS=-lcrypto, AC_MSG_ERROR(libcrypto missing))
 
-  AC_CHECK_HEADER([openssl/crypto.h],, [AC_MSG_ERROR(libcrypto headers missing)])
-  AC_CHECK_LIB([crypto], [main], [CRYPTO_LIBS=-lcrypto], [AC_MSG_ERROR(libcrypto missing)])
-
-  AC_CHECK_HEADER([zlib.h],, [AC_MSG_ERROR(zlib headers missing)])
-  AC_CHECK_LIB([z], [main], [ZLIB_LIBS=-lz], [AC_MSG_ERROR(zlib missing)])
-  AC_CHECK_LIB([zstd], [main], [ZSTD_LIBS=-lzstd], [ZSTD_LIBS=])
+  AC_CHECK_HEADER([openssl/ssl.h],, AC_MSG_ERROR(libssl headers missing),)
+  AC_CHECK_LIB([ssl],         [main],SSL_LIBS=-lssl, AC_MSG_ERROR(libssl missing))
 
   if test x$build_nix_utils$build_nixd$nix_enable_qt$use_tests != xnononono; then
     AC_CHECK_HEADER([event2/event.h],, AC_MSG_ERROR(libevent headers missing),)
