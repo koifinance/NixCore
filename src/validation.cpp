@@ -4415,15 +4415,14 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
 
         LOCK(cs_main);
 
-        if (nHeight > chainActive.Height() + 1) {
-            return true;
-        }
-
         if (ret) {
             // Store to disk
             ret = g_chainstate.AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock);
         }
         if (!ret) {
+            if (nHeight > chainActive.Height() + 1) {
+                return true;
+            }
             GetMainSignals().BlockChecked(*pblock, state);
             return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
         }
