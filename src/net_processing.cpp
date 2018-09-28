@@ -944,6 +944,10 @@ void PeerLogicValidation::BlockChecked(const CBlock& block, const CValidationSta
             if (nDoS > 0 && it->second.second)
                 Misbehaving(it->second.first, nDoS);
         }
+    } else if (state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
+    {
+        if (it != mapBlockSource.end() && State(it->second.first))
+            Misbehaving(it->second.first, 10);
     }
     // Check that:
     // 1. The block is valid
@@ -2309,6 +2313,12 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         LogPrint(BCLog::NET, "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), pfrom->GetId());
         for (; pindex; pindex = chainActive.Next(pindex))
         {
+            if (pindex == chainActive.Tip()
+                && pindex->nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
+            {
+                break;
+            }
+
             vHeaders.push_back(pindex->GetBlockHeader());
             if (--nLimit <= 0 || pindex->GetBlockHash() == hashStop)
                 break;

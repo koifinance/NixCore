@@ -4420,10 +4420,16 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
             ret = g_chainstate.AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock);
         }
         if (!ret) {
+            //Processing blocks out of order can lead to zerocoin faults
             if (nHeight > chainActive.Height() + 1) {
                 return true;
             }
-            GetMainSignals().BlockChecked(*pblock, state);
+            CBlockIndex *pindex = g_chainstate.AddToBlockIndex(*pblock);
+            g_chainstate.InvalidBlockFound(pindex, state, *pblock);
+
+            if (IncomingBlockChecked(*pblock, state)) // returns true if it did nothing
+                GetMainSignals().BlockChecked(*pblock, state);
+
             return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
         }
         if (pindex && state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)
@@ -4431,7 +4437,7 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
             pindex->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
             setDirtyBlockIndex.insert(pindex);
             LogPrint(BCLog::POS, "%s Marking duplicate stake: %s.\n", __func__, pindex->GetBlockHash().ToString());
-            //GetMainSignals().BlockChecked(*pblock, state);
+
             IncomingBlockChecked(*pblock, state);
         }
     }

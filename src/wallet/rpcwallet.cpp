@@ -419,20 +419,23 @@ UniValue getfeeforamount(const JSONRPCRequest& request)
     }
 
 
-    if (request.fHelp || request.params.size() != 1)
+    if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
-            "getfeeforamount \"amount\"\n"
+            "getfeeforamount \"amount\" \"address\"\n"
             "\n. Returns the fee needed for the amount needed to send.\n"
             "\nArguments:\n"
             "1. \"amount\"        (int, required) The amount you want for fee calculation.\n"
+            "2. \"address\"       (string, required) The address you want to send to for fee calculation.\n"
             "\nResult:\n"
             "\"fee\"                   (json string of fee)\n"
             "\nExamples:\n"
-            + HelpExampleCli("getaddressesbyaccount", "\"400\""));
+            + HelpExampleCli("getaddressesbyaccount", "\"400\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\""));
 
 
     // Amount
     CAmount nAmount = AmountFromValue(request.params[0]);
+
+    CScript dest = GetScriptForDestination(DecodeDestination(request.params[0].get_str()));
 
     CAmount curBalance = pwallet->GetBalance();
 
@@ -446,9 +449,8 @@ UniValue getfeeforamount(const JSONRPCRequest& request)
     CAmount nFeeRequired;
     std::string strError;
     std::vector<CRecipient> vecSend;
-    CScript scriptPubKey;
     int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nAmount, false};
+    CRecipient recipient = {dest, nAmount, false};
     vecSend.push_back(recipient);
     CCoinControl coin_control;
     if (!pwallet->GetFeeForTransaction(vecSend, nFeeRequired, nChangePosRet, strError, coin_control)) {
@@ -4952,7 +4954,7 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
                 continue;
             nStakeable += nValue;
         } else
-        if (scriptPubKey.IsPayToPublicKeyHash256_CS() || scriptPubKey.IsPayToScriptHash256_CS() || scriptPubKey.IsPayToScriptHash_CS())
+        if (scriptPubKey.IsPayToScriptHash_CS())
         {
             // Show output on both the spending and staking wallets
             if (!out.fSpendable)
@@ -5387,7 +5389,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrase",         &walletpassphrase,         {"passphrase","timeout"} },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        {"txid"} },
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
-    { "wallet",             "getfeeforamount",          &getfeeforamount,          {"amount"} },
+    { "wallet",             "getfeeforamount",          &getfeeforamount,          {"amount", "address"} },
 
     // NIX Staking functions
     { "wallet",             "getstakinginfo",                   &getstakinginfo,                {} },

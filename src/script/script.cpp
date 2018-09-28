@@ -337,28 +337,6 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
     return false;
 }
 
-bool CScript::IsPayToPublicKeyHash256_CS() const
-{
-    return this->size() == 25 + 37 + 4
-        && (*this)[0] == OP_ISCOINSTAKE
-        && (*this)[1] == OP_IF
-        && MatchPayToPublicKeyHash(2)
-        && (*this)[27] == OP_ELSE
-        && MatchPayToPublicKeyHash256(28)
-        && (*this)[65] == OP_ENDIF;
-}
-
-bool CScript::IsPayToScriptHash256_CS() const
-{
-    return this->size() == 25 + 35 + 4
-        && (*this)[0] == OP_ISCOINSTAKE
-        && (*this)[1] == OP_IF
-        && MatchPayToPublicKeyHash(2)
-        && (*this)[27] == OP_ELSE
-        && MatchPayToScriptHash256(28)
-        && (*this)[63] == OP_ENDIF;
-}
-
 bool CScript::IsPayToScriptHash_CS() const
 {
     return this->size() == 25 + 23 + 4
@@ -369,9 +347,6 @@ bool CScript::IsPayToScriptHash_CS() const
         && MatchPayToScriptHash(26)
         && (*this)[49] == OP_ENDIF;
 }
-
-
-
 
 bool CScript::IsPushOnly(const_iterator pc) const
 {
