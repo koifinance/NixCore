@@ -75,6 +75,8 @@ nix-tx.cpp
 nixd.cpp
 noui.cpp
 noui.h
+pos/vaultstake.cpp
+pos/vaultstake.h
 pow.cpp
 pow.h
 prevector.h

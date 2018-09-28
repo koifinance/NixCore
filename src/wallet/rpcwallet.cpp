@@ -4605,6 +4605,178 @@ UniValue liststealthaddresses(const JSONRPCRequest &request)
     return result;
 }
 
+#include <script/ismine.h>
+UniValue getalladdresses(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 0)
+        throw std::runtime_error(
+            "getalladdresses \n"
+            "Get all send addresses.\n");
+
+    UniValue result(UniValue::VOBJ);
+
+    UniValue send(UniValue::VOBJ);
+    UniValue receive(UniValue::VOBJ);
+
+    for(std::pair<CTxDestination, CAddressBookData> add :pwallet->mapAddressBook){
+        CBitcoinAddress walletAddress(add.first);
+
+        if(::IsMine(*pwallet,add.first))
+            receive.pushKV(walletAddress.ToString(), add.second.name);
+        else
+            send.pushKV(walletAddress.ToString(), add.second.name);
+    }
+    result.pushKV("receive", receive);
+    result.pushKV("send", send);
+
+    return result;
+}
+
+UniValue manageaddressbook(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
+        throw std::runtime_error(
+            "manageaddressbook \"action\" \"address\" ( \"label\" \"purpose\" )\n"
+            "Manage the address book."
+            "\nArguments:\n"
+            "1. \"action\"      (string, required) 'add/edit/del/info/newsend' The action to take.\n"
+            "2. \"address\"     (string, required) The address to affect.\n"
+            "3. \"label\"       (string, optional) Optional label.\n"
+            "4. \"purpose\"     (string, optional) Optional purpose label.\n");
+
+    ObserveSafeMode();
+
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    std::string sAction = request.params[0].get_str();
+    std::string sAddress = request.params[1].get_str();
+    std::string sLabel, sPurpose;
+
+    if (sAction != "info")
+        EnsureWalletIsUnlocked(pwallet);
+
+    bool fHavePurpose = false;
+    if (request.params.size() > 2)
+        sLabel = request.params[2].get_str();
+    if (request.params.size() > 3)
+    {
+        sPurpose = request.params[3].get_str();
+        fHavePurpose = true;
+    };
+
+    CBitcoinAddress address(sAddress);
+
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Invalid NIX address."));
+
+    CTxDestination dest = address.Get();
+
+    std::map<CTxDestination, CAddressBookData>::iterator mabi;
+    mabi = pwallet->mapAddressBook.find(dest);
+
+    UniValue objDestData(UniValue::VOBJ);
+
+    if (sAction == "add")
+    {
+        if (mabi != pwallet->mapAddressBook.end())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf(_("Address '%s' is recorded in the address book."), sAddress));
+
+        if (!pwallet->SetAddressBook(dest, sLabel, sPurpose))
+            throw JSONRPCError(RPC_WALLET_ERROR, "SetAddressBook failed.");
+    } else
+    if (sAction == "edit")
+    {
+        if (request.params.size() < 3)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, _("Need a parameter to change."));
+        if (mabi == pwallet->mapAddressBook.end())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf(_("Address '%s' is not in the address book."), sAddress));
+
+        if (!pwallet->SetAddressBook(dest, sLabel,
+            fHavePurpose ? sPurpose : mabi->second.purpose))
+            throw JSONRPCError(RPC_WALLET_ERROR, "SetAddressBook failed.");
+
+        sLabel = mabi->second.name;
+        sPurpose = mabi->second.purpose;
+
+        for (const auto &pair : mabi->second.destdata)
+            objDestData.pushKV(pair.first, pair.second);
+
+    } else
+    if (sAction == "del")
+    {
+        if (mabi == pwallet->mapAddressBook.end())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf(_("Address '%s' is not in the address book."), sAddress));
+        sLabel = mabi->second.name;
+        sPurpose = mabi->second.purpose;
+
+        if (!pwallet->DelAddressBook(dest))
+            throw JSONRPCError(RPC_WALLET_ERROR, "DelAddressBook failed.");
+    } else
+    if (sAction == "info")
+    {
+        if (mabi == pwallet->mapAddressBook.end())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf(_("Address '%s' is not in the address book."), sAddress));
+
+        UniValue result(UniValue::VOBJ);
+
+        result.pushKV("action", sAction);
+        result.pushKV("address", sAddress);
+
+        result.pushKV("label", mabi->second.name);
+        result.pushKV("purpose", mabi->second.purpose);
+
+        if (mabi->second.nOwned == 0)
+            mabi->second.nOwned = ::IsMine(*pwallet, mabi->first) ? 1 : 2;
+
+        result.pushKV("owned", mabi->second.nOwned == 1 ? "true" : "false");
+
+        if (mabi->second.vPath.size() > 1)
+        {
+            std::string sPath;
+            if (0 == PathToString(mabi->second.vPath, sPath, '\'', 1))
+                result.pushKV("path", sPath);
+        };
+
+        for (const auto &pair : mabi->second.destdata)
+            objDestData.pushKV(pair.first, pair.second);
+        if (objDestData.size() > 0)
+            result.pushKV("destdata", objDestData);
+
+        result.pushKV("result", "success");
+
+        return result;
+    } else
+    {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, _("Unknown action, must be one of 'add/edit/del'."));
+    };
+
+    UniValue result(UniValue::VOBJ);
+
+    result.pushKV("action", sAction);
+    result.pushKV("address", sAddress);
+
+    if (sLabel.size() > 0)
+        result.pushKV("label", sLabel);
+    if (sPurpose.size() > 0)
+        result.pushKV("purpose", sPurpose);
+    if (objDestData.size() > 0)
+        result.pushKV("destdata", objDestData);
+
+    result.pushKV("result", "success");
+
+    return result;
+}
+
 /*********************/
 /* Staking Protocol */
 
@@ -5222,6 +5394,9 @@ static const CRPCCommand commands[] =
     { "wallet",             "getcoldstakinginfo",               &getcoldstakinginfo,            {} },
     { "wallet",             "reservebalance",                   &reservebalance,                {"enabled","amount"} },
     { "wallet",             "walletsettings",                   &walletsettings,                {"setting","json"} },
+    { "wallet",             "getalladdresses",                  &getalladdresses,               {} },
+    { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
+
 
 
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
