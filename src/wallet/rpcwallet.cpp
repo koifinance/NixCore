@@ -4669,9 +4669,6 @@ UniValue manageaddressbook(const JSONRPCRequest &request)
     std::string sAddress = request.params[1].get_str();
     std::string sLabel, sPurpose;
 
-    if (sAction != "info")
-        EnsureWalletIsUnlocked(pwallet);
-
     bool fHavePurpose = false;
     if (request.params.size() > 2)
         sLabel = request.params[2].get_str();
