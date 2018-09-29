@@ -109,6 +109,7 @@ endif
 NIX_CORE_H = \
   addrdb.h \
   addressindex.h \
+  spentindex.h \
   addrman.h \
   base58.h \
   bech32.h \
