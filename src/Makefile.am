@@ -191,14 +191,14 @@ NIX_CORE_H = \
   ghost-address/mnemonic.h \
   ghost-address/stealth.h \
   ghost-address/xxhash.h \
-  ghost-address/key/wordlists/chinese_simplified.h \
-  ghost-address/key/wordlists/chinese_traditional.h \
-  ghost-address/key/wordlists/english.h \
-  ghost-address/key/wordlists/french.h \
-  ghost-address/key/wordlists/japanese.h \
-  ghost-address/key/wordlists/spanish.h \
-  ghost-address/key/wordlists/italian.h \
-  ghost-address/key/wordlists/korean.h \
+  ghost-address/wordlists/chinese_simplified.h \
+  ghost-address/wordlists/chinese_traditional.h \
+  ghost-address/wordlists/english.h \
+  ghost-address/wordlists/french.h \
+  ghost-address/wordlists/japanese.h \
+  ghost-address/wordlists/spanish.h \
+  ghost-address/wordlists/italian.h \
+  ghost-address/wordlists/korean.h \
   streams.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
