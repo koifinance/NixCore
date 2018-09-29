@@ -191,6 +191,7 @@ NIX_CORE_H = \
   ghost-address/keyutil.h \
   ghost-address/mnemonic.h \
   ghost-address/stealth.h \
+  ghost-address/types.h \
   ghost-address/xxhash.h \
   ghost-address/wordlists/chinese_simplified.h \
   ghost-address/wordlists/chinese_traditional.h \
