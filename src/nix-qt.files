@@ -84,6 +84,7 @@ protocol.cpp
 protocol.h
 pubkey.cpp
 pubkey.h
+qt/res/nix-qt-res.rc
 random.cpp
 random.h
 rest.cpp
