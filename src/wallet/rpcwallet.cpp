@@ -429,13 +429,18 @@ UniValue getfeeforamount(const JSONRPCRequest& request)
             "\nResult:\n"
             "\"fee\"                   (json string of fee)\n"
             "\nExamples:\n"
-            + HelpExampleCli("getaddressesbyaccount", "\"400\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\""));
+            + HelpExampleCli("getfeeforamount", "\"400\" \"ZM72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\""));
 
 
     // Amount
     CAmount nAmount = AmountFromValue(request.params[0]);
 
-    CScript dest = GetScriptForDestination(DecodeDestination(request.params[0].get_str()));
+    CTxDestination destination = DecodeDestination(request.params[1].get_str());
+
+    if (!IsValidDestination(destination)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+    CScript dest = GetScriptForDestination(destination);
 
     CAmount curBalance = pwallet->GetBalance();
 

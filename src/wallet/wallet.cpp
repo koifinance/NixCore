@@ -3041,6 +3041,11 @@ bool CWallet::GetFeeForTransaction(const std::vector<CRecipient>& vecSend, CAmou
 
     CMutableTransaction txNew;
 
+    txNew.nLockTime = chainActive.Height();
+
+    if (GetRandInt(10) == 0)
+        txNew.nLockTime = std::max(0, (int)txNew.nLockTime - GetRandInt(100));
+
     FeeCalculation feeCalc;
     CAmount nFeeNeeded;
     unsigned int nBytes;
@@ -3051,12 +3056,7 @@ bool CWallet::GetFeeForTransaction(const std::vector<CRecipient>& vecSend, CAmou
             std::vector<COutput> vAvailableCoins;
             AvailableCoins(vAvailableCoins, true, &coin_control, false, MAX_MONEY, MAX_MONEY,0, 0, 9999999, nCoinType, fUseInstantSend);
 
-
-            // Create change script that will be used if we need change
-            // TODO: pass in scriptChange instead of reservekey so
-            // change transaction isn't always pay-to-bitcoin-address
-            CScript scriptChange;
-
+            CScript scriptChange = vecSend.front().scriptPubKey;
             CTxOut change_prototype_txout(0, scriptChange);
             size_t change_prototype_size = GetSerializeSize(change_prototype_txout, SER_DISK, 0);
 
@@ -3114,21 +3114,77 @@ bool CWallet::GetFeeForTransaction(const std::vector<CRecipient>& vecSend, CAmou
                     setCoins.clear();
                     if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, &coin_control))
                     {
+                        if (nCoinType == ONLY_NOT40000IFMN) {
+                            strFailReason = _("Unable to locate enough funds for this transaction that are not equal 40000 NIX.");
+                        } else if (nCoinType == ONLY_NONDENOMINATED_NOT40000IFMN) {
+                            strFailReason = _("Unable to locate enough PrivateSend non-denominated funds for this transaction that are not equal 40000 NIX.");
+                        } else if (nCoinType == ONLY_DENOMINATED) {
+                            strFailReason = _("Unable to locate enough PrivateSend denominated funds for this transaction.");
+                            strFailReason += _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
+                        } else if (nValueIn < nValueToSelect) {
+                            strFailReason = _("Insufficient funds.");
+                        }
                         strFailReason = _("Insufficient funds");
                         return false;
                     }
                 }
 
-                // Fill vin
-                //
-                // Note how the sequence number is set to non-maxint so that
-                // the nLockTime set above actually works.
-                //
-                // BIP125 defines opt-in RBF as any nSequence < maxint-1, so
-                // we use the highest possible value in that range (maxint-2)
-                // to avoid conflicting with other possible uses of nSequence,
-                // and in the spirit of "smallest possible change from prior
-                // behavior."
+                const CAmount nChange = nValueIn - nValueToSelect;
+
+                if (nChange > 0) {
+                    //over pay for denominated transactions
+                    if (nCoinType == ONLY_DENOMINATED) {
+                        nFeeRet += nChange;
+                        // recheck skipped denominations during next mixing
+                        darkSendPool.ClearSkippedDenominations();
+                    } else {
+                        // Fill a vout to ourself
+                        // TODO: pass in scriptChange instead of reservekey so
+                        // change transaction isn't always pay-to-bitcoin-address
+                        CScript scriptChange = vecSend.front().scriptPubKey;
+
+                        CTxOut newTxOut(nChange, scriptChange);
+
+                        // We do not move dust-change to fees, because the sender would end up paying more than requested.
+                        // This would be against the purpose of the all-inclusive feature.
+                        // So instead we raise the change and deduct from the recipient.
+                        if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust()) {
+                            CAmount nDust = GetDustThreshold(newTxOut, ::minRelayTxFee) - newTxOut.nValue;
+                            newTxOut.nValue += nDust; // raise change until no more dust
+                            for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
+                            {
+                                if (vecSend[i].fSubtractFeeFromAmount) {
+                                    txNew.vout[i].nValue -= nDust;
+                                    if (txNew.vout[i].IsDust()) {
+                                        strFailReason = _(
+                                                "The transaction amount is too small to send after the fee has been deducted");
+                                        return false;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Never create dust outputs; if we would, just
+                        // add the dust to the fee.
+                        if (newTxOut.IsDust()) {
+                            nChangePosInOut = -1;
+                            nFeeRet += nChange;
+                        } else {
+                            if (nChangePosInOut == -1) {
+                                // Insert change txn at random position:
+                                nChangePosInOut = GetRandInt(txNew.vout.size() + 1);
+                            } else if ((unsigned int) nChangePosInOut > txNew.vout.size()) {
+                                strFailReason = _("Change index out of range");
+                                return false;
+                            }
+
+                            vector<CTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
+                            txNew.vout.insert(position, newTxOut);
+                        }
+                    }
+                }
+
                 const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CTxIn::SEQUENCE_FINAL - 1);
                 for (const auto& coin : setCoins)
                     txNew.vin.push_back(CTxIn(coin.outpoint,CScript(),
@@ -3222,15 +3278,14 @@ bool CWallet::GetFeeForTransaction(const std::vector<CRecipient>& vecSend, CAmou
             }
         }
 
-        const CTransaction finalTx(txNew);
-
         // Limit size
-        if (GetTransactionWeight(finalTx) >= MAX_STANDARD_TX_WEIGHT)
+        if (GetTransactionWeight(CTransaction(txNew)) >= MAX_STANDARD_TX_WEIGHT)
         {
             strFailReason = _("Transaction too large");
             return false;
         }
     }
+
     return true;
 }
 
