@@ -1,5 +1,5 @@
 ---
-name: "nix-linux-1.0"
+name: "nix-linux-2.0”
 enable_cache: true
 suites:
 - "trusty"

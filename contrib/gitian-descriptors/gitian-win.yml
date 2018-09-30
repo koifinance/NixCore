@@ -1,5 +1,5 @@
 ---
-name: "nix-win-1.0"
+name: "nix-win-2.0”
 enable_cache: true
 suites:
 - "trusty"
