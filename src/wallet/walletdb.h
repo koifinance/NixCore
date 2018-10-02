@@ -478,6 +478,14 @@ public:
     bool WriteWalletSetting(const std::string &setting, const std::string &json);
     bool EraseWalletSetting(const std::string &setting);
 
+    bool WriteGhostAddress(const CGhostAddress &sxAddr);
+    bool ReadGhostAddress(CGhostAddress &sxAddr);
+    bool EraseGhostAddress(const CGhostAddress &sxAddr);
+
+    bool WriteGhostKeyMeta(const CKeyID &keyId, const CStealthKeyMetadata &sxKeyMeta);
+    bool EraseGhostKeyMeta(const CKeyID &keyId);
+
+
 private:
     CDB batch;
     CWalletDBWrapper& m_dbw;

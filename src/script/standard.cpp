@@ -481,6 +481,12 @@ public:
         return false;
     }
 
+    bool operator()(const CGhostAddress &ek) const {
+        script->clear();
+        LogPrintf("CScriptVisitor(CGhostAddress) TODO\n");
+        return false;
+    }
+
     bool operator()(const CExtKeyPair &ek) const {
         script->clear();
         LogPrintf("CScriptVisitor(CExtKeyPair) TODO\n");

@@ -231,7 +231,7 @@ bool WalletModel::validateAddress(const QString &address)
 
     if (sAddr.length() > 75)
     {
-        if (IsStealthAddress(sAddr)) {
+        if (IsGhostAddress(sAddr)) {
             return true;
         }
     };
@@ -268,12 +268,63 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             {
                 const payments::Output& out = details.outputs(i);
                 if (out.amount() <= 0) continue;
-                subtotal += out.amount();
-                const unsigned char* scriptStr = (const unsigned char*)out.script().data();
-                CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
-                CAmount nAmount = out.amount();
-                CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
-                vecSend.push_back(recipient);
+
+                if (IsGhostAddress(rcp.address.toStdString()))
+                {
+                    CGhostAddress sxAddr;
+                    if (sxAddr.SetEncoded(rcp.address.toStdString()))
+                    {
+                        ec_secret ephem_secret;
+                        ec_secret secretShared;
+                        ec_point pkSendTo;
+                        ec_point ephem_pubkey;
+
+
+                        if (GenerateRandomSecret(ephem_secret) != 0)
+                        {
+                            LogPrintf("GenerateRandomSecret failed.\n");
+                            return InvalidAddress;
+                        };
+
+                        if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
+                        {
+                            LogPrintf("Could not generate receiving public key.\n");
+                            return InvalidAmount;
+                        };
+
+                        CPubKey cpkTo(pkSendTo);
+                        if (!cpkTo.IsValid())
+                        {
+                            LogPrintf("Invalid public key generated.\n");
+                            return InvalidAddress;
+                        };
+
+                        CKeyID ckidTo = cpkTo.GetID();
+
+                        CBitcoinAddress addrTo(ckidTo);
+
+                        if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
+                        {
+                            LogPrintf("Could not generate ephem public key.\n");
+                            return InvalidAddress;
+                        };
+
+                        CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
+
+                        subtotal += out.amount();
+                        CAmount nAmount = out.amount();
+                        CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
+                        vecSend.push_back(recipient);
+                    }
+                }
+                else{
+                    subtotal += out.amount();
+                    const unsigned char* scriptStr = (const unsigned char*)out.script().data();
+                    CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
+                    CAmount nAmount = out.amount();
+                    CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
+                    vecSend.push_back(recipient);
+                }
             }
             if (subtotal <= 0)
             {
@@ -295,9 +346,56 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             setAddress.insert(rcp.address);
             ++nAddresses;
 
-            CScript scriptPubKey = GetScriptForDestination(DecodeDestination(rcp.address.toStdString()));
-            CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
-            vecSend.push_back(recipient);
+            if (IsGhostAddress(rcp.address.toStdString()))
+            {
+                CGhostAddress sxAddr;
+                if (sxAddr.SetEncoded(rcp.address.toStdString()))
+                {
+                    ec_secret ephem_secret;
+                    ec_secret secretShared;
+                    ec_point pkSendTo;
+                    ec_point ephem_pubkey;
+
+
+                    if (GenerateRandomSecret(ephem_secret) != 0)
+                    {
+                        LogPrintf("GenerateRandomSecret failed.\n");
+                        return InvalidAddress;
+                    };
+
+                    if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
+                    {
+                        LogPrintf("Could not generate receiving public key.\n");
+                        return InvalidAmount;
+                    };
+
+                    CPubKey cpkTo(pkSendTo);
+                    if (!cpkTo.IsValid())
+                    {
+                        LogPrintf("Invalid public key generated.\n");
+                        return InvalidAddress;
+                    };
+
+                    CKeyID ckidTo = cpkTo.GetID();
+
+                    CBitcoinAddress addrTo(ckidTo);
+
+                    if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
+                    {
+                        LogPrintf("Could not generate ephem public key.\n");
+                        return InvalidAddress;
+                    };
+
+                    CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
+                    CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+                    vecSend.push_back(recipient);
+                }
+            }
+            else{
+                CScript scriptPubKey = GetScriptForDestination(DecodeDestination(rcp.address.toStdString()));
+                CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+                vecSend.push_back(recipient);
+            }
 
             total += rcp.amount;
         }
@@ -401,16 +499,21 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
             {
                 LOCK(wallet->cs_wallet);
 
-                std::map<CTxDestination, CAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
-
-                // Check if we have a new address or an updated label
-                if (mi == wallet->mapAddressBook.end())
-                {
-                    wallet->SetAddressBook(dest, strLabel, "send");
+                if (IsGhostAddress(strAddress)){
+                    wallet->UpdateGhostAddress(strAddress, strLabel, true);
                 }
-                else if (mi->second.name != strLabel)
-                {
-                    wallet->SetAddressBook(dest, strLabel, ""); // "" means don't change purpose
+                else{
+                    std::map<CTxDestination, CAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
+
+                    // Check if we have a new address or an updated label
+                    if (mi == wallet->mapAddressBook.end())
+                    {
+                        wallet->SetAddressBook(dest, strLabel, "send");
+                    }
+                    else if (mi->second.name != strLabel)
+                    {
+                        wallet->SetAddressBook(dest, strLabel, ""); // "" means don't change purpose
+                    }
                 }
             }
         }
@@ -531,13 +634,25 @@ static void NotifyAddressBookChanged(WalletModel *walletmodel, CWallet *wallet,
     QString strLabel = QString::fromStdString(label);
     QString strPurpose = QString::fromStdString(purpose);
 
-    qDebug() << "NotifyAddressBookChanged: " + strAddress + " " + strLabel + " isMine=" + QString::number(isMine) + " purpose=" + strPurpose + " status=" + QString::number(status);
-    QMetaObject::invokeMethod(walletmodel, "updateAddressBook", Qt::QueuedConnection,
-                              Q_ARG(QString, strAddress),
-                              Q_ARG(QString, strLabel),
-                              Q_ARG(bool, isMine),
-                              Q_ARG(QString, strPurpose),
-                              Q_ARG(int, status));
+    if(address.type() == typeid(CGhostAddress)){
+        CGhostAddress sxAddr = boost::get<CGhostAddress>(address);
+        std::string enc = sxAddr.Encoded();
+        QMetaObject::invokeMethod(walletmodel, "updateAddressBook", Qt::QueuedConnection,
+                                  Q_ARG(QString, QString::fromStdString(enc)),
+                                  Q_ARG(QString, QString::fromStdString(label)),
+                                  Q_ARG(bool, isMine),
+                                  Q_ARG(QString, strPurpose),
+                                  Q_ARG(int, status));
+    }
+    else{
+        qDebug() << "NotifyAddressBookChanged: " + strAddress + " " + strLabel + " isMine=" + QString::number(isMine) + " purpose=" + strPurpose + " status=" + QString::number(status);
+        QMetaObject::invokeMethod(walletmodel, "updateAddressBook", Qt::QueuedConnection,
+                                  Q_ARG(QString, strAddress),
+                                  Q_ARG(QString, strLabel),
+                                  Q_ARG(bool, isMine),
+                                  Q_ARG(QString, strPurpose),
+                                  Q_ARG(int, status));
+    }
 }
 
 static void NotifyTransactionChanged(WalletModel *walletmodel, CWallet *wallet, const uint256 &hash, ChangeType status)

@@ -998,6 +998,33 @@ bool CWalletDB::WriteStealthAddress(const CStealthAddress &sxAddr)
     return WriteIC(std::make_pair(std::string("sxad"), sxAddr.scan_pubkey), sxAddr, true);
 };
 
+bool CWalletDB::WriteGhostAddress(const CGhostAddress &sxAddr)
+{
+    return WriteIC(std::make_pair(std::string("gxad"), sxAddr.scan_pubkey), sxAddr, true);
+}
+
+bool CWalletDB::ReadGhostAddress(CGhostAddress& sxAddr)
+{
+    // Set scan_pubkey before reading
+    return batch.Read(std::make_pair(std::string("gxad"), sxAddr.scan_pubkey), sxAddr);
+}
+
+bool CWalletDB::EraseGhostAddress(const CGhostAddress& sxAddr)
+{
+    return EraseIC(std::make_pair(std::string("gxad"), sxAddr.scan_pubkey));
+};
+
+bool CWalletDB::WriteGhostKeyMeta(const CKeyID &keyId, const CStealthKeyMetadata &sxKeyMeta)
+{
+    return WriteIC(std::make_pair(std::string("gxkm"), keyId), sxKeyMeta, true);
+}
+
+bool CWalletDB::EraseGhostKeyMeta(const CKeyID &keyId)
+{
+    return EraseIC(std::make_pair(std::string("gxkm"), keyId));
+}
+
+
 bool CWalletDB::ReadStealthAddress(CStealthAddress& sxAddr)
 {
     // Set scan_pubkey before reading

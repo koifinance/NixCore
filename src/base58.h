@@ -113,6 +113,7 @@ public:
     bool Set(const CScriptID256 &id, bool fBech32 = false);
     bool Set(const CKeyID &id, CChainParams::Base58Type prefix, bool fBech32 = false);
     bool Set(const CStealthAddress &sx, bool fBech32 = false);
+    bool Set(const CGhostAddress &sx, bool fBech32 = false);
     bool Set(const CExtKeyPair &ek, bool fBech32 = false);
     bool Set(const CTxDestination &dest, bool fBech32 = false);
 

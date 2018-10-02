@@ -137,6 +137,14 @@ public:
         return obj;
     }
 
+    UniValue operator()(const CGhostAddress &sxAddr) const {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("isghostaddress", true));
+        obj.push_back(Pair("prefix_num_bits", sxAddr.prefix.number_bits));
+        obj.push_back(Pair("prefix_bitfield", strprintf("0x%04x", sxAddr.prefix.bitfield)));
+        return obj;
+    }
+
     UniValue operator()(const WitnessV0ScriptHash& id) const
     {
         UniValue obj(UniValue::VOBJ);

@@ -224,6 +224,10 @@ public:
         }
     }
 
+    void operator()(const CGhostAddress &stxAddr) {
+        CScript script;
+    }
+
     template<typename X>
     void operator()(const X &none) {}
 };
@@ -491,6 +495,8 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
                 return true;
             }
         }
+
+        UnlockGhostAddresses(vMasterKey);
     }
     return false;
 }
@@ -511,7 +517,7 @@ bool CWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase,
                 return false;
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, _vMasterKey))
                 return false;
-            if (CCryptoKeyStore::Unlock(_vMasterKey))
+            if (CCryptoKeyStore::Unlock(_vMasterKey) && UnlockGhostAddresses(vMasterKey))
             {
                 int64_t nStartTime = GetTimeMillis();
                 crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
@@ -3387,7 +3393,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                     return false;
                 }
 
-                const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+                const OutputType change_type = g_change_type;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -3503,7 +3509,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                                 return false;
                             }
 
-                            const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+                            const OutputType change_type = g_change_type;
 
                             LearnRelatedScripts(vchPubKey, change_type);
                             scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -5472,7 +5478,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                     return false;
                 }
 
-                const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+                const OutputType change_type = g_change_type;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -5565,7 +5571,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                             return false;
                         }
 
-                        const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+                        const OutputType change_type = g_change_type;
 
                         LearnRelatedScripts(vchPubKey, change_type);
                         scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
@@ -11471,3 +11477,433 @@ CAmount CWallet::GetStaked()
     }
     return nTotal;
 }
+
+bool CWallet::NewGhostAddress(std::string& sError, std::string& sLabel, CGhostAddress& sxAddr)
+{
+    ec_secret scan_secret;
+    ec_secret spend_secret;
+
+    if (GenerateRandomSecret(scan_secret) != 0
+        || GenerateRandomSecret(spend_secret) != 0)
+    {
+        sError = "GenerateRandomSecret failed.";
+        LogPrintf("Error CWallet::NewStealthAddress - %s\n", sError.c_str());
+        return false;
+    };
+
+    ec_point scan_pubkey, spend_pubkey;
+    if (SecretToPublicKey(scan_secret, scan_pubkey) != 0)
+    {
+        sError = "Could not get scan public key.";
+        LogPrintf("Error CWallet::NewStealthAddress - %s\n", sError.c_str());
+        return false;
+    };
+
+    if (SecretToPublicKey(spend_secret, spend_pubkey) != 0)
+    {
+        sError = "Could not get spend public key.";
+        LogPrintf("Error CWallet::NewStealthAddress - %s\n", sError.c_str());
+        return false;
+    };
+
+
+    sxAddr.label = sLabel;
+    sxAddr.scan_pubkey = scan_pubkey;
+    sxAddr.spend_pubkey = spend_pubkey;
+
+    sxAddr.scan_secret.resize(32);
+    memcpy(&sxAddr.scan_secret[0], &scan_secret.e[0], 32);
+    sxAddr.spend_secret.resize(32);
+    memcpy(&sxAddr.spend_secret[0], &spend_secret.e[0], 32);
+
+    return true;
+}
+
+bool CWallet::AddGhostAddress(CGhostAddress& sxAddr)
+{
+    LOCK(cs_wallet);
+
+    // must add before changing spend_secret
+    ghostAddresses.insert(sxAddr);
+
+    bool fOwned = sxAddr.scan_secret.size() == ec_secret_size;
+
+
+
+    if (fOwned)
+    {
+        // -- owned addresses can only be added when wallet is unlocked
+        if (IsLocked())
+        {
+            printf("Error: CWallet::AddGhostAddress wallet must be unlocked.\n");
+            ghostAddresses.erase(sxAddr);
+            return false;
+        };
+
+        if (IsCrypted())
+        {
+            std::vector<unsigned char> vchCryptedSecret;
+            CKeyingMaterial vchSecret;
+            vchSecret.resize(32);
+            memcpy(&vchSecret[0], &sxAddr.spend_secret[0], 32);
+
+            uint256 iv = Hash(sxAddr.spend_pubkey.begin(), sxAddr.spend_pubkey.end());
+            if (!EncryptSecret(vMasterKey, vchSecret, iv, vchCryptedSecret))
+            {
+                printf("Error: Failed encrypting stealth key %s\n", sxAddr.Encoded().c_str());
+                ghostAddresses.erase(sxAddr);
+                return false;
+            };
+            sxAddr.spend_secret = vchCryptedSecret;
+        };
+    };
+
+
+    bool rv = CWalletDB(*dbw).WriteGhostAddress(sxAddr);
+
+    if (rv)
+        NotifyAddressBookChanged(this, sxAddr, sxAddr.label, fOwned, "", CT_NEW);
+
+    return true;
+}
+
+bool CWallet::UpdateGhostAddress(std::string &addr, std::string &label, bool addIfNotExist)
+{
+
+    CGhostAddress sxAddr;
+
+    if (!sxAddr.SetEncoded(addr))
+        return false;
+
+    std::set<CGhostAddress>::iterator it;
+    it = ghostAddresses.find(sxAddr);
+
+    ChangeType nMode = CT_UPDATED;
+    CGhostAddress sxFound;
+    if (it == ghostAddresses.end())
+    {
+        if (addIfNotExist)
+        {
+            sxFound = sxAddr;
+            sxFound.label = label;
+            ghostAddresses.insert(sxFound);
+            nMode = CT_NEW;
+        } else
+        {
+            return false;
+        };
+    } else
+    {
+        sxFound = const_cast<CGhostAddress&>(*it);
+
+        if (sxFound.label == label)
+        {
+            // no change
+            return true;
+        };
+
+        it->label = label; // update in .stealthAddresses
+
+        if (sxFound.scan_secret.size() == ec_secret_size)
+        {
+            return false;
+        };
+    };
+
+    sxFound.label = label;
+
+    if (!CWalletDB(*dbw).WriteGhostAddress(sxFound))
+    {
+        return false;
+    };
+
+    bool fOwned = sxFound.scan_secret.size() == ec_secret_size;
+    NotifyAddressBookChanged(this, sxFound, sxFound.label, fOwned, "", nMode);
+
+    return true;
+}
+
+bool CWallet::UnlockGhostAddresses(const CKeyingMaterial& vMasterKeyIn)
+{
+    // -- decrypt spend_secret of ghost addresses
+    std::set<CGhostAddress>::iterator it;
+    for (it = ghostAddresses.begin(); it != ghostAddresses.end(); ++it)
+    {
+        if (it->scan_secret.size() < 32)
+            continue; // stealth address is not owned
+
+        // -- CGhostAddress are only sorted on spend_pubkey
+        CGhostAddress &sxAddr = const_cast<CGhostAddress&>(*it);
+
+        CKeyingMaterial vchSecret;
+        uint256 iv = Hash(sxAddr.spend_pubkey.begin(), sxAddr.spend_pubkey.end());
+        if(!DecryptSecret(vMasterKeyIn, sxAddr.spend_secret, iv, vchSecret)
+            || vchSecret.size() != 32)
+        {
+            continue;
+        };
+
+        ec_secret testSecret;
+        memcpy(&testSecret.e[0], &vchSecret[0], 32);
+        ec_point pkSpendTest;
+
+        if (SecretToPublicKey(testSecret, pkSpendTest) != 0
+            || pkSpendTest != sxAddr.spend_pubkey)
+        {
+            continue;
+        };
+
+        sxAddr.spend_secret.resize(32);
+        memcpy(&sxAddr.spend_secret[0], &vchSecret[0], 32);
+    };
+
+    CryptedKeyMap::iterator mi = mapCryptedKeys.begin();
+    for (; mi != mapCryptedKeys.end(); ++mi)
+    {
+        CPubKey &pubKey = (*mi).second.first;
+        std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
+        if (vchCryptedSecret.size() != 0)
+            continue;
+
+        CKeyID ckid = pubKey.GetID();
+        CBitcoinAddress addr(ckid);
+
+        StealthKeyMetaMap::iterator mi = mapGhostKeyMeta.find(ckid);
+        if (mi == mapGhostKeyMeta.end())
+        {
+            continue;
+        };
+
+        CStealthKeyMetadata& sxKeyMeta = mi->second;
+
+        CGhostAddress sxFind;
+        memcpy(&sxFind.scan_pubkey[0], sxKeyMeta.pkScan.begin(), EC_COMPRESSED_SIZE);
+
+        std::set<CGhostAddress>::iterator si = ghostAddresses.find(sxFind);
+        if (si == ghostAddresses.end())
+        {
+            continue;
+        };
+
+        ec_secret sSpendR;
+        ec_secret sSpend;
+        ec_secret sScan;
+
+        if (si->spend_secret.size() != ec_secret_size
+            || si->scan_secret.size() != ec_secret_size)
+        {
+            continue;
+        }
+        memcpy(&sScan.e[0], &si->scan_secret[0], ec_secret_size);
+        memcpy(&sSpend.e[0], &si->spend_secret[0], ec_secret_size);
+
+        ec_point pkEphem;
+        pkEphem.resize(EC_COMPRESSED_SIZE);
+
+        memcpy(&pkEphem[0], sxKeyMeta.pkEphem.begin(), EC_COMPRESSED_SIZE);
+
+        if (StealthSecretSpend(sScan, pkEphem, sSpend, sSpendR) != 0)
+        {
+            continue;
+        };
+
+        ec_point pkTestSpendR;
+        if (SecretToPublicKey(sSpendR, pkTestSpendR) != 0)
+        {
+            continue;
+        };
+
+        //CKeyingMaterial vchSecret;
+
+        CBitcoinSecret vchSecret;
+
+        std::string secretString;
+        secretString.assign(sSpendR.e, sSpendR.e + sizeof(sSpendR.e));
+        vchSecret.SetString(secretString);
+
+        //memcpy(&vchSecret.[0], &sSpendR.e[0], ec_secret_size);
+
+        CKey ckey;
+
+        try {
+            ckey = vchSecret.GetKey();
+        } catch (std::exception& e) {
+            continue;
+        };
+
+        CPubKey cpkT = ckey.GetPubKey();
+
+        if (!cpkT.IsValid())
+        {
+            continue;
+        };
+
+        if (cpkT != pubKey)
+        {
+            continue;
+        };
+
+        if (!ckey.IsValid())
+        {
+            continue;
+        };
+
+        if (!AddKey(ckey))
+        {
+            continue;
+        };
+
+        if (!CWalletDB(*dbw).EraseGhostKeyMeta(ckid))
+            LogPrintf("EraseGhostKeyMeta failed for %s\n", addr.ToString().c_str());
+    };
+    return true;
+}
+
+bool CWallet::FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr)
+{
+    mapNarr.clear();
+
+    LOCK(cs_wallet);
+    ec_secret sSpendR;
+    ec_secret sSpend;
+    ec_secret sScan;
+    ec_secret sShared;
+
+    ec_point pkExtracted;
+
+    std::vector<uint8_t> vchEphemPK;
+
+    int32_t nOutputIdOuter = -1;
+    BOOST_FOREACH(const CTxOut& txout, tx.vout)
+    {
+        nOutputIdOuter++;
+
+        int32_t nOutputId = -1;
+        nStealth++;
+        BOOST_FOREACH(const CTxOut& txoutB, tx.vout)
+        {
+            nOutputId++;
+
+            if (&txoutB == &txout)
+                continue;
+
+            bool txnMatch = false; // only 1 txn will match an ephem pk
+
+            CTxDestination address;
+            if (!ExtractDestination(txoutB.scriptPubKey, address))
+                continue;
+
+            if (address.type() != typeid(CKeyID))
+                continue;
+
+            CKeyID ckidMatch = boost::get<CKeyID>(address);
+
+            if (HaveKey(ckidMatch)) // no point checking if already have key
+                continue;
+
+            std::set<CGhostAddress>::iterator it;
+            for (it = ghostAddresses.begin(); it != ghostAddresses.end(); ++it)
+            {
+                if (it->scan_secret.size() != ec_secret_size)
+                    continue; // stealth address is not owned
+
+                memcpy(&sScan.e[0], &it->scan_secret[0], ec_secret_size);
+
+                if (StealthSecret(sScan, vchEphemPK, it->spend_pubkey, sShared, pkExtracted) != 0)
+                {
+                    continue;
+                };
+
+                CPubKey cpkE(pkExtracted);
+
+                if (!cpkE.IsValid())
+                    continue;
+                CKeyID ckidE = cpkE.GetID();
+
+                if (ckidMatch != ckidE)
+                    continue;
+
+                if (IsLocked())
+                {
+                    // -- add key without secret
+                    std::vector<uint8_t> vchEmpty;
+                    AddCryptedKey(cpkE, vchEmpty);
+                    CKeyID keyId = cpkE.GetID();
+                    CBitcoinAddress coinAddress(keyId);
+                    std::string sLabel = it->Encoded();
+                    //SetAddressBook(keyId, sLabel);
+
+                    CPubKey cpkEphem(vchEphemPK);
+                    CPubKey cpkScan(it->scan_pubkey);
+                    CStealthKeyMetadata lockedSkMeta(cpkEphem, cpkScan);
+
+                    if (!CWalletDB(*dbw).WriteGhostKeyMeta(keyId, lockedSkMeta))
+                        LogPrintf("WriteStealthKeyMeta failed for %s\n", coinAddress.ToString().c_str());
+
+                    mapGhostKeyMeta[keyId] = lockedSkMeta;
+                    nFoundStealth++;
+                } else
+                {
+                    if (it->spend_secret.size() != ec_secret_size)
+                        continue;
+                    memcpy(&sSpend.e[0], &it->spend_secret[0], ec_secret_size);
+
+
+                    if (StealthSharedToSecretSpend(sShared, sSpend, sSpendR) != 0)
+                    {
+                        continue;
+                    };
+
+                    ec_point pkTestSpendR;
+                    if (SecretToPublicKey(sSpendR, pkTestSpendR) != 0)
+                    {
+                        continue;
+                    };
+
+                    CBitcoinSecret vchSecret;
+
+                    std::string secretString;
+                    secretString.assign(sSpendR.e, sSpendR.e + sizeof(sSpendR.e));
+                    vchSecret.SetString(secretString);
+
+                    CKey ckey;
+
+                    try {
+                        ckey = vchSecret.GetKey();
+                    } catch (std::exception& e) {
+                        continue;
+                    };
+
+                    CPubKey cpkT = ckey.GetPubKey();
+                    if (!cpkT.IsValid())
+                    {
+                        continue;
+                    };
+
+                    if (!ckey.IsValid())
+                    {
+                        continue;
+                    };
+
+                    CKeyID keyID = cpkT.GetID();
+
+                    if (!AddKey(ckey))
+                    {
+                        continue;
+                    };
+
+                    std::string sLabel = it->Encoded();
+                    //SetAddressBook(keyID, sLabel);
+                    nFoundStealth++;
+                };
+
+                txnMatch = true;
+                break;
+            };
+            if (txnMatch)
+                break;
+        };
+    };
+
+    return true;
+};

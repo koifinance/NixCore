@@ -17,6 +17,7 @@
 #include <uint256.h>
 #include <ghost-address/types.h>
 
+
 class CScript;
 
 const uint32_t MAX_STEALTH_NARRATION_SIZE = 48;
@@ -151,6 +152,107 @@ int PrepareStealthOutput(const CStealthAddress &sx, const std::string &sNarratio
 
 void ECC_Start_Stealth();
 void ECC_Stop_Stealth();
+
+
+/*
+ *
+ *
+ *
+ *
+ *
+ */
+
+typedef std::vector<uint8_t> data_chunk;
+
+const size_t ec_secret_size = 32;
+const size_t ec_compressed_size = 33;
+const size_t ec_uncompressed_size = 65;
+
+typedef struct ec_secret { uint8_t e[ec_secret_size]; } ec_secret;
+typedef data_chunk ec_point;
+
+typedef uint32_t stealth_bitfield;
+
+template <typename T, typename Iterator>
+T from_big_endian(Iterator in)
+{
+    //VERIFY_UNSIGNED(T);
+    T out = 0;
+    size_t i = sizeof(T);
+    while (0 < i)
+        out |= static_cast<T>(*in++) << (8 * --i);
+    return out;
+}
+
+template <typename T, typename Iterator>
+T from_little_endian(Iterator in)
+{
+    //VERIFY_UNSIGNED(T);
+    T out = 0;
+    size_t i = 0;
+    while (i < sizeof(T))
+        out |= static_cast<T>(*in++) << (8 * i++);
+    return out;
+}
+
+class CGhostAddress
+{
+public:
+    CGhostAddress()
+    {
+        options = 0;
+    }
+
+    uint8_t options;
+    ec_point scan_pubkey;
+    ec_point spend_pubkey;
+    size_t number_signatures;
+    stealth_prefix prefix;
+
+    mutable std::string label;
+    data_chunk scan_secret;
+    data_chunk spend_secret;
+
+    bool SetEncoded(const std::string& encodedAddress);
+    std::string Encoded() const;
+
+    bool operator <(const CGhostAddress& y) const
+    {
+        return memcmp(&scan_pubkey[0], &y.scan_pubkey[0], ec_compressed_size) < 0;
+    }
+
+    bool operator ==(const CGhostAddress &y) const
+    {
+        return memcmp(&scan_pubkey[0], &y.scan_pubkey[0], ec_compressed_size) == 0;
+    }
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(this->options);
+        READWRITE(this->scan_pubkey);
+        READWRITE(this->spend_pubkey);
+        READWRITE(this->label);
+
+        READWRITE(this->scan_secret);
+        READWRITE(this->spend_secret);
+    }
+
+};
+
+void AppendChecksum(data_chunk& data);
+
+bool VerifyChecksum(const data_chunk& data);
+
+int GenerateRandomSecret(ec_secret& out);
+
+int SecretToPublicKey(const ec_secret& secret, ec_point& out);
+
+int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, ec_secret& sharedSOut, ec_point& pkOut);
+int StealthSecretSpend(ec_secret& scanSecret, ec_point& ephemPubkey, ec_secret& spendSecret, ec_secret& secretOut);
+int StealthSharedToSecretSpend(ec_secret& sharedS, ec_secret& spendSecret, ec_secret& secretOut);
+
+bool IsGhostAddress(const std::string& encodedAddress);
 
 
 #endif  // KEY_STEALTH_H

@@ -1244,6 +1244,10 @@ public:
     uint32_t nStealth, nFoundStealth; // for reporting, zero before use
     std::set<CStealthAddress> stealthAddresses;
 
+    std::set<CGhostAddress> ghostAddresses;
+    StealthKeyMetaMap mapGhostKeyMeta;
+    uint32_t nGhost, nFoundGhost; // for reporting, zero before use
+
     CStoredExtKey *pEKMaster;
     CKeyID idDefaultAccount;
     ExtKeyAccountMap mapExtAccounts;
@@ -1473,6 +1477,15 @@ public:
     /**
      * Add stealth functions
      */
+
+    bool AddGhostAddress(CGhostAddress& sxAddr);
+    bool NewGhostAddress(std::string& sError, std::string& sLabel, CGhostAddress& sxAddr);
+    bool UpdateGhostAddress(std::string &addr, std::string &label, bool addIfNotExist);
+    bool UnlockGhostAddresses(const CKeyingMaterial& vMasterKeyIn);
+    bool FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr);
+
+
+
     static bool InitLoadWallet();
     bool AddressBookChangedNotify(const CTxDestination &address, ChangeType nMode);
     int GetDefaultConfidentialChain(CWalletDB *pwdb, CExtKeyAccount *&sea, CStoredExtKey *&pc);

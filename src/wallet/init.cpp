@@ -193,8 +193,8 @@ bool WalletParameterInteraction()
 
     // If changetype is set in config file or parameter, check that it's valid.
     // Default to OUTPUT_TYPE_NONE if not set.
-    g_change_type = ParseOutputType(gArgs.GetArg("-changetype", ""), OUTPUT_TYPE_NONE);
-    if (g_change_type == OUTPUT_TYPE_NONE && !gArgs.GetArg("-changetype", "").empty()) {
+    g_change_type = ParseOutputType(gArgs.GetArg("-changetype", ""), OUTPUT_TYPE_DEFAULT);
+    if (g_change_type == OUTPUT_TYPE_DEFAULT && !gArgs.GetArg("-changetype", "").empty()) {
         return InitError(strprintf("Unknown change type '%s'", gArgs.GetArg("-changetype", "")));
     }
 

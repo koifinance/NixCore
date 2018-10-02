@@ -47,6 +47,12 @@ isminetype IsMine(const CKeyStore &keystore, const CTxDestination& dest, bool& i
         return sxAddr.scan_secret.size() == EC_SECRET_SIZE ? ISMINE_SPENDABLE : ISMINE_NO; // TODO: watch only?
     };
 
+    if (dest.type() == typeid(CGhostAddress))
+    {
+        const CGhostAddress &sxAddr = boost::get<CGhostAddress>(dest);
+        return sxAddr.scan_secret.size() == EC_SECRET_SIZE ? ISMINE_SPENDABLE : ISMINE_NO; // TODO: watch only?
+    }
+
     CScript script = GetScriptForDestination(dest);
     return IsMine(keystore, script, isInvalid, sigversion);
 }

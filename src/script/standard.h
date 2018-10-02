@@ -18,6 +18,7 @@ static const bool DEFAULT_ACCEPT_DATACARRIER = true;
 class CKeyID;
 class CScript;
 class CStealthAddress;
+class CGhostAddress;
 class CExtKeyPair;
 class CKeyID256;
 
@@ -142,7 +143,7 @@ struct WitnessUnknown
  *  A CTxDestination is the internal data type encoded in a bitcoin address
  */
 typedef boost::variant<CNoDestination, CKeyID, CScriptID, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessUnknown,
-    CStealthAddress, CExtKeyPair, CKeyID256, CScriptID256> CTxDestination;
+    CStealthAddress, CGhostAddress, CExtKeyPair, CKeyID256, CScriptID256> CTxDestination;
 
 /** Check whether a CTxDestination is a CNoDestination. */
 bool IsValidDestination(const CTxDestination& dest);

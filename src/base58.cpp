@@ -285,6 +285,7 @@ public:
     bool operator()(const CScriptID& id) const { return addr->Set(id, fBech32); }
     bool operator()(const CExtKeyPair &ek) const { return addr->Set(ek, fBech32); }
     bool operator()(const CStealthAddress &sxAddr) const { return addr->Set(sxAddr, fBech32); }
+    bool operator()(const CGhostAddress &sxAddr) const { return false; }
     bool operator()(const CKeyID256& id) const { return addr->Set(id, fBech32); }
     bool operator()(const CScriptID256& id) const { return addr->Set(id, fBech32); }
 
@@ -350,7 +351,7 @@ bool CBitcoinAddress::Set(const CStealthAddress &sx, bool fBech32)
     SetData(fBech32 ? Params().Bech32Prefix(CChainParams::STEALTH_ADDRESS)
         : Params().Base58Prefix(CChainParams::STEALTH_ADDRESS), &raw[0], raw.size());
     return true;
-};
+}
 
 bool CBitcoinAddress::Set(const CExtKeyPair &ek, bool fBech32)
 {
@@ -698,6 +699,7 @@ public:
 
     std::string operator()(const CExtKeyPair &ek) const { return CBitcoinAddress(ek, fBech32).ToString(); }
     std::string operator()(const CStealthAddress &sxAddr) const { return CBitcoinAddress(sxAddr, fBech32).ToString(); }
+    std::string operator()(const CGhostAddress &sxAddr) const { return sxAddr.Encoded(); }
     std::string operator()(const CKeyID256& id) const { return CBitcoinAddress(id, fBech32).ToString(); }
     std::string operator()(const CScriptID256& id) const { return CBitcoinAddress(id, fBech32).ToString(); }
 

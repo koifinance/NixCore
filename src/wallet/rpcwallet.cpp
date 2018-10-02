@@ -4612,6 +4612,91 @@ UniValue liststealthaddresses(const JSONRPCRequest &request)
     return result;
 }
 
+UniValue getnewghostaddress(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 1)
+        throw std::runtime_error(
+            "getnewghostaddress [label]\n"
+            "Returns a new ghost address for receiving payments anonymously.  ");
+
+    if (pwallet->IsLocked())
+        throw std::runtime_error("Failed: Wallet must be unlocked.");
+
+    std::string sLabel;
+    if (request.params.size() > 0)
+        sLabel = request.params[0].get_str();
+
+    CGhostAddress sxAddr;
+    std::string sError;
+    if (!pwallet->NewGhostAddress(sError, sLabel, sxAddr))
+        throw runtime_error(std::string("Could get new ghost address: ") + sError);
+
+    if (!pwallet->AddGhostAddress(sxAddr))
+        throw runtime_error("Could not save to wallet.");
+
+    return sxAddr.Encoded();
+}
+
+UniValue listghostaddresses(const JSONRPCRequest &request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 1)
+        throw std::runtime_error(
+            "listghostaddresses [show_secrets=0]\n"
+            "List owned ghost addresses.");
+
+    bool fShowSecrets = false;
+
+    if (request.params.size() > 0)
+    {
+        std::string str = request.params[0].get_str();
+
+        if (str == "0" || str == "n" || str == "no" || str == "-" || str == "false")
+            fShowSecrets = false;
+        else
+            fShowSecrets = true;
+    };
+
+    if (fShowSecrets)
+    {
+        if (pwallet->IsLocked())
+            throw runtime_error("Failed: Wallet must be unlocked.");
+    };
+
+    UniValue result(UniValue::VOBJ);
+
+    std::set<CGhostAddress>::iterator it;
+    for (it = pwallet->ghostAddresses.begin(); it != pwallet->ghostAddresses.end(); ++it)
+    {
+        if (it->scan_secret.size() < 1)
+            continue; // stealth address is not owned
+
+        if (fShowSecrets)
+        {
+            UniValue objA(UniValue::VOBJ);
+            objA.pushKV("Label        ", it->label);
+            objA.pushKV("Address      ", it->Encoded());
+            objA.pushKV("Scan Secret  ", HexStr(it->scan_secret.begin(), it->scan_secret.end()));
+            objA.pushKV("Spend Secret ", HexStr(it->spend_secret.begin(), it->spend_secret.end()));
+            result.pushKV("Stealth Address", objA);
+        } else
+        {
+            result.pushKV("Ghost Address", it->Encoded() + " - " + it->label);
+        };
+    };
+
+    return result;
+}
+
 #include <script/ismine.h>
 UniValue getalladdresses(const JSONRPCRequest &request)
 {
@@ -5417,9 +5502,13 @@ static const CRPCCommand commands[] =
 
 
       //NIX Ghost address functions
-    { "NIX Ghost Protocol",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
-    { "NIX Ghost Protocol",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
-    { "NIX Ghost Protocol",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
+    //{ "NIX Ghost Protocol",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
+    //{ "NIX Ghost Protocol",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
+    //{ "NIX Ghost Protocol",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
+
+    { "NIX Ghost Protocol",             "getnewghostaddress",               &getnewghostaddress,              {"label"} },
+    { "NIX Ghost Protocol",             "listghostaddresses",               &listghostaddresses,              {"show_secret"} },
+
 
 
     //NIX TOR routing functions
