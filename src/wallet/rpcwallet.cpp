@@ -581,7 +581,49 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(request.params[0].get_str());
+    CTxDestination dest;
+
+    if (IsGhostAddress(request.params[0].get_str()))
+    {
+        CGhostAddress sxAddr;
+        if (sxAddr.SetEncoded(request.params[0].get_str()))
+        {
+            ec_secret ephem_secret;
+            ec_secret secretShared;
+            ec_point pkSendTo;
+            ec_point ephem_pubkey;
+
+
+            if (GenerateRandomSecret(ephem_secret) != 0)
+            {
+                LogPrintf("GenerateRandomSecret failed.\n");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            };
+
+            if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
+            {
+                LogPrintf("Could not generate receiving public key.\n");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            };
+
+            CPubKey cpkTo(pkSendTo);
+            if (!cpkTo.IsValid())
+            {
+                LogPrintf("Invalid public key generated.\n");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            };
+
+            if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
+            {
+                LogPrintf("Could not generate ephem public key.\n");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            };
+
+            dest = GetDestinationForKey(cpkTo, g_address_type);
+        }
+    }
+    else
+         dest = DecodeDestination(request.params[0].get_str());
 
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
@@ -4673,6 +4715,7 @@ UniValue listghostaddresses(const JSONRPCRequest &request)
     };
 
     UniValue result(UniValue::VOBJ);
+    UniValue objA(UniValue::VOBJ);
 
     std::set<CGhostAddress>::iterator it;
     for (it = pwallet->ghostAddresses.begin(); it != pwallet->ghostAddresses.end(); ++it)
@@ -4680,20 +4723,20 @@ UniValue listghostaddresses(const JSONRPCRequest &request)
         if (it->scan_secret.size() < 1)
             continue; // stealth address is not owned
 
+
         if (fShowSecrets)
         {
-            UniValue objA(UniValue::VOBJ);
-            objA.pushKV("Label        ", it->label);
-            objA.pushKV("Address      ", it->Encoded());
-            objA.pushKV("Scan Secret  ", HexStr(it->scan_secret.begin(), it->scan_secret.end()));
-            objA.pushKV("Spend Secret ", HexStr(it->spend_secret.begin(), it->spend_secret.end()));
-            result.pushKV("Stealth Address", objA);
+            UniValue objB(UniValue::VOBJ);
+            objB.pushKV("Label      ", it->label);
+            objB.pushKV("Scan Secret  ", HexStr(it->scan_secret.begin(), it->scan_secret.end()));
+            objB.pushKV("Spend Secret ", HexStr(it->spend_secret.begin(), it->spend_secret.end()));
+            objA.pushKV(it->Encoded(), objB);
         } else
         {
-            result.pushKV("Ghost Address", it->Encoded() + " - " + it->label);
-        };
+            objA.pushKV(it->Encoded(), it->label);
+        }
     };
-
+    result.pushKV("Ghost Addresses", objA);
     return result;
 }
 

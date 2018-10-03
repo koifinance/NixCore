@@ -299,9 +299,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                             return InvalidAddress;
                         };
 
-                        CKeyID ckidTo = cpkTo.GetID();
+                        //CKeyID ckidTo = cpkTo.GetID();
 
-                        CBitcoinAddress addrTo(ckidTo);
+                        //CBitcoinAddress addrTo(ckidTo);
 
                         if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
                         {
@@ -309,11 +309,15 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                             return InvalidAddress;
                         };
 
-                        CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
+                        //CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
+                        CScript scriptPubKey = GetScriptForDestination(GetDestinationForKey(cpkTo, g_address_type));
 
                         subtotal += out.amount();
                         CAmount nAmount = out.amount();
                         CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
+                        vecSend.push_back(recipient);
+                        CScript scriptP = CScript() << OP_RETURN << ephem_pubkey;
+                        recipient = {scriptP, 0, rcp.fSubtractFeeFromAmount};
                         vecSend.push_back(recipient);
                     }
                 }
@@ -388,6 +392,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
                     CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
                     CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+                    vecSend.push_back(recipient);
+                    CScript scriptP = CScript() << OP_RETURN << ephem_pubkey;
+                    recipient = {scriptP, 0, rcp.fSubtractFeeFromAmount};
                     vecSend.push_back(recipient);
                 }
             }

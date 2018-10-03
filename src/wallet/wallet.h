@@ -1482,7 +1482,7 @@ public:
     bool NewGhostAddress(std::string& sError, std::string& sLabel, CGhostAddress& sxAddr);
     bool UpdateGhostAddress(std::string &addr, std::string &label, bool addIfNotExist);
     bool UnlockGhostAddresses(const CKeyingMaterial& vMasterKeyIn);
-    bool FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr);
+    bool FindGhostTransactions(const CTransaction& tx);
 
 
 

@@ -521,6 +521,12 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 return false;
             }
         }
+        else if (strType == "gxad")
+        {
+            CGhostAddress gxad;
+            ssValue >> gxad;
+            pwallet->ghostAddresses.insert(gxad);
+        }
     } catch (...)
     {
         return false;

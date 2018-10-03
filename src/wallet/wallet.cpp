@@ -1197,8 +1197,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         bool fExisted = mapWallet.count(tx.GetHash()) != 0;
         if (fExisted && !fUpdate) return false;
 
-        mapValue_t mapNarr;
-        FindGhostTransactions(tx, mapNarr);
+        FindGhostTransactions(tx);
         if (fExisted || IsMine(tx) || IsFromMe(tx))
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
@@ -3756,8 +3755,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
 bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state)
 {
 
-    mapValue_t mapNarr;
-    FindGhostTransactions(*wtxNew.tx, mapNarr);
+    FindGhostTransactions(*wtxNew.tx);
 
     {
         LOCK2(cs_main, cs_wallet);
@@ -11790,10 +11788,10 @@ bool CWallet::UnlockGhostAddresses(const CKeyingMaterial& vMasterKeyIn)
     return true;
 }
 
-bool CWallet::FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr)
-{
-    mapNarr.clear();
+#include <rpc/util.h>
 
+bool CWallet::FindGhostTransactions(const CTransaction& tx)
+{
     LOCK(cs_wallet);
     ec_secret sSpendR;
     ec_secret sSpend;
@@ -11803,18 +11801,24 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr)
     ec_point pkExtracted;
 
     std::vector<uint8_t> vchEphemPK;
+    opcodetype opCode;
 
-    int32_t nOutputIdOuter = -1;
     BOOST_FOREACH(const CTxOut& txout, tx.vout)
     {
-        nOutputIdOuter++;
 
-        int32_t nOutputId = -1;
+        CScript::const_iterator itTxA = txout.scriptPubKey.begin();
+
+        if (!txout.scriptPubKey.GetOp(itTxA, opCode, vchEphemPK) || opCode != OP_RETURN)
+            continue;
+
+        if (!txout.scriptPubKey.GetOp(itTxA, opCode, vchEphemPK)  || vchEphemPK.size() != 33)
+        {
+            continue;
+        }
+
         nStealth++;
         BOOST_FOREACH(const CTxOut& txoutB, tx.vout)
         {
-            nOutputId++;
-
             if (&txoutB == &txout)
                 continue;
 
@@ -11861,8 +11865,11 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr)
                     AddCryptedKey(cpkE, vchEmpty);
                     CKeyID keyId = cpkE.GetID();
                     CBitcoinAddress coinAddress(keyId);
+
                     std::string sLabel = it->Encoded();
-                    //SetAddressBook(keyId, sLabel);
+                    LearnRelatedScripts(cpkE, g_address_type);
+                    CTxDestination dest = GetDestinationForKey(cpkE, g_address_type);
+                    SetAddressBook(dest, sLabel, "receive");
 
                     CPubKey cpkEphem(vchEphemPK);
                     CPubKey cpkScan(it->scan_pubkey);
@@ -11891,16 +11898,14 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr)
                         continue;
                     };
 
-                    CBitcoinSecret vchSecret;
+                    std::vector<unsigned char, secure_allocator<unsigned char> > vchSecret;
 
-                    std::string secretString;
-                    secretString.assign(sSpendR.e, sSpendR.e + sizeof(sSpendR.e));
-                    vchSecret.SetString(secretString);
+                    vchSecret.resize(ec_secret_size);
 
+                    memcpy(&vchSecret[0], &sSpendR.e[0], ec_secret_size);
                     CKey ckey;
-
                     try {
-                        ckey = vchSecret.GetKey();
+                        ckey.Set(&vchSecret[0], true);
                     } catch (std::exception& e) {
                         continue;
                     };
@@ -11916,15 +11921,16 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx, mapValue_t& mapNarr)
                         continue;
                     };
 
-                    CKeyID keyID = cpkT.GetID();
-
                     if (!AddKey(ckey))
                     {
                         continue;
                     };
 
                     std::string sLabel = it->Encoded();
-                    //SetAddressBook(keyID, sLabel);
+                    //LearnRelatedScripts(cpkT, g_address_type);
+                    CTxDestination dest = GetDestinationForKey(cpkT, OUTPUT_TYPE_LEGACY);
+                    SetAddressBook(dest, sLabel, "receive");
+
                     nFoundStealth++;
                 };
 
