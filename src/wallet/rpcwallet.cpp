@@ -3772,8 +3772,8 @@ UniValue unghostamount(const JSONRPCRequest& request)
 {
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    if (request.fHelp || request.params.size() > 2)
-        throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
+    if (request.fHelp || request.params.size() == 0 || request.params.size() > 2)
+        throw runtime_error("unghostamount <amount>(whole numbers only) <addresstosend>\n" + HelpRequiringPassphrase(pwalletMain));
 
     if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
         return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
@@ -3787,7 +3787,7 @@ UniValue unghostamount(const JSONRPCRequest& request)
         toKey = request.params[1].get_str();
         address = CBitcoinAddress(request.params[1].get_str());
 
-        if(!IsStealthAddress(toKey))
+        if(!IsGhostAddress(toKey))
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "rpcwallet unghostamount(): Invalid toKey address");
     }

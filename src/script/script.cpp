@@ -147,6 +147,8 @@ const char* GetOpName(opcodetype opcode)
 
     case OP_ISCOINSTAKE            : return "OP_ISCOINSTAKE";
 
+    case OP_KEYLOCKVERIFY          : return "OP_KEYLOCKVERIFY";
+
     // Note:
     //  The template matching params OP_SMALLINTEGER/etc are defined in opcodetype enum
     //  as kind of implementation hack, they are *NOT* real opcodes.  If found in real

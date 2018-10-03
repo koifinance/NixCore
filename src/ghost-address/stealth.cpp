@@ -727,34 +727,29 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
 
     if (!ecgrp)
     {
-        printf("StealthSecret(): EC_GROUP_new_by_curve_name failed.\n");
         return 1;
     };
 
     if (!(bnCtx = BN_CTX_new()))
     {
-        printf("StealthSecret(): BN_CTX_new failed.\n");
         rv = 1;
         goto End;
     };
 
     if (!(bnEphem = BN_bin2bn(&secret.e[0], ec_secret_size, BN_new())))
     {
-        printf("StealthSecret(): bnEphem BN_bin2bn failed.\n");
         rv = 1;
         goto End;
     };
 
     if (!(bnQ = BN_bin2bn(&pubkey[0], pubkey.size(), BN_new())))
     {
-        printf("StealthSecret(): bnQ BN_bin2bn failed\n");
         rv = 1;
         goto End;
     };
 
     if (!(Q = EC_POINT_bn2point(ecgrp, bnQ, NULL, bnCtx)))
     {
-        printf("StealthSecret(): Q EC_POINT_bn2point failed\n");
         rv = 1;
         goto End;
     };
@@ -764,14 +759,12 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
     // EC_POINT_mul calculates the value generator * n + q * m and stores the result in r. The value n may be NULL in which case the result is just q * m.
     if (!EC_POINT_mul(ecgrp, Q, NULL, Q, bnEphem, bnCtx))
     {
-        printf("StealthSecret(): eQ EC_POINT_mul failed\n");
         rv = 1;
         goto End;
     };
 
     if (!(bnOutQ = EC_POINT_point2bn(ecgrp, Q, POINT_CONVERSION_COMPRESSED, BN_new(), bnCtx)))
     {
-        printf("StealthSecret(): Q EC_POINT_bn2point failed\n");
         rv = 1;
         goto End;
     };
@@ -781,7 +774,6 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
     if (BN_num_bytes(bnOutQ) != (int) ec_compressed_size
         || BN_bn2bin(bnOutQ, &vchOutQ[0]) != (int) ec_compressed_size)
     {
-        printf("StealthSecret(): bnOutQ incorrect length.\n");
         rv = 1;
         goto End;
     };
@@ -790,7 +782,6 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
 
     if (!(bnc = BN_bin2bn(&sharedSOut.e[0], ec_secret_size, BN_new())))
     {
-        printf("StealthSecret(): BN_bin2bn failed\n");
         rv = 1;
         goto End;
     };
@@ -798,21 +789,18 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
     // -- cG
     if (!(C = EC_POINT_new(ecgrp)))
     {
-        printf("StealthSecret(): C EC_POINT_new failed\n");
         rv = 1;
         goto End;
     };
 
     if (!EC_POINT_mul(ecgrp, C, bnc, NULL, NULL, bnCtx))
     {
-        printf("StealthSecret(): C EC_POINT_mul failed\n");
         rv = 1;
         goto End;
     };
 
     if (!(bnR = BN_bin2bn(&pkSpend[0], pkSpend.size(), BN_new())))
     {
-        printf("StealthSecret(): bnR BN_bin2bn failed\n");
         rv = 1;
         goto End;
     };
@@ -820,35 +808,30 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
 
     if (!(R = EC_POINT_bn2point(ecgrp, bnR, NULL, bnCtx)))
     {
-        printf("StealthSecret(): R EC_POINT_bn2point failed\n");
         rv = 1;
         goto End;
     };
 
     if (!EC_POINT_mul(ecgrp, C, bnc, NULL, NULL, bnCtx))
     {
-        printf("StealthSecret(): C EC_POINT_mul failed\n");
         rv = 1;
         goto End;
     };
 
     if (!(Rout = EC_POINT_new(ecgrp)))
     {
-        printf("StealthSecret(): Rout EC_POINT_new failed\n");
         rv = 1;
         goto End;
     };
 
     if (!EC_POINT_add(ecgrp, Rout, R, C, bnCtx))
     {
-        printf("StealthSecret(): Rout EC_POINT_add failed\n");
         rv = 1;
         goto End;
     };
 
     if (!(bnOutR = EC_POINT_point2bn(ecgrp, Rout, POINT_CONVERSION_COMPRESSED, BN_new(), bnCtx)))
     {
-        printf("StealthSecret(): Rout EC_POINT_bn2point failed\n");
         rv = 1;
         goto End;
     };
@@ -858,7 +841,6 @@ int StealthSecret(ec_secret& secret, ec_point& pubkey, const ec_point& pkSpend, 
     if (BN_num_bytes(bnOutR) != (int) ec_compressed_size
         || BN_bn2bin(bnOutR, &pkOut[0]) != (int) ec_compressed_size)
     {
-        printf("StealthSecret(): pkOut incorrect length.\n");
         rv = 1;
         goto End;
     };

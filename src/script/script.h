@@ -181,6 +181,7 @@ enum opcodetype
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
     OP_ISCOINSTAKE = OP_NOP9,
+    OP_KEYLOCKVERIFY = OP_NOP10,
 
 
     // template matching params

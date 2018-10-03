@@ -763,6 +763,30 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
             assert(false);
         }
 
+        std::set<CGhostAddress>::iterator it;
+        for (it = ghostAddresses.begin(); it != ghostAddresses.end(); ++it)
+        {
+            if (it->scan_secret.size() < 32)
+                continue; // ghost address is not owned
+            // -- CGhostAddress is only sorted on spend_pubkey
+            CGhostAddress &sxAddr = const_cast<CGhostAddress&>(*it);
+
+            std::vector<unsigned char> vchCryptedSecret;
+
+            CKeyingMaterial vchSecret;
+            vchSecret.resize(32);
+            memcpy(&vchSecret[0], &sxAddr.spend_secret[0], 32);
+
+            uint256 iv = Hash(sxAddr.spend_pubkey.begin(), sxAddr.spend_pubkey.end());
+            if (!EncryptSecret(vMasterKey, vchSecret, iv, vchCryptedSecret))
+            {
+                continue;
+            };
+
+            sxAddr.spend_secret = vchCryptedSecret;
+            pwalletdbEncryption->WriteGhostAddress(sxAddr);
+        };
+
         // Encryption was introduced in version 0.4.0
         SetMinVersion(FEATURE_WALLETCRYPT, pwalletdbEncryption, true);
 
@@ -1172,6 +1196,9 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
 
         bool fExisted = mapWallet.count(tx.GetHash()) != 0;
         if (fExisted && !fUpdate) return false;
+
+        mapValue_t mapNarr;
+        FindGhostTransactions(tx, mapNarr);
         if (fExisted || IsMine(tx) || IsFromMe(tx))
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
@@ -3728,6 +3755,10 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
  */
 bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state)
 {
+
+    mapValue_t mapNarr;
+    FindGhostTransactions(*wtxNew.tx, mapNarr);
+
     {
         LOCK2(cs_main, cs_wallet);
         //LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());

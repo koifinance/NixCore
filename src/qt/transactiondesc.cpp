@@ -139,9 +139,6 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
             strHTML += BitcoinUnits::formatHtmlWithUnit(unit, nUnmatured)+ " (" + tr("matures in %n more block(s)", "", wtx.GetBlocksToMaturity()) + ")";
         else{
             strHTML += "(" + tr("not accepted") + ")";
-            if(wtx.IsCoinStake()){
-                wallet->AbandonTransaction(wtx.GetHash());
-            }
         }
         strHTML += "<br>";
     }
