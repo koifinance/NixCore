@@ -175,6 +175,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     //NIX Staking functions
     { "walletsettings", 1, "json" },
     { "reservebalance", 0, "enabled" },
+
+    {"payunloadedpubcoins", 0, "amount"},
 };
 
 class CRPCConvertTable

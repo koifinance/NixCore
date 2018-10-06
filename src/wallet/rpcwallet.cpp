@@ -3781,9 +3781,6 @@ UniValue ghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
 
-    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
-        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to ghost NIX";
-
     int64_t nAmount = request.params[0].get_int64();
 
     bool strError = pwalletMain->GhostModeMintTrigger(std::to_string(nAmount));
@@ -3800,9 +3797,6 @@ UniValue unghostamount(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() == 0 || request.params.size() > 2)
         throw runtime_error("unghostamount <amount>(whole numbers only) <addresstosend>\n" + HelpRequiringPassphrase(pwalletMain));
-
-    if(chainActive.Height() < Params().GetConsensus().nPosHeightActivate)
-        return "Need to wait until block " + std::to_string(Params().GetConsensus().nPosHeightActivate) + " to un-ghost NIX";
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -5626,7 +5620,7 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
                 "payunloadedpubcoins\n"
                         "\nArguments:\n"
                         "\nAmount to pay\n"
-                        "\nGhost key string:\n";
+                        "\nGhost key string:\n");
 
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
@@ -5654,7 +5648,7 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
 
 
     //split key into convertable format
-    std::string keyBunch = request.params[0].get_str();
+    std::string keyBunch = request.params[1].get_str();
     vector<vector<unsigned char>> pubCoinList;
     vector<CScript> pubCoinScripts;
     for(int i = 0; i < keyBunch.size(); i++){

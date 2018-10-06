@@ -9953,8 +9953,9 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
         //check if minting these spends
         if(!pubCoinScripts.empty()){
             //Not enough payout scripts
-            if(pubCoinScripts.size() < totalZerocoins)
-                return "GhostModeSpendTrigger(): Error: Not enough mint payout scripts";
+            if(pubCoinScripts.size() < denominationBatch.size())
+                return "GhostModeSpendTrigger(): Error: Not enough mint payout scripts "
+                        + std::to_string(pubCoinScripts.size()) + " < " + std::to_string(denominationBatch.size());
 
         }
 
