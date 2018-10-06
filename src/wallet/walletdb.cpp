@@ -910,6 +910,14 @@ bool CWalletDB::EraseZerocoinEntry(const CZerocoinEntry &zerocoin) {
     return EraseIC(make_pair(string("zerocoin"), zerocoin.value));
 }
 
+bool CWalletDB::WriteUnloadedZCEntry(const CZerocoinEntry &zerocoin) {
+    return WriteIC(make_pair(string("unloadedzerocoin"), zerocoin.value), zerocoin);
+}
+
+bool CWalletDB::EraseUnloadedZCEntry(const CZerocoinEntry &zerocoin) {
+    return EraseIC(make_pair(string("unloadedzerocoin"), zerocoin.value));
+}
+
 // Check Calculated Blocked for Zerocoin
 bool CWalletDB::ReadCalculatedZCBlock(int &height) {
     height = 0;
@@ -949,6 +957,39 @@ void CWalletDB::ListPubCoin(std::list <CZerocoinEntry> &listPubCoin) {
         CZerocoinEntry zerocoinItem;
         ssValue >> zerocoinItem;
         listPubCoin.push_back(zerocoinItem);
+    }
+    pcursor->close();
+}
+
+void CWalletDB::ListUnloadedPubCoin(std::list <CZerocoinEntry> &listUnloadedPubCoin) {
+    Dbc *pcursor = batch.GetCursor();
+    if (!pcursor)
+        throw runtime_error("CWalletDB::ListUnloadedPubCoin() : cannot create DB cursor");
+    unsigned int fFlags = DB_SET_RANGE;
+    while (true) {
+        // Read next record
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        if (fFlags == DB_SET_RANGE)
+            ssKey << make_pair(string("unloadedzerocoin"), CBigNum(0));
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        fFlags = DB_NEXT;
+        if (ret == DB_NOTFOUND)
+            break;
+        else if (ret != 0) {
+            pcursor->close();
+            throw runtime_error("CWalletDB::ListPubCoin() : error scanning DB");
+        }
+        // Unserialize
+        string strType;
+        ssKey >> strType;
+        if (strType != "unloadedzerocoin")
+            break;
+        CBigNum value;
+        ssKey >> value;
+        CZerocoinEntry zerocoinItem;
+        ssValue >> zerocoinItem;
+        listUnloadedPubCoin.push_back(zerocoinItem);
     }
     pcursor->close();
 }

@@ -125,7 +125,7 @@ void PrivateCoin::mintCoin(const CoinDenomination denomination) {
 					this->ecdsaSeckey));
 
 			// Hash the public key in the group to obtain a serial number
-            s = serialNumberFromSerializedPublicKey(ctx, &pubkey);
+            s = serialNumberFromSerializedPublicKey(ctx, &pubkey, this->pubHash);
 		} else {
 			// Generate a random serial number in the range 0...{q-1} where
 			// "q" is the order of the commitment group.
@@ -175,7 +175,7 @@ void PrivateCoin::mintCoinFast(const CoinDenomination denomination) {
 		}while (!secp256k1_ec_pubkey_create(ctx, &pubkey, this->ecdsaSeckey));
 
 		// Hash the public key in the group to obtain a serial number
-        s = serialNumberFromSerializedPublicKey(ctx, &pubkey);
+        s = serialNumberFromSerializedPublicKey(ctx, &pubkey, this->pubHash);
 	} else {
 		// Generate a random serial number in the range 0...{q-1} where
 		// "q" is the order of the commitment group.
@@ -227,7 +227,7 @@ const PublicCoin& PrivateCoin::getPublicCoin() const {
 }
 
 
-const Bignum PrivateCoin::serialNumberFromSerializedPublicKey(secp256k1_context *context, secp256k1_pubkey *pubkey)  {
+const Bignum PrivateCoin::serialNumberFromSerializedPublicKey(secp256k1_context *context, secp256k1_pubkey *pubkey, uint160& pubHash)  {
     std::vector<unsigned char> pubkey_hash(32, 0);
 
     static const unsigned char one[32] = {
@@ -246,13 +246,14 @@ const Bignum PrivateCoin::serialNumberFromSerializedPublicKey(secp256k1_context 
 
 	uint160 hash;
     CRIPEMD160().Write(pre.data(), pre.size()).Finalize(hash.begin());
-
+    pubHash = hash;
     // Use 160 bits of hash as coin serial. Bignum constuctor expects little-endian sequence of bytes,
     // last zero byte is used to set sign bit to 0
     std::vector<unsigned char> hash_vch(hash.begin(), hash.end());
     hash_vch.push_back(0);
     return Bignum(hash_vch);
 }
+
 
 CoinDenomination IntToZerocoinDenomination(int64_t amount)
 {

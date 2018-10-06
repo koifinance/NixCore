@@ -1455,16 +1455,18 @@ public:
 
     bool CreateZerocoinMintModelBatch(string &stringError, vector <string> denomAmount);
 
-    std::string SpendZerocoinBatch(std::string &toKey, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch, CWalletTx &wtxNew,
+    std::string SpendZerocoinBatch(std::string &toKey, vector <CScript> pubCoinScripts, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch, CWalletTx &wtxNew,
                                    vector <CBigNum> &coinSerialBatch, vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch,
                                    bool &zcSelectedIsUsed);
 
-    bool CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch,
+    bool CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CScript> pubCoinScripts, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch,
                                              CWalletTx &wtxNew, CReserveKey &reservekey, vector <CBigNum> &coinSerialBatch,
                                              vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch, bool &zcSelectedIsUsed,
                                              std::string &strFailReason);
 
-    bool CreateZerocoinSpendModelBatch(string &stringError, vector <string> denomAmountBatch, string toAddr);
+    bool CreateZerocoinSpendModelBatch(string &stringError, vector <string> denomAmountBatch, string toAddr, vector <CScript> pubCoinScripts = vector<CScript>());
+
+    bool FindUnloadedGhostTransactions(const CTransaction& tx);
 
     /**
      * Add ghost functions
@@ -1472,7 +1474,7 @@ public:
     bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
     bool DisableGhostMode();
     bool GhostModeMintTrigger(string totalAmount);
-    std::string GhostModeSpendTrigger(string denomination, string toKey = "");
+    std::string GhostModeSpendTrigger(string denomination, string toKey = "", vector<CScript> pubCoinScripts = vector<CScript>());
     bool SpendAllZerocoins();
     /**
      * Add stealth functions

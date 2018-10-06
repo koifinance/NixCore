@@ -479,6 +479,8 @@ void ECC_Stop_Stealth()
 #include <openssl/obj_mac.h>
 
 const uint8_t stealth_version_byte = 0x1F;
+const uint8_t stealth_version_byte_segwit = 0x20;
+
 
 
 bool CGhostAddress::SetEncoded(const std::string& encodedAddress)
@@ -548,50 +550,6 @@ std::string CGhostAddress::Encoded() const
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
-
-uint32_t BitcoinChecksum(uint8_t* p, uint32_t nBytes)
-{
-    if (!p || nBytes == 0)
-        return 0;
-
-    uint8_t hash1[32];
-    CSHA256().Write(p, nBytes).Finalize((uint8_t*)hash1);
-
-    uint8_t hash2[32];
-    CSHA256().Write((uint8_t*)hash1, sizeof(hash1)).Finalize((uint8_t*)hash2);
-
-    // -- checksum is the 1st 4 bytes of the hash
-    uint32_t checksum = from_little_endian<uint32_t>(&hash2[0]);
-
-    return checksum;
-};
-
-void AppendChecksum(data_chunk& data)
-{
-    uint32_t checksum = BitcoinChecksum(&data[0], data.size());
-
-    // -- to_little_endian
-    std::vector<uint8_t> tmp(4);
-
-    //memcpy(&tmp[0], &checksum, 4);
-    for (int i = 0; i < 4; ++i)
-    {
-        tmp[i] = checksum & 0xFF;
-        checksum >>= 8;
-    };
-
-    data.insert(data.end(), tmp.begin(), tmp.end());
-};
-
-bool VerifyChecksum(const data_chunk& data)
-{
-    if (data.size() < 4)
-        return false;
-
-    uint32_t checksum = from_little_endian<uint32_t>(data.end() - 4);
-
-    return BitcoinChecksum((uint8_t*)&data[0], data.size()-4) == checksum;
-};
 
 #include <random.cpp>
 int GenerateRandomSecret(ec_secret& out)

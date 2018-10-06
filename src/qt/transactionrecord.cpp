@@ -102,6 +102,9 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             isminetype mine = wallet->IsMine(txout);
             if(mine)
             {
+                //skip public ghost key data models
+                if(wtx.tx->vout[i].nValue == 0)
+                    continue;
                 TransactionRecord sub(hash, nTime);
                 CTxDestination address;
                 sub.idx = i; // vout index

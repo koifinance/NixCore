@@ -90,12 +90,12 @@ public:
 //	    READWRITE(value);
 //	    READWRITE(denomination);
 //	)
-private:
-    const Params* params;
-    Bignum value;
     // Denomination is stored as an INT because storing
     // and enum raises amigiuities in the serialize code //FIXME if possible
     int denomination;
+private:
+    const Params* params;
+    Bignum value;
 };
 
 /**
@@ -121,7 +121,7 @@ public:
     const Bignum& getRandomness() const;
     const unsigned char* getEcdsaSeckey() const;
     unsigned int getVersion() const;
-    static const Bignum serialNumberFromSerializedPublicKey(secp256k1_context *ctx, secp256k1_pubkey *pubkey);
+    static const Bignum serialNumberFromSerializedPublicKey(secp256k1_context *ctx, secp256k1_pubkey *pubkey, uint160& pubHash);
 
     void setPublicCoin(PublicCoin p){
         publicCoin = p;
@@ -154,14 +154,6 @@ public:
 
     }
 
-private:
-    const Params* params;
-    PublicCoin publicCoin;
-    Bignum randomness;
-    Bignum serialNumber;
-    unsigned int version = 0;
-    unsigned char ecdsaSeckey[32];
-
     /**
      * @brief Mint a new coin.
      * @param denomination the denomination of the coin to mint
@@ -189,6 +181,16 @@ private:
      * could be timing your coin minting.
      **/
     void mintCoinFast(const CoinDenomination denomination);
+
+    PublicCoin publicCoin;
+    uint160 pubHash;
+
+private:
+    const Params* params;
+    Bignum randomness;
+    Bignum serialNumber;
+    unsigned int version = 0;
+    unsigned char ecdsaSeckey[32];
 
 };
 } /* namespace libzerocoin */

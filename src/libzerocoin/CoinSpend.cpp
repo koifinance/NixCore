@@ -125,8 +125,9 @@ bool CoinSpend::Verify(const Accumulator& a, const SpendMetaData &m) const {
             return false;
         }
 
+        uint160 pubHash;
         // Recompute and compare hash of public key
-        if (coinSerialNumber != PrivateCoin::serialNumberFromSerializedPublicKey(ctx, &pubkey)) {
+        if (coinSerialNumber != PrivateCoin::serialNumberFromSerializedPublicKey(ctx, &pubkey, pubHash)) {
             return false;
         }
 

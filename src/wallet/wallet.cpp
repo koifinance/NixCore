@@ -57,7 +57,7 @@ bool fWalletRbf = DEFAULT_WALLET_RBF;
 
 const char * DEFAULT_WALLET_DAT = "wallet.dat";
 const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
-const int ZEROCOIN_CONFIRM_HEIGHT = 1;
+const int ZEROCOIN_CONFIRM_HEIGHT = 0;
 
 OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
 OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
@@ -1198,6 +1198,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         if (fExisted && !fUpdate) return false;
 
         FindGhostTransactions(tx);
+        FindUnloadedGhostTransactions(tx);
         if (fExisted || IsMine(tx) || IsFromMe(tx))
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
@@ -3756,7 +3757,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
 {
 
     FindGhostTransactions(*wtxNew.tx);
-
+    FindUnloadedGhostTransactions(*wtxNew.tx);
     {
         LOCK2(cs_main, cs_wallet);
         //LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());
@@ -5368,7 +5369,7 @@ bool CWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount, 
 
 }
 
-bool CWallet::CreateZerocoinSpendModelBatch(string &stringError, vector <string> denomAmountBatch, string toAddr) {
+bool CWallet::CreateZerocoinSpendModelBatch(string &stringError, vector <string> denomAmountBatch, string toAddr, vector <CScript> pubCoinScripts) {
 
     vector <libzerocoin::CoinDenomination> denominationBatch;
     vector <int64_t> nAmountBatch;
@@ -5422,7 +5423,7 @@ bool CWallet::CreateZerocoinSpendModelBatch(string &stringError, vector <string>
     if(toAddr != "")
         toKey = toAddr;
 
-    stringError = SpendZerocoinBatch(toKey, nAmountBatch, denominationBatch, wtx, coinSerialBatch, txHashBatch, zcSelectedValueBatch, zcSelectedIsUsed);
+    stringError = SpendZerocoinBatch(toKey, pubCoinScripts, nAmountBatch, denominationBatch, wtx, coinSerialBatch, txHashBatch, zcSelectedValueBatch, zcSelectedIsUsed);
 
     if (stringError != "")
         return false;
@@ -6047,7 +6048,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
     return true;
 }
 
-bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch,
+bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CScript> pubCoinScripts, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch,
                                              CWalletTx &wtxNew, CReserveKey &reservekey, vector <CBigNum> &coinSerialBatch,
                                              vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch, bool &zcSelectedIsUsed,
                                              std::string &strFailReason) {
@@ -6073,54 +6074,84 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <in
 
     //We will integrate stealth address pairing to increase privacy on chain
     //essentially we can mint/spend right away without risking user privacy.
-    // Reserve a new key pair from key pool
-    std::string sLabel;
-    uint32_t num_prefix_bits = 0;
-    std::string sPrefix_num;
-    bool fBech32 = false;
 
+    CScript ghostKey;
     CScript scriptChange;
 
-    //On empty key input, creates and send to stealthkey default - UI should require toKey input
+    //On empty key input, creates and send to p2sh default - UI should require toKey input
     //For now send to personal segwit
-    if(toKey == ""){
-        /*
-        CEKAStealthKey akStealth;
-        if (0 != this->NewStealthKeyFromAccount(sLabel, akStealth, num_prefix_bits, sPrefix_num.empty() ? nullptr : sPrefix_num.c_str(), fBech32)){
-            strFailReason = _("zerocoin stealth output creation failed!");
-            return false;
-        }
-        CStealthAddress sxAddr;
-        akStealth.SetSxAddr(sxAddr);
-        scriptChange = GetScriptForDestination(sxAddr);
-        */
+    //Only calculate/generate key if we are not spending to zerocoin mint
+    if(pubCoinScripts.empty()){
+        if(toKey == ""){
 
-        CPubKey vchPubKey;
-        bool ret;
-        ret = reservekey.GetReservedKey(vchPubKey, true);
-        if (!ret)
+            CPubKey vchPubKey;
+            bool ret;
+            ret = reservekey.GetReservedKey(vchPubKey, true);
+            if (!ret)
+            {
+                strFailReason = _("Keypool ran out, please call keypoolrefill first");
+                return false;
+            }
+
+            const OutputType change_type = g_change_type;
+
+            LearnRelatedScripts(vchPubKey, change_type);
+            scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
+        }
+        else if (IsGhostAddress(toKey))
         {
-            strFailReason = _("Keypool ran out, please call keypoolrefill first");
-            return false;
+            CGhostAddress sxAddr;
+            if (sxAddr.SetEncoded(toKey))
+            {
+                ec_secret ephem_secret;
+                ec_secret secretShared;
+                ec_point pkSendTo;
+                ec_point ephem_pubkey;
+
+
+                if (GenerateRandomSecret(ephem_secret) != 0)
+                {
+                    LogPrintf("GenerateRandomSecret failed.\n");
+                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+                };
+
+                if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
+                {
+                    LogPrintf("Could not generate receiving public key.\n");
+                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+                };
+
+                CPubKey cpkTo(pkSendTo);
+                if (!cpkTo.IsValid())
+                {
+                    LogPrintf("Invalid public key generated.\n");
+                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+                };
+
+                CKeyID ckidTo = cpkTo.GetID();
+
+                CBitcoinAddress addrTo(ckidTo);
+
+                if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
+                {
+                    LogPrintf("Could not generate ephem public key.\n");
+                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+                };
+
+                ghostKey = CScript() << OP_RETURN << ephem_pubkey;
+
+                scriptChange = GetScriptForDestination(addrTo.Get());
+            }
         }
-
-        const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
-
-        LearnRelatedScripts(vchPubKey, change_type);
-        scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
+        //If not, send to normal address
+        else
+        {
+            scriptChange = GetScriptForDestination(CBitcoinAddress(toKey).Get());
+        }
     }
-    //Check if output key is a stealth address
-    else if(IsStealthAddress(toKey)){
-        CTxDestination sxAddr = DecodeDestination(toKey);
-        scriptChange = GetScriptForDestination(sxAddr);
-    }
-    //If not, send to normal address
-    else
-    {
-        scriptChange = GetScriptForDestination(CBitcoinAddress(toKey).Get());
-    }
-
     for(int i = 0; i < nValueBatch.size(); i++){
+        if(!pubCoinScripts.empty())
+            scriptChange = pubCoinScripts[i];
         CTxOut newTxOut(nValueBatch[i], scriptChange);
         txNew.vout.push_back(newTxOut);
         txNewTemp.vout.push_back(newTxOut);
@@ -6545,7 +6576,7 @@ string CWallet::SpendZerocoin(std::string &toKey, int64_t nValue, libzerocoin::C
     return "";
 }
 
-string CWallet::SpendZerocoinBatch(std::string &toKey, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch, CWalletTx &wtxNew,
+string CWallet::SpendZerocoinBatch(std::string &toKey, vector <CScript> pubCoinScripts, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch, CWalletTx &wtxNew,
                               vector <CBigNum> &coinSerialBatch, vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch,
                               bool &zcSelectedIsUsed) {
     // Check amount
@@ -6571,7 +6602,7 @@ string CWallet::SpendZerocoinBatch(std::string &toKey, vector <int64_t> nValueBa
     }
 
     string strError;
-    if (!CreateZerocoinSpendTransactionBatch(toKey, nValueBatch, denominationBatch, wtxNew, reservekey, coinSerialBatch, txHashBatch,
+    if (!CreateZerocoinSpendTransactionBatch(toKey, pubCoinScripts, nValueBatch, denominationBatch, wtxNew, reservekey, coinSerialBatch, txHashBatch,
                                         zcSelectedValueBatch, zcSelectedIsUsed, strError)) {
         LogPrintf("SpendZerocoin() : %s\n", strError.c_str());
         return strError;
@@ -9716,7 +9747,7 @@ bool ClosestDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[8
     return false;
 }
 //ghost timer spend responder
-std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
+std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vector<CScript> pubCoinScripts){
 
     //Autobackup wallet into ghostbackups
     string backupDir = GetDataDir().string() + "/ghostbackups/wallet-" + std::to_string(GetTime()) + ".dat";
@@ -9919,14 +9950,26 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey){
         if (this->IsLocked())
             return "GhostModeSpendTrigger(): Error: The wallet needs to be unlocked.";
 
+        //check if minting these spends
+        if(!pubCoinScripts.empty()){
+            //Not enough payout scripts
+            if(pubCoinScripts.size() < totalZerocoins)
+                return "GhostModeSpendTrigger(): Error: Not enough mint payout scripts";
+
+        }
+
         //limit a batch to 4 zerocoins
         int startIndex = 0;
         int endIndex = denominationBatch.size() > 4 ? 3 : denominationBatch.size() - 1;
         for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/4) + 1); vecSplit++){
             vector <std::string> denominationBatchSub;
-            for(int vecSub = startIndex; vecSub <= endIndex; vecSub++)
+            vector <CScript> pubCoinScriptsSub;
+            for(int vecSub = startIndex; vecSub <= endIndex; vecSub++){
                 denominationBatchSub.push_back(denominationBatch[vecSub]);
-            if(!CreateZerocoinSpendModelBatch(stringError, denominationBatchSub, toKey)){
+                if(!pubCoinScripts.empty())
+                    pubCoinScriptsSub.push_back(pubCoinScripts[vecSub]);
+            }
+            if(!CreateZerocoinSpendModelBatch(stringError, denominationBatchSub, toKey, pubCoinScriptsSub)){
                 if(vecSplit > 0){
                     CAmount amountGhosted = 0;
                     for (int x = 0; x < vecSplit; x++){
@@ -11572,8 +11615,8 @@ bool CWallet::AddGhostAddress(CGhostAddress& sxAddr)
         if (IsCrypted())
         {
             std::vector<unsigned char> vchCryptedSecret;
-            CKeyingMaterial vchSecret;
-            vchSecret.resize(32);
+            std::vector<unsigned char, secure_allocator<unsigned char> > vchSecret;
+            vchSecret.resize(ec_secret_size);
             memcpy(&vchSecret[0], &sxAddr.spend_secret[0], 32);
 
             uint256 iv = Hash(sxAddr.spend_pubkey.begin(), sxAddr.spend_pubkey.end());
@@ -11664,7 +11707,7 @@ bool CWallet::UnlockGhostAddresses(const CKeyingMaterial& vMasterKeyIn)
         // -- CGhostAddress are only sorted on spend_pubkey
         CGhostAddress &sxAddr = const_cast<CGhostAddress&>(*it);
 
-        CKeyingMaterial vchSecret;
+        std::vector<unsigned char, secure_allocator<unsigned char> > vchSecret;
         uint256 iv = Hash(sxAddr.spend_pubkey.begin(), sxAddr.spend_pubkey.end());
         if(!DecryptSecret(vMasterKeyIn, sxAddr.spend_secret, iv, vchSecret)
             || vchSecret.size() != 32)
@@ -11742,20 +11785,13 @@ bool CWallet::UnlockGhostAddresses(const CKeyingMaterial& vMasterKeyIn)
             continue;
         };
 
-        //CKeyingMaterial vchSecret;
-
-        CBitcoinSecret vchSecret;
-
-        std::string secretString;
-        secretString.assign(sSpendR.e, sSpendR.e + sizeof(sSpendR.e));
-        vchSecret.SetString(secretString);
-
-        //memcpy(&vchSecret.[0], &sSpendR.e[0], ec_secret_size);
+        std::vector<unsigned char, secure_allocator<unsigned char> > vchSecret;
+        vchSecret.resize(ec_secret_size);
+        memcpy(&vchSecret[0], &sSpendR.e[0], ec_secret_size);
 
         CKey ckey;
-
         try {
-            ckey = vchSecret.GetKey();
+            ckey.Set(&vchSecret[0], true);
         } catch (std::exception& e) {
             continue;
         };
@@ -11867,8 +11903,8 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx)
                     CBitcoinAddress coinAddress(keyId);
 
                     std::string sLabel = it->Encoded();
-                    LearnRelatedScripts(cpkE, g_address_type);
-                    CTxDestination dest = GetDestinationForKey(cpkE, g_address_type);
+                    //LearnRelatedScripts(cpkE, g_address_type);
+                    CTxDestination dest = GetDestinationForKey(cpkE, OUTPUT_TYPE_LEGACY);
                     SetAddressBook(dest, sLabel, "receive");
 
                     CPubKey cpkEphem(vchEphemPK);
@@ -11876,7 +11912,7 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx)
                     CStealthKeyMetadata lockedSkMeta(cpkEphem, cpkScan);
 
                     if (!CWalletDB(*dbw).WriteGhostKeyMeta(keyId, lockedSkMeta))
-                        LogPrintf("WriteStealthKeyMeta failed for %s\n", coinAddress.ToString().c_str());
+                        LogPrintf("WriteGhostKeyMeta failed for %s\n", coinAddress.ToString().c_str());
 
                     mapGhostKeyMeta[keyId] = lockedSkMeta;
                     nFoundStealth++;
@@ -11943,4 +11979,46 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx)
     };
 
     return true;
-};
+}
+
+bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
+{
+    if(!tx.IsZerocoinMint(tx))
+        return true;
+
+    LOCK(cs_wallet);
+
+    list <CZerocoinEntry> listUnloadedPubcoin;
+    CWalletDB walletdb(this->GetDBHandle());
+    walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
+
+    BOOST_FOREACH(const CTxOut& txout, tx.vout)
+    {
+        CBigNum pubCoin(vector<unsigned char>(txout.scriptPubKey.begin()+6, txout.scriptPubKey.end()));
+
+        for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
+            //found our Pedersen commitment
+            //store in main zerocoin database
+            if(zerocoinItem.value == pubCoin){
+                //create new zc object
+                CZerocoinEntry zerocoinTx;
+                zerocoinTx.IsUsed = false;
+                zerocoinTx.denomination = txout.nValue;;
+                zerocoinTx.value = zerocoinItem.value;
+                zerocoinTx.randomness = zerocoinItem.randomness;
+                zerocoinTx.serialNumber = zerocoinItem.serialNumber;
+                zerocoinTx.ecdsaSecretKey = zerocoinItem.ecdsaSecretKey;
+                NotifyZerocoinChanged(this, zerocoinTx.value.GetHex(), zerocoinTx.denomination, zerocoinTx.IsUsed ? "Used" : "New", CT_NEW);
+
+                //first try and write public payment
+                if (!walletdb.WriteZerocoinEntry(zerocoinTx))
+                    return false;
+
+                if(!walletdb.EraseUnloadedZCEntry(zerocoinItem))
+                    return false;
+            }
+        }
+    }
+
+    return true;
+}

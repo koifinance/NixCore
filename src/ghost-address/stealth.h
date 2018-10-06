@@ -240,10 +240,6 @@ public:
 
 };
 
-void AppendChecksum(data_chunk& data);
-
-bool VerifyChecksum(const data_chunk& data);
-
 int GenerateRandomSecret(ec_secret& out);
 
 int SecretToPublicKey(const ec_secret& secret, ec_point& out);

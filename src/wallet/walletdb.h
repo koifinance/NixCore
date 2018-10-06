@@ -427,6 +427,11 @@ public:
     bool ReadCalculatedZCBlock(int& height);
     bool WriteCalculatedZCBlock(int height);
 
+    //Unfilled precomputed zerocoins
+    bool WriteUnloadedZCEntry(const CZerocoinEntry& zerocoin);
+    bool EraseUnloadedZCEntry(const CZerocoinEntry& zerocoin);
+    void ListUnloadedPubCoin(std::list<CZerocoinEntry>& listUnloadedPubCoin);
+
     bool WriteStealthKeyMeta(const CKeyID &keyId, const CStealthKeyMetadata &sxKeyMeta);
     bool EraseStealthKeyMeta(const CKeyID &keyId);
 

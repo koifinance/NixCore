@@ -299,9 +299,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                             return InvalidAddress;
                         };
 
-                        //CKeyID ckidTo = cpkTo.GetID();
+                        CKeyID ckidTo = cpkTo.GetID();
 
-                        //CBitcoinAddress addrTo(ckidTo);
+                        CBitcoinAddress addrTo(ckidTo);
 
                         if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
                         {
@@ -309,8 +309,8 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                             return InvalidAddress;
                         };
 
-                        //CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
-                        CScript scriptPubKey = GetScriptForDestination(GetDestinationForKey(cpkTo, g_address_type));
+                        CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
+                        //CScript scriptPubKey = GetScriptForDestination(GetDestinationForKey(cpkTo, g_address_type));
 
                         subtotal += out.amount();
                         CAmount nAmount = out.amount();

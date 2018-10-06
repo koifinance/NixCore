@@ -536,6 +536,15 @@ public:
         return ret;
     }
 
+
+    CBigNum mod_sqrt(const CBigNum& b){
+        CBigNum ret;
+        CAutoBN_CTX pctx;
+        if (!BN_mod_sqrt(&ret,bn,&b,pctx))
+            throw bignum_error("CBigNum::mod_sqrt : BN_mod_sqrt failed");
+        return ret;
+    }
+
     /**
      * modular exponentiation: this^e mod n
      * @param e exponent
