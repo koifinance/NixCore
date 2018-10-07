@@ -42,6 +42,8 @@ dbwrapper.cpp
 dbwrapper.h
 fs.cpp
 fs.h
+ghost-address/commitmentkey.cpp
+ghost-address/commitmentkey.h
 hash.cpp
 hash.h
 httprpc.cpp

@@ -186,6 +186,7 @@ NIX_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/ismine.h \
+  ghost-address/commitmentkey.h \
   ghost-address/lz4.h \
   ghost-address/extkey.h \
   ghost-address/keystore.h \
@@ -462,6 +463,7 @@ libnix_common_a_SOURCES = \
   script/standard.cpp \
   unilib/uninorms.cpp \
   unilib/utf8.cpp \
+  ghost-address/commitmentkey.cpp \
   ghost-address/lz4.c \
   ghost-address/extkey.cpp \
   ghost-address/keystore.cpp \

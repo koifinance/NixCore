@@ -177,6 +177,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "reservebalance", 0, "enabled" },
 
     {"payunloadedpubcoins", 0, "amount"},
+    {"refillghostkeys", 0, "amount"},
 };
 
 class CRPCConvertTable

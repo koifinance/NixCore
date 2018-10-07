@@ -1081,4 +1081,4 @@ bool IsGhostAddress(const std::string& encodedAddress)
     };
 
     return true;
-};
+}

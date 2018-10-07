@@ -23,7 +23,7 @@ uint32_t BitcoinChecksum(uint8_t *p, uint32_t nBytes)
     memcpy(&checksum, &hash2[0], 4);
 
     return checksum;
-};
+}
 
 void AppendChecksum(std::vector<uint8_t> &data)
 {
@@ -33,7 +33,7 @@ void AppendChecksum(std::vector<uint8_t> &data)
     memcpy(&tmp[0], &checksum, 4);
 
     data.insert(data.end(), tmp.begin(), tmp.end());
-};
+}
 
 bool VerifyChecksum(const std::vector<uint8_t> &data)
 {
@@ -44,4 +44,4 @@ bool VerifyChecksum(const std::vector<uint8_t> &data)
     memcpy(&checksum, &(*(data.end() - 4)), 4);
 
     return BitcoinChecksum((uint8_t*)&data[0], data.size()-4) == checksum;
-};
+}

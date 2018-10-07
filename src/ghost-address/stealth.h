@@ -17,6 +17,12 @@
 #include <uint256.h>
 #include <ghost-address/types.h>
 
+#include "lz4.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 
 class CScript;
 
@@ -250,6 +256,4 @@ int StealthSharedToSecretSpend(ec_secret& sharedS, ec_secret& spendSecret, ec_se
 
 bool IsGhostAddress(const std::string& encodedAddress);
 
-
 #endif  // KEY_STEALTH_H
-

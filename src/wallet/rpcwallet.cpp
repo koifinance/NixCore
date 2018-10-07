@@ -5431,109 +5431,13 @@ UniValue reservebalance(const JSONRPCRequest &request)
     return result;
 }
 
-
-static const std::string base64_chars =
-             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-             "abcdefghijklmnopqrstuvwxyz"
-             "0123456789+/";
-
-
-static inline bool is_base64(unsigned char c) {
-  return (isalnum(c) || (c == '+') || (c == '/'));
-}
-
-std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len) {
-  std::string ret;
-  int i = 0;
-  int j = 0;
-  unsigned char char_array_3[3];
-  unsigned char char_array_4[4];
-
-  while (in_len--) {
-    char_array_3[i++] = *(bytes_to_encode++);
-    if (i == 3) {
-      char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-      char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-      char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-      char_array_4[3] = char_array_3[2] & 0x3f;
-
-      for(i = 0; (i <4) ; i++)
-        ret += base64_chars[char_array_4[i]];
-      i = 0;
-    }
-  }
-
-  if (i)
-  {
-    for(j = i; j < 3; j++)
-      char_array_3[j] = '\0';
-
-    char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-    char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-    char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-    char_array_4[3] = char_array_3[2] & 0x3f;
-
-    for (j = 0; (j < i + 1); j++)
-      ret += base64_chars[char_array_4[j]];
-
-    while((i++ < 3))
-      ret += '=';
-
-  }
-
-  return ret;
-
-}
-
-std::string base64_decode(std::string const& encoded_string) {
-  size_t in_len = encoded_string.size();
-  size_t i = 0;
-  size_t j = 0;
-  int in_ = 0;
-  unsigned char char_array_4[4], char_array_3[3];
-  std::string ret;
-
-  while (in_len-- && ( encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
-    char_array_4[i++] = encoded_string[in_]; in_++;
-    if (i ==4) {
-      for (i = 0; i <4; i++)
-        char_array_4[i] = static_cast<unsigned char>(base64_chars.find(char_array_4[i]));
-
-      char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-      char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-      char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-
-      for (i = 0; (i < 3); i++)
-        ret += char_array_3[i];
-      i = 0;
-    }
-  }
-
-  if (i) {
-    for (j = i; j <4; j++)
-      char_array_4[j] = 0;
-
-    for (j = 0; j <4; j++)
-      char_array_4[j] = static_cast<unsigned char>(base64_chars.find(char_array_4[j]));
-
-    char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-    char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-    char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-
-    for (j = 0; (j < i - 1); j++) ret += char_array_3[j];
-  }
-
-  return ret;
-}
-#include <pubkey.cpp>
-
 UniValue refillghostkeys(const JSONRPCRequest& request)
 {
 
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
     if (request.fHelp || request.params.size() > 1)
-        throw runtime_error("refillghostkeys <amount>(default=10)\n" + HelpRequiringPassphrase(pwalletMain));
+        throw runtime_error("refillghostkeys <amount>(default=100)\n" + HelpRequiringPassphrase(pwalletMain));
 
     libzerocoin::CoinDenomination denomination;
     libzerocoin::Params *zcParams = ZCParams;
@@ -5547,11 +5451,20 @@ UniValue refillghostkeys(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     }
 
-    //fill ghost key
-    for(int i = 0; i < 10; i++){
+    list <CZerocoinEntry> listUnloadedPubcoin;
+    CWalletDB walletdb(pwalletMain->GetDBHandle());
+    walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
+
+    int ideal = 0;
+    if(request.params.size() > 0)
+        ideal = request.params[0].get_int();
+    else
+        ideal = 101;
+
+    //refill keys to 100 in wallet
+    for(int i = listUnloadedPubcoin.size(); i < ideal; i++){
         libzerocoin::PrivateCoin newCoinTemp(zcParams, denomination, mintVersion);
         if(newCoinTemp.getPublicCoin().validate()){
-            CWalletDB walletdb(pwalletMain->GetDBHandle());
             const unsigned char *ecdsaSecretKey = newCoinTemp.getEcdsaSeckey();
             CZerocoinEntry zerocoinTx;
             zerocoinTx.IsUsed = false;
@@ -5560,35 +5473,23 @@ UniValue refillghostkeys(const JSONRPCRequest& request)
             zerocoinTx.randomness = newCoinTemp.getRandomness();
             zerocoinTx.serialNumber = newCoinTemp.getSerialNumber();
             zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
-            //pwalletMain->NotifyZerocoinChanged(pwalletMain, zerocoinTx.value.GetHex(), zerocoinTx.denomination, zerocoinTx.IsUsed ? "Used" : "New", CT_NEW);
             if (!walletdb.WriteUnloadedZCEntry(zerocoinTx))
                 return "ghostkeys() Error: Only able to create " + std::to_string(i) + " keys";
 
-            std::vector<unsigned char> pubCoinData = newCoinTemp.getPublicCoin().getValue().getvch();
-            ghostKey.push_back(base64_encode(pubCoinData.data(), pubCoinData.size()) + "-");
+            vector<unsigned char> commitmentKey = newCoinTemp.getPublicCoin().getValue().getvch();
+            CommitmentKey pubCoin(commitmentKey);
+            ghostKey.push_back(pubCoin.GetPubCoinDataBase58() + "-");
         }
         else
             i--;
     }
+
+    string fullKey;
+    for(string key: ghostKey)
+        fullKey+=key;
+
     return "Sucessfully created ghostkey: \n"
-            + ghostKey[0] + ghostKey[1] + ghostKey[2] + ghostKey[3] + ghostKey[4]
-            + ghostKey[5] + ghostKey[6] + ghostKey[7] + ghostKey[8] + ghostKey[9];
-    /*
-    std::vector<unsigned char> originalData = pubCoin.getValue().getvch();
-    std::string nestr(originalData.begin(), originalData.end());
-    std::string decodedData = base64_decode(base64_encode(originalData.data(), originalData.size()));
-    std::vector<unsigned char> originalData3(decodedData.begin(), decodedData.end());
-    std::vector<unsigned char> originalData2(nestr.begin(), nestr.end());
-    CBigNum newPubCoin(originalData);
-    CBigNum newPubCoin2(originalData2);
-    CBigNum newPubCoin3(originalData3);
-    return "Sucessfully ghosted: \n"
-            + pubCoin.getValue().ToString() + "\n\n"
-            + newPubCoin.ToString()+ "\n\n"
-            + newPubCoin2.ToString()+ "\n\n"
-            + base64_encode(originalData.data(), originalData.size()) + "\n\n"
-            + newPubCoin3.ToString() + "\n\n";
-            */
+            + fullKey;
 }
 
 UniValue listunloadedpubcoins(const JSONRPCRequest& request) {
@@ -5607,8 +5508,9 @@ UniValue listunloadedpubcoins(const JSONRPCRequest& request) {
     //listUnloadedPubcoin.sort(CompID);
 
     for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
-        std::vector<unsigned char> pubCoinData = zerocoinItem.value.getvch();
-        results.push_back(base64_encode(pubCoinData.data(), pubCoinData.size()));
+        vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+        CommitmentKey pubCoin(commitmentKey);
+        results.push_back(pubCoin.GetPubCoinDataBase58());
     }
 
     return results;
@@ -5625,21 +5527,6 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    UniValue results(UniValue::VARR);
-
-    /*
-    //split key into convertable format
-    std::string keyBunch = request.params[0].get_str();
-    vector<std::string> splitKeys;
-    for(int i = 0; i < keyBunch.size(); i++){
-        if(keyBunch[i] == '-'){
-            splitKeys.push_back(base64_decode(std::string(keyBunch.begin(), keyBunch.begin() + (i))));
-            keyBunch.erase(keyBunch.begin(), keyBunch.begin() + i +1 );
-            i = 0;
-        }
-    }
-    */
-
     int64_t nAmount = request.params[0].get_int64();
 
     if (pwalletMain->IsLocked())
@@ -5648,35 +5535,16 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
 
 
     //split key into convertable format
-    std::string keyBunch = request.params[1].get_str();
-    vector<vector<unsigned char>> pubCoinList;
-    vector<CScript> pubCoinScripts;
-    for(int i = 0; i < keyBunch.size(); i++){
-        if(keyBunch[i] == '-'){
-            std::string temp = base64_decode(std::string(keyBunch.begin(), keyBunch.begin() + (i)));
-            std::vector<unsigned char> pubCoinData(temp.begin(), temp.end());
-            CScript scriptSerializedCoin = CScript() << OP_ZEROCOINMINT << pubCoinData.size() << pubCoinData;
-            pubCoinScripts.push_back(scriptSerializedCoin);
-            //pubCoinList.push_back(vector<unsigned char>(temp.begin(), temp.end()));
-            keyBunch.erase(keyBunch.begin(), keyBunch.begin() + i +1 );
-            i = 0;
-        }
-    }
+    std::string keyPackString = request.params[1].get_str();
+    vector<unsigned char> commitmentKey = vector<unsigned char>(keyPackString.begin(), keyPackString.end());
+    CommitmentKeyPack keyPack(commitmentKey);
 
-    std::string strError = pwalletMain->GhostModeSpendTrigger(std::to_string(nAmount), "", pubCoinScripts);
+    std::string strError;
 
-
-    //std::vector<unsigned char> originalData4(newCoin.pubHash.ToString().begin(), newCoin.pubHash.ToString().end());
-
-
-    /*
-    std::string compared(newCoin.pubHash.begin(), newCoin.pubHash.end());
-    std::vector<unsigned char> originalData4(compared.begin(), compared.end());
-    return "Sucessfully ghosted: \n"
-            + base64_encode(originalData4.data(), originalData4.size()) + "\n\n";
-            //+ base64_encode(originalData4.data(), originalData4.size());
-    */
-
+    if(keyPack.IsValidPack())
+        strError = pwalletMain->GhostModeSpendTrigger(std::to_string(nAmount), "", keyPack.GetPubCoinPackScript());
+    else
+        return "Not Valid Pack";
 
     return strError;
 }
