@@ -273,10 +273,6 @@
          <property name="text">
           <string>&amp;Un-Ghost NIX</string>
          </property>
-         <property name="icon">
-          <iconset>
-           <normaloff>../res/icons/edit.png</normaloff>../res/icons/edit.png</iconset>
-         </property>
          <property name="autoDefault">
           <bool>false</bool>
          </property>
@@ -375,14 +371,10 @@
           </rect>
          </property>
          <property name="toolTip">
-          <string>Convert Ghosted NIX</string>
+          <string>Transfer Ghosted NIX</string>
          </property>
          <property name="text">
           <string>&amp;Transfer</string>
-         </property>
-         <property name="icon">
-          <iconset>
-           <normaloff>../res/icons/edit.png</normaloff>../res/icons/edit.png</iconset>
          </property>
          <property name="autoDefault">
           <bool>false</bool>
@@ -403,7 +395,7 @@
         </widget>
         <widget class="QLineEdit" name="transferGhostTo">
          <property name="enabled">
-          <bool>false</bool>
+          <bool>true</bool>
          </property>
          <property name="geometry">
           <rect>
@@ -469,6 +461,35 @@
          <property name="text">
           <string>Transfer To:</string>
          </property>
+        </widget>
+        <zorder>label_5</zorder>
+        <zorder>transferGhostButton</zorder>
+        <zorder>transferNIXAmount</zorder>
+        <zorder>transferGhostTo</zorder>
+        <zorder>label_4</zorder>
+       </widget>
+       <widget class="QWidget" name="tab_4">
+        <attribute name="title">
+         <string>Key List</string>
+        </attribute>
+        <widget class="QTableView" name="keyPackList">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>0</y>
+           <width>651</width>
+           <height>111</height>
+          </rect>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <attribute name="verticalHeaderVisible">
+          <bool>false</bool>
+         </attribute>
         </widget>
        </widget>
       </widget>

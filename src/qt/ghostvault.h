@@ -67,6 +67,8 @@ private Q_SLOTS:
     void on_ghostNIXButton_clicked();
     /** Ghost convert clicked */
     void on_convertGhostButton_clicked();
+    /** Ghost transfer clicked */
+    void on_transferGhostButton_clicked();
     /** Ghost To Me checked */
     void convertGhostToMeCheckBoxChecked(int);
 //    void on_showQRCode_clicked();

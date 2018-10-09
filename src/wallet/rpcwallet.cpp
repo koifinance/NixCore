@@ -5516,6 +5516,49 @@ UniValue listunloadedpubcoins(const JSONRPCRequest& request) {
     return results;
 }
 
+UniValue getpubcoinpack(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "getpubcoinpack amount(default=10)\n"
+                        "\nResults a Commitment Key Pack\n");
+
+
+    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if (pwalletMain->IsLocked()) {
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    }
+
+    list <CZerocoinEntry> listUnloadedPubcoin;
+    CWalletDB walletdb(pwalletMain->GetDBHandle());
+    walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
+    UniValue results(UniValue::VARR);
+    //listUnloadedPubcoin.sort(CompID);
+
+    int keyAmount = 10;
+    if(request.params.size() > 0)
+        keyAmount = request.params[0].get_int();
+
+    if(keyAmount > listUnloadedPubcoin.size())
+        throw JSONRPCError(RPC_WALLET_ERROR,
+                           "Error: Not enough Commitment Keys, please run refillghostkeys");
+
+    vector< vector <unsigned char>> keyList = vector< vector <unsigned char>>();
+    keyList.clear();
+    for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
+        if(keyAmount < 1)
+            break;
+        keyAmount--;
+        vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+        keyList.push_back(commitmentKey);
+    }
+
+    CommitmentKeyPack pubCoinPack(keyList);
+
+    results.push_back(pubCoinPack.GetPubCoinPackDataBase58());
+
+    return results;
+}
 UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
@@ -5536,8 +5579,7 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
 
     //split key into convertable format
     std::string keyPackString = request.params[1].get_str();
-    vector<unsigned char> commitmentKey = vector<unsigned char>(keyPackString.begin(), keyPackString.end());
-    CommitmentKeyPack keyPack(commitmentKey);
+    CommitmentKeyPack keyPack(keyPackString);
 
     std::string strError;
 
@@ -5651,6 +5693,8 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "refillghostkeys",          &refillghostkeys,           {"amount"} },
     { "NIX Ghost Protocol",             "listunloadedpubcoins",     &listunloadedpubcoins,      {"amount"} },
     { "NIX Ghost Protocol",             "payunloadedpubcoins",      &payunloadedpubcoins,       {"amount", "address"} },
+    { "NIX Ghost Protocol",             "getpubcoinpack",           &getpubcoinpack,            {"amount"} },
+
 
 
 

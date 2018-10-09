@@ -60,8 +60,8 @@ private:
     int compressedSize;
 
 public:
-    CommitmentKeyPack(std::vector<unsigned char>& _pubCoinPack, bool fIn = true);
-
+    CommitmentKeyPack(std::string& _pubCoinPack);
+    CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _pubCoinPack);
     void Init();
     bool IsValidPack();
     int Compress();
@@ -96,7 +96,7 @@ public:
     }
 };
 
-std::string EncodeBase62(const std::vector<unsigned char>& vch);
-bool DecodeBase62(const std::string& str, std::vector<unsigned char>& vchRet);
+std::string EncodeBase61(const std::vector<unsigned char>& vch);
+bool DecodeBase61(const std::string& str, std::vector<unsigned char>& vchRet);
 
 #endif // NIX_PEDERSENKEY_H
