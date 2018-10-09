@@ -5591,6 +5591,27 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
     return strError;
 }
 
+
+UniValue resetzerocoinamounts(const JSONRPCRequest& request)
+{
+
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+
+    list <CZerocoinEntry> listPubcoin;
+    CWalletDB walletdb(pwalletMain->GetDBHandle());
+    walletdb.ListPubCoin(listPubcoin);
+
+    //refill keys to 100 in wallet
+    for(CZerocoinEntry &zcEntry: listPubcoin){
+            if(zcEntry.denomination > 5000)
+                if (!walletdb.EraseZerocoinEntry(zcEntry))
+                    return "ghostkeys() Error: Only able to create";
+    }
+
+    return "Sucessfully created ghostkey: \n";
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -5694,7 +5715,7 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "listunloadedpubcoins",     &listunloadedpubcoins,      {"amount"} },
     { "NIX Ghost Protocol",             "payunloadedpubcoins",      &payunloadedpubcoins,       {"amount", "address"} },
     { "NIX Ghost Protocol",             "getpubcoinpack",           &getpubcoinpack,            {"amount"} },
-
+  { "NIX Ghost Protocol",             "resetzerocoinamounts",           &resetzerocoinamounts,            {} },
 
 
 

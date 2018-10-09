@@ -1199,6 +1199,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
 
         FindGhostTransactions(tx);
         FindUnloadedGhostTransactions(tx);
+        TopUpUnloadedCommitments();
         if (fExisted || IsMine(tx) || IsFromMe(tx))
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
@@ -5920,7 +5921,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
             }
 
             if (coinId == INT_MAX){
-                strFailReason = _("network privacy set too low. There needs to be at least 2 ghosted values of this type!");
+                strFailReason = _("network privacy set too low. There needs to be at least 2 ghosted values of this type! ");
                 return false;
             }
 
@@ -6221,7 +6222,7 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
                 }
 
                 if (coinId == INT_MAX){
-                    strFailReason = _("network privacy set too low. There needs to be at least 2 ghosted values of this type!");
+                    strFailReason = _("network privacy set too low. There needs to be at least 2 ghosted values of this type!")  + std::to_string(coinHeight) + " " + std::to_string(coinId);
                     return false;
                 }
 
@@ -12004,7 +12005,7 @@ bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
                 //create new zc object
                 CZerocoinEntry zerocoinTx;
                 zerocoinTx.IsUsed = false;
-                zerocoinTx.denomination = txout.nValue;;
+                zerocoinTx.denomination = txout.nValue/COIN;
                 zerocoinTx.value = zerocoinItem.value;
                 zerocoinTx.randomness = zerocoinItem.randomness;
                 zerocoinTx.serialNumber = zerocoinItem.serialNumber;
@@ -12017,7 +12018,74 @@ bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
 
                 if(!walletdb.EraseUnloadedZCEntry(zerocoinItem))
                     return false;
+
+
+                //Refill Key
+                libzerocoin::CoinDenomination denomination;
+                libzerocoin::Params *zcParams = ZCParams;
+                int mintVersion = 1;
+                denomination = libzerocoin::ZQ_ONE;
+                libzerocoin::PrivateCoin newCoinTemp(zcParams, denomination, mintVersion);
+                if(newCoinTemp.getPublicCoin().validate()){
+                    const unsigned char *ecdsaSecretKey = newCoinTemp.getEcdsaSeckey();
+                    CZerocoinEntry zerocoinTxNew;
+                    zerocoinTxNew.IsUsed = false;
+                    zerocoinTxNew.denomination = libzerocoin::ZQ_ERROR;
+                    zerocoinTxNew.value = newCoinTemp.getPublicCoin().getValue();
+                    zerocoinTxNew.randomness = newCoinTemp.getRandomness();
+                    zerocoinTxNew.serialNumber = newCoinTemp.getSerialNumber();
+                    zerocoinTxNew.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
+                    if (!walletdb.WriteUnloadedZCEntry(zerocoinTxNew))
+                        return false;
+                }
             }
+        }
+    }
+
+    return true;
+}
+
+
+bool CWallet::TopUpUnloadedCommitments(int kpSize)
+{
+    {
+        LOCK(cs_wallet);
+
+        if (IsLocked())
+            return false;
+
+
+        libzerocoin::CoinDenomination denomination;
+        libzerocoin::Params *zcParams = ZCParams;
+
+        int mintVersion = 1;
+        denomination = libzerocoin::ZQ_ONE;
+
+        if (IsLocked()) {
+            return false;
+        }
+
+        list <CZerocoinEntry> listUnloadedPubcoin;
+        CWalletDB walletdb(GetDBHandle());
+        walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
+
+        //refill keys to at least 100 in wallet
+        for(int i = listUnloadedPubcoin.size(); i < kpSize; i++){
+            libzerocoin::PrivateCoin newCoinTemp(zcParams, denomination, mintVersion);
+            if(newCoinTemp.getPublicCoin().validate()){
+                const unsigned char *ecdsaSecretKey = newCoinTemp.getEcdsaSeckey();
+                CZerocoinEntry zerocoinTx;
+                zerocoinTx.IsUsed = false;
+                zerocoinTx.denomination = libzerocoin::ZQ_ERROR;
+                zerocoinTx.value = newCoinTemp.getPublicCoin().getValue();
+                zerocoinTx.randomness = newCoinTemp.getRandomness();
+                zerocoinTx.serialNumber = newCoinTemp.getSerialNumber();
+                zerocoinTx.ecdsaSecretKey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
+                if (!walletdb.WriteUnloadedZCEntry(zerocoinTx))
+                    return false;
+            }
+            else
+                i--;
         }
     }
 

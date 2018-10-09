@@ -1468,6 +1468,7 @@ public:
     bool CreateZerocoinSpendModelBatch(string &stringError, vector <string> denomAmountBatch, string toAddr, vector <CScript> pubCoinScripts = vector<CScript>());
 
     bool FindUnloadedGhostTransactions(const CTransaction& tx);
+    bool TopUpUnloadedCommitments(int kpSize = 101);
 
     /**
      * Add ghost functions
