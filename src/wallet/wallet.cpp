@@ -5316,6 +5316,72 @@ bool CWallet::CreateZerocoinMintModelBatch(string &stringError, vector <string> 
     return true;
 }
 
+bool CWallet::CreateZerocoinMintModelBatch(string &stringError, vector <string> denomAmount, vector<CScript> pubCoinScripts) {
+
+    vector <CScript> scriptBatch;
+    vector <int64_t> nAmountBatch;
+
+    scriptBatch.clear();
+    nAmountBatch.clear();
+    //Batch zerocoins
+    for(auto denomAmountString: denomAmount){
+
+        int64_t nAmount = 0;
+        libzerocoin::CoinDenomination denomination;
+
+        // Amount
+        if (denomAmountString == "1") {
+            denomination = libzerocoin::ZQ_ONE;
+            nAmount = roundint64(1 * COIN);
+        } else if (denomAmountString == "5") {
+            denomination = libzerocoin::ZQ_FIVE;
+            nAmount = roundint64(5 * COIN);
+        } else if (denomAmountString == "10") {
+            denomination = libzerocoin::ZQ_TEN;
+            nAmount = roundint64(10 * COIN);
+        } else if (denomAmountString == "50") {
+            denomination = libzerocoin::ZQ_FIFTY;
+            nAmount = roundint64(50 * COIN);
+        } else if (denomAmountString == "100") {
+            denomination = libzerocoin::ZQ_ONE_HUNDRED;
+            nAmount = roundint64(100 * COIN);
+        }  else if (denomAmountString == "500") {
+            denomination = libzerocoin::ZQ_FIVE_HUNDRED;
+            nAmount = roundint64(500 * COIN);
+        } else if (denomAmountString == "1000") {
+            denomination = libzerocoin::ZQ_ONE_THOUSAND;
+            nAmount = roundint64(1000 * COIN);
+        } else if (denomAmountString == "5000") {
+            denomination = libzerocoin::ZQ_FIVE_THOUSAND;
+            nAmount = roundint64(5000 * COIN);
+        } else {
+            return false;
+        }
+
+        nAmountBatch.push_back(nAmount);
+
+    }
+
+    // Wallet comments
+    CWalletTx wtx;
+
+    if(pubCoinScripts.size() < nAmountBatch.size())
+    {
+        stringError = "Not enough commitment key packs!";
+        return false;
+    }
+
+    for(int i = 0; i < nAmountBatch.size(); i++)
+        scriptBatch.push_back(pubCoinScripts[i]);
+
+    stringError = MintZerocoinBatch(scriptBatch, nAmountBatch, wtx);
+
+    if (stringError != "")
+        return false;
+
+    return true;
+}
+
 bool CWallet::CreateZerocoinSpendModel(string &stringError, string denomAmount, string toAddr) {
 
     int64_t nAmount = 0;
@@ -9624,7 +9690,7 @@ bool CWallet::SpendAllZerocoins(){
 }
 
 //ghost timer mint responder
-bool CWallet::GhostModeMintTrigger(string totalAmount){
+bool CWallet::GhostModeMintTrigger(string totalAmount, vector<CScript> pubCoinScripts){
 
     string stringError;
     //Autobackup wallet into ghostbackups
@@ -9672,8 +9738,14 @@ bool CWallet::GhostModeMintTrigger(string totalAmount){
 
     if (this->IsLocked())
         return error("%s: Error: The wallet needs to be unlocked.", __func__);
-    if(!CreateZerocoinMintModelBatch(stringError, denominationBatch))
-        return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
+    if(pubCoinScripts.empty()){
+        if(!CreateZerocoinMintModelBatch(stringError, denominationBatch))
+            return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
+    }
+    else{
+        if(!CreateZerocoinMintModelBatch(stringError, denominationBatch, pubCoinScripts))
+            return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
+    }
 
     return true;
 }

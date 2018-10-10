@@ -188,12 +188,12 @@ CommitmentKeyPack::CommitmentKeyPack(std::string& _pubCoinPack)
 {
 
     if(!DecodeBase61(_pubCoinPack, pubCoinPackData)){
-        Init();
+        SetNull();
         return;
     }
     //check checksum
     if(!IsValidPack()){
-        Init();
+        SetNull();
         return;
     }
 
@@ -233,7 +233,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _p
     if(_pubCoinPack.empty())
         return;
 
-    Init();
+    SetNull();
 
     vector<unsigned char> pubCoinSizes;
     for(int i = 0; i < _pubCoinPack.size(); i++){
@@ -251,16 +251,6 @@ CommitmentKeyPack::CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _p
     AppendCommitmentChecksum(pubCoinPackData);
 
     pubCoinPackDataBase58 = EncodeBase61(pubCoinPackData);
-}
-
-void CommitmentKeyPack::Init(){
-    pubCoinPack.clear();
-    pubCoinPackData.clear();
-    pubCoinPackScript.clear();
-    pubCoinPackDataBase58.clear();
-    checksum.clear();
-    pubCoinPackCompressed.clear();
-    compressedSize = 0;
 }
 
 int CommitmentKeyPack::Compress()

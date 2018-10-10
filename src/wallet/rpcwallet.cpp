@@ -4191,13 +4191,13 @@ UniValue enableTor(const JSONRPCRequest& request){
     std::string result = "Error with enabletor feature\n";
     boost::filesystem::path pathTorSetting = GetDataDir()/"nixtorsetting.dat";
     if(fStatus){
-        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "1")) {
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "enabled")) {
             result = ("Please restart the NIX Core wallet to route your connection to obfuscate your IP address. \nSyncing your wallet might be slower.");
         }else{
             result = ("Obfuscation cannot enable");
         }
     }else{
-        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "0")) {
+        if (WriteBinaryFileTor(pathTorSetting.string().c_str(), "disabled")) {
             result = ("Please restart the NIX Core wallet to disable IP obfuscation.");
         } else {
             result = ("Obfuscation cannot disable");
@@ -4218,7 +4218,7 @@ UniValue torStatus(const JSONRPCRequest& request){
     // read config
     std::pair<bool,std::string> torEnabled = ReadBinaryFileTor(pathTorSetting.string().c_str());
     if(torEnabled.first){
-        if(torEnabled.second == "1"){
+        if(torEnabled.second == "enabled"){
             result =  "Obfuscation Enabled";
         }else{
             result = "Obfuscation Disabled";

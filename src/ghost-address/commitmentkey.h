@@ -60,9 +60,20 @@ private:
     int compressedSize;
 
 public:
+    CommitmentKeyPack() {SetNull();}
     CommitmentKeyPack(std::string& _pubCoinPack);
     CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _pubCoinPack);
-    void Init();
+
+    void SetNull(){
+        pubCoinPack.clear();
+        pubCoinPackData.clear();
+        pubCoinPackScript.clear();
+        pubCoinPackDataBase58.clear();
+        checksum.clear();
+        pubCoinPackCompressed.clear();
+        compressedSize = 0;
+    }
+
     bool IsValidPack();
     int Compress();
     int Decompress();

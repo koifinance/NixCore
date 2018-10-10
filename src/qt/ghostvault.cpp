@@ -55,8 +55,6 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
     contextMenu = new QMenu(this);
 
     connect(ui->convertGhostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(convertGhostToMeCheckBoxChecked(int)));
-    connect(ui->transferGhostButton, SIGNAL(triggered()), this, SLOT(on_transferGhostButton_clicked()));
-
 }
 
 GhostVault::~GhostVault() {
@@ -166,11 +164,20 @@ void GhostVault::on_convertGhostButton_clicked() {
     std::string stringError;
 
     CBitcoinAddress nixAddress;
+    CommitmentKeyPack keyPack;
 
     // Address
     nixAddress = CBitcoinAddress(thirdPartyAddress);
 
-
+    if(!nixAddress.IsValid()){
+        keyPack = CommitmentKeyPack(thirdPartyAddress);
+        if(!keyPack.IsValidPack()){
+            QMessageBox::critical(this, tr("Error"),
+                                  tr("Not a valid key pack or address!"),
+                                  QMessageBox::Ok, QMessageBox::Ok);
+            return;
+        }
+    }
 
 
     if(ui->convertGhostToMeCheckBox->isChecked() == false && thirdPartyAddress == ""){
@@ -179,14 +186,6 @@ void GhostVault::on_convertGhostButton_clicked() {
                                       QMessageBox::Ok, QMessageBox::Ok);
         return;
     }else{
-        if(ui->convertGhostToMeCheckBox->isChecked() == false)
-            if(!IsStealthAddress(thirdPartyAddress))
-                if (!nixAddress.IsValid()){
-                    QMessageBox::critical(this, tr("Error"),
-                                                  tr("Your \"Spend To\" address is not valid, please check again"),
-                                                  QMessageBox::Ok, QMessageBox::Ok);
-                    return;
-                }
 
         if(amount.toInt() < 1){
             QMessageBox::critical(this, tr("Error"),
@@ -197,6 +196,11 @@ void GhostVault::on_convertGhostButton_clicked() {
 
         std::string successfulString = "Sucessfully sent " + denomAmount + " ghosted NIX";
 
+        vector<CScript> pubCoinScripts = vector<CScript>();
+
+        if(!nixAddress.IsValid())
+            pubCoinScripts = keyPack.GetPubCoinPackScript();
+
         if(walletModel->getWallet()->IsLocked()){
             WalletModel::UnlockContext ctx(walletModel->requestUnlock());
             if(!ctx.isValid())
@@ -204,10 +208,17 @@ void GhostVault::on_convertGhostButton_clicked() {
                 return;
             }
 
-            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
+            if(nixAddress.IsValid())
+                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
+            else
+                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, "", pubCoinScripts);
 
-        } else
-            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
+        } else{
+            if(nixAddress.IsValid())
+                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
+            else
+                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, "", pubCoinScripts);
+        }
 
         if(stringError != successfulString){
             QString t = tr(stringError.c_str());
@@ -278,72 +289,4 @@ void GhostVault::selectNewAddress(const QModelIndex &parent, int begin, int /*en
 void GhostVault::setVaultBalance(CAmount confirmed, CAmount unconfirmed){
     ui->total->setText(QString::number(confirmed/COIN) + tr(" Ghosted NIX"));
     ui->unconfirmed_label->setText(QString::number(unconfirmed/COIN) + tr(" Unconfirmed NIX"));
-}
-
-void GhostVault::on_transferGhostButton_clicked() {
-
-    QString amount = ui->transferNIXAmount->text();
-    QString address = ui->transferGhostTo->text();
-    std::string denomAmount = amount.toStdString();
-    std::string keyPackString = address.toStdString();
-    std::string stringError;
-
-    if(keyPackString.empty()){
-        QMessageBox::critical(this, tr("Error"),
-                                      tr("Empty commitment key."),
-                                      QMessageBox::Ok, QMessageBox::Ok);
-        return;
-    }
-
-    CommitmentKeyPack keyPack(keyPackString);
-
-
-    if(!keyPack.IsValidPack()){
-        QMessageBox::critical(this, tr("Error"),
-                              tr("Not a valid key pack!"),
-                              QMessageBox::Ok, QMessageBox::Ok);
-        return;
-    }
-    if(amount.toInt() < 1){
-        QMessageBox::critical(this, tr("Error"),
-                                      tr("You must ghost more than 0 coins."),
-                                      QMessageBox::Ok, QMessageBox::Ok);
-        return;
-    }
-
-    std::string successfulString = "Sucessfully sent " + denomAmount + " ghosted NIX";
-
-    vector<CScript> pubCoinScripts = keyPack.GetPubCoinPackScript();
-
-    if(walletModel->getWallet()->IsLocked()){
-        WalletModel::UnlockContext ctx(walletModel->requestUnlock());
-        if(!ctx.isValid())
-        {
-            return;
-        }
-
-        stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, "", pubCoinScripts);
-
-    } else
-        stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, "", pubCoinScripts);
-
-
-    if(stringError != successfulString){
-        QString t = tr(stringError.c_str());
-
-        QMessageBox::critical(this, tr("Error"),
-                              tr("You cannot transfer ghosted NIX at the moment. %1").arg(t),
-                              QMessageBox::Ok, QMessageBox::Ok);
-    }else{
-        QMessageBox::information(this, tr("Success"),
-                                 tr("You have successfully transferred your ghosted NIX from your wallet"),
-                                 QMessageBox::Ok, QMessageBox::Ok);
-
-        ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
-
-        ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
-    }
-
-    ui->transferGhostTo->clear();
-    ui->transferNIXAmount->clear();
 }

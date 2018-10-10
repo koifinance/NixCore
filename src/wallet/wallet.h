@@ -1455,6 +1455,7 @@ public:
     std::string MintZerocoinBatch(vector <CScript> pubCoinBatch, vector <int64_t> nValueBatch, CWalletTx &wtxNew, bool fAskFee=false);
 
     bool CreateZerocoinMintModelBatch(string &stringError, vector <string> denomAmount);
+    bool CreateZerocoinMintModelBatch(string &stringError, vector <string> denomAmount, vector<CScript> pubCoinScripts);
 
     std::string SpendZerocoinBatch(std::string &toKey, vector <CScript> pubCoinScripts, vector <int64_t> nValueBatch, vector <libzerocoin::CoinDenomination> denominationBatch, CWalletTx &wtxNew,
                                    vector <CBigNum> &coinSerialBatch, vector <uint256> &txHashBatch, vector <CBigNum> &zcSelectedValueBatch,
@@ -1475,7 +1476,7 @@ public:
      */
     bool EnableGhostMode(SecureString strWalletPass,string totalAmount);
     bool DisableGhostMode();
-    bool GhostModeMintTrigger(string totalAmount);
+    bool GhostModeMintTrigger(string totalAmount, vector<CScript> pubCoinScripts = vector<CScript>());
     std::string GhostModeSpendTrigger(string denomination, string toKey = "", vector<CScript> pubCoinScripts = vector<CScript>());
     bool SpendAllZerocoins();
     /**
