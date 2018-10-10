@@ -55,6 +55,8 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
     contextMenu = new QMenu(this);
 
     connect(ui->convertGhostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(convertGhostToMeCheckBoxChecked(int)));
+    connect(ui->ghostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(ghostToMeCheckBoxChecked(int)));
+
 }
 
 GhostVault::~GhostVault() {
@@ -253,6 +255,15 @@ void GhostVault::convertGhostToMeCheckBoxChecked(int state) {
     }
 }
 
+void GhostVault::ghostToMeCheckBoxChecked(int state) {
+    if (state == Qt::Checked)
+    {
+        ui->ghostTo->clear();
+        ui->ghostTo->setEnabled(false);
+    }else{
+        ui->ghostTo->setEnabled(true);
+    }
+}
 
 void GhostVault::on_exportButton_clicked() {
     // CSV is currently the only supported format

@@ -169,8 +169,6 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getnewstealthaddress", 1 ,"label"},
     { "importstealthaddress", 0 ,"scan_secret"},
     { "liststealthaddresses", 0, "show_secrets"},
-    { "enabletor", 0 ,""},
-    { "torstatus", 0, ""},
 
     //NIX Staking functions
     { "walletsettings", 1, "json" },

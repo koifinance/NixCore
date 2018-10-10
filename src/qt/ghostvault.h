@@ -69,6 +69,7 @@ private Q_SLOTS:
     void on_convertGhostButton_clicked();
     /** Ghost To Me checked */
     void convertGhostToMeCheckBoxChecked(int);
+    void ghostToMeCheckBoxChecked(int);
 //    void on_showQRCode_clicked();
     /** Set button states based on selected tab and selection */
 //    void selectionChanged();

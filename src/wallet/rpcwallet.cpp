@@ -5720,7 +5720,7 @@ static const CRPCCommand commands[] =
 
 
     //NIX TOR routing functions
-    { "NIX TOR",             "enabletor",        &enableTor,        {} },
+    { "NIX TOR",             "enabletor",        &enableTor,        {"set"} },
     { "NIX TOR",             "torstatus",             &torStatus,             {} },
 
 
