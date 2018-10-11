@@ -17,11 +17,21 @@
 #include "guiutil.h"
 #include "platformstyle.h"
 #include <wallet/wallet.h>
+#include "qt/recentrequeststablemodel.h"
 
 #include <QIcon>
 #include <QMenu>
 #include <QMessageBox>
 #include <QSortFilterProxyModel>
+#include <QTableWidgetItem>
+#include <QAction>
+#include <QDialog>
+#include <QHeaderView>
+#include <QItemSelection>
+#include <QKeyEvent>
+#include <QMenu>
+#include <QPoint>
+#include <QVariant>
 
 GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *parent) :
         QWidget(parent),
@@ -54,6 +64,12 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
     // Build context menu
     contextMenu = new QMenu(this);
 
+    QAction *copyKeyAction = new QAction(tr("Copy Key"), this);
+    contextMenu = new QMenu(this);
+    contextMenu->addAction(copyKeyAction);
+
+    connect(copyKeyAction, SIGNAL(triggered()), this, SLOT(copyKey()));
+
     connect(ui->convertGhostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(convertGhostToMeCheckBoxChecked(int)));
     connect(ui->ghostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(ghostToMeCheckBoxChecked(int)));
 
@@ -82,23 +98,31 @@ void GhostVault::setModel(AddressTableModel *model) {
 }
 
 void GhostVault::setWalletModel(WalletModel *walletmodel) {
+
     if (!walletmodel)
         return;
+
     this->walletModel = walletmodel;
 
-    QTableView* tableView = ui->keyPackList;
+    if(walletmodel && walletmodel->getOptionsModel())
+    {
+        tableView = ui->keyPackList;
 
-    tableView->verticalHeader()->hide();
-    tableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    tableView->setAlternatingRowColors(true);
-    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    tableView->setSelectionMode(QAbstractItemView::ContiguousSelection);
-    tableView->setColumnWidth(0, 120);
-    tableView->setColumnWidth(1, 180);
+        tableView->verticalHeader()->show();
+        //tableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        tableView->setAlternatingRowColors(false);
+        tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+        tableView->setSelectionMode(QAbstractItemView::ContiguousSelection);
+        tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
 
-    connect(tableView->selectionModel(),
-        SIGNAL(selectionChanged(QItemSelection, QItemSelection)), this,
-        SLOT(recentRequestsView_selectionChanged(QItemSelection, QItemSelection)));
+        vector <CommitmentKeyPack> keyPackList;
+        if (!walletmodel->getKeyPackList(keyPackList))
+            return;
+        //Initialize table with keypacks
+        for (auto r=0; r<10; r++)
+            tableView->setItem(r, 0, new QTableWidgetItem(QString::fromStdString(keyPackList[r].GetPubCoinPackDataBase58())));
+    }
 }
 
 void GhostVault::on_ghostNIXButton_clicked() {
@@ -300,4 +324,43 @@ void GhostVault::selectNewAddress(const QModelIndex &parent, int begin, int /*en
 void GhostVault::setVaultBalance(CAmount confirmed, CAmount unconfirmed){
     ui->total->setText(QString::number(confirmed/COIN) + tr(" Ghosted NIX"));
     ui->unconfirmed_label->setText(QString::number(unconfirmed/COIN) + tr(" Unconfirmed NIX"));
+}
+
+void GhostVault::setKeyList(){
+    if(!walletModel || !tableView)
+        return;
+    vector <CommitmentKeyPack> keyPackList;
+    if (!this->walletModel->getKeyPackList(keyPackList))
+        return;
+    //Initialize table with keypacks
+    for (auto r=0; r<10; r++)
+        tableView->setItem(r, 0, new QTableWidgetItem(QString::fromStdString(keyPackList[r].GetPubCoinPackDataBase58())));
+}
+
+QModelIndex GhostVault::selectedRow()
+{
+    QModelIndexList selection = ui->keyPackList->selectionModel()->selectedRows();
+    if(selection.empty())
+        return QModelIndex();
+    // correct for selection mode ContiguousSelection
+    QModelIndex firstIndex = selection.at(0);
+    return firstIndex;
+}
+// context menu
+void GhostVault::showMenu(const QPoint &point)
+{
+    if (!selectedRow().isValid()) {
+        return;
+    }
+    contextMenu->exec(QCursor::pos());
+}
+
+// context menu action: copy URI
+void GhostVault::copyKey()
+{
+    QModelIndex sel = selectedRow();
+    if (!sel.isValid()) {
+        return;
+    }
+    GUIUtil::setClipboard(ui->keyPackList->item(sel.row(),0)->text());
 }

@@ -34,6 +34,7 @@
 #include <wallet/feebumper.h>
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h> // for BackupWallet
+#include <ghost-address/commitmentkey.h>
 
 #include <stdint.h>
 
@@ -1063,5 +1064,11 @@ void WalletModel::lockWallet()
         wallet->nRelockTime = 0;
         wallet->Lock();
         wallet->fUnlockForStakingOnly = false;
+    }
+}
+
+bool WalletModel::getKeyPackList(vector<CommitmentKeyPack> &keyPackList){
+    if(wallet){
+        return wallet->GetKeyPackList(keyPackList);
     }
 }

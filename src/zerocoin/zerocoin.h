@@ -158,5 +158,6 @@ public:
 };
 
 uint64_t TotalGhosted();
+bool HasZerocoinMint(CScript pubKey);
 
 #endif //ZEROCOIN_H

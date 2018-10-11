@@ -9743,6 +9743,10 @@ bool CWallet::GhostModeMintTrigger(string totalAmount, vector<CScript> pubCoinSc
             return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
     }
     else{
+        for(CScript pScrip: pubCoinScripts){
+            if(HasZerocoinMint(pScrip))
+                return "GhostModeSpendTrigger(): Error: key has already been used!";
+        }
         if(!CreateZerocoinMintModelBatch(stringError, denominationBatch, pubCoinScripts))
             return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
     }
@@ -10029,6 +10033,10 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
             if(pubCoinScripts.size() < denominationBatch.size())
                 return "GhostModeSpendTrigger(): Error: Not enough mint payout scripts "
                         + std::to_string(pubCoinScripts.size()) + " < " + std::to_string(denominationBatch.size());
+            for(CScript pScrip: pubCoinScripts){
+                if(HasZerocoinMint(pScrip))
+                    return "GhostModeSpendTrigger(): Error: key has already been used!";
+            }
 
         }
 
@@ -12159,6 +12167,43 @@ bool CWallet::TopUpUnloadedCommitments(int kpSize)
             else
                 i--;
         }
+    }
+
+    return true;
+}
+
+bool CWallet::GetKeyPackList(vector <CommitmentKeyPack> &keyPackList){
+
+    {
+        LOCK(cs_wallet);
+
+        list <CZerocoinEntry> listUnloadedPubcoin;
+        CWalletDB walletdb(GetDBHandle());
+        walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
+
+        int keyAmount;
+        vector< vector <unsigned char>> keyList = vector< vector <unsigned char>>();
+
+        //make sure we have at least 10 key packs
+        if(listUnloadedPubcoin.size()/10 < 10)
+            return false;
+
+        keyList.clear();
+        keyAmount = 10;
+        for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
+            keyAmount--;
+            vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+            keyList.push_back(commitmentKey);
+            if(keyAmount == 0){
+                CommitmentKeyPack pubCoinPack(keyList);
+                keyPackList.push_back(pubCoinPack);
+                keyList.clear();
+                keyAmount = 10;
+            }
+            if(keyPackList.size() == 10)
+                break;
+        }
+
     }
 
     return true;

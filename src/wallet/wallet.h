@@ -1470,6 +1470,7 @@ public:
 
     bool FindUnloadedGhostTransactions(const CTransaction& tx);
     bool TopUpUnloadedCommitments(int kpSize = 101);
+    bool GetKeyPackList(vector <CommitmentKeyPack> &keyPackList);
 
     /**
      * Add ghost functions

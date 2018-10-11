@@ -24,6 +24,7 @@ class PlatformStyle;
 class RecentRequestsTableModel;
 class TransactionTableModel;
 class WalletModelTransaction;
+class CommitmentKeyPack;
 
 class CCoinControl;
 class CKeyID;
@@ -235,6 +236,8 @@ public:
 
     void lockWallet();
     void checkBalanceChanged();
+
+    bool getKeyPackList(vector<CommitmentKeyPack> &keyPackList);
 
 private:
     CWallet *wallet;

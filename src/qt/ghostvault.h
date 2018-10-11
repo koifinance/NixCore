@@ -6,6 +6,7 @@
 #define BITCOIN_QT_GHOSTVAULT_H
 
 #include <QWidget>
+#include <QTableWidget>
 #include <amount.h>
 
 class AddressTableModel;
@@ -45,9 +46,11 @@ public:
     void setWalletModel(WalletModel *walletmodel);
     const QString &getReturnValue() const { return returnValue; }
     void setVaultBalance(CAmount confirmed, CAmount unconfirmed);
+    void setKeyList();
 
 //public Q_SLOTS:
 //    void done(int retval);
+    QTableWidget* tableView;
 
 private:
     Ui::GhostVault *ui;
@@ -59,6 +62,7 @@ private:
     QMenu *contextMenu;
     QAction *deleteAction; // to be able to explicitly disable it
     QString newAddressToSelect;
+    QModelIndex selectedRow();
 
 private Q_SLOTS:
     /** Export button clicked */
@@ -77,6 +81,9 @@ private Q_SLOTS:
     void contextualMenu(const QPoint &point);
     /** New entry/entries were added to address table */
     void selectNewAddress(const QModelIndex &parent, int begin, int /*end*/);
+
+    void showMenu(const QPoint &point);
+    void copyKey();
 
 Q_SIGNALS:
     void sendCoins(QString addr);

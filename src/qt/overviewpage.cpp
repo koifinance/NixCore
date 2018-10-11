@@ -226,6 +226,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     ui->labelWatchImmature->setVisible(showWatchOnlyImmature); // show watch-only immature balance
 
     ghostVaultPage->setVaultBalance(ghostBalance, ghostBalanceUnconfirmed);
+    ghostVaultPage->setKeyList();
 }
 
 // show/hide watch-only labels
