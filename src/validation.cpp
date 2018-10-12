@@ -714,8 +714,19 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
 
     CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
     vector <CBigNum> zcSpendSerialBatch;
+    vector <CBigNum> zcMintSerialBatch;
     // Check for conflicts with in-memory transactions
     std::set<uint256> setConflicts;
+    if (tx.IsZerocoinMint(tx)) {
+        for(int i = 0; i < tx.vout.size(); i++){
+            CBigNum pubCoin(vector<unsigned char>(tx.vout[i].scriptPubKey.begin()+6, tx.vout[i].scriptPubKey.end()));
+            zcMintSerialBatch.push_back(pubCoin);
+            if (!zcState->CanAddMintToMempool(zcMintSerialBatch[i])) {
+                LogPrintf("AcceptToMemoryPool(): mint pubcoin number %s has been used\n", zcMintSerialBatch[i].ToString());
+                return state.Invalid(false, REJECT_INVALID, "txn-mempool-conflict");
+            }
+        }
+    }
     if (tx.IsZerocoinSpend()) {
 
         for(int i = 0; i < tx.vin.size(); i++){
@@ -1150,6 +1161,11 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     if (tx.IsZerocoinSpend()){
         for(int i = 0; i < zcSpendSerialBatch.size(); i++)
             zcState->AddSpendToMempool(zcSpendSerialBatch[i], hash);
+    }
+
+    if (tx.IsZerocoinMint(tx)){
+        for(int i = 0; i < zcMintSerialBatch.size(); i++)
+            zcState->AddMintToMempool(zcMintSerialBatch[i], hash);
     }
 
     GetMainSignals().TransactionAddedToMempool(ptx);
@@ -2685,7 +2701,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    // Erase conflicting zerocoin txs from the mempool
+    // Erase conflicting zerocoin spend txs from the mempool
     CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
     BOOST_FOREACH(const CTransactionRef &tx, block.vtx) {
         if (tx->IsZerocoinSpend()) {
@@ -2703,6 +2719,27 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
                 // In any case we need to remove serial from mempool set
                 zcState->RemoveSpendFromMempool(zcSpendSerial);
+            }
+        }
+    }
+
+    // Erase conflicting zerocoin mint txs from the mempool
+    BOOST_FOREACH(const CTransactionRef &tx, block.vtx) {
+        if (tx->IsZerocoinMint(*tx)) {
+            for(int i = 0; i < tx->vout.size(); i++){
+                CBigNum pubCoin(vector<unsigned char>(tx->vout[i].scriptPubKey.begin()+6, tx->vout[i].scriptPubKey.end()));
+                uint256 thisTxHash = tx->GetHash();
+                uint256 conflictingTxHash = zcState->GetMempoolMintConflictingTxHash(pubCoin);
+                if (!conflictingTxHash.IsNull() && conflictingTxHash != thisTxHash) {
+                    auto pTx = mempool.get(conflictingTxHash);
+                    if (pTx)
+                        mempool.removeRecursive(*pTx, MemPoolRemovalReason::BLOCK);
+                    LogPrintf("ConnectBlock: removed conflicting zerocoin spend tx %s from the mempool\n",
+                              conflictingTxHash.ToString());
+                }
+
+                // In any case we need to remove serial from mempool set
+                zcState->RemoveMintFromMempool(pubCoin);
             }
         }
     }

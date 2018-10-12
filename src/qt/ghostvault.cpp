@@ -125,15 +125,35 @@ void GhostVault::setWalletModel(WalletModel *walletmodel) {
     }
 }
 
-void GhostVault::on_ghostNIXButton_clicked() {
+void GhostVault::on_ghostNIXButton_clicked() { 
     QString amount = ui->ghostAmount->text();
+    QString address = ui->ghostTo->text();
     std::string denomAmount = amount.toStdString();
     std::string stringError;
+
+    std::string thirdPartyAddress = address.toStdString();
+
+    CommitmentKeyPack keyPack;
+    vector<CScript> pubCoinScripts;
+    pubCoinScripts.clear();
 
     if(amount.toInt() < 1)
         QMessageBox::critical(this, tr("Error"),
                                       tr("You must ghost more than 0 coins."),
                                       QMessageBox::Ok, QMessageBox::Ok);
+
+    if(ui->ghostToMeCheckBox->isChecked() == false){
+        keyPack = CommitmentKeyPack(thirdPartyAddress);
+        if(!keyPack.IsValidPack()){
+            QMessageBox::critical(this, tr("Error"),
+                                  tr("Not a valid key pack or address!"),
+                                  QMessageBox::Ok, QMessageBox::Ok);
+            return;
+        }
+        pubCoinScripts = keyPack.GetPubCoinPackScript();
+    }
+
+
 
     if(walletModel->getWallet()->IsLocked()){
         WalletModel::UnlockContext ctx(walletModel->requestUnlock());
@@ -141,7 +161,8 @@ void GhostVault::on_ghostNIXButton_clicked() {
         {
             return;
         }
-        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount)){
+
+        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount,pubCoinScripts)){
 
             QMessageBox::critical(this, tr("Error"),
                                   tr("You cannot ghost NIX at the moment. Please check the debug.log for errors."),
@@ -160,7 +181,7 @@ void GhostVault::on_ghostNIXButton_clicked() {
         }
     }
     else{
-        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount)){
+        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount, pubCoinScripts)){
 
             QMessageBox::critical(this, tr("Error"),
                                   tr("You cannot ghost NIX at the moment. Please check the debug.log for errors."),
@@ -194,8 +215,10 @@ void GhostVault::on_convertGhostButton_clicked() {
 
     // Address
     nixAddress = CBitcoinAddress(thirdPartyAddress);
+    vector<CScript> pubCoinScripts = vector<CScript>();
+    pubCoinScripts.clear();
 
-    if(!nixAddress.IsValid()){
+    if(ui->convertGhostToMeCheckBox->isChecked() == false && !nixAddress.IsValid()){
         keyPack = CommitmentKeyPack(thirdPartyAddress);
         if(!keyPack.IsValidPack()){
             QMessageBox::critical(this, tr("Error"),
@@ -203,6 +226,7 @@ void GhostVault::on_convertGhostButton_clicked() {
                                   QMessageBox::Ok, QMessageBox::Ok);
             return;
         }
+        pubCoinScripts = keyPack.GetPubCoinPackScript();
     }
 
 
@@ -222,11 +246,6 @@ void GhostVault::on_convertGhostButton_clicked() {
 
         std::string successfulString = "Sucessfully sent " + denomAmount + " ghosted NIX";
 
-        vector<CScript> pubCoinScripts = vector<CScript>();
-
-        if(!nixAddress.IsValid())
-            pubCoinScripts = keyPack.GetPubCoinPackScript();
-
         if(walletModel->getWallet()->IsLocked()){
             WalletModel::UnlockContext ctx(walletModel->requestUnlock());
             if(!ctx.isValid())
@@ -234,16 +253,10 @@ void GhostVault::on_convertGhostButton_clicked() {
                 return;
             }
 
-            if(nixAddress.IsValid())
-                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
-            else
-                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, "", pubCoinScripts);
+            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress, pubCoinScripts);
 
         } else{
-            if(nixAddress.IsValid())
-                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress);
-            else
-                stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, "", pubCoinScripts);
+            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress, pubCoinScripts);
         }
 
         if(stringError != successfulString){

@@ -98,6 +98,8 @@ public:
 
     // serials of spends currently in the mempool mapped to tx hashes
     unordered_map<CBigNum,uint256,CBigNumHash> mempoolCoinSerials;
+    // serials of mints currently in the mempool mapped to tx hashes
+    unordered_map<CBigNum,uint256,CBigNumHash> mempoolCoinMints;
 
     // Add mint, automatically assigning id to it. Returns id and previous accumulator value (if any)
     int AddMint(CBlockIndex *index, int denomination, const CBigNum &pubCoin, CBigNum &previousAccValue);
@@ -154,6 +156,18 @@ public:
     static CZerocoinState *GetZerocoinState();
 
     uint64_t GetTotalZerocoins();
+
+    // Check if there is a conflicting mint tx in the blockchain or mempool
+    bool CanAddMintToMempool(const CBigNum &coinMint);
+
+    // Add mint into the mempool. Check if there is a coin with such serial in either blockchain or mempool
+    bool AddMintToMempool(const CBigNum &coinMint, uint256 txHash);
+
+    // Get conflicting mint tx hash by coin pubkey number
+    uint256 GetMempoolMintConflictingTxHash(const CBigNum &coinMint);
+
+    // Remove mint from the mempool (usually as the result of adding tx to the block)
+    void RemoveMintFromMempool(const CBigNum &coinMint);
 
 };
 

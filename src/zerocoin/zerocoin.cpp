@@ -982,12 +982,36 @@ bool CZerocoinState::CanAddSpendToMempool(const CBigNum &coinSerial) {
     return !IsUsedCoinSerial(coinSerial) && mempoolCoinSerials.count(coinSerial) == 0;
 }
 
+bool CZerocoinState::AddMintToMempool(const CBigNum &coinMint, uint256 txHash) {
+    if (HasCoin(coinMint) || mempoolCoinMints.count(coinMint))
+        return false;
+
+    mempoolCoinMints[coinMint] = txHash;
+    return true;
+}
+
+void CZerocoinState::RemoveMintFromMempool(const CBigNum &coinMint) {
+    mempoolCoinMints.erase(coinMint);
+}
+
+uint256 CZerocoinState::GetMempoolMintConflictingTxHash(const CBigNum &coinMint) {
+    if (mempoolCoinMints.count(coinMint) == 0)
+        return uint256();
+
+    return mempoolCoinMints[coinMint];
+}
+
+bool CZerocoinState::CanAddMintToMempool(const CBigNum &coinMint) {
+    return !HasCoin(coinMint) && mempoolCoinMints.count(coinMint) == 0;
+}
+
 void CZerocoinState::Reset() {
     coinGroups.clear();
     usedCoinSerials.clear();
     mintedPubCoins.clear();
     latestCoinIds.clear();
     mempoolCoinSerials.clear();
+    mempoolCoinMints.clear();
 }
 
 CZerocoinState *CZerocoinState::GetZerocoinState() {

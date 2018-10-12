@@ -9743,9 +9743,9 @@ bool CWallet::GhostModeMintTrigger(string totalAmount, vector<CScript> pubCoinSc
             return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
     }
     else{
-        for(CScript pScrip: pubCoinScripts){
-            if(HasZerocoinMint(pScrip))
-                return "GhostModeSpendTrigger(): Error: key has already been used!";
+        for(int ps = 0; ps < pubCoinScripts.size(); ps++){
+            if(HasZerocoinMint(pubCoinScripts[ps]))
+                return error("%s: Error: key has already been used! - %s.", __func__, stringError);
         }
         if(!CreateZerocoinMintModelBatch(stringError, denominationBatch, pubCoinScripts))
             return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
@@ -10033,8 +10033,8 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
             if(pubCoinScripts.size() < denominationBatch.size())
                 return "GhostModeSpendTrigger(): Error: Not enough mint payout scripts "
                         + std::to_string(pubCoinScripts.size()) + " < " + std::to_string(denominationBatch.size());
-            for(CScript pScrip: pubCoinScripts){
-                if(HasZerocoinMint(pScrip))
+            for(int ps = 0; ps < pubCoinScripts.size(); ps++){
+                if(HasZerocoinMint(pubCoinScripts[ps]))
                     return "GhostModeSpendTrigger(): Error: key has already been used!";
             }
 
@@ -12071,6 +12071,7 @@ bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
     LOCK(cs_wallet);
 
     list <CZerocoinEntry> listUnloadedPubcoin;
+
     CWalletDB walletdb(this->GetDBHandle());
     walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
 
