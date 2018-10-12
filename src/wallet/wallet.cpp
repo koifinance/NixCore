@@ -9744,8 +9744,12 @@ bool CWallet::GhostModeMintTrigger(string totalAmount, vector<CScript> pubCoinSc
     }
     else{
         for(int ps = 0; ps < pubCoinScripts.size(); ps++){
-            if(HasZerocoinMint(pubCoinScripts[ps]))
+            CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
+            // Check for conflicts with in-memory transactions
+            CBigNum pubCoin(vector<unsigned char>(pubCoinScripts[ps].begin()+6, pubCoinScripts[ps].end()));
+            if (!zcState->CanAddMintToMempool(pubCoin)) {
                 return error("%s: Error: key has already been used! - %s.", __func__, stringError);
+            }
         }
         if(!CreateZerocoinMintModelBatch(stringError, denominationBatch, pubCoinScripts))
             return error("%s: Error: Failed to create zerocoin mint model - %s.", __func__, stringError);
@@ -10034,8 +10038,12 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
                 return "GhostModeSpendTrigger(): Error: Not enough mint payout scripts "
                         + std::to_string(pubCoinScripts.size()) + " < " + std::to_string(denominationBatch.size());
             for(int ps = 0; ps < pubCoinScripts.size(); ps++){
-                if(HasZerocoinMint(pubCoinScripts[ps]))
+                CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
+                // Check for conflicts with in-memory transactions
+                CBigNum pubCoin(vector<unsigned char>(pubCoinScripts[ps].begin()+6, pubCoinScripts[ps].end()));
+                if (!zcState->CanAddMintToMempool(pubCoin)) {
                     return "GhostModeSpendTrigger(): Error: key has already been used!";
+                }
             }
 
         }

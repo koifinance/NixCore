@@ -1053,8 +1053,3 @@ uint64_t CZerocoinState::GetTotalZerocoins(){
 uint64_t TotalGhosted(){
     return zerocoinState.GetTotalZerocoins();
 }
-
-bool HasZerocoinMint(CScript pubKey){
-    CBigNum pubCoin(vector<unsigned char>(pubKey.begin()+6, pubKey.end()));
-    return zerocoinState.HasCoin(pubCoin);
-}
