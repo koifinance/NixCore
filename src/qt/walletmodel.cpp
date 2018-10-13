@@ -1068,7 +1068,12 @@ void WalletModel::lockWallet()
 }
 
 bool WalletModel::getKeyPackList(vector<CommitmentKeyPack> &keyPackList){
-    if(wallet){
-        return wallet->GetKeyPackList(keyPackList);
+    try{
+        if(wallet){
+            return wallet->GetKeyPackList(keyPackList);
+        }
+    }
+    catch(...){
+        return false;
     }
 }
