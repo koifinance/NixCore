@@ -18,6 +18,7 @@
 #include "platformstyle.h"
 #include <wallet/wallet.h>
 #include "qt/recentrequeststablemodel.h"
+#include <ghost-address/commitmentkey.h>
 
 #include <QIcon>
 #include <QMenu>

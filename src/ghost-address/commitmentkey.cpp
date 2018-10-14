@@ -275,7 +275,7 @@ int CommitmentKeyPack::Decompress()
     return LZ4_decompress_safe(pubCoinPackCompressed.c_str(), buff.data(), compressedSize, buff.size());
 }
 
-bool CommitmentKeyPack::IsValidPack()
+bool CommitmentKeyPack::IsValidPack() const
 {
     if(pubCoinPackData.size() < 4)
         return false;

@@ -5,12 +5,10 @@
 #ifndef NIX_PEDERSENKEY_H
 #define NIX_PEDERSENKEY_H
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <script/script.h>
-
-class CScript;
+#include <inttypes.h>
 
 class CommitmentKey
 {
@@ -75,40 +73,44 @@ public:
         compressedSize = 0;
     }
 
-    bool IsValidPack();
+    bool IsValidPack() const;
     int Compress();
     int Decompress();
 
-    std::vector<CommitmentKey> GetPubCoinPack(){
+    std::vector<CommitmentKey> GetPubCoinPack() const{
         return pubCoinPack;
     }
 
-    std::vector<unsigned char> GetPubCoinPackData(){
+    std::vector<unsigned char> GetPubCoinPackData() const{
         return pubCoinPackData;
     }
 
-    std::vector<CScript> GetPubCoinPackScript(){
+    std::vector<CScript> GetPubCoinPackScript() const{
         return pubCoinPackScript;
     }
 
-    std::string GetPubCoinPackDataBase58(){
+    std::string GetPubCoinPackDataBase58() const{
         return pubCoinPackDataBase58;
     }
 
-    std::vector<unsigned char> GetCheckSum(){
+    std::vector<unsigned char> GetCheckSum() const{
         return checksum;
     }
 
-    std::string GetPubCoinPackCompressed(){
+    std::string GetPubCoinPackCompressed() const{
         return pubCoinPackCompressed;
     }
 
-    int GetCompressedSize(){
+    int GetCompressedSize() const{
         return compressedSize;
     }
 };
 
 std::string EncodeBase61(const std::vector<unsigned char>& vch);
 bool DecodeBase61(const std::string& str, std::vector<unsigned char>& vchRet);
+bool VerifyCommitmentChecksum(const std::vector<uint8_t> &data, const uint32_t checksum);
+void AppendCommitmentChecksum(std::vector<uint8_t> &data);
+uint32_t CommitmentChecksum(uint8_t *p, uint32_t nBytes);
+
 
 #endif // NIX_PEDERSENKEY_H

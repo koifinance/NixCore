@@ -31,7 +31,6 @@
 #include "zerocoin/zerocoin.h"
 #include <ghost-address/extkey.h>
 #include <ghost-address/stealth.h>
-#include <ghost-address/commitmentkey.h>
 #include <crypto/sha512.h>
 #include "../base58.h"
 #include <crypto/hmac_sha256.h>
