@@ -344,6 +344,7 @@ libnix_wallet_a_SOURCES = \
   ghostnode/ghostnodeman.cpp \
   ghostnode/ghostnodeconfig.cpp \
   ghostnode/instantx.cpp \
+  ghost-address/commitmentkey.cpp \
   pos/miner.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
@@ -463,7 +464,6 @@ libnix_common_a_SOURCES = \
   script/standard.cpp \
   unilib/uninorms.cpp \
   unilib/utf8.cpp \
-  ghost-address/commitmentkey.cpp \
   ghost-address/lz4.c \
   ghost-address/extkey.cpp \
   ghost-address/keystore.cpp \
