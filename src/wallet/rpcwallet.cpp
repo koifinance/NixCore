@@ -36,7 +36,6 @@
 #include "../libzerocoin/Zerocoin.h"
 #include "ghost-address/commitmentkey.h"
 #include <vector>
-#include "ghost-address/commitmentkey.cpp"
 
 #include <init.h>  // For StartShutdown
 

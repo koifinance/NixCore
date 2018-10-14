@@ -40,8 +40,6 @@
 #include "ghostnode/ghostnode-payments.h"
 #include "random.h"
 #include <ghost-address/commitmentkey.h>
-#include <ghost-address/commitmentkey.cpp>
-
 
 #include <rpc/server.h>
 #include <pos/kernel.h>
