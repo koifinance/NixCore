@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 #include <script/script.h>
 
 class CScript;
@@ -60,7 +61,7 @@ private:
     int compressedSize;
 
 public:
-    CommitmentKeyPack() {SetNull();}
+    CommitmentKeyPack();
     CommitmentKeyPack(std::string& _pubCoinPack);
     CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _pubCoinPack);
 

@@ -12181,7 +12181,7 @@ bool CWallet::TopUpUnloadedCommitments(int kpSize)
     return true;
 }
 
-bool CWallet::GetKeyPackList(vector <CommitmentKeyPack> &keyPackList){
+bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList){
 
     {
         LOCK(cs_wallet);
@@ -12191,7 +12191,7 @@ bool CWallet::GetKeyPackList(vector <CommitmentKeyPack> &keyPackList){
         walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
 
         int keyAmount;
-        vector< vector <unsigned char>> keyList = vector< vector <unsigned char>>();
+        std::vector<std::vector<unsigned char>> keyList = std::vector<std::vector<unsigned char>>();
 
         //make sure we have at least 10 key packs
         if(listUnloadedPubcoin.size()/10 < 10)
@@ -12201,7 +12201,7 @@ bool CWallet::GetKeyPackList(vector <CommitmentKeyPack> &keyPackList){
         keyAmount = 10;
         for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
             keyAmount--;
-            vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+            std::vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
             keyList.push_back(commitmentKey);
             if(keyAmount == 0){
                 CommitmentKeyPack pubCoinPack(keyList);

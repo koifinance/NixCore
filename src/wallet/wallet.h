@@ -90,6 +90,7 @@ class CScheduler;
 class CTxMemPool;
 class CBlockPolicyEstimator;
 class CWalletTx;
+class CommitmentKeyPack;
 struct FeeCalculation;
 enum class FeeEstimateMode;
 

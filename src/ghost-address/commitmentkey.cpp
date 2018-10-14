@@ -164,7 +164,7 @@ void CommitmentKey::Init()
 int CommitmentKey::Compress()
 {
     int size = pubCoinData.size();
-    vector<char> buff;
+    std::vector<char> buff;
     buff.resize(size*4);
     compressedSize = LZ4_compress_default((char*)pubCoinData.data(), buff.data(), size, buff.size());
     pubCoinDataCompressed = std::string(buff.begin(),buff.begin() + compressedSize);
@@ -174,9 +174,13 @@ int CommitmentKey::Compress()
 int CommitmentKey::Decompress()
 {
     int size = pubCoinData.size();
-    vector<char> buff;
+    std::vector<char> buff;
     buff.resize(size*4);
     return LZ4_decompress_safe(pubCoinDataCompressed.c_str(), buff.data(), compressedSize, buff.size());
+}
+
+CommitmentKeyPack::CommitmentKeyPack(){
+    SetNull();
 }
 
 /*
@@ -200,7 +204,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::string& _pubCoinPack)
     pubCoinPackDataBase58 = _pubCoinPack;
 
     int amountOfKeys = 0;
-    vector<int> sizeOfKeys;
+    std::vector<int> sizeOfKeys;
 
     //Get total keys included and their sizes
     for(int i = pubCoinPackData.size() - 4; i > 4; i--){
@@ -235,7 +239,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _p
 
     SetNull();
 
-    vector<unsigned char> pubCoinSizes;
+    std::vector<unsigned char> pubCoinSizes;
     for(int i = 0; i < _pubCoinPack.size(); i++){
         pubCoinPackData.insert(pubCoinPackData.end(), _pubCoinPack[i].begin(), _pubCoinPack[i].end());
         pubCoinSizes.push_back(_pubCoinPack[i].size());
@@ -256,7 +260,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _p
 int CommitmentKeyPack::Compress()
 {
     int size = pubCoinPack.size();
-    vector<char> buff;
+    std::vector<char> buff;
     buff.resize(size*4);
     compressedSize = LZ4_compress_default((char*)pubCoinPack.data(), buff.data(), size, buff.size());
     pubCoinPackCompressed = std::string(buff.begin(),buff.begin() + compressedSize);
@@ -266,7 +270,7 @@ int CommitmentKeyPack::Compress()
 int CommitmentKeyPack::Decompress()
 {
     int size = pubCoinPack.size();
-    vector<char> buff;
+    std::vector<char> buff;
     buff.resize(size*4);
     return LZ4_decompress_safe(pubCoinPackCompressed.c_str(), buff.data(), compressedSize, buff.size());
 }
@@ -275,7 +279,7 @@ bool CommitmentKeyPack::IsValidPack()
 {
     if(pubCoinPackData.size() < 4)
         return false;
-    vector<uint8_t> checksumCheck(pubCoinPackData.begin(), pubCoinPackData.end() - 4);
+    std::vector<uint8_t> checksumCheck(pubCoinPackData.begin(), pubCoinPackData.end() - 4);
     uint32_t checksum32;
     memcpy(&checksum32, &(*(pubCoinPackData.end() - 4)), 4);
 

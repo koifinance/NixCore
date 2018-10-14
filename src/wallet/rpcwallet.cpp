@@ -35,6 +35,7 @@
 #include "zerocoin/zerocoin.h"
 #include "../libzerocoin/Zerocoin.h"
 #include "ghost-address/commitmentkey.h"
+#include <vector>
 
 #include <init.h>  // For StartShutdown
 
@@ -5477,7 +5478,7 @@ UniValue refillghostkeys(const JSONRPCRequest& request)
             if (!walletdb.WriteUnloadedZCEntry(zerocoinTx))
                 return "ghostkeys() Error: Only able to create " + std::to_string(i) + " keys";
 
-            vector<unsigned char> commitmentKey = newCoinTemp.getPublicCoin().getValue().getvch();
+            std::vector<unsigned char> commitmentKey = newCoinTemp.getPublicCoin().getValue().getvch();
             CommitmentKey pubCoin(commitmentKey);
             ghostKey.push_back(pubCoin.GetPubCoinDataBase58() + "-");
         }
@@ -5509,7 +5510,7 @@ UniValue listunloadedpubcoins(const JSONRPCRequest& request) {
     //listUnloadedPubcoin.sort(CompID);
 
     for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
-        vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+        std::vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
         CommitmentKey pubCoin(commitmentKey);
         results.push_back(pubCoin.GetPubCoinDataBase58());
     }
@@ -5544,13 +5545,13 @@ UniValue getpubcoinpack(const JSONRPCRequest& request) {
         throw JSONRPCError(RPC_WALLET_ERROR,
                            "Error: Not enough Commitment Keys, please run refillghostkeys");
 
-    vector< vector <unsigned char>> keyList = vector< vector <unsigned char>>();
+    std::vector< std::vector <unsigned char>> keyList = std::vector< std::vector <unsigned char>>();
     keyList.clear();
     for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
         if(keyAmount < 1)
             break;
         keyAmount--;
-        vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+        std::vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
         keyList.push_back(commitmentKey);
     }
 
