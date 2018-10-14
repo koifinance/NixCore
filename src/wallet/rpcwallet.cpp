@@ -34,6 +34,7 @@
 #include <validation.h>
 #include "zerocoin/zerocoin.h"
 #include "../libzerocoin/Zerocoin.h"
+#include "ghost-address/commitmentkey.h"
 
 #include <init.h>  // For StartShutdown
 
