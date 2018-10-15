@@ -32,8 +32,8 @@ public:
     CommitmentKey(std::vector<unsigned char>& _pubCoinData);
 
     void Init();
-    int Compress();
-    int Decompress();
+    //int Compress();
+    //int Decompress();
 
     CScript GetPubCoinScript(){
         return pubCoinScript;
@@ -84,8 +84,8 @@ public:
     }
 
     bool IsValidPack() const;
-    int Compress();
-    int Decompress();
+    //int Compress();
+    //int Decompress();
 
     std::vector<CommitmentKey> GetPubCoinPack() const{
         return pubCoinPack;

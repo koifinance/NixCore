@@ -161,6 +161,7 @@ void CommitmentKey::Init()
     pubCoinScript = CScript() << OP_ZEROCOINMINT << pubCoinData.size() << pubCoinData;
 }
 
+/*
 int CommitmentKey::Compress()
 {
     int size = pubCoinData.size();
@@ -178,6 +179,7 @@ int CommitmentKey::Decompress()
     buff.resize(size*4);
     return LZ4_decompress_safe(pubCoinDataCompressed.c_str(), buff.data(), compressedSize, buff.size());
 }
+*/
 
 CommitmentKeyPack::CommitmentKeyPack(){
     SetNull();
@@ -257,6 +259,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _p
     pubCoinPackDataBase58 = EncodeBase61(pubCoinPackData);
 }
 
+/*
 int CommitmentKeyPack::Compress()
 {
     int size = pubCoinPack.size();
@@ -274,6 +277,7 @@ int CommitmentKeyPack::Decompress()
     buff.resize(size*4);
     return LZ4_decompress_safe(pubCoinPackCompressed.c_str(), buff.data(), compressedSize, buff.size());
 }
+*/
 
 bool CommitmentKeyPack::IsValidPack() const
 {
