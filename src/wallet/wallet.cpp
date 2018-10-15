@@ -1199,9 +1199,9 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         if (fExisted && !fUpdate) return false;
 
         FindGhostTransactions(tx);
-        FindUnloadedGhostTransactions(tx);
+        bool foundZerocoin = FindUnloadedGhostTransactions(tx);
         TopUpUnloadedCommitments();
-        if (fExisted || IsMine(tx) || IsFromMe(tx))
+        if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin)
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
              * have appeared in a new transaction. If so, remove those keys from the keypool.
@@ -1210,18 +1210,20 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
              */
 
             // loop though all outputs
-            for (const CTxOut& txout: tx.vout) {
-                // extract addresses and check if they match with an unused keypool key
-                std::vector<CKeyID> vAffected;
-                CAffectedKeysVisitor(*this, vAffected).Process(txout.scriptPubKey);
-                for (const CKeyID &keyid : vAffected) {
-                    std::map<CKeyID, int64_t>::const_iterator mi = m_pool_key_to_index.find(keyid);
-                    if (mi != m_pool_key_to_index.end()) {
-                        LogPrintf("%s: Detected a used keypool key, mark all keypool key up to this key as used\n", __func__);
-                        MarkReserveKeysAsUsed(mi->second);
+            if(!foundZerocoin){
+                for (const CTxOut& txout: tx.vout) {
+                    // extract addresses and check if they match with an unused keypool key
+                    std::vector<CKeyID> vAffected;
+                    CAffectedKeysVisitor(*this, vAffected).Process(txout.scriptPubKey);
+                    for (const CKeyID &keyid : vAffected) {
+                        std::map<CKeyID, int64_t>::const_iterator mi = m_pool_key_to_index.find(keyid);
+                        if (mi != m_pool_key_to_index.end()) {
+                            LogPrintf("%s: Detected a used keypool key, mark all keypool key up to this key as used\n", __func__);
+                            MarkReserveKeysAsUsed(mi->second);
 
-                        if (!TopUpKeyPool()) {
-                            LogPrintf("%s: Topping up keypool failed (locked wallet)\n", __func__);
+                            if (!TopUpKeyPool()) {
+                                LogPrintf("%s: Topping up keypool failed (locked wallet)\n", __func__);
+                            }
                         }
                     }
                 }
@@ -12075,8 +12077,9 @@ bool CWallet::FindGhostTransactions(const CTransaction& tx)
 bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
 {
     if(!tx.IsZerocoinMint(tx))
-        return true;
+        return false;
 
+    bool foundCoin = false;
     LOCK(cs_wallet);
 
     list <CZerocoinEntry> listUnloadedPubcoin;
@@ -12128,11 +12131,12 @@ bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
                     if (!walletdb.WriteUnloadedZCEntry(zerocoinTxNew))
                         return false;
                 }
+                foundCoin = true;
             }
         }
     }
 
-    return true;
+    return foundCoin;
 }
 
 
@@ -12141,8 +12145,8 @@ bool CWallet::TopUpUnloadedCommitments(int kpSize)
     {
         LOCK(cs_wallet);
 
-        if (IsLocked())
-            return false;
+        //if (IsLocked())
+            //return false;
 
 
         libzerocoin::CoinDenomination denomination;
@@ -12150,10 +12154,6 @@ bool CWallet::TopUpUnloadedCommitments(int kpSize)
 
         int mintVersion = 1;
         denomination = libzerocoin::ZQ_ONE;
-
-        if (IsLocked()) {
-            return false;
-        }
 
         list <CZerocoinEntry> listUnloadedPubcoin;
         CWalletDB walletdb(GetDBHandle());
