@@ -1839,8 +1839,8 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
 
         if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
         {
-            LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
-                     this->GetHash().ToString());
+            //LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+            //         this->GetHash().ToString());
             address = CNoDestination();
         }
 
@@ -5495,8 +5495,9 @@ bool CWallet::CreateZerocoinSpendModelBatch(string &stringError, vector <string>
 
     stringError = SpendZerocoinBatch(toKey, pubCoinScripts, nAmountBatch, denominationBatch, wtx, coinSerialBatch, txHashBatch, zcSelectedValueBatch, zcSelectedIsUsed);
 
-    if (stringError != "")
+    if (stringError != ""){
         return false;
+    }
 
     return true;
 }
@@ -10062,6 +10063,10 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
                 if(!pubCoinScripts.empty())
                     pubCoinScriptsSub.push_back(pubCoinScripts[vecSub]);
             }
+
+            if(denominationBatchSub.size() < 1)
+                continue;
+
             if(!CreateZerocoinSpendModelBatch(stringError, denominationBatchSub, toKey, pubCoinScriptsSub)){
                 if(vecSplit > 0){
                     CAmount amountGhosted = 0;

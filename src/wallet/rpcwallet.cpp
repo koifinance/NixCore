@@ -5614,6 +5614,61 @@ UniValue resetzerocoinamounts(const JSONRPCRequest& request)
     return "Sucessfully created ghostkey: \n";
 }
 
+UniValue resetzerocoinunconfirmed(const JSONRPCRequest& request)
+{
+
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    {
+        LOCK(pwalletMain->cs_wallet);
+        list <CZerocoinEntry> listPubCoin = list<CZerocoinEntry>();
+        CWalletDB walletdb(pwalletMain->GetDBHandle());
+        walletdb.ListPubCoin(listPubCoin);
+        for (map<uint256, CWalletTx>::const_iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
+            const CWalletTx *pcoin = &(*it).second;
+            //            LogPrintf("pcoin=%s\n", pcoin->GetHash().ToString());
+            if (!CheckFinalTx(*pcoin->tx,0)) {
+                //LogPrintf("!CheckFinalTx(*pcoin)=%s\n", !CheckFinalTx(*pcoin->tx,0));
+                continue;
+            }
+
+            if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0) {
+                //LogPrintf("Not trusted\n");
+                continue;
+            }
+
+            int nDepth = pcoin->GetDepthInMainChain();
+            if (nDepth < 0) {
+                //LogPrintf("nDepth=%s\n", nDepth);
+                continue;
+            }
+
+            for (unsigned int i = 0; i < pcoin->tx->vout.size(); i++) {
+                if (pcoin->tx->vout[i].scriptPubKey.IsZerocoinMint()) {
+                    CTxOut txout = pcoin->tx->vout[i];
+                    vector<unsigned char> vchZeroMint;
+                    vchZeroMint.insert(vchZeroMint.end(), txout.scriptPubKey.begin() + 6,
+                                       txout.scriptPubKey.begin() + txout.scriptPubKey.size());
+
+                    CBigNum pubCoin;
+                    pubCoin.setvch(vchZeroMint);
+                    //LogPrintf("Pubcoin=%s\n", pubCoin.ToString());
+                    // CHECKING PROCESS
+                    for(const CZerocoinEntry &pubCoinItem: listPubCoin) {
+                        if(nDepth < 1 && pubCoin == pubCoinItem.value){
+                            walletdb.EraseZerocoinEntry(pubCoinItem);
+                            continue;
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+    return "Sucessfully created ghostkey: \n";
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -5718,6 +5773,8 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "payunloadedpubcoins",      &payunloadedpubcoins,       {"amount", "address"} },
     { "NIX Ghost Protocol",             "getpubcoinpack",           &getpubcoinpack,            {"amount"} },
   { "NIX Ghost Protocol",             "resetzerocoinamounts",           &resetzerocoinamounts,            {} },
+  { "NIX Ghost Protocol",             "resetzerocoinunconfirmed",           &resetzerocoinunconfirmed,            {} },
+
 
 
 
