@@ -5669,6 +5669,19 @@ UniValue resetzerocoinunconfirmed(const JSONRPCRequest& request)
     return "Sucessfully created ghostkey: \n";
 }
 
+
+UniValue listallserials(const JSONRPCRequest& request)
+{
+
+    CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
+    UniValue results(UniValue::VARR);
+    for(auto it = zcState->usedCoinSerials.begin(); it != zcState->usedCoinSerials.end(); it++) {
+        results.push_back(it->ToString());
+    }
+
+    return results;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -5774,6 +5787,8 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "getpubcoinpack",           &getpubcoinpack,            {"amount"} },
   { "NIX Ghost Protocol",             "resetzerocoinamounts",           &resetzerocoinamounts,            {} },
   { "NIX Ghost Protocol",             "resetzerocoinunconfirmed",           &resetzerocoinunconfirmed,            {} },
+  { "NIX Ghost Protocol",             "listallserials",           &listallserials,            {} },
+
 
 
 

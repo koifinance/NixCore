@@ -860,7 +860,14 @@ void CGhostnodeMan::ProcessGhostnodeConnections()
     //we don't care about this for regtest
     if(Params().NetworkIDString() == CBaseChainParams::REGTEST) return;
 
-    LOCK(g_connman->cs_vNodes);
+    g_connman->ForEachNode([](CNode* pnode){
+        if(!(darkSendPool.pSubmittedToGhostnode != NULL && pnode->addr == darkSendPool.pSubmittedToGhostnode->addr))
+            if(pnode->fGhostnode) {
+                // //LogPrint("Closing Ghostnode connection: peer=%d, addr=%s\n", pnode->GetId(), pnode->addr.ToString());
+                pnode->fDisconnect = true;
+            }
+    });
+    /*
     BOOST_FOREACH(CNode* pnode, g_connman->vNodes) {
         if(pnode->fGhostnode) {
             if(darkSendPool.pSubmittedToGhostnode != NULL && pnode->addr == darkSendPool.pSubmittedToGhostnode->addr) continue;
@@ -868,6 +875,7 @@ void CGhostnodeMan::ProcessGhostnodeConnections()
             pnode->fDisconnect = true;
         }
     }
+    */
 }
 
 std::pair<CService, std::set<uint256> > CGhostnodeMan::PopScheduledMnbRequestConnection()
@@ -1060,9 +1068,8 @@ void CGhostnodeMan::DoFullVerificationStep()
 
     std::vector<std::pair<int, CGhostnode> > vecGhostnodeRanks = GetGhostnodeRanks(pCurrentBlockIndex->nHeight - 1, MIN_POSE_PROTO_VERSION);
 
-    // Need LOCK2 here to ensure consistent locking order because the SendVerifyRequest call below locks cs_main
-    // through GetHeight() signal in ConnectNode
-    LOCK2(cs_main, cs);
+    {
+    LOCK(cs);
 
     int nCount = 0;
 
@@ -1124,7 +1131,7 @@ void CGhostnodeMan::DoFullVerificationStep()
         if(nOffset >= (int)vecGhostnodeRanks.size()) break;
         it += MAX_POSE_CONNECTIONS;
     }
-
+    }
     //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Sent verification requests to %d ghostnodes\n", nCount);
 }
 

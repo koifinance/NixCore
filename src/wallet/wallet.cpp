@@ -1057,6 +1057,13 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose)
             fUpdated = true;
         }
         // If no longer abandoned, update
+
+        if (wtx.IsCoinStake()) { // A coinstake is unabandoned when it's re-attached to a block
+            if (!wtxIn.hashUnset() && wtx.isAbandoned()) {
+                wtx.hashBlock = wtxIn.hashBlock;
+                fUpdated = true;
+            }
+        }
         if (wtxIn.hashBlock.IsNull() && wtx.isAbandoned())
         {
             wtx.hashBlock = wtxIn.hashBlock;

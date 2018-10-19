@@ -1640,19 +1640,6 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
 
 void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state, const CBlock &block) {
 
-    if (state.GetRejectReason() == "bad-cs-duplicate")
-    {
-        pindex->SetProofOfStake();
-        pindex->prevoutStake = block.vtx[0]->vin[0].prevout;
-        if (pindex->pprev && pindex->pprev->bnStakeModifier.IsNull())
-            LogPrintf("Warning: %s - Previous stake modifier is null.\n", __func__);
-        else
-            pindex->bnStakeModifier = ComputeStakeModifierV2(pindex->pprev, pindex->prevoutStake.hash);
-
-        pindex->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
-        setDirtyBlockIndex.insert(pindex);
-    }
-
     if (!state.CorruptionPossible()) {
         pindex->nStatus |= BLOCK_FAILED_VALID;
         g_failed_blocks.insert(pindex);
@@ -3013,6 +3000,9 @@ bool CChainState::DisconnectTip(CValidationState& state, const CChainParams& cha
         bool flushed = FlushView(&view, state, true);
         assert(flushed);
     }
+
+    DisconnectTipGhost(block, pindexDelete);
+
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * MILLI);
     // Write the chain state to disk, if necessary.
     if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_IF_NEEDED))
