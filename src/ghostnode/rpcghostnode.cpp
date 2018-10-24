@@ -138,324 +138,328 @@ UniValue ghostnode(const JSONRPCRequest& req) {
                         "  winners      - Print list of ghostnode winners\n"
         );
 
-    if (strCommand == "list") {
-        UniValue newParams(UniValue::VARR);
-        // forward params but skip "list"
-        for (unsigned int i = 1; i < params.size(); i++) {
-            newParams.push_back(params[i]);
-        }
-        JSONRPCRequest JSONParams;
-        JSONParams.params = newParams;
-        JSONParams.fHelp = fHelp;
-        return ghostnodelist(JSONParams);
-    }
+    {
+        LOCK(mnodeman.cs);
 
-    if (strCommand == "connect") {
-        if (params.size() < 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Ghostnode address required");
-
-        std::string strAddress = params[1].get_str();
-
-        int port = Params().GetDefaultPort();
-        CService addr;
-        if (!Lookup(strAddress.c_str(), addr, port, false)) {
-            return InitError(strprintf(_("rpcghostnode ghostnode(): Invalid ghostnode: '%s'"), strAddress));
+        if (strCommand == "list") {
+            UniValue newParams(UniValue::VARR);
+            // forward params but skip "list"
+            for (unsigned int i = 1; i < params.size(); i++) {
+                newParams.push_back(params[i]);
+            }
+            JSONRPCRequest JSONParams;
+            JSONParams.params = newParams;
+            JSONParams.fHelp = fHelp;
+            return ghostnodelist(JSONParams);
         }
 
-        CNode *pnode = g_connman->ConnectNode(CAddress(addr, NODE_NETWORK), NULL, false, true);
+        if (strCommand == "connect") {
+            if (params.size() < 2)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Ghostnode address required");
 
-        if (!pnode)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to ghostnode %s", strAddress));
+            std::string strAddress = params[1].get_str();
 
-        return "successfully connected";
-    }
+            int port = Params().GetDefaultPort();
+            CService addr;
+            if (!Lookup(strAddress.c_str(), addr, port, false)) {
+                return InitError(strprintf(_("rpcghostnode ghostnode(): Invalid ghostnode: '%s'"), strAddress));
+            }
 
-    if (strCommand == "count") {
-        if (params.size() > 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
+            CNode *pnode = g_connman->ConnectNode(CAddress(addr, NODE_NETWORK), NULL, false, true);
 
-        if (params.size() == 1)
-            return mnodeman.size();
+            if (!pnode)
+                throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to ghostnode %s", strAddress));
 
-        std::string strMode = params[1].get_str();
-
-        if (strMode == "ps")
-            return mnodeman.CountEnabled(MIN_PRIVATESEND_PEER_PROTO_VERSION);
-
-        if (strMode == "enabled")
-            return mnodeman.CountEnabled();
-
-        int nCount;
-        mnodeman.GetNextGhostnodeInQueueForPayment(true, nCount);
-
-        if (strMode == "qualify")
-            return nCount;
-
-        if (strMode == "all")
-            return strprintf("Total: %d (PS Compatible: %d / Enabled: %d / Qualify: %d)",
-                             mnodeman.size(), mnodeman.CountEnabled(MIN_PRIVATESEND_PEER_PROTO_VERSION),
-                             mnodeman.CountEnabled(), nCount);
-    }
-
-    if (strCommand == "current" || strCommand == "winner") {
-        int nCount;
-        int nHeight;
-        CGhostnode *winner = NULL;
-        {
-            LOCK(cs_main);
-            nHeight = chainActive.Height() + (strCommand == "current" ? 1 : 10);
+            return "successfully connected";
         }
-        mnodeman.UpdateLastPaid();
-        winner = mnodeman.GetNextGhostnodeInQueueForPayment(nHeight, true, nCount);
-        if (!winner) return "unknown";
 
-        UniValue obj(UniValue::VOBJ);
+        if (strCommand == "count") {
+            if (params.size() > 2)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
 
-        obj.push_back(Pair("height", nHeight));
-        obj.push_back(Pair("IP:port", winner->addr.ToString()));
-        obj.push_back(Pair("protocol", (int64_t) winner->nProtocolVersion));
-        obj.push_back(Pair("vin", winner->vin.prevout.ToStringShort()));
-        obj.push_back(Pair("payee", CBitcoinAddress(winner->pubKeyCollateralAddress.GetID()).ToString()));
-        obj.push_back(Pair("lastseen", (winner->lastPing == CGhostnodePing()) ? winner->sigTime :
-                                       winner->lastPing.sigTime));
-        obj.push_back(Pair("activeseconds", (winner->lastPing == CGhostnodePing()) ? 0 :
-                                            (winner->lastPing.sigTime - winner->sigTime)));
-        obj.push_back(Pair("nBlockLastPaid", winner->nBlockLastPaid));
-        return obj;
-    }
+            if (params.size() == 1)
+                return mnodeman.size();
 
-    if (strCommand == "debug") {
-        if (activeGhostnode.nState != ACTIVE_GHOSTNODE_INITIAL || !ghostnodeSync.IsBlockchainSynced())
+            std::string strMode = params[1].get_str();
+
+            if (strMode == "ps")
+                return mnodeman.CountEnabled(MIN_PRIVATESEND_PEER_PROTO_VERSION);
+
+            if (strMode == "enabled")
+                return mnodeman.CountEnabled();
+
+            int nCount;
+            mnodeman.GetNextGhostnodeInQueueForPayment(true, nCount);
+
+            if (strMode == "qualify")
+                return nCount;
+
+            if (strMode == "all")
+                return strprintf("Total: %d (PS Compatible: %d / Enabled: %d / Qualify: %d)",
+                                 mnodeman.size(), mnodeman.CountEnabled(MIN_PRIVATESEND_PEER_PROTO_VERSION),
+                                 mnodeman.CountEnabled(), nCount);
+        }
+
+        if (strCommand == "current" || strCommand == "winner") {
+            int nCount;
+            int nHeight;
+            CGhostnode *winner = NULL;
+            {
+                LOCK(cs_main);
+                nHeight = chainActive.Height() + (strCommand == "current" ? 1 : 10);
+            }
+            mnodeman.UpdateLastPaid();
+            winner = mnodeman.GetNextGhostnodeInQueueForPayment(nHeight, true, nCount);
+            if (!winner) return "unknown";
+
+            UniValue obj(UniValue::VOBJ);
+
+            obj.push_back(Pair("height", nHeight));
+            obj.push_back(Pair("IP:port", winner->addr.ToString()));
+            obj.push_back(Pair("protocol", (int64_t) winner->nProtocolVersion));
+            obj.push_back(Pair("vin", winner->vin.prevout.ToStringShort()));
+            obj.push_back(Pair("payee", CBitcoinAddress(winner->pubKeyCollateralAddress.GetID()).ToString()));
+            obj.push_back(Pair("lastseen", (winner->lastPing == CGhostnodePing()) ? winner->sigTime :
+                                           winner->lastPing.sigTime));
+            obj.push_back(Pair("activeseconds", (winner->lastPing == CGhostnodePing()) ? 0 :
+                                                (winner->lastPing.sigTime - winner->sigTime)));
+            obj.push_back(Pair("nBlockLastPaid", winner->nBlockLastPaid));
+            return obj;
+        }
+
+        if (strCommand == "debug") {
+            if (activeGhostnode.nState != ACTIVE_GHOSTNODE_INITIAL || !ghostnodeSync.IsBlockchainSynced())
+                return activeGhostnode.GetStatus();
+
+            CTxIn vin;
+            CPubKey pubkey;
+            CKey key;
+
+            if (!vpwallets.front() || !vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubkey, key))
+                throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                   "Missing ghostnode input, please look at the documentation for instructions on ghostnode creation");
+
             return activeGhostnode.GetStatus();
-
-        CTxIn vin;
-        CPubKey pubkey;
-        CKey key;
-
-        if (!vpwallets.front() || !vpwallets.front()->GetGhostnodeVinAndKeys(vin, pubkey, key))
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               "Missing ghostnode input, please look at the documentation for instructions on ghostnode creation");
-
-        return activeGhostnode.GetStatus();
-    }
-
-    if (strCommand == "start") {
-        if (!fGhostNode)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "You must set ghostnode=1 in the configuration");
-
-        {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
         }
 
-        if (activeGhostnode.nState != ACTIVE_GHOSTNODE_STARTED) {
-            activeGhostnode.nState = ACTIVE_GHOSTNODE_INITIAL; // TODO: consider better way
-            activeGhostnode.ManageState();
+        if (strCommand == "start") {
+            if (!fGhostNode)
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "You must set ghostnode=1 in the configuration");
+
+            {
+                LOCK(vpwallets.front()->cs_wallet);
+                EnsureWalletIsUnlocked(vpwallets.front());
+            }
+
+            if (activeGhostnode.nState != ACTIVE_GHOSTNODE_STARTED) {
+                activeGhostnode.nState = ACTIVE_GHOSTNODE_INITIAL; // TODO: consider better way
+                activeGhostnode.ManageState();
+            }
+
+            return activeGhostnode.GetStatus();
         }
 
-        return activeGhostnode.GetStatus();
-    }
+        if (strCommand == "start-alias") {
+            if (params.size() < 2)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
 
-    if (strCommand == "start-alias") {
-        if (params.size() < 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
+            {
+                LOCK(vpwallets.front()->cs_wallet);
+                EnsureWalletIsUnlocked(vpwallets.front());
+            }
 
-        {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
+            std::string strAlias = params[1].get_str();
+
+            bool fFound = false;
+
+            UniValue statusObj(UniValue::VOBJ);
+            statusObj.push_back(Pair("alias", strAlias));
+
+            BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
+                if (mne.getAlias() == strAlias) {
+                    fFound = true;
+                    std::string strError;
+                    CGhostnodeBroadcast mnb;
+
+                    bool fResult = CGhostnodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(),
+                                                                mne.getOutputIndex(), strError, mnb);
+                    statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
+                    if (fResult) {
+                        mnodeman.UpdateGhostnodeList(mnb);
+                        mnb.RelayGhostNode();
+                    } else {
+                        LogPrintf("Start-alias: errorMessage = %s\n", strError);
+                        statusObj.push_back(Pair("errorMessage", strError));
+                    }
+                    mnodeman.NotifyGhostnodeUpdates();
+                    break;
+                }
+            }
+
+            if (!fFound) {
+                statusObj.push_back(Pair("result", "failed"));
+                statusObj.push_back(Pair("errorMessage", "Could not find alias in config. Verify with list-conf."));
+            }
+
+    //        LogPrintf("start-alias: statusObj=%s\n", statusObj);
+
+            return statusObj;
+
         }
 
-        std::string strAlias = params[1].get_str();
+        if (strCommand == "start-all" || strCommand == "start-missing" || strCommand == "start-disabled") {
+            {
+                LOCK(vpwallets.front()->cs_wallet);
+                EnsureWalletIsUnlocked(vpwallets.front());
+            }
 
-        bool fFound = false;
+            if ((strCommand == "start-missing" || strCommand == "start-disabled") &&
+                !ghostnodeSync.IsGhostnodeListSynced()) {
+                throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD,
+                                   "You can't use this command until ghostnode list is synced");
+            }
 
-        UniValue statusObj(UniValue::VOBJ);
-        statusObj.push_back(Pair("alias", strAlias));
+            int nSuccessful = 0;
+            int nFailed = 0;
 
-        BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
-            if (mne.getAlias() == strAlias) {
-                fFound = true;
+            UniValue resultsObj(UniValue::VOBJ);
+
+            BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
                 std::string strError;
+
+                CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+                CGhostnode *pmn = mnodeman.Find(vin);
                 CGhostnodeBroadcast mnb;
+
+                if (strCommand == "start-missing" && pmn) continue;
+                if (strCommand == "start-disabled" && pmn && pmn->IsEnabled()) continue;
 
                 bool fResult = CGhostnodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(),
                                                             mne.getOutputIndex(), strError, mnb);
+
+                UniValue statusObj(UniValue::VOBJ);
+                statusObj.push_back(Pair("alias", mne.getAlias()));
                 statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
+
                 if (fResult) {
+                    nSuccessful++;
                     mnodeman.UpdateGhostnodeList(mnb);
                     mnb.RelayGhostNode();
                 } else {
-                    LogPrintf("Start-alias: errorMessage = %s\n", strError);
+                    nFailed++;
                     statusObj.push_back(Pair("errorMessage", strError));
                 }
-                mnodeman.NotifyGhostnodeUpdates();
-                break;
+
+                resultsObj.push_back(Pair("status", statusObj));
             }
+            mnodeman.NotifyGhostnodeUpdates();
+
+            UniValue returnObj(UniValue::VOBJ);
+            returnObj.push_back(Pair("overall",
+                                     strprintf("Successfully started %d ghostnodes, failed to start %d, total %d",
+                                               nSuccessful, nFailed, nSuccessful + nFailed)));
+            returnObj.push_back(Pair("detail", resultsObj));
+
+            return returnObj;
         }
 
-        if (!fFound) {
-            statusObj.push_back(Pair("result", "failed"));
-            statusObj.push_back(Pair("errorMessage", "Could not find alias in config. Verify with list-conf."));
+        if (strCommand == "genkey") {
+            CKey secret;
+            secret.MakeNewKey(false);
+
+            return CBitcoinSecret(secret).ToString();
         }
 
-//        LogPrintf("start-alias: statusObj=%s\n", statusObj);
+        if (strCommand == "list-conf") {
+            UniValue resultObj(UniValue::VOBJ);
+            int i = 0;
+            BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
+                CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+                CGhostnode *pmn = mnodeman.Find(vin);
 
-        return statusObj;
+                std::string strStatus = pmn ? pmn->GetStatus() : "MISSING";
 
-    }
-
-    if (strCommand == "start-all" || strCommand == "start-missing" || strCommand == "start-disabled") {
-        {
-            LOCK(vpwallets.front()->cs_wallet);
-            EnsureWalletIsUnlocked(vpwallets.front());
-        }
-
-        if ((strCommand == "start-missing" || strCommand == "start-disabled") &&
-            !ghostnodeSync.IsGhostnodeListSynced()) {
-            throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD,
-                               "You can't use this command until ghostnode list is synced");
-        }
-
-        int nSuccessful = 0;
-        int nFailed = 0;
-
-        UniValue resultsObj(UniValue::VOBJ);
-
-        BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
-            std::string strError;
-
-            CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-            CGhostnode *pmn = mnodeman.Find(vin);
-            CGhostnodeBroadcast mnb;
-
-            if (strCommand == "start-missing" && pmn) continue;
-            if (strCommand == "start-disabled" && pmn && pmn->IsEnabled()) continue;
-
-            bool fResult = CGhostnodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(),
-                                                        mne.getOutputIndex(), strError, mnb);
-
-            UniValue statusObj(UniValue::VOBJ);
-            statusObj.push_back(Pair("alias", mne.getAlias()));
-            statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
-
-            if (fResult) {
-                nSuccessful++;
-                mnodeman.UpdateGhostnodeList(mnb);
-                mnb.RelayGhostNode();
-            } else {
-                nFailed++;
-                statusObj.push_back(Pair("errorMessage", strError));
+                UniValue mnObj(UniValue::VOBJ);
+                mnObj.push_back(Pair("alias", mne.getAlias()));
+                mnObj.push_back(Pair("address", mne.getIp()));
+                mnObj.push_back(Pair("privateKey", mne.getPrivKey()));
+                mnObj.push_back(Pair("txHash", mne.getTxHash()));
+                mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
+                mnObj.push_back(Pair("status", strStatus));
+                resultObj.push_back(Pair("ghostnode_" + std::to_string(i), mnObj));
+                i++;
             }
 
-            resultsObj.push_back(Pair("status", statusObj));
+            return resultObj;
         }
-        mnodeman.NotifyGhostnodeUpdates();
 
-        UniValue returnObj(UniValue::VOBJ);
-        returnObj.push_back(Pair("overall",
-                                 strprintf("Successfully started %d ghostnodes, failed to start %d, total %d",
-                                           nSuccessful, nFailed, nSuccessful + nFailed)));
-        returnObj.push_back(Pair("detail", resultsObj));
+        if (strCommand == "outputs") {
+            // Find possible candidates
+            std::vector <COutput> vPossibleCoins;
+            vpwallets.front()->AvailableCoins(vPossibleCoins, true, NULL, 1, MAX_MONEY, MAX_MONEY, 0, 0, 0x7FFFFFFF, ONLY_40000);
 
-        return returnObj;
-    }
+            UniValue obj(UniValue::VOBJ);
+            BOOST_FOREACH(COutput & out, vPossibleCoins)
+            {
+                obj.push_back(Pair(out.tx->GetHash().ToString(), strprintf("%d", out.i)));
+            }
 
-    if (strCommand == "genkey") {
-        CKey secret;
-        secret.MakeNewKey(false);
+            return obj;
 
-        return CBitcoinSecret(secret).ToString();
-    }
+        }
 
-    if (strCommand == "list-conf") {
-        UniValue resultObj(UniValue::VOBJ);
-        int i = 0;
-        BOOST_FOREACH(CGhostnodeConfig::CGhostnodeEntry mne, ghostnodeConfig.getEntries()) {
-            CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-            CGhostnode *pmn = mnodeman.Find(vin);
-
-            std::string strStatus = pmn ? pmn->GetStatus() : "MISSING";
+        if (strCommand == "status") {
+            if (!fGhostNode)
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a ghostnode");
 
             UniValue mnObj(UniValue::VOBJ);
-            mnObj.push_back(Pair("alias", mne.getAlias()));
-            mnObj.push_back(Pair("address", mne.getIp()));
-            mnObj.push_back(Pair("privateKey", mne.getPrivKey()));
-            mnObj.push_back(Pair("txHash", mne.getTxHash()));
-            mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
-            mnObj.push_back(Pair("status", strStatus));
-            resultObj.push_back(Pair("ghostnode_" + std::to_string(i), mnObj));
-            i++;
+
+            mnObj.push_back(Pair("vin", activeGhostnode.vin.ToString()));
+            mnObj.push_back(Pair("service", activeGhostnode.service.ToString()));
+
+            CGhostnode mn;
+            if (mnodeman.Get(activeGhostnode.vin, mn)) {
+                mnObj.push_back(Pair("payee", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString()));
+            }
+
+            mnObj.push_back(Pair("status", activeGhostnode.GetStatus()));
+            return mnObj;
         }
 
-        return resultObj;
-    }
+        if (strCommand == "winners") {
+            int nHeight;
+            {
+                LOCK(cs_main);
+                CBlockIndex *pindex = chainActive.Tip();
+                if (!pindex) return NullUniValue;
 
-    if (strCommand == "outputs") {
-        // Find possible candidates
-        std::vector <COutput> vPossibleCoins;
-        vpwallets.front()->AvailableCoins(vPossibleCoins, true, NULL, 1, MAX_MONEY, MAX_MONEY, 0, 0, 0x7FFFFFFF, ONLY_40000);
+                nHeight = pindex->nHeight;
+            }
 
-        UniValue obj(UniValue::VOBJ);
-        BOOST_FOREACH(COutput & out, vPossibleCoins)
-        {
-            obj.push_back(Pair(out.tx->GetHash().ToString(), strprintf("%d", out.i)));
+            int nLast = 10;
+            std::string strFilter = "";
+
+            if (params.size() >= 2) {
+                nLast = atoi(params[1].get_str());
+            }
+
+            if (params.size() == 3) {
+                strFilter = params[2].get_str();
+            }
+
+            if (params.size() > 3)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'ghostnode winners ( \"count\" \"filter\" )'");
+
+            UniValue obj(UniValue::VOBJ);
+
+            for (int i = nHeight - nLast; i < nHeight + 20; i++) {
+                std::string strPayment = GetRequiredPaymentsString(i);
+                if (strFilter != "" && strPayment.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strprintf("%d", i), strPayment));
+            }
+
+            return obj;
         }
-
-        return obj;
-
-    }
-
-    if (strCommand == "status") {
-        if (!fGhostNode)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a ghostnode");
-
-        UniValue mnObj(UniValue::VOBJ);
-
-        mnObj.push_back(Pair("vin", activeGhostnode.vin.ToString()));
-        mnObj.push_back(Pair("service", activeGhostnode.service.ToString()));
-
-        CGhostnode mn;
-        if (mnodeman.Get(activeGhostnode.vin, mn)) {
-            mnObj.push_back(Pair("payee", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString()));
-        }
-
-        mnObj.push_back(Pair("status", activeGhostnode.GetStatus()));
-        return mnObj;
-    }
-
-    if (strCommand == "winners") {
-        int nHeight;
-        {
-            LOCK(cs_main);
-            CBlockIndex *pindex = chainActive.Tip();
-            if (!pindex) return NullUniValue;
-
-            nHeight = pindex->nHeight;
-        }
-
-        int nLast = 10;
-        std::string strFilter = "";
-
-        if (params.size() >= 2) {
-            nLast = atoi(params[1].get_str());
-        }
-
-        if (params.size() == 3) {
-            strFilter = params[2].get_str();
-        }
-
-        if (params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'ghostnode winners ( \"count\" \"filter\" )'");
-
-        UniValue obj(UniValue::VOBJ);
-
-        for (int i = nHeight - nLast; i < nHeight + 20; i++) {
-            std::string strPayment = GetRequiredPaymentsString(i);
-            if (strFilter != "" && strPayment.find(strFilter) == std::string::npos) continue;
-            obj.push_back(Pair(strprintf("%d", i), strPayment));
-        }
-
-        return obj;
     }
 
     return NullUniValue;
@@ -501,6 +505,8 @@ UniValue ghostnodelist(const JSONRPCRequest &req) {
         );
     }
 
+    UniValue obj(UniValue::VOBJ);
+
     {
         LOCK(mnodeman.cs);
 
@@ -508,7 +514,6 @@ UniValue ghostnodelist(const JSONRPCRequest &req) {
             mnodeman.UpdateLastPaid();
         }
 
-        UniValue obj(UniValue::VOBJ);
         if (strMode == "rank") {
             std::vector <std::pair<int, CGhostnode>> vGhostnodeRanks = mnodeman.GetGhostnodeRanks();
             BOOST_FOREACH(PAIRTYPE(int, CGhostnode) & s, vGhostnodeRanks)
