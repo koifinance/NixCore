@@ -187,7 +187,7 @@ CommitmentKeyPack::CommitmentKeyPack(){
 
 /*
  * Commitment Key Pack raw format
- * C0 + ... Ci + 0xFFFF + CSize0(1byte) + ... CSizei + checksum(4bytes)
+ * C0 + ... Ci + 0xFFFFFF + CSize0(1byte) + ... CSizei + checksum(4bytes)
  */
 
 CommitmentKeyPack::CommitmentKeyPack(std::string& _pubCoinPack)
@@ -211,7 +211,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::string& _pubCoinPack)
     //Get total keys included and their sizes
     for(int i = pubCoinPackData.size() - 4; i > 4; i--){
         //check for delimiter
-        if(pubCoinPackData[i] == 0xFF && pubCoinPackData[i - 1] == 0xFF){
+        if(pubCoinPackData[i] == 0xFF && pubCoinPackData[i - 1] == 0xFF && pubCoinPackData[i - 2] == 0xFF){
 
             for(int k = i+1; k < pubCoinPackData.size() - 4; k++){
                 amountOfKeys++;
@@ -247,6 +247,7 @@ CommitmentKeyPack::CommitmentKeyPack(std::vector<std::vector<unsigned char>>& _p
         pubCoinSizes.push_back(_pubCoinPack[i].size());
     }
     //Push back delimiter
+    pubCoinPackData.push_back(0xFF);
     pubCoinPackData.push_back(0xFF);
     pubCoinPackData.push_back(0xFF);
     //Push back sizes

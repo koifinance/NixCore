@@ -1253,9 +1253,10 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
             if (pIndex != nullptr)
                 wtx.SetMerkleBranch(pIndex, posInBlock);
 
+            bool rv = AddToWallet(wtx, false);
             WakeThreadStakeMiner(this); // wallet balance may have changed
 
-            return AddToWallet(wtx, false);
+            return rv;
         }
     }
     return false;
@@ -8659,12 +8660,12 @@ int CWallet::ExtKeyCreateInitial(CWalletDB *pwdb)
     };
 
     CEKAStealthKey aks;
-    std::string strLbl = "Default Stealth Address";
-    if (0 != NewStealthKeyFromAccount(pwdb, idDefaultAccount, strLbl, aks, 0, nullptr))
-    {
-        pwdb->TxnAbort();
-        return errorN(1, "NewStealthKeyFromAccount failed.");
-    };
+    //std::string strLbl = "Default Stealth Address";
+    //if (0 != NewStealthKeyFromAccount(pwdb, idDefaultAccount, strLbl, aks, 0, nullptr))
+    //{
+     //   pwdb->TxnAbort();
+     //   return errorN(1, "NewStealthKeyFromAccount failed.");
+    //};
 
     if (!pwdb->TxnCommit())
     {

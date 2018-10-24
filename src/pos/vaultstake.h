@@ -8,18 +8,22 @@
 #include "zerocoin/zerocoin.h"
 #include "primitives/transaction.h"
 
+class CZerocoinEntry;
 
-class VaultStake
+class CVaultStake
 {
     const CTxIn stakeIn;
     const CTxOut stakePrevOut;
+    list <CZerocoinEntry> pubCoinList;
     bool isZerocoinMint;
     bool isZerocoinSpend;
+    int maxAge;
 
 public:
-    VaultStake();
-    VaultStake(const CTxIn _stakeIn, CValidationState state);
+    CVaultStake();
+    CVaultStake(const list <CZerocoinEntry> &listPubCoin, CValidationState state);
     setNull(){
+        maxAge = 0;
         stakeIn = CTxIn();
         stakePrevOut = CTxOut();
     }

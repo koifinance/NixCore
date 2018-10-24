@@ -6,60 +6,87 @@
 #include "validation.h"
 #include "Coin.h"
 #include "consensus/validation.h"
+#include "wallet/wallet.h"
+#include "boost/foreach.hpp"
+#include "consensus/consensus.h"
 
-VaultStake::VaultStake()
+bool CompDenom(const CZerocoinEntry &a, const CZerocoinEntry &b) { return a.denomination < b.denomination; }
+
+CVaultStake::CVaultStake()
 {
 
 }
 
-VaultStake::VaultStake(const CTxIn _stakeIn, CValidationState state): stakeIn(_stakeIn){
+CVaultStake::CVaultStake(list <CZerocoinEntry> &listPubCoin, CValidationState state){
 
 
-    CTransactionRef txPrev;
-    Coin coin;
-    CBigNum pubCoin;
+    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
 
-    if (!pcoinsTip->GetCoin(stakeIn.prevout, coin) || coin.IsSpent())
-    {
-        // Must find the prevout in the txdb / blocks
+    //sort list with highest pubcoin value
+    listPubCoin.sort(CompDenom);
+    pubCoinList = listPubCoin;
 
-        CBlock blockKernel; // block containing stake kernel, GetTransaction should only fill the header.
-        if (!GetTransaction(stakeIn.prevout.hash, txPrev, Params().GetConsensus(), blockKernel, true)
-            || stakeIn.prevout.n >= txPrev->vout.size())
-            return state.DoS(10, error("%s: prevout-not-in-chain", __func__), REJECT_INVALID, "prevout-not-in-chain");
+    CZerocoinEntry coinToUse;
 
-        stakePrevOut = txPrev->vout[stakeIn.prevout.n];
+    CBigNum accumulatorValue;
+    uint256 accumulatorBlockHash;
 
-        //sanity check using minted outputs
-        assert(stakePrevOut.scriptPubKey.IsZerocoinMint());
+    int coinId = INT_MAX;
+    int coinHeight;
 
-        int nDepth;
-        if (!CheckAge(pindexPrev, hashBlock, nDepth))
-            return state.DoS(100, error("%s: Tried to stake at depth %d", __func__, nDepth + 1), REJECT_INVALID, "invalid-stake-depth");
+    //remove any coins not old enough
+    BOOST_FOREACH(const CZerocoinEntry &minIdPubcoin, listPubCoin) {
+        if (minIdPubcoin.denomination == denomination
+                && minIdPubcoin.IsUsed == false
+                && minIdPubcoin.randomness != 0
+                && minIdPubcoin.serialNumber != 0) {
 
-        kernelPubKey = stakePrevOut.scriptPubKey;
-        amount = stakePrevOut.nValue;
-        nBlockFromTime = blockKernel.nTime;
-        pubCoin = vector<unsigned char>(stakePrevOut.scriptPubKey.begin()+6, stakePrevOut.scriptPubKey.end());
-    } else
-    {
-        //sanity check using minted outputs
-        assert(coin.out.scriptPubKey.IsZerocoinMint());
-
-        CBlockIndex *pindex = chainActive[coin.nHeight];
-        CBlockIndex *pindexPrev = chainActive[coin.nHeight - 1];
-        if (!pindex)
-            return state.DoS(100, error("%s: invalid-prevout", __func__), REJECT_INVALID, "invalid-prevout");
-
-        nDepth = pindexPrev->nHeight - coin.nHeight;
-        int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(pindexPrev->nHeight / 2));
-        if (nRequiredDepth > nDepth)
-            return state.DoS(100, error("%s: Tried to stake at depth %d", __func__, nDepth + 1), REJECT_INVALID, "invalid-stake-depth");
-
-        kernelPubKey = coin.out.scriptPubKey;
-        amount = coin.out.nValue;
-        nBlockFromTime = pindex->GetBlockTime();
-        pubCoin = vector<unsigned char>(coin.out.scriptPubKey.begin()+6, coin.out.scriptPubKey.end());
+            int id;
+            coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
+            if (coinHeight > 0
+                    && id < coinId
+                    && coinHeight + (1) <= chainActive.Height()
+                    && zerocoinState->GetAccumulatorValueForSpend(&chainActive,
+                            chainActive.Height()-(1),
+                            minIdPubcoin.denomination,
+                            id,
+                            accumulatorValue,
+                            accumulatorBlockHash) > 1
+                    ) {
+                coinId = id;
+                coinToUse = minIdPubcoin;
+            }
+        }
     }
+
+    BOOST_FOREACH(const CZerocoinEntry &minIdPubcoin, listPubCoin) {
+        if (minIdPubcoin.denomination == denomination
+                && minIdPubcoin.IsUsed == false
+                && minIdPubcoin.randomness != 0
+                && minIdPubcoin.serialNumber != 0) {
+
+            int id;
+            coinHeight = zerocoinState->GetMintedCoinHeightAndId(minIdPubcoin.value, minIdPubcoin.denomination, id);
+            if (coinHeight > 0
+                    && id < coinId
+                    && coinHeight + (1) <= chainActive.Height()
+                    && zerocoinState->GetAccumulatorValueForSpend(&chainActive,
+                            chainActive.Height()-(1),
+                            minIdPubcoin.denomination,
+                            id,
+                            accumulatorValue,
+                            accumulatorBlockHash) > 1
+                    ) {
+                coinId = id;
+                coinToUse = minIdPubcoin;
+            }
+        }
+    }
+
+    if (coinId == INT_MAX)
+        state.DoS(100, false, REJECT_INVALID ,"No eligible ghosted coins!");
+
+    if(coinHeight < COINBASE_MATURITY_V2 + chainActive.Height())
+        state.DoS(100, false, REJECT_INVALID ,"Ghosted coins not old enough to stake!");
 
 }

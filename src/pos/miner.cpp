@@ -75,8 +75,7 @@ double GetPoSKernelPS()
     if (nStakesTime)
         result = dStakeKernelsTriedAvg / nStakesTime;
 
-    //if (IsProtocolV2(nBestHeight))
-        result *= Params().GetStakeTimestampMask(nBestHeight) + 1;
+    result *= Params().GetStakeTimestampMask(nBestHeight) + 1;
 
     return result;
 }
