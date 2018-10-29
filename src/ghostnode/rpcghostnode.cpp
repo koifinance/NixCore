@@ -386,9 +386,9 @@ UniValue ghostnode(const JSONRPCRequest& req) {
                 mnObj.push_back(Pair("txHash", mne.getTxHash()));
                 mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
                 mnObj.push_back(Pair("status", strStatus));
-                mnObj.push_back(Pair("paymentAddress", pmn ? pmn->pubKeyCollateralAddress : "N/A"));
-                mnObj.push_back(Pair("lastSeen", pmn ? pmn->nTimeLastChecked : "N/A"));
-                mnObj.push_back(Pair("lastSeen", pmn ? pmn->nTimeLastChecked : "N/A"));
+                mnObj.push_back(Pair("paymentAddress", pmn ? CBitcoinAddress(pmn->pubKeyCollateralAddress.GetID()).ToString() : "N/A"));
+                mnObj.push_back(Pair("lastSeen", pmn ? std::to_string(pmn->nTimeLastChecked) : "N/A"));
+                mnObj.push_back(Pair("protocolVersion", pmn ? std::to_string(pmn->nProtocolVersion) : "N/A"));
                 resultObj.push_back(Pair("ghostnode_" + std::to_string(i), mnObj));
                 i++;
             }
