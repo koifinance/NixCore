@@ -10954,6 +10954,8 @@ uint64_t CWallet::GetStakeWeight() const
     return nWeight;
 }
 
+bool SortWeight(const COutput &a, const COutput &b) { return (a.tx->tx->GetValueOut()/a.tx->GetTxTime()) > (b.tx->tx->GetValueOut()/b.tx->GetTxTime()); }
+
 void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTime, int nHeight) const
 {
     vCoins.clear();
@@ -10965,7 +10967,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
 
         int nHeight = chainActive.Tip()->nHeight;
         int coinbaseMaturity = nHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
-        int nRequiredDepth = std::min(coinbaseMaturity + 1, (int)(nHeight / 2));
+        int nRequiredDepth = coinbaseMaturity + 1;
 
         for (MapWallet_t::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
@@ -10998,13 +11000,6 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                     continue;
 
                 // for staking we ONLY support P2SH Segwit
-                /*
-                if(boost::get<CKeyID>(&dest)){
-                    const CKeyID& destKeyID = boost::get<CKeyID>(dest);
-                    if (HaveKey(destKeyID))
-                        vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
-                }
-                */
                 if(boost::get<CScriptID>(&dest)){
                     const CScriptID& destScriptID = boost::get<CScriptID>(dest);
                     if (HaveCScript(destScriptID))
@@ -11016,7 +11011,10 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
         };
     }
 
-    random_shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
+    //Sort staking list by (amount/height) instead of randomness
+    std::sort(vCoins.begin(), vCoins.end(), SortWeight);
+
+    //random_shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
     return;
 }
 

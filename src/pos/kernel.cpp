@@ -295,7 +295,10 @@ bool CheckKernel(const CBlockIndex *pindexPrev, unsigned int nBits, int64_t nTim
     if (!pindex)
         return false;
 
-    int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(pindexPrev->nHeight / 2));
+    int coinbaseMaturity = chainActive.Height() >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+    int nRequiredDepth = (int)(coinbaseMaturity-1);
+
     int nDepth = pindexPrev->nHeight - coin.nHeight;
 
     if (nRequiredDepth > nDepth)
