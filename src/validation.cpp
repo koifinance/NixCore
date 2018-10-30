@@ -4451,12 +4451,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
             if (nHeight > chainActive.Height() + 1) {
                 return true;
             }
-            CBlockIndex *pindex = g_chainstate.AddToBlockIndex(*pblock);
-            g_chainstate.InvalidBlockFound(pindex, state, *pblock);
 
-            if (IncomingBlockChecked(*pblock, state)) // returns true if it did nothing
-                GetMainSignals().BlockChecked(*pblock, state);
-
+            GetMainSignals().BlockChecked(*pblock, state);
             return error("%s: AcceptBlock FAILED (%s)", __func__, state.GetDebugMessage());
         }
         if (pindex && state.nFlags & BLOCK_FAILED_DUPLICATE_STAKE)

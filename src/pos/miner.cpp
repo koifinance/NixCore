@@ -339,7 +339,9 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
                 };
             } else
             {
-                int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(nBestHeight / 2));
+                int coinbaseMaturity = chainActive.Height() >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                            COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+                int nRequiredDepth = (int)(coinbaseMaturity-1);
                 if (pwallet->deepestTxnDepth < nRequiredDepth-4)
                 {
                     pwallet->nIsStaking = CWallet::NOT_STAKING_DEPTH;

@@ -89,6 +89,9 @@ struct Params {
     int nGhostnodePaymentsStartBlock;
     int nGhostnodeInitialize;
 
+    //block to reduce coinbase age from 500 to 200
+    int nCoinMaturityReductionHeight;
+
 };
 } // namespace Consensus
 

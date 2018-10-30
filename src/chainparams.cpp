@@ -176,8 +176,6 @@ public:
 
 
         // ghostnode params
-        //consensus.nGhostnodePaymentsStartBlock = 25; //2 weeks after mainnet release
-        //consensus.nGhostnodeInitialize = 23; //~18 hours before node payments start
         consensus.nGhostnodeMinimumConfirmations = 1;
         consensus.nGhostnodePaymentsStartBlock = 1080; //1.2 days after mainnet release
         consensus.nGhostnodeInitialize = 800; //~24 hours after mainnet release
@@ -189,6 +187,9 @@ public:
         nStakeMinConfirmations = 500;   // 500 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
+
+        consensus.nCoinMaturityReductionHeight = 95000;
+
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 

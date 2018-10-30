@@ -5009,7 +5009,30 @@ int CMerkleTx::GetBlocksToMaturity() const
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
 
-    return std::max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
+    int coinbaseMaturity = 0;
+    if(!this->fHeightCached){
+        int nChainHeight = chainActive.Height();
+        const CBlockIndex *pindexRet;
+        int nDepth = GetDepthInMainChain(pindexRet);
+        //If this tx has confirmed in a block
+        if (nDepth > 0)
+        {
+            coinbaseMaturity = (nChainHeight - nDepth) >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                        COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+        }
+        //tx has not confirmed
+        else{
+            coinbaseMaturity = COINBASE_MATURITY;
+        }
+
+    }
+    //if height is cached
+    else{
+        coinbaseMaturity = nCachedHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                    COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+    }
+    return std::max(0, (coinbaseMaturity+1) - GetDepthInMainChain());
 }
 
 
@@ -10941,7 +10964,8 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
         LOCK2(cs_main, cs_wallet);
 
         int nHeight = chainActive.Tip()->nHeight;
-        int nRequiredDepth = std::min(COINBASE_MATURITY + 1, (int)(nHeight / 2));
+        int coinbaseMaturity = nHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+        int nRequiredDepth = std::min(coinbaseMaturity + 1, (int)(nHeight / 2));
 
         for (MapWallet_t::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
@@ -10962,8 +10986,8 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 const auto &txout = tx->vout[i];
 
                 COutPoint kernel(wtxid, i);
-                if (!CheckStakeUnused(kernel)
-                     || IsSpent(wtxid, i)
+                if (// !CheckStakeUnused(kernel) ||
+                     IsSpent(wtxid, i)
                      || IsLockedCoin(wtxid, i))
                     continue;
 
