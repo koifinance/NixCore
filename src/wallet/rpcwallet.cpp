@@ -5672,14 +5672,65 @@ UniValue resetzerocoinunconfirmed(const JSONRPCRequest& request)
 
 UniValue listallserials(const JSONRPCRequest& request)
 {
-
-    CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
     UniValue results(UniValue::VARR);
+    if(request.params.size() > 0){
+        CBlockIndex *temp = chainActive[request.params[0].get_int()];
+        for(auto it = temp->spentSerials.begin(); it != temp->spentSerials.end(); it++){
+            results.push_back(it->ToString());
+        }
+        return results;
+    }
+    CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
     for(auto it = zcState->usedCoinSerials.begin(); it != zcState->usedCoinSerials.end(); it++) {
         results.push_back(it->ToString());
     }
 
     return results;
+}
+
+UniValue eraseusedzerocoindata(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+    int i = 0;
+
+    {
+        LOCK(pwalletMain->cs_wallet);
+        list <CZerocoinEntry> listPubCoin = list<CZerocoinEntry>();
+        CWalletDB walletdb(pwalletMain->GetDBHandle());
+        walletdb.ListPubCoin(listPubCoin);
+        for(const CZerocoinEntry &pubCoinItem: listPubCoin) {
+            if(pubCoinItem.IsUsed == true){
+                walletdb.EraseZerocoinEntry(pubCoinItem);
+                i++;
+            }
+        }
+    }
+    return "Removed " + std::to_string(i) + " used zerocoin objects from wallet.dat";
+}
+
+UniValue encryptallzerocoins(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+    int i = 0;
+    {
+        if(pwalletMain->IsLocked()){
+            throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+        }
+        LOCK(pwalletMain->cs_wallet);
+        list <CZerocoinEntry> listPubCoin = list<CZerocoinEntry>();
+        CWalletDB walletdb(pwalletMain->GetDBHandle());
+        walletdb.ListPubCoin(listPubCoin);
+        for(const CZerocoinEntry &pubCoinItem: listPubCoin) {
+
+            CZerocoinEntry encryptedZerocoin = pubCoinItem;
+            walletdb.EraseZerocoinEntry(pubCoinItem);
+
+            pwalletMain->EncryptPrivateZerocoinData(encryptedZerocoin);
+            walletdb.WriteZerocoinEntry(encryptedZerocoin);
+            i++;
+        }
+    }
+    return "Encrypted " + std::to_string(i) + " zerocoins";
 }
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
@@ -5772,12 +5823,6 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,              {} },
     { "NIX Ghost Protocol",             "totalghosted",             &totalghosted,              {} },
 
-
-      //NIX Ghost address functions
-    //{ "NIX Ghost Protocol",             "getnewstealthaddress",             &getnewstealthaddress,          {"label","num_prefix_bits","prefix_num","bech32","makeV2"} },
-    //{ "NIX Ghost Protocol",             "importstealthaddress",             &importstealthaddress,          {"scan_secret","spend_secret","label","num_prefix_bits","prefix_num","bech32"} },
-    //{ "NIX Ghost Protocol",             "liststealthaddresses",             &liststealthaddresses,          {"show_secrets"} },
-
     { "NIX Ghost Protocol",             "getnewghostaddress",       &getnewghostaddress,        {"label"} },
     { "NIX Ghost Protocol",             "listghostaddresses",       &listghostaddresses,        {"show_secret"} },
 
@@ -5785,12 +5830,11 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "listunloadedpubcoins",     &listunloadedpubcoins,      {"amount"} },
     { "NIX Ghost Protocol",             "payunloadedpubcoins",      &payunloadedpubcoins,       {"amount", "address"} },
     { "NIX Ghost Protocol",             "getpubcoinpack",           &getpubcoinpack,            {"amount"} },
-  { "NIX Ghost Protocol",             "resetzerocoinamounts",           &resetzerocoinamounts,            {} },
-  { "NIX Ghost Protocol",             "resetzerocoinunconfirmed",           &resetzerocoinunconfirmed,            {} },
-  { "NIX Ghost Protocol",             "listallserials",           &listallserials,            {} },
-
-
-
+    { "NIX Ghost Protocol",             "resetzerocoinamounts",     &resetzerocoinamounts,      {} },
+    { "NIX Ghost Protocol",             "resetzerocoinunconfirmed", &resetzerocoinunconfirmed,  {} },
+    { "NIX Ghost Protocol",             "listallserials",           &listallserials,            {"height"} },
+    { "NIX Ghost Protocol",             "eraseusedzerocoindata",    &eraseusedzerocoindata,     {""} },
+    { "NIX Ghost Protocol",             "encryptallzerocoins",      &encryptallzerocoins,       {""} },
 
 
     //NIX TOR routing functions

@@ -84,6 +84,7 @@ private Q_SLOTS:
 
     void showMenu(const QPoint &point);
     void copyKey();
+    void setKeyListTrigger(int);
 
 Q_SIGNALS:
     void sendCoins(QString addr);

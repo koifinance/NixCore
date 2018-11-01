@@ -1470,7 +1470,11 @@ public:
 
     bool FindUnloadedGhostTransactions(const CTransaction& tx);
     bool TopUpUnloadedCommitments(int kpSize = 101);
-    bool GetKeyPackList(vector <CommitmentKeyPack> &keyPackList);
+    bool GetKeyPackList(vector <CommitmentKeyPack> &keyPackList, int packSize = 10);
+
+    bool EncryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintPlain);
+    bool DecryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintSecret);
+
 
     /**
      * Add ghost functions

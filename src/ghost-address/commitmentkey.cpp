@@ -47,7 +47,7 @@ bool VerifyCommitmentChecksum(const std::vector<uint8_t> &data, const uint32_t c
 
 
 /** All alphanumeric characters*/
-static const char* pszBase61 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+static const char* pszBase61 = "023456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 bool DecodeBase61(const char* psz, std::vector<unsigned char>& vch)
 {
@@ -62,7 +62,7 @@ bool DecodeBase61(const char* psz, std::vector<unsigned char>& vch)
         psz++;
     }
     // Allocate enough space in big-endian base256 representation.
-    int size = strlen(psz) * 744 /1000 + 1; // log(61) / log(256), rounded up.
+    int size = strlen(psz) * 750 /1000 + 1; // log(61) / log(256), rounded up.
     std::vector<unsigned char> b256(size);
     // Process the characters.
     while (*psz && !isspace(*psz)) {
@@ -109,7 +109,7 @@ std::string EncodeBase61(const unsigned char* pbegin, const unsigned char* pend)
         zeroes++;
     }
     // Allocate enough space in big-endian base61 representation.
-    int size = (pend - pbegin) * 138 / 100 + 1; // log(256) / log(61), rounded up.
+    int size = (pend - pbegin) * 140 / 100 + 1; // log(256) / log(61), rounded up.
     std::vector<unsigned char> b61(size);
     // Process the bytes.
     while (pbegin != pend) {

@@ -73,6 +73,19 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
 
     connect(ui->convertGhostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(convertGhostToMeCheckBoxChecked(int)));
     connect(ui->ghostToMeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(ghostToMeCheckBoxChecked(int)));
+    ui->keyPackAmount->addItem("1");
+    ui->keyPackAmount->addItem("2");
+    ui->keyPackAmount->addItem("3");
+    ui->keyPackAmount->addItem("4");
+    ui->keyPackAmount->addItem("5");
+    ui->keyPackAmount->addItem("6");
+    ui->keyPackAmount->addItem("7");
+    ui->keyPackAmount->addItem("8");
+    ui->keyPackAmount->addItem("9");
+    ui->keyPackAmount->addItem("10");
+    //set to default pack size
+    ui->keyPackAmount->setCurrentIndex(ui->keyPackAmount->findText("10"));
+    connect(ui->keyPackAmount, SIGNAL(currentIndexChanged(int)), this, SLOT(setKeyListTrigger(int)));
 
 }
 
@@ -118,7 +131,7 @@ void GhostVault::setWalletModel(WalletModel *walletmodel) {
         connect(tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
 
         vector <CommitmentKeyPack> keyPackList;
-        if (!walletmodel->getKeyPackList(keyPackList))
+        if (!walletmodel->getKeyPackList(keyPackList, ui->keyPackAmount->currentIndex() + 1))
             return;
         //Initialize table with keypacks
         for (auto r=0; r<10; r++)
@@ -344,7 +357,7 @@ void GhostVault::setKeyList(){
     if(!walletModel || !tableView)
         return;
     vector <CommitmentKeyPack> keyPackList;
-    if (!this->walletModel->getKeyPackList(keyPackList))
+    if (!this->walletModel->getKeyPackList(keyPackList, ui->keyPackAmount->currentIndex() + 1))
         return;
     //Initialize table with keypacks
     for (auto r=0; r<10; r++)
@@ -377,4 +390,8 @@ void GhostVault::copyKey()
         return;
     }
     GUIUtil::setClipboard(ui->keyPackList->item(sel.row(),0)->text());
+}
+
+void GhostVault::setKeyListTrigger(int state){
+    setKeyList();
 }

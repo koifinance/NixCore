@@ -176,6 +176,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
 
     {"payunloadedpubcoins", 0, "amount"},
     {"refillghostkeys", 0, "amount"},
+
+    {"listallserials", 0, "height"},
+
+
 };
 
 class CRPCConvertTable

@@ -237,7 +237,7 @@ public:
     void lockWallet();
     void checkBalanceChanged();
 
-    bool getKeyPackList(vector<CommitmentKeyPack> &keyPackList);
+    bool getKeyPackList(vector<CommitmentKeyPack> &keyPackList, int packSize);
 
 private:
     CWallet *wallet;
