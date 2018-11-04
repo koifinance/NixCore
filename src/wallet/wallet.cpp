@@ -11000,7 +11000,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 const auto &txout = tx->vout[i];
 
                 COutPoint kernel(wtxid, i);
-                if (// !CheckStakeUnused(kernel) ||
+                if (!CheckStakeUnused(kernel) ||
                      IsSpent(wtxid, i)
                      || IsLockedCoin(wtxid, i))
                     continue;
@@ -11600,58 +11600,24 @@ CAmount CWallet::GetStakeableBalance() const
 
 bool CWallet::ProcessStakingSettings(std::string &sError)
 {
-    LogPrint(BCLog::HDWALLET, "ProcessStakingSettings\n");
-
-    nStakeCombineThreshold = 5000 * COIN;
-    nStakeSplitThreshold = 10000 * COIN;
-    nMaxStakeCombine = 3;
     nWalletDevFundCedePercent = gArgs.GetArg("-donationpercent", 0);
+    nStakeSplitThreshold = gArgs.GetArg("-stakesplitthreshold", 10000) * COIN;
+    nStakeCombineThreshold = gArgs.GetArg("-stakecombinethreshold", 5000) * COIN;
+    nMaxStakeCombine = gArgs.GetArg("-maxstakecombine", 3);
 
-    UniValue json;
-    if (GetSetting("stakingoptions", json))
-    {
-        if (!json["stakecombinethreshold"].isNull())
-        {
-            try { nStakeCombineThreshold = AmountFromValue(json["stakecombinethreshold"]);
-            } catch (std::exception &e) {
-                sError = "stakecombinethreshold not amount.";
-            };
-        };
+    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d \n",
+              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine);
 
-        if (!json["stakesplitthreshold"].isNull())
-        {
-            try { nStakeSplitThreshold = AmountFromValue(json["stakesplitthreshold"]);
-            } catch (std::exception &e) {
-                sError = "stakesplitthreshold not amount.";
-            };
-        };
 
-        if (!json["donationpercent"].isNull())
-        {
-            try { nWalletDevFundCedePercent = json["foundationdonationpercent"].get_int();
-            } catch (std::exception &e) {
-                sError = "foundationdonationpercent not integer.";
-            };
-        };
-
-        if (json["rewardaddress"].isStr())
-        {
-            try { rewardAddress = CBitcoinAddress(json["rewardaddress"].get_str());
-            } catch (std::exception &e) {
-                sError = "Setting rewardaddress failed.";
-            };
-        };
-    };
-
-    if (nStakeCombineThreshold < 100 * COIN || nStakeCombineThreshold > 5000 * COIN)
+    if (nStakeCombineThreshold < 100 * COIN)
     {
         sError = "stakecombinethreshold must be >= 100 and <= 5000.";
-        nStakeCombineThreshold = 1000 * COIN;
+        nStakeCombineThreshold = 100 * COIN;
     };
 
-    if (nStakeSplitThreshold < nStakeCombineThreshold * 2 || nStakeSplitThreshold > 10000 * COIN)
+    if (nStakeSplitThreshold < nStakeCombineThreshold * 2 )
     {
-        sError = "stakesplitthreshold must be >= 2x stakecombinethreshold and <= 10000.";
+        sError = "stakesplitthreshold must be >= 2x stakecombinethreshold.";
         nStakeSplitThreshold = nStakeCombineThreshold * 2;
     };
 

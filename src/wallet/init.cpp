@@ -49,7 +49,9 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-minersleep=<n>", _("Milliseconds between stake attempts. Lowering this param will not result in more stakes. (default: 500)"));
     strUsage += HelpMessageOpt("-reservebalance=<amount>", _("Ensure available balance remains above reservebalance. (default: 0)"));
     strUsage += HelpMessageOpt("-donationpercent=<n>", _("Percentage of block reward donated to the development fund, overridden by system minimum. (default: 0)"));
-
+    strUsage += HelpMessageOpt("-stakesplitthreshold=<n>", _("Maximum amount of coins to stake before splitting into two outputs. (default: 20000)"));
+    strUsage += HelpMessageOpt("-stakecombinethreshold=<n>", _("Minimum amount of NIX to combine into one stake if wallet has multiple outputs to stake. (default: 5000)"));
+    strUsage += HelpMessageOpt("-maxstakecombine=<n>", _("Maximim of outputs to combine when achieving stakecombinethreshold. (default: 3)"));
 
     if (showDebug)
     {
@@ -295,6 +297,8 @@ bool OpenWallets()
             return false;
         }
         vpwallets.push_back(pwallet);
+        std::string sError;
+        pwallet->ProcessStakingSettings(sError);
     }
 
     return true;

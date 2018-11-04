@@ -217,7 +217,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
                          false,
                          PUBCOIN_NOT_VALIDATE,
                          "CheckZerocoinTransaction: duplicate mint");*/
-        LogPrintf("CheckMintZerocoinTransaction: double mint, tx=%s\n", txout.GetHash().ToString());
+        //LogPrintf("CheckMintZerocoinTransaction: double mint, tx=%s\n", txout.GetHash().ToString());
     }
 
     switch (txout.nValue) {
