@@ -176,7 +176,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
 
     {"payunloadedpubcoins", 0, "amount"},
     {"refillghostkeys", 0, "amount"},
-
+    {"listghostednix", 0, "all"},
     {"listallserials", 0, "height"},
 
 

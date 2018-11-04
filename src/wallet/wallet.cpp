@@ -6386,19 +6386,20 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
 
                 CZerocoinEntry decryptedCoinToUse = coinToUseBatch[i];
 
-                //If this wallet is encrypted and unlocked, we need to decrypt zerocoin private data
-                /*
-                if(IsCrypted() && !IsLocked()){
-                    DecryptPrivateZerocoinData(decryptedCoinToUse);
-                    coinToUseBatch[i].randomness = decryptedCoinToUse.randomness;
-                    coinToUseBatch[i].serialNumber = decryptedCoinToUse.serialNumber;
-                    coinToUseBatch[i].ecdsaSecretKey = decryptedCoinToUse.ecdsaSecretKey;
+                //If ECDSA key is greater than size 32, it means this is an encrypted zerocoin object
+                if(coinToUseBatch[i].ecdsaSecretKey.size() > 32){
+                    //If this wallet is encrypted and unlocked, we need to decrypt zerocoin private data
+                    if(IsCrypted() && !IsLocked()){
+                        DecryptPrivateZerocoinData(decryptedCoinToUse);
+                        coinToUseBatch[i].randomness = decryptedCoinToUse.randomness;
+                        coinToUseBatch[i].serialNumber = decryptedCoinToUse.serialNumber;
+                        coinToUseBatch[i].ecdsaSecretKey = decryptedCoinToUse.ecdsaSecretKey;
+                    }
+                    else if(IsCrypted() && IsLocked()){
+                        strFailReason = _("need to unlock wallet to spend encrypted zerocoin");
+                        return false;
+                    }
                 }
-                else if(IsCrypted() && IsLocked()){
-                    strFailReason = _("need to unlock wallet to spend encrypted zerocoin");
-                    return false;
-                }
-                */
                 privateCoin.setVersion(txVersion);
                 privateCoin.setPublicCoin(pubCoinSelected);
                 privateCoin.setRandomness(decryptedCoinToUse.randomness);
@@ -6450,20 +6451,6 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
                 BOOST_FOREACH(const CZerocoinSpendEntry &item, listCoinSpendSerial){
                     if (spendBatch[i].getCoinSerialNumber() == item.coinSerial) {
                         // THIS SELECEDTED COIN HAS BEEN USED, SO UPDATE ITS STATUS
-                        CZerocoinEntry EncryptedCoinToUse = coinToUseBatch[i];
-                        //If this wallet is encrypted and unlocked, we need to encrypt zerocoin private data to place back
-                        /*
-                        if(IsCrypted() && !IsLocked()){
-                            EncryptPrivateZerocoinData(EncryptedCoinToUse);
-                            coinToUseBatch[i].randomness = EncryptedCoinToUse.randomness;
-                            coinToUseBatch[i].serialNumber = EncryptedCoinToUse.serialNumber;
-                            coinToUseBatch[i].ecdsaSecretKey = EncryptedCoinToUse.ecdsaSecretKey;
-                        }
-                        else if(IsCrypted() && IsLocked()){
-                            strFailReason = _("need to unlock wallet to spend encrypted zerocoin");
-                            return false;
-                        }
-                        */
                         CZerocoinEntry pubCoinTx;
                         pubCoinTx.nHeight = coinHeightBatch[i];
                         pubCoinTx.denomination = coinToUseBatch[i].denomination;
@@ -12280,6 +12267,11 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, int p
     return true;
 }
 
+/*
+ * Encryption and decription of 3 private zerocoin parameters
+ * pubkey hash, randomness, ecdsa key
+ */
+
 bool CWallet::EncryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintPlain){
 
     if(vMasterKey.empty())
@@ -12287,23 +12279,35 @@ bool CWallet::EncryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintPlain){
 
     vector<unsigned char> serialNumberPlain;
     vector<unsigned char> randomnessPlain;
+    vector<unsigned char> ecdsaKeyPlain;
+
     vector<unsigned char> serialNumberSecret;
     vector<unsigned char> randomnessSecret;
+    vector<unsigned char> ecdsaKeySecret;
 
     const uint256 key = zerocoinMintPlain.value.getuint256();
     const uint256 nIV = Hash(key.begin(), key.end());
+
     serialNumberPlain = zerocoinMintPlain.serialNumber.getvch();
-    serialNumberPlain = zerocoinMintPlain.randomness.getvch();
+    randomnessPlain = zerocoinMintPlain.randomness.getvch();
+    ecdsaKeyPlain = zerocoinMintPlain.ecdsaSecretKey;
+
     CKeyingMaterial kmSerialPlain(serialNumberPlain.begin(), serialNumberPlain.end());
     CKeyingMaterial kmRandomnessPlain(randomnessPlain.begin(), randomnessPlain.end());
-    if(!EncryptSecret(vMasterKey, kmSerialPlain, nIV, serialNumberSecret) || !EncryptSecret(vMasterKey, kmRandomnessPlain, nIV, randomnessSecret)) {
+    CKeyingMaterial kmECDSAPlain(ecdsaKeyPlain.begin(), ecdsaKeyPlain.end());
+
+    if(!EncryptSecret(vMasterKey, kmSerialPlain, nIV, serialNumberSecret)
+       || !EncryptSecret(vMasterKey, kmRandomnessPlain, nIV, randomnessSecret)
+       || !EncryptSecret(vMasterKey, kmECDSAPlain, nIV, ecdsaKeySecret)) {
         LogPrintf("Failed to encrypt mint with value:\n%s\n", zerocoinMintPlain.value.ToString());
         return false;
     }
+
     zerocoinMintPlain.serialNumber = CBigNum(serialNumberSecret);
     zerocoinMintPlain.randomness = CBigNum(randomnessSecret);
-    return true;
+    zerocoinMintPlain.ecdsaSecretKey = ecdsaKeySecret;
 
+    return true;
 }
 
 bool CWallet::DecryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintSecret)
@@ -12316,21 +12320,34 @@ bool CWallet::DecryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintSecret)
 
         vector<unsigned char> serialNumberPlain;
         vector<unsigned char> randomnessPlain;
+        vector<unsigned char> ecdsaKeyPlain;
         vector<unsigned char> serialNumberSecret;
         vector<unsigned char> randomnessSecret;
+        vector<unsigned char> ecdsaKeySecret;
 
         const uint256 &key = zerocoinMintSecret.value.getuint256();
         const uint256 nIV = Hash(key.begin(), key.end());
+
         serialNumberSecret = zerocoinMintSecret.serialNumber.getvch();
         randomnessSecret = zerocoinMintSecret.randomness.getvch();
+        ecdsaKeySecret = zerocoinMintSecret.ecdsaSecretKey;
+
         CKeyingMaterial kmSerial;
         CKeyingMaterial kmRandomness;
+        CKeyingMaterial kmECDSA;
+
         DecryptSecret(vMasterKey, serialNumberSecret, nIV, kmSerial);
         DecryptSecret(vMasterKey, randomnessSecret, nIV, kmRandomness);
+        DecryptSecret(vMasterKey, ecdsaKeySecret, nIV, kmECDSA);
+
         serialNumberPlain = vector<unsigned char>(kmSerial.begin(), kmSerial.end());
         randomnessPlain = vector<unsigned char>(kmRandomness.begin(), kmRandomness.end());
+        ecdsaKeyPlain = vector<unsigned char>(kmECDSA.begin(), kmECDSA.end());
+
         zerocoinMintSecret.serialNumber = (CBigNum(serialNumberPlain));
         zerocoinMintSecret.randomness = (CBigNum(randomnessPlain));
+        zerocoinMintSecret.ecdsaSecretKey = ecdsaKeyPlain;
+
         return true;
     }
 }

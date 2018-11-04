@@ -188,7 +188,7 @@ public:
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 
-        consensus.nCoinMaturityReductionHeight = 95000;
+        consensus.nCoinMaturityReductionHeight = 97000;
 
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
@@ -272,7 +272,7 @@ public:
         };
 
         chainTxData = ChainTxData{
-                //block 73321 (0x22a7173b5a74caa5777ff8b36a56f87c3d393cae6bf3fbadf95a847e6d3e011c)
+                //block 85191 (0x7ac4f433832c436c4e5bd19de7d9275e605e75c08d1d468e97b9ea21fc6e7ae6)
             1540928960, // * UNIX timestamp of last known number of transactions
             111262,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)

@@ -5606,9 +5606,8 @@ UniValue resetzerocoinamounts(const JSONRPCRequest& request)
 
     //refill keys to 100 in wallet
     for(CZerocoinEntry &zcEntry: listPubcoin){
-            if(zcEntry.denomination > 5000)
-                if (!walletdb.EraseZerocoinEntry(zcEntry))
-                    return "ghostkeys() Error: Only able to create";
+        if (!walletdb.EraseZerocoinEntry(zcEntry))
+            return "ghostkeys() Error: Only able to create";
     }
 
     return "Sucessfully created ghostkey: \n";
@@ -5723,11 +5722,41 @@ UniValue encryptallzerocoins(const JSONRPCRequest& request)
         for(const CZerocoinEntry &pubCoinItem: listPubCoin) {
 
             CZerocoinEntry encryptedZerocoin = pubCoinItem;
-            walletdb.EraseZerocoinEntry(pubCoinItem);
+            //Zerocoin object is already encrypted
+            if(pubCoinItem.ecdsaSecretKey.size() > 32)
+                continue;
+            //walletdb.EraseZerocoinEntry(pubCoinItem);
 
             pwalletMain->EncryptPrivateZerocoinData(encryptedZerocoin);
             walletdb.WriteZerocoinEntry(encryptedZerocoin);
-            i++;
+            i = encryptedZerocoin.ecdsaSecretKey.size();
+        }
+    }
+    return "Encrypted " + std::to_string(i) + " zerocoins";
+}
+
+UniValue decryptallzerocoins(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+    int i = 0;
+    {
+        if(pwalletMain->IsLocked()){
+            throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+        }
+        LOCK(pwalletMain->cs_wallet);
+        list <CZerocoinEntry> listPubCoin = list<CZerocoinEntry>();
+        CWalletDB walletdb(pwalletMain->GetDBHandle());
+        walletdb.ListPubCoin(listPubCoin);
+        for(const CZerocoinEntry &pubCoinItem: listPubCoin) {
+
+            CZerocoinEntry decryptedZerocoin = pubCoinItem;
+            //Zerocoin object is not encrypted
+            if(pubCoinItem.ecdsaSecretKey.size() <= 32)
+                continue;
+
+            pwalletMain->DecryptPrivateZerocoinData(decryptedZerocoin);
+            walletdb.WriteZerocoinEntry(decryptedZerocoin);
+            i = decryptedZerocoin.ecdsaSecretKey.size();
         }
     }
     return "Encrypted " + std::to_string(i) + " zerocoins";
@@ -5819,7 +5848,7 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "unghostamount",            &unghostamount,             {"amount"} },
     { "NIX Ghost Protocol",             "resetghostednix",          &resetmintzerocoin,         {} },
     { "NIX Ghost Protocol",             "setghostednixstatus",      &setmintzerocoinstatus,     {} },
-    { "NIX Ghost Protocol",             "listghostednix",           &listmintzerocoins,         {} },
+    { "NIX Ghost Protocol",             "listghostednix",           &listmintzerocoins,         {"all"} },
     { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,              {} },
     { "NIX Ghost Protocol",             "totalghosted",             &totalghosted,              {} },
 
@@ -5835,6 +5864,8 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "listallserials",           &listallserials,            {"height"} },
     { "NIX Ghost Protocol",             "eraseusedzerocoindata",    &eraseusedzerocoindata,     {""} },
     { "NIX Ghost Protocol",             "encryptallzerocoins",      &encryptallzerocoins,       {""} },
+    { "NIX Ghost Protocol",             "decryptallzerocoins",      &decryptallzerocoins,       {""} },
+
 
 
     //NIX TOR routing functions

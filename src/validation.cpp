@@ -3811,9 +3811,8 @@ bool AddToMapStakeSeen(const COutPoint &kernel, const uint256 &blockHash)
     } else
     {
         listStakeSeen.push_back(kernel);
-    };
-    //mapStakeSeen[kernel] = blockHash;
-    //listStakeSeen.push_back(kernel);
+    }
+
     return true;
 }
 
@@ -3837,12 +3836,10 @@ bool CheckStakeUnique(const CBlock &block, bool fUpdate)
             return true;
 
         return error("%s: Stake kernel for %s first seen on %s.", __func__, blockHash.ToString(), mi->second.ToString());
-    };
+    }
 
     if (!fUpdate)
         return true;
-
-
 
     if (listStakeSeen.size() > MAX_STAKE_SEEN_SIZE)
     {
@@ -3850,7 +3847,7 @@ bool CheckStakeUnique(const CBlock &block, bool fUpdate)
         if (1 != mapStakeSeen.erase(oldest))
             LogPrintf("%s: Warning: mapStakeSeen did not erase %s %n\n", __func__, oldest.hash.ToString(), oldest.n);
         listStakeSeen.pop_front();
-    };
+    }
 
     return AddToMapStakeSeen(kernel, blockHash);
 }
