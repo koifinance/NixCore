@@ -1136,7 +1136,7 @@ bool CWallet::LoadToWallet(const CWalletTx& wtxIn)
     int nBestHeight = chainActive.Height();
     if (wtx.IsCoinStake() && wtx.isAbandoned())
     {
-        if (wtx.nCachedHeight > 0 && wtx.nCachedHeight < INT_MAX && wtx.nCachedHeight > nBestHeight - (MAX_STAKE_SEEN_SIZE * 1.5))
+        if (wtx.nCachedHeight > 0 && wtx.nCachedHeight < INT_MAX && wtx.nCachedHeight > nBestHeight - (MAX_STAKE_SEEN_SIZE * 1))
         {
             // Add to MapStakeSeen to prevent node submitting a block that would be rejected.
             const COutPoint &kernel = wtx.tx->vin[0].prevout;
