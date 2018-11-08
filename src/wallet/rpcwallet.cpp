@@ -469,7 +469,7 @@ UniValue getfeeforamount(const JSONRPCRequest& request)
     return nFeeRequired;
 
 }
-static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control, CScript ghostKey)
+static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control/*, CScript ghostKey*/)
 {
     CAmount curBalance = pwallet->GetBalance();
     LogPrintf("\nCurrent balance: %lf, nValue: %lf \n", curBalance, nValue);
@@ -497,11 +497,13 @@ static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CA
     CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
     vecSend.push_back(recipient);
 
+    /*
     //include public ghost key in transaction if using a ghost address
     if(!ghostKey.empty()){
         CRecipient recipientGhost = {ghostKey, 0, fSubtractFeeFromAmount};
         vecSend.push_back(recipientGhost);
     }
+    */
 
     if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
@@ -561,6 +563,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     CTxDestination dest;
+    /*
     CScript ghostKey;
 
     if (IsGhostAddress(request.params[0].get_str()))
@@ -609,6 +612,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         }
     }
     else
+    */
          dest = DecodeDestination(request.params[0].get_str());
 
     if (!IsValidDestination(dest)) {
@@ -650,7 +654,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     EnsureWalletIsUnlocked(pwallet);
 
-    SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control, ghostKey);
+    SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control/*, ghostKey*/);
 
     return wtx.GetHash().GetHex();
 }
@@ -1133,7 +1137,7 @@ UniValue sendfrom(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     CCoinControl no_coin_control; // This is a deprecated API
-    SendMoney(pwallet, dest, nAmount, false, wtx, no_coin_control, IsStealthAddress(request.params[1].get_str()));
+    SendMoney(pwallet, dest, nAmount, false, wtx, no_coin_control/*, IsStealthAddress(request.params[1].get_str())*/);
 
     return wtx.GetHash().GetHex();
 }
@@ -5680,10 +5684,18 @@ UniValue listallserials(const JSONRPCRequest& request)
         return results;
     }
     CZerocoinState *zcState = CZerocoinState::GetZerocoinState();
+
+    for(auto it = 53000; it <= chainActive.Tip()->nHeight; it++){
+        CBlockIndex *temp = chainActive[it];
+        for(auto it = temp->spentSerials.begin(); it != temp->spentSerials.end(); it++){
+            results.push_back(it->ToString());
+        }
+    }
+    /*
     for(auto it = zcState->usedCoinSerials.begin(); it != zcState->usedCoinSerials.end(); it++) {
         results.push_back(it->ToString());
     }
-
+    */
     return results;
 }
 
