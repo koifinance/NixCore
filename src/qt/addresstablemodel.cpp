@@ -430,20 +430,6 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     }
     else if(type == Receive)
     {
-        if(address_type == OUTPUT_TYPE_GHOST){
-            CEKAStealthKey akStealth;
-            std::string sLabel = label.toStdString();
-            if (0 != wallet->NewStealthKeyFromAccount(sLabel, akStealth, 0,  nullptr))
-                return QString();
-
-            CStealthAddress sxAddr;
-            akStealth.SetSxAddr(sxAddr);
-
-            QString addr = QString::fromStdString(sxAddr.ToString());
-
-            return addr;
-        }
-
         // Generate a new address to associate with given label
         CPubKey newKey;
         if(!wallet->GetKeyFromPool(newKey))

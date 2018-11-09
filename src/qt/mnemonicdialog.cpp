@@ -25,7 +25,7 @@ MnemonicDialog::MnemonicDialog(QWidget *parent, WalletModel *wm) :
     if (!phdw)
         return;
 
-    if (phdw->idDefaultAccount.IsNull())
+    if (phdw->GetHDChain().masterKeyID.IsNull())
         ui->lblHelp->setText(
             "This wallet has no HD account loaded.\n"
             "An account must first be loaded in order to generate receiving addresses.\n"

@@ -507,22 +507,18 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
             {
                 LOCK(wallet->cs_wallet);
 
-                if (IsGhostAddress(strAddress)){
-                    wallet->UpdateGhostAddress(strAddress, strLabel, true);
-                }
-                else{
-                    std::map<CTxDestination, CAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
+                std::map<CTxDestination, CAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
 
-                    // Check if we have a new address or an updated label
-                    if (mi == wallet->mapAddressBook.end())
-                    {
-                        wallet->SetAddressBook(dest, strLabel, "send");
-                    }
-                    else if (mi->second.name != strLabel)
-                    {
-                        wallet->SetAddressBook(dest, strLabel, ""); // "" means don't change purpose
-                    }
+                // Check if we have a new address or an updated label
+                if (mi == wallet->mapAddressBook.end())
+                {
+                    wallet->SetAddressBook(dest, strLabel, "send");
                 }
+                else if (mi->second.name != strLabel)
+                {
+                    wallet->SetAddressBook(dest, strLabel, ""); // "" means don't change purpose
+                }
+
             }
         }
         Q_EMIT coinsSent(wallet, rcp, transaction_array);
