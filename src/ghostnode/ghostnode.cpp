@@ -923,4 +923,3 @@ void CGhostnode::UpdateWatchdogVoteTime() {
     LOCK(cs);
     nTimeLastWatchdogVote = GetTime();
 }
-

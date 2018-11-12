@@ -553,17 +553,17 @@ bool IsValidDestination(const CTxDestination& dest) {
     return dest.which() != 0;
 }
 
-bool ExtractStakingKeyID(const CScript &scriptPubKey, CKeyID &keyID)
+bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &keyID)
 {
     if (scriptPubKey.IsPayToScriptHash())
     {
-        keyID = CKeyID(uint160(&scriptPubKey[3], 20));
+        keyID = CScriptID(uint160(&scriptPubKey[2], 20));
         return true;
     };
 
     if (scriptPubKey.IsPayToScriptHash_CS())
     {
-        keyID = CKeyID(uint160(&scriptPubKey[5], 20));
+        keyID = CScriptID(uint160(&scriptPubKey[4], 20));
         return true;
     };
 

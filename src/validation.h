@@ -462,6 +462,9 @@ bool AddToMapStakeSeen(const COutPoint &kernel, const uint256 &blockHash);
 bool CheckStakeUnused(const COutPoint &kernel);
 bool CheckStakeUnique(const CBlock &block, bool fUpdate=true);
 
+/** Validates ghost fee distribuition */
+bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBlock);
+
 /** Context-independent validity checks */
 bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true, bool fCheckMerkleRoot = true, int nHeight = INT_MAX, bool isVerifyDB = false);
 

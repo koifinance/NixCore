@@ -20,6 +20,12 @@ bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8
     {
         hashBytes.assign(pScript->begin()+2, pScript->begin()+22);
         scriptType = ADDR_INDT_SCRIPT_ADDRESS;
+    }
+    else
+    if (pScript->IsPayToScriptHash_CS())
+    {
+        hashBytes.assign(pScript->begin()+4, pScript->begin()+24);
+        scriptType = ADDR_INDT_SCRIPT_ADDRESS;
     } else
     if (pScript->IsPayToPublicKeyHash256())
     {

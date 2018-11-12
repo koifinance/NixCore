@@ -47,6 +47,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             {
                 TransactionRecord sub(hash, nTime);
                 CTxDestination address;
+                CScript coldstakeAddress;
+
                 sub.idx = i; // vout index
 
                 //display coinstake amount only, not total
@@ -73,6 +75,14 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     // Received by Bitcoin Address
                     sub.type = TransactionRecord::RecvWithAddress;
                     sub.address = EncodeDestination(address);
+                }
+                else if(GetCoinstakeScriptPath(txout.scriptPubKey, coldstakeAddress)){
+                    // Received coldstake
+                    ExtractDestination(coldstakeAddress, address);
+                    if(IsMine(*wallet, address)){
+                    sub.type = TransactionRecord::RecvWithAddress;
+                    sub.address = EncodeDestination(address);
+                    }
                 }
                 else
                 {
@@ -110,7 +120,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 sub.idx = i; // vout index
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
-                if(tempTx->IsZerocoinMint(*tempTx)){
+                if(tempTx->IsZerocoinMint()){
                     sub.type = TransactionRecord::Ghosted;
                 }
                 else if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
@@ -187,7 +197,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 CTxDestination address;
                 if (ExtractDestination(txout.scriptPubKey, address))
                 {
-                    if(tempTx->IsZerocoinMint(*tempTx)){
+                    if(tempTx->IsZerocoinMint()){
                         sub.type = TransactionRecord::Ghosted;
                         sub.address = mapValue["to"];
                     }
@@ -199,7 +209,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 }
                 else
                 {
-                    if(tempTx->IsZerocoinMint(*tempTx)){
+                    if(tempTx->IsZerocoinMint()){
                         sub.type = TransactionRecord::Ghosted;
                         sub.address = mapValue["to"];
                     }
@@ -359,7 +369,7 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
         }
         else if (status.depth < RecommendedNumConfirmations)
         {
-            if(wtx.tx->IsZerocoinMint(*wtx.tx))
+            if(wtx.tx->IsZerocoinMint())
                 status.status = TransactionStatus::Ghosting;
             else
                 status.status = TransactionStatus::Confirming;

@@ -139,6 +139,7 @@ const char* GetOpName(opcodetype opcode)
     //case OP_NOP9                 : return "OP_NOP9";
     //case OP_NOP10                : return "OP_NOP10";
 
+    case OP_KEYLOCKVERIFY          : return "OP_KEYLOCKVERIFY";
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
 
 
@@ -147,8 +148,6 @@ const char* GetOpName(opcodetype opcode)
     case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
 
     case OP_ISCOINSTAKE            : return "OP_ISCOINSTAKE";
-
-    case OP_KEYLOCKVERIFY          : return "OP_KEYLOCKVERIFY";
 
     // Note:
     //  The template matching params OP_SMALLINTEGER/etc are defined in opcodetype enum
@@ -342,7 +341,7 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
 
 bool CScript::IsPayToScriptHash_CS() const
 {
-    return this->size() == 25 + 23 + 4
+    return this->size() == 50
         && (*this)[0] == OP_ISCOINSTAKE
         && (*this)[1] == OP_IF
         && MatchPayToScriptHash(2)

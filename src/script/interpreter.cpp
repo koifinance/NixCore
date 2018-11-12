@@ -432,6 +432,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     break;
                 }
 
+                // Ghostnode payment pooling
                 case OP_KEYLOCKVERIFY:
                 {
                     break;

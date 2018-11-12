@@ -68,10 +68,12 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
         if (!SplitConditionalCoinstakeScript(scriptPubKey, scriptA, scriptB))
             return ISMINE_NO;
 
+        //Pull out owner address
         isminetype typeB = IsMine(keystore, scriptB, isInvalid, sigversion);
         if (typeB & ISMINE_SPENDABLE)
             return typeB;
 
+        //Pull out coldstaking address
         isminetype typeA = IsMine(keystore, scriptA, isInvalid, sigversion);
         if (typeA & ISMINE_SPENDABLE)
         {

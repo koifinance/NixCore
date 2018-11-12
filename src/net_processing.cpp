@@ -3171,7 +3171,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             ghostnodeSync.ProcessMessage(pfrom, strCommandNonConst, vRecv);
         } else {
             // Ignore unknown commands for extensibility
-            LogPrint(BCLog::NET, "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->GetId());
+            LogPrintf("Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->GetId());
         }
     }
 

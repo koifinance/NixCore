@@ -569,7 +569,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
         if (tx.IsCoinBase())
             continue;
-        if(tx.IsZerocoinMint(tx)){
+        if(tx.IsZerocoinMint()){
             ghostProtocolFees +=  pblocktemplate->vTxFees[index_in_template];
             continue;
         }

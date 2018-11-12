@@ -1788,7 +1788,7 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
             if (fLong)
                 WalletTxToJSON(wtx, entry);
             entry.push_back(Pair("abandoned", wtx.isAbandoned()));
-            entry.push_back(Pair("is_ghosted", wtx.tx->IsZerocoinMint(*wtx.tx) || wtx.tx->IsZerocoinSpend()));
+            entry.push_back(Pair("is_ghosted", wtx.tx->IsZerocoinMint() || wtx.tx->IsZerocoinSpend()));
             ret.push_back(entry);
         }
     }
@@ -1968,7 +1968,7 @@ UniValue listtransactions(const JSONRPCRequest& request)
     int nFrom = 0;
     if (!request.params[2].isNull())
         nFrom = request.params[2].get_int();
-    isminefilter filter = ISMINE_SPENDABLE;
+    isminefilter filter = ISMINE_SPENDABLE | ISMINE_WATCH_COLDSTAKE;
     if(!request.params[3].isNull())
         if(request.params[3].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
@@ -2981,6 +2981,7 @@ UniValue getwalletinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("ghost_vault_unconfirmed",       ValueFromAmount(pwallet->GetGhostBalanceUnconfirmed())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwallet->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwallet->GetImmatureBalance())));
+    obj.push_back(Pair("coldstake_outputs",    ValueFromAmount(pwallet->CountColdstakeOutputs())));
     obj.push_back(Pair("txcount",       (int)pwallet->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwallet->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize", (int64_t)kpExternalSize));
@@ -4525,7 +4526,7 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
             "\nResult:\n"
             "{\n"
             "  \"enabled\": true|false,             (boolean) If a valid coldstakingaddress is loaded or not on this wallet.\n"
-            "  \"coldstaking_key_id\"            (string) The id of the current coldstakingaddress.\n"
+            "  \"coldstaking_address\"              (string) The address of the current coldstakingaddress.\n"
             "  \"coin_in_stakeable_script\"         (numeric) Current amount of coin in scripts stakeable by this wallet.\n"
             "  \"coin_in_coldstakeable_script\"     (numeric) Current amount of coin in scripts stakeable by the wallet with the coldstakingaddress.\n"
             "  \"percent_in_coldstakeable_script\"  (numeric) Percentage of coin in coldstakeable scripts.\n"
@@ -4558,20 +4559,19 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
     int nHeight = chainActive.Tip()->nHeight;
     int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(nHeight / 2));
 
-    pwallet->AvailableCoins(vecOutputs, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
+    pwallet->AvailableCoins(vecOutputs, include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth, AvailableCoinsType::ALL_COINS, true);
 
     CAmount nStakeable = 0;
     CAmount nColdStakeable = 0;
     CAmount nWalletStaking = 0;
 
-    CKeyID keyID;
-    CScript coinstakePath;
+    CScriptID keyID;
     for (const auto &out : vecOutputs)
     {
         const CScript scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
         CAmount nValue = out.tx->tx->vout[out.i].nValue;
-
-        if (scriptPubKey.IsPayToPublicKeyHash() || scriptPubKey.IsPayToPublicKeyHash256())
+        LogPrintf("\n IsPayToScriptHash_CS size: %d", scriptPubKey.size());
+        if (scriptPubKey.IsPayToScriptHash())
         {
             if (!out.fSpendable)
                 continue;
@@ -4582,50 +4582,48 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
             // Show output on both the spending and staking wallets
             if (!out.fSpendable)
             {
-                if (!ExtractStakingKeyID(scriptPubKey, keyID)
-                    || !pwallet->HaveKey(keyID))
+                if (!ExtractStakingKeyID(scriptPubKey, keyID))
                     continue;
-            };
+                CBitcoinAddress addrTo(keyID);
+                LogPrintf("\n IsPayToScriptHash_CS key: %s", addrTo.ToString());
+                if(!pwallet->HaveCScript(keyID))
+                    continue;
+            }
             nColdStakeable += nValue;
         } else
         {
             continue;
-        };
+        }
 
         if (out.nDepth < nRequiredDepth)
             continue;
 
         if (!ExtractStakingKeyID(scriptPubKey, keyID))
             continue;
-        if (pwallet->HaveKey(keyID))
+
+        if(pwallet->HaveCScript(keyID))
             nWalletStaking += nValue;
-    };
+    }
 
 
-    bool fEnabled = false;
-    UniValue jsonSettings;
     CBitcoinAddress addrColdStaking;
-    if (false)
+    std::string sAddress = gArgs.GetArg("-coldstakeaddress", "");
+    if (sAddress != "")
     {
-        std::string sAddress;
-        try { sAddress = jsonSettings["coldstakingaddress"].get_str();
-        } catch (std::exception &e) {
-            return error("%s: Get coldstakingaddress failed %s.", __func__, e.what());
-        };
+        addrColdStaking.SetString(sAddress);
+        if (addrColdStaking.IsValid()){
+            obj.pushKV("enabled", true);
+            obj.pushKV("coldstaking_address", addrColdStaking.ToString());
+        }
+        else
+            obj.pushKV("enabled", false);
+    }
+    else{
+        obj.pushKV("enabled", false);
+        obj.pushKV("coldstaking_address", "");
+    }
 
-        addrColdStaking = sAddress;
-        if (addrColdStaking.IsValid())
-            fEnabled = true;
-    };
 
-    obj.pushKV("enabled", fEnabled);
-    if (addrColdStaking.IsValid(CChainParams::SCRIPT_ADDRESS))
-    {
-        CTxDestination dest = addrColdStaking.Get();
-        CScriptID kp = boost::get<CScriptID>(dest);
-        CBitcoinAddress addr(dest);
-        obj.pushKV("coldstaking_extkey_id", addr.ToString());
-    };
     obj.pushKV("coin_in_stakeable_script", ValueFromAmount(nStakeable));
     obj.pushKV("coin_in_coldstakeable_script", ValueFromAmount(nColdStakeable));
     CAmount nTotal = nColdStakeable + nStakeable;
@@ -5019,6 +5017,34 @@ UniValue decryptallzerocoins(const JSONRPCRequest& request)
     return "Encrypted " + std::to_string(i) + " zerocoins";
 }
 
+UniValue getstakingaverage(const JSONRPCRequest& request)
+{
+    UniValue entry(UniValue::VOBJ);
+    if(IsInitialBlockDownload())
+        return "Wait until node is fully synced.";
+
+    int sample = 500;
+    vector<int64_t> stakeVector;
+    stakeVector.clear();
+    int startHeight = chainActive.Tip()->nHeight - sample;
+    for(auto it = startHeight; it < chainActive.Tip()->nHeight; it++){
+        CBlock block;
+        CBlockIndex *pindex = chainActive[it];
+        // check level 0: read from disk
+        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            stakeVector.push_back(block.vtx[0]->vout[0].nValue);
+        }
+    }
+
+    int64_t averageStake = 0;
+    for(int i = 0; i < stakeVector.size(); i++)
+        averageStake += stakeVector[i];
+
+    entry.push_back(Pair("average_stake_amount", (averageStake/stakeVector.size())/COIN));
+
+    return entry;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -5095,8 +5121,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "reservebalance",                   &reservebalance,                {"enabled","amount"} },
     { "wallet",             "getalladdresses",                  &getalladdresses,               {} },
     { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
-
-
+    { "wallet",             "getstakingaverage",                &getstakingaverage,             {} },
 
 
     // NIX Ghost functions (experimental)
@@ -5124,7 +5149,7 @@ static const CRPCCommand commands[] =
 
     //NIX TOR routing functions
     { "NIX TOR",             "enabletor",        &enableTor,        {"set"} },
-    { "NIX TOR",             "torstatus",             &torStatus,             {} },
+    { "NIX TOR",             "torstatus",        &torStatus,        {} },
 
 
 

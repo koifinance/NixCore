@@ -362,10 +362,6 @@ public:
      * Must be called while not holding the CGhostnodeMan::cs mutex
      */
     void NotifyGhostnodeUpdates();
-
-    //Called to create ghsotnode fee addresses every 720 blocks
-    bool GhostProtocolFeeDepositAddress();
-
 };
 
 #endif

@@ -52,6 +52,7 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-stakesplitthreshold=<n>", _("Maximum amount of coins to stake before splitting into two outputs. (default: 20000)"));
     strUsage += HelpMessageOpt("-stakecombinethreshold=<n>", _("Minimum amount of NIX to combine into one stake if wallet has multiple outputs to stake. (default: 5000)"));
     strUsage += HelpMessageOpt("-maxstakecombine=<n>", _("Maximim of outputs to combine when achieving stakecombinethreshold. (default: 3)"));
+    strUsage += HelpMessageOpt("-coldstakeaddress=", _("Coldstaking address used for smart contract staking. To be used for local wallet setup. (default: "" (None)"));
 
     if (showDebug)
     {

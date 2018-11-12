@@ -398,9 +398,9 @@ public:
         return (vin.size() >= 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] == OP_ZEROCOINSPEND) && (vout.size() == vin.size()) );
     }
 
-    bool IsZerocoinMint(const CTransaction& tx) const
+    bool IsZerocoinMint() const
     {
-        for (std::vector<CTxOut>::const_iterator it(tx.vout.begin()); it != tx.vout.end(); ++it)
+        for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
             {
                 if (it -> scriptPubKey.IsZerocoinMint())
                     return true;

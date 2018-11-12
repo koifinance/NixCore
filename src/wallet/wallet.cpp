@@ -38,6 +38,8 @@
 #include "ghostnode/instantx.h"
 #include "ghostnode/ghostnode.h"
 #include "ghostnode/ghostnode-payments.h"
+#include <ghostnode/ghostnodeman.h>
+#include <ghostnode/ghostnode-sync.h>
 #include "random.h"
 #include <ghost-address/commitmentkey.h>
 
@@ -1775,8 +1777,11 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
                 if (HasIsCoinstakeOp(scriptPubKey))
                 {
                     CScript scriptOut;
-                    if (GetCoinstakeScriptPath(scriptPubKey, scriptOut))
-                        ExtractDestination(scriptOut, addressStake);
+                    if (GetCoinstakeScriptPath(scriptPubKey, scriptOut)){
+                        CScriptID coinstakeScript;
+                        ExtractStakingKeyID(scriptOut, coinstakeScript);
+                        addressStake = coinstakeScript;
+                    }
                 };
             };
             nCredit += tx->vout[i].nValue;
@@ -2093,7 +2098,7 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     {
         if (fUseCache && fImmatureCreditCached)
             return nImmatureCreditCached;
-        nImmatureCreditCached = pwallet->GetCredit(*tx, ISMINE_SPENDABLE);
+        nImmatureCreditCached = pwallet->GetCredit(*tx, ISMINE_SPENDABLE) + pwallet->GetCredit(*tx, ISMINE_WATCH_COLDSTAKE);
         fImmatureCreditCached = true;
         return nImmatureCreditCached;
     }
@@ -2129,7 +2134,7 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
                 if (!ExtractDestination(pscriptPubKey, dest))
                     continue;
                 if(boost::get<CScriptID>(&dest)){
-                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
+                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
                     if (!MoneyRange(nCredit))
                         throw std::runtime_error(std::string(__func__) + " : value out of range");
                 }
@@ -2137,7 +2142,7 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
                     continue;
             }
             else{
-                nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
+                nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
                 if (!MoneyRange(nCredit))
                     throw std::runtime_error(std::string(__func__) + " : value out of range");
             }
@@ -2498,7 +2503,7 @@ CAmount CWallet::GetAvailableBalance(const CCoinControl* coinControl) const
     return balance;
 }
 
-void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const CCoinControl *coinControl, const CAmount &nMinimumAmount, const CAmount &nMaximumAmount, const CAmount &nMinimumSumAmount, const uint64_t nMaximumCount, const int nMinDepth, const int nMaxDepth, AvailableCoinsType nCoinType, bool fUseInstantSend) const
+void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const CCoinControl *coinControl, const CAmount &nMinimumAmount, const CAmount &nMaximumAmount, const CAmount &nMinimumSumAmount, const uint64_t nMaximumCount, const int nMinDepth, const int nMaxDepth, AvailableCoinsType nCoinType, bool includeImmature) const
 {
     vCoins.clear();
 
@@ -2515,7 +2520,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
             if (!CheckFinalTx(*pcoin->tx))
                 continue;
 
-            if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
+            if (!includeImmature && (pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
             //int nDepth = pcoin->GetDepthInMainChain();
@@ -7895,67 +7900,6 @@ int CWallet::GetDepthInMainChain(const uint256 &blockhash, int nIndex) const
     return ((nIndex == -1) ? (-1) : 1) * (chainActive.Height() - pindex->nHeight + 1);
 }
 
-int CWallet::ExpandTempRecipients(std::vector<CTempRecipient> &vecSend, CStoredExtKey *pc, std::string &sError)
-{
-    LOCK(cs_wallet);
-    //uint32_t nChild;
-    for (size_t i = 0; i < vecSend.size(); ++i)
-    {
-        CTempRecipient &r = vecSend[i];
-
-        if (r.address.type() == typeid(CStealthAddress))
-        {
-            CStealthAddress sx = boost::get<CStealthAddress>(r.address);
-
-            CKey sShared;
-            ec_point pkSendTo;
-
-            int k, nTries = 24;
-            for (k = 0; k < nTries; ++k) // if StealthSecret fails try again with new ephem key
-            {
-                r.sEphem.MakeNewKey(true);
-                if (StealthSecret(r.sEphem, sx.scan_pubkey, sx.spend_pubkey, sShared, pkSendTo) == 0)
-                    break;
-            };
-            if (k >= nTries)
-                return errorN(1, sError, __func__, "Could not generate receiving public key.");
-
-            CPubKey pkEphem = r.sEphem.GetPubKey();
-            r.pkTo = CPubKey(pkSendTo);
-            CKeyID idTo = r.pkTo.GetID();
-            r.scriptPubKey = GetScriptForDestination(idTo);
-
-            if (LogAcceptCategory(BCLog::HDWALLET))
-                LogPrintf("Stealth send to generated address: %s\n", CBitcoinAddress(idTo).ToString());
-
-            CTempRecipient rd;
-            rd.nType = OUTPUT_DATA;
-
-            if (0 != MakeStealthData(r.sNarration, sx.prefix, sShared, pkEphem, rd.vData, r.nStealthPrefix, sError))
-                return 1;
-            vecSend.insert(vecSend.begin() + (i+1), rd);
-            i++; // skip over inserted output
-        } else
-        {
-            if (r.address.type() == typeid(CKeyID))
-            {
-                r.scriptPubKey = GetScriptForDestination(r.address);
-            } else
-            {
-                if (!r.fScriptSet)
-                {
-                    r.scriptPubKey = GetScriptForDestination(r.address);
-
-                    if (r.scriptPubKey.size() < 1)
-                        return errorN(1, sError, __func__, "Unknown address type and no script set.");
-                };
-            };
-        }
-    }
-
-    return 0;
-}
-
 size_t CWallet::CountColdstakeOutputs()
 {
     size_t nColdstakeOutputs = 0;
@@ -7983,25 +7927,6 @@ bool CWallet::GetScriptForAddress(CScript &script, const CBitcoinAddress &addr, 
     LOCK(cs_wallet);
 
     CTxDestination dest = addr.Get();
-    if (dest.type() == typeid(CStealthAddress))
-    {
-        if (!vData)
-            return error("%s: StealthAddress, vData is null .", __func__);
-
-        CStealthAddress sx = boost::get<CStealthAddress>(dest);
-        std::vector<CTempRecipient> vecSend;
-        std::string strError;
-        CTempRecipient r;
-        r.nType = OUTPUT_STANDARD;
-        r.address = sx;
-        vecSend.push_back(r);
-
-        if (0 != ExpandTempRecipients(vecSend, NULL, strError) || vecSend.size() != 2)
-            return error("%s: ExpandTempRecipients failed, %s.", __func__, strError);
-
-        script = vecSend[0].scriptPubKey;
-        *vData = vecSend[1].vData;
-    } else
     if (dest.type() == typeid(CKeyID))
     {
         CKeyID idk = boost::get<CKeyID>(dest);
@@ -8040,7 +7965,6 @@ uint64_t CWallet::GetStakeWeight() const
     }
 
     // Choose coins to use
-    std::vector<const CWalletTx*> vwtxPrev;
     std::set<std::pair<const CWalletTx*,unsigned int> > setCoins;
     CAmount nValueIn = 0;
 
@@ -8056,9 +7980,8 @@ uint64_t CWallet::GetStakeWeight() const
     LOCK2(cs_main, cs_wallet);
     for (auto pcoin : setCoins)
     {
-        //if (pcoin.first->GetDepthInMainChain() >= nStakeMinConfirmations)
         nWeight += pcoin.first->tx->vout[pcoin.second].nValue;
-    };
+    }
 
     return nWeight;
 }
@@ -8104,18 +8027,17 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
 
                 const CScript pscriptPubKey = txout.scriptPubKey;
 
-                CTxDestination dest;
-                if (!ExtractDestination(pscriptPubKey, dest))
+                CScriptID dest;
+
+                //Returns false if not coldstake or p2sh script
+                if (!ExtractStakingKeyID(pscriptPubKey, dest))
                     continue;
 
                 // for staking we ONLY support P2SH Segwit
-                if(boost::get<CScriptID>(&dest)){
-                    const CScriptID& destScriptID = boost::get<CScriptID>(dest);
-                    if (HaveCScript(destScriptID))
-                        vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
-                }
-                else
-                    continue;
+                const CScriptID& destScriptID = dest;
+                if (HaveCScript(destScriptID))
+                    vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
+
             };
         };
     }
@@ -8217,6 +8139,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             const CScript *pscriptPubKey = &kernelOut.scriptPubKey;
             CScript coinstakePath;
             bool fConditionalStake = false;
+
+            //check if this is a coldstake
             if ((HasIsCoinstakeOp(*pscriptPubKey)))
             {
                 fConditionalStake = true;
@@ -8265,59 +8189,52 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 break;  // unable to find corresponding key
             }
 
+            //staking existing cold stake output
             if (fConditionalStake)
             {
                 scriptPubKeyKernel = kernelOut.scriptPubKey;
             } else
             {
-                //payment to scripthash
+                //payment to scripthash only
                 if(whichType == TX_SCRIPTHASH)
                     scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
-                else
-                    break;
-                //payment to pubkey
-                //else
-                    //scriptPubKeyKernel << OP_DUP << OP_HASH160 << ToByteVector(spendId) << OP_EQUALVERIFY << OP_CHECKSIG;
 
                 // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
-                UniValue jsonSettings;
-                if (false)
+                std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
+
+                //set up coldstake script
+                if (coldStakeAddress  != "")
                 {
-                    std::string sAddress;
-                    try { sAddress = jsonSettings["coldstakingaddress"].get_str();
-                    } catch (std::exception &e) {
-                        return error("%s: Get coldstakingaddress failed %s.", __func__, e.what());
-                    };
+                    LogPrintf("%s: Sending output to coldstakingscript %s.\n", __func__, coldStakeAddress);
 
-                    LogPrint(BCLog::POS, "%s: Sending output to coldstakingscript %s.\n", __func__, sAddress);
+                    CBitcoinAddress addrColdStaking(coldStakeAddress);
+                    if (!addrColdStaking.IsValid())
+                        return error("%s: coldstaking address IsValid() failed.", __func__);
 
-                    CBitcoinAddress addrColdStaking(sAddress);
                     CScript scriptStaking;
                     if (!GetScriptForAddress(scriptStaking, addrColdStaking, true))
                         return error("%s: GetScriptForAddress failed.", __func__);
 
-                    // Get new key from the active internal chain
-
                     std::shared_ptr<CReserveScript> coinbaseScript;
                     GetScriptForMining(coinbaseScript);
-
-                    // If the keypool is exhausted, no script is returned at all.  Catch this.
                     if (!coinbaseScript) {
                         return error("%s: Error: Keypool ran out, please call keypoolrefill first.", __func__);
                     }
-
-                    //throw an error if no script was provided
                     if (coinbaseScript->reserveScript.empty()) {
                         return error("%s: No coinbase script available.", __func__);
                     }
+
+                    // Generate new key for local wallet, remove coins from existing address
                     scriptPubKeyKernel = coinbaseScript->reserveScript;
 
                     //payout to script
                     if (scriptStaking.IsPayToScriptHash())
                     {
                         CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
+                        //cold stake address
                         script += scriptStaking;
                         script << OP_ELSE;
+                        //local wallet address
                         script += scriptPubKeyKernel;
                         script << OP_ENDIF;
 
@@ -8344,7 +8261,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
             txNew.vout.push_back(CTxOut(0,scriptPubKeyKernel));
 
-            LogPrint(BCLog::POS, "%s: Added kernel.\n", __func__);
+            LogPrintf("%s: Added kernel with value: %lf.\n", __func__, nCredit);
 
             setCoins.erase(it);
             break;
@@ -8455,28 +8372,62 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
 
     //payout 10 ghostnodes for rewards
-    if(nGhostFees > 0 && chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees/10;
+    if(!(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution)){
+        if(nGhostFees > 0 && chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
+            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees/10;
+            FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
+
+            for(int g = 2; g < 11; g++){
+                CTxOut tempTx;
+                mnpayments.FillBlockPayee(txNew, chainActive.Height() + g, nGhostFees/10, tempTx);
+            }
+        }
+        //no ghostnode fees
+        else{
+            if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
+                CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
+                FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
+            }
+        }
+    }
+    //Utilize new distribuition model
+    else{
+        int64_t returnFee = 0;
+        bool payFees = false;
+        //Check for ghost fee distribution
+        CBlock block;
+        block.SetNull();
+        if(!GetGhostnodeFeePayment(returnFee, payFees, block))
+            return error("%s: GetGhostnodeFeePayment failed.", __func__);
+
+        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
         FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
 
-        for(int g = 2; g < 11; g++){
-            CTxOut tempTx;
-            mnpayments.FillBlockPayee(txNew, chainActive.Height() + g, nGhostFees/10, tempTx);
+        if(payFees){
+            vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
+
+            int totalActiveNodes = 0;
+
+            for(auto node: ghostnodeVector){
+                if(node.IsEnabled())
+                    totalActiveNodes++;
+            }
+
+            //add current block fee since we skip it in GetGhostnodeFeePayment()
+            returnFee += nGhostFees;
+
+            CAmount feePayout = returnFee/totalActiveNodes;
+
+            for(auto node: ghostnodeVector){
+                if(node.IsEnabled()){
+                    CScript mnpayee;
+                    mnpayee = GetScriptForDestination(node.pubKeyCollateralAddress.GetID());
+                    txNew.vout.push_back(CTxOut(feePayout,mnpayee));
+                }
+            }
         }
     }
-    //no ghostnode fees
-    else{
-        if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
-            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
-            FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
-        }
-    }
-    /*
-    if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees;
-        FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
-    }
-    */
+
     //insert witness tx
     std::vector<unsigned char> ret(32, 0x00);
     CHash256().Write(witnessroot.begin(), 32).Write(ret.data(), 32).Finalize(witnessroot.begin());
@@ -8537,7 +8488,9 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     //check for zerocoin mints, start after coinbase
     if(chainActive.Height() + 1 > Params().GetConsensus().nGhostnodePaymentsStartBlock){
         for(int i = 1; i < pblock->vtx.size(); i++){
-            if(pblock->vtx[i]->IsZerocoinMint(*pblock->vtx[i])){
+
+            //Avoid 2-way ghosting miscalculation
+            if(pblock->vtx[i]->IsZerocoinMint() && !pblock->vtx[i]->IsZerocoinSpend()){
                 //scrape fees payouts, 0.25% or minimum of 0.01 coins
                 //whole block is zerocoin mint
                 CAmount mintAmount = 0;
@@ -8658,8 +8611,8 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
     nStakeCombineThreshold = gArgs.GetArg("-stakecombinethreshold", 5000) * COIN;
     nMaxStakeCombine = gArgs.GetArg("-maxstakecombine", 3);
 
-    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d \n",
-              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine);
+    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, coldstake address: %s \n",
+              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine, gArgs.GetArg("-coldstakeaddress", ""));
 
 
     if (nStakeCombineThreshold < 100 * COIN)
@@ -8713,7 +8666,7 @@ CAmount CWallet::GetStaked()
 
 bool CWallet::FindUnloadedGhostTransactions(const CTransaction& tx)
 {
-    if(!tx.IsZerocoinMint(tx))
+    if(!tx.IsZerocoinMint())
         return false;
 
     bool foundCoin = false;

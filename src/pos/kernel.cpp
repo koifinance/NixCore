@@ -87,8 +87,6 @@ bool CheckStakeKernelHash(const CBlockIndex *pindexPrev,
     targetProofOfStake = ArithToUint256(bnTarget);
 
     uint256 bnStakeModifier = pindexPrev->bnStakeModifier;
-    int nStakeModifierHeight = pindexPrev->nHeight;
-    int64_t nStakeModifierTime = pindexPrev->nTime;
 
     //LogPrintf("CheckStakeKernelHash(): Height=%d, StakeModifier=%s \n", nStakeModifierHeight, bnStakeModifier.ToString());
 
@@ -97,31 +95,10 @@ bool CheckStakeKernelHash(const CBlockIndex *pindexPrev,
     ss << nBlockFromTime << prevout.hash << prevout.n << nTime;
     hashProofOfStake = Hash(ss.begin(), ss.end());
 
-    if (fPrintProofOfStake)
-    {
-        LogPrintf("%s: using modifier=%s at height=%d timestamp=%s\n",
-            __func__, bnStakeModifier.ToString(), nStakeModifierHeight,
-            DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStakeModifierTime));
-        LogPrintf("%s: check modifier=%s nTimeKernel=%u nPrevout=%u nTime=%u hashProof=%s\n",
-            __func__, bnStakeModifier.ToString(),
-            nBlockFromTime, prevout.n, nTime,
-            hashProofOfStake.ToString());
-    };
-
+    //LogPrintf("CheckStakeKernelHash(): hashProofOfStake=%s > bnTarget=%s \n", hashProofOfStake.ToString(), bnTarget.ToString());
     // Now check if proof-of-stake hash meets target protocol
     if (UintToArith256(hashProofOfStake) > bnTarget)
         return false;
-
-    if (LogAcceptCategory(BCLog::POS) && !fPrintProofOfStake)
-    {
-        LogPrintf("%s: using modifier=%s at height=%d timestamp=%s\n",
-            __func__, bnStakeModifier.ToString(), nStakeModifierHeight,
-            DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStakeModifierTime));
-        LogPrintf("%s: pass modifier=%s nTimeKernel=%u nPrevout=%u nTime=%u hashProof=%s\n",
-            __func__, bnStakeModifier.ToString(),
-            nBlockFromTime, prevout.n, nTime,
-            hashProofOfStake.ToString());
-    };
 
     return true;
 }

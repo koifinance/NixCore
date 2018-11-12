@@ -717,7 +717,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     vector <CBigNum> zcMintSerialBatch;
     // Check for conflicts with in-memory transactions
     std::set<uint256> setConflicts;
-    if (tx.IsZerocoinMint(tx)) {
+    if (tx.IsZerocoinMint()) {
         for(int i = 0; i < tx.vout.size(); i++){
             CBigNum pubCoin(vector<unsigned char>(tx.vout[i].scriptPubKey.begin()+6, tx.vout[i].scriptPubKey.end()));
             zcMintSerialBatch.push_back(pubCoin);
@@ -881,7 +881,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
             }
 
-            if (nAbsurdFee && !tx.IsZerocoinMint(tx) && nFees > nAbsurdFee)
+            if (nAbsurdFee && !tx.IsZerocoinMint() && nFees > nAbsurdFee)
                 return state.Invalid(false,
                                      REJECT_HIGHFEE, "absurdly-high-fee",
                                      strprintf("%d > %d", nFees, nAbsurdFee));
@@ -1163,7 +1163,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             zcState->AddSpendToMempool(zcSpendSerialBatch[i], hash);
     }
 
-    if (tx.IsZerocoinMint(tx)){
+    if (tx.IsZerocoinMint()){
         for(int i = 0; i < zcMintSerialBatch.size(); i++)
             zcState->AddMintToMempool(zcMintSerialBatch[i], hash);
     }
@@ -2191,7 +2191,77 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consens
     return flags;
 }
 
+bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBlock){
 
+    CAmount totalGhosted = 0;
+    vector<CAmount> mintVector;
+    mintVector.clear();
+    if(ghostnodeSync.IsSynced(chainActive.Height())){
+        if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
+            //Time to payout all ghostnodes and check
+            if(chainActive.Height() + 1 % Params().GetConsensus().nGhostFeeDistributionCycle == 0){
+                int sample = Params().GetConsensus().nGhostFeeDistributionCycle;
+                mintVector.clear();
+                int startHeight = chainActive.Height() - sample;
+                for(auto it = startHeight; it < chainActive.Height() + 1; it++){
+                    CBlock block;
+                    CBlockIndex *pindex = chainActive[it];
+                    //Get fee for current block we are checking
+                    for(auto ctx: pBlock.vtx){
+                        //Found ghost fee transaction
+                        if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                            for(auto mintTx: ctx->vout){
+                                if(mintTx.scriptPubKey.IsZerocoinMint())
+                                    mintVector.push_back(mintTx.nValue);
+                            }
+                        }
+                    }
+                    // Now get fees from past 719 blocks
+                    if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+                        for(auto ctx: block.vtx){
+                            //Found ghost fee transaction
+                            if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                                for(auto mintTx: ctx->vout){
+                                    if(mintTx.scriptPubKey.IsZerocoinMint())
+                                        mintVector.push_back(mintTx.nValue);
+                                }
+                            }
+                        }
+                    }
+                    else
+                        return false;
+                }
+                for(auto f: mintVector)
+                    totalGhosted += f;
+                //Calculate total fees for the 720 block cycle
+                returnFee = totalGhosted * 0.0025;
+                payFees = true;
+            }
+            //Make sure all ghost fees in this block are not paid out
+            else{
+                for(auto ctx: pBlock.vtx){
+                    //Found ghost fee transaction
+                    if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                        for(auto mintTx: ctx->vout){
+                            if(mintTx.scriptPubKey.IsZerocoinMint())
+                                mintVector.push_back(mintTx.nValue);
+                        }
+                    }
+                }
+
+                for(auto f: mintVector)
+                    totalGhosted += f;
+                //Calculate total fees for the current block
+                returnFee = totalGhosted * 0.0025;
+                payFees = false;
+            }
+        }
+    }
+
+    returnFee = 0;
+    payFees = false;
+    return true;
+}
 
 static int64_t nTimeCheck = 0;
 static int64_t nTimeForks = 0;
@@ -2500,33 +2570,20 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(), MILLI * (nTime3 - nTime2), MILLI * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : MILLI * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * MICRO, nTimeConnect * MILLI / nBlocksTotal);
 
-    CAmount nGhostFees = 0;
-
     CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
 
     if (block.IsProofOfStake()) // check payment information on staked blocks
     {
         CTransactionRef txCoinstake = block.vtx[0];
+        int64_t returnFee = 0;
+        bool payFees = false;
+        //Check for ghost fee distribution
+        if(!GetGhostnodeFeePayment(returnFee, payFees, block))
+            return state.DoS(100, error("ConnectBlock() : GetGhostnodeFeePayment incorrect ghost fee scheduling."), REJECT_INVALID, "bad-cs-amount");
 
-        //check zerocoin mints for fees, start after coinstake
-        //experimental
-        /*
-        if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock){
-            for(int i = 1; i < block.vtx.size(); i++){
-                if(block.vtx[i]->IsZerocoinMint(*block.vtx[i])){
-                    //scrape fees payouts, 0.25% or minimum of 0.01 coins
-                    nGhostFees =  ((block.vtx[i]->GetValueOut() * 0.0025) > 0.01) ? (block.vtx[i]->GetValueOut() * 0.0025) : 0.01;
-                }
-            }
+        if(!payFees){
+            blockReward = blockReward - returnFee;
         }
-
-        if(nGhostFees > nFees){
-            LogPrintf("\nConnectBlock() ERROR: nGhostFees not able to payout, reverting to 0, nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
-            nGhostFees = 0;
-        }
-        else
-            nFees -= nGhostFees;
-        */
 
         //less than 4 outputs misses development fund and or ghostnode payments
         if(txCoinstake->vout.size() < 3)
@@ -2712,7 +2769,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
     // Erase conflicting zerocoin mint txs from the mempool
     BOOST_FOREACH(const CTransactionRef &tx, block.vtx) {
-        if (tx->IsZerocoinMint(*tx)) {
+        if (tx->IsZerocoinMint()) {
             for(int i = 0; i < tx->vout.size(); i++){
                 CBigNum pubCoin(vector<unsigned char>(tx->vout[i].scriptPubKey.begin()+6, tx->vout[i].scriptPubKey.end()));
                 uint256 thisTxHash = tx->GetHash();
@@ -3936,7 +3993,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
         }
-        if(tx->IsZerocoinMint(*tx))
+        if(tx->IsZerocoinMint())
             blockHasMint = true;
     }
 

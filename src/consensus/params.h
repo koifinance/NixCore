@@ -92,6 +92,11 @@ struct Params {
     //block to reduce coinbase age from 500 to 200
     int nCoinMaturityReductionHeight;
 
+    //block to start proper ghost fee distribution every 720 blocks
+    int nStartGhostFeeDistribution;
+    int nGhostFeeDistributionCycle;
+
+
 };
 } // namespace Consensus
 

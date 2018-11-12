@@ -183,7 +183,6 @@ enum opcodetype
     OP_ISCOINSTAKE = OP_NOP9,
     OP_KEYLOCKVERIFY = OP_NOP10,
 
-
     // template matching params
     OP_SMALLDATA = 0xf9,
     OP_SMALLINTEGER = 0xfa,
@@ -652,7 +651,7 @@ public:
     bool IsNormalPaymentScript() const;
 
     bool IsPayToPublicKeyHash() const;
-    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToScriptHash256() || IsPayToTimeLockedScriptHash();}
+    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToTimeLockedScriptHash() || IsPayToScriptHash_CS();}
     bool IsPayToScriptHash() const;
     bool MatchPayToScriptHash(size_t ofs) const;
     bool MatchPayToPublicKeyHash(size_t ofs) const;

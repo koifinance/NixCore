@@ -189,6 +189,8 @@ public:
         nTargetTimespan = 24 * 60;      // 24 mins
 
         consensus.nCoinMaturityReductionHeight = 97000;
+        consensus.nStartGhostFeeDistribution = 110000;
+        consensus.nGhostFeeDistributionCycle = 720;
 
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
