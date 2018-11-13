@@ -340,7 +340,7 @@ public:
 
         consensus.nCoinMaturityReductionHeight = 2;
         consensus.nStartGhostFeeDistribution = 1000;
-        consensus.nGhostFeeDistributionCycle = 720;
+        consensus.nGhostFeeDistributionCycle = 20;
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 

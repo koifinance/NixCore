@@ -302,22 +302,6 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                     }
                 }
             }
-            else{
-                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-                found_1 = false;
-                BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                    //check for first testnet drop
-                    if (output.scriptPubKey == AIRDROP_SCRIPT && output.nValue == (int64_t)(GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                        found_1 = true;
-                        break;
-                    }
-                }
-                if (!(found_1)) {
-                    return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                                     "CTransaction::CheckTransaction() : airdrop funds missing");
-                }
-            }
-
         }
 
         if (nHeight >= 2) {
@@ -330,28 +314,24 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             if (!fTestNet) {
                 DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
                 DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
-            }
-            else {
-                DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-                DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
-            }
-            //7% development fee total
-            BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                //5% for first address
-                if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                    found_1 = true;
-                }
-                //2% for second address
-                if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                    found_2 = true;
-                }
-            }
 
-            if (!(found_1 && found_2)) {
-                return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                                 "CTransaction::CheckTransaction() : dev reward missing");
-            }
+                //7% development fee total
+                BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                    //5% for first address
+                    if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(0.05 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                        found_1 = true;
+                    }
+                    //2% for second address
+                    if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(0.02 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                        found_2 = true;
+                    }
+                }
 
+                if (!(found_1 && found_2)) {
+                    return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                     "CTransaction::CheckTransaction() : dev reward missing");
+                }
+            }
         }
 
         /* Check for Ghostnode payment in block */
@@ -385,26 +365,23 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
         if (!fTestNet) {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
-        }
-        else {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
-        }
-        //7% development fee total
-        BOOST_FOREACH(const CTxOut &output, tx.vout) {
-            //5% for first address
-            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                found_1 = true;
-            }
-            //2% for second address
-            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                found_2 = true;
-            }
-        }
 
-        if (!(found_1 && found_2)) {
-            return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                             "CTransaction::CheckTransaction() : dev reward missing");
+            //7% development fee total
+            BOOST_FOREACH(const CTxOut &output, tx.vout) {
+                //5% for first address
+                if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                    found_1 = true;
+                }
+                //2% for second address
+                if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
+                    found_2 = true;
+                }
+            }
+
+            if (!(found_1 && found_2)) {
+                return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                 "CTransaction::CheckTransaction() : dev reward missing");
+            }
         }
 
         /* Check for Ghostnode payment in block */
@@ -425,7 +402,6 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
                                  "CTransaction::CheckTransaction() : invalid ghostnode payment");
             }
         }
-
     }
 
     return true;

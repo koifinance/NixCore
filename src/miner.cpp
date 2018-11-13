@@ -167,13 +167,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
                     coinbaseTx.vout.push_back(CTxOut(amountForGhostnodes, CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
             }
         }
-        //Draw from testnet addresses
-        else{
-            for(int i = 0; i < 1; i++){
-                AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-                coinbaseTx.vout.push_back(CTxOut(GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(AIRDROP_SCRIPT.begin(), AIRDROP_SCRIPT.end())));
-            }
-        }
     }
 
     // To devs
@@ -187,15 +180,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         if (!fTestNet) {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            // And give it to the dev fund
+            coinbaseTx.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
+            coinbaseTx.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
         }
-        else {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
-        }
-
-        // And give it to the dev fund
-        coinbaseTx.vout.push_back(CTxOut(0.05 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
-        coinbaseTx.vout.push_back(CTxOut(0.02 * GetBlockSubsidy(nHeight, chainparams.GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
     }
 
 
