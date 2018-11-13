@@ -174,6 +174,11 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "walletsettings", 1, "json" },
     { "reservebalance", 0, "enabled" },
 
+    { "delegatestaking", 1, "amount" },
+    { "delegatestaking", 4, "subtractfeefromamount" },
+    { "delegatestaking", 5 , "replaceable" },
+    { "delegatestaking", 6 , "conf_target" },
+
     {"payunloadedpubcoins", 0, "amount"},
     {"refillghostkeys", 0, "amount"},
     {"listghostednix", 0, "all"},

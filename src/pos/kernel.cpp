@@ -88,14 +88,22 @@ bool CheckStakeKernelHash(const CBlockIndex *pindexPrev,
 
     uint256 bnStakeModifier = pindexPrev->bnStakeModifier;
 
-    //LogPrintf("CheckStakeKernelHash(): Height=%d, StakeModifier=%s \n", nStakeModifierHeight, bnStakeModifier.ToString());
+
 
     CDataStream ss(SER_GETHASH, 0);
     ss << bnStakeModifier;
     ss << nBlockFromTime << prevout.hash << prevout.n << nTime;
     hashProofOfStake = Hash(ss.begin(), ss.end());
 
-    //LogPrintf("CheckStakeKernelHash(): hashProofOfStake=%s > bnTarget=%s \n", hashProofOfStake.ToString(), bnTarget.ToString());
+    LogPrintf("CheckStakeKernelHash(): \n"
+              "nValue=%llf, \n"
+              "bnTarget=%s > hashProofOfStake=%s \n"
+              "bnStakeModifier =%s\n"
+              "prevout hash=%s\n"
+              "prevout n=%d\n"
+              "block from time =%d\n"
+              "current block time =%d\n"
+              , nValueIn/COIN, bnTarget.ToString(), hashProofOfStake.ToString(), bnStakeModifier.ToString(), prevout.hash.ToString(), prevout.n, nBlockFromTime, nTime);
     // Now check if proof-of-stake hash meets target protocol
     if (UintToArith256(hashProofOfStake) > bnTarget)
         return false;
@@ -274,6 +282,11 @@ bool CheckKernel(const CBlockIndex *pindexPrev, unsigned int nBits, int64_t nTim
 
     int coinbaseMaturity = chainActive.Height() >= Params().GetConsensus().nCoinMaturityReductionHeight ?
                 COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    if(fTestNet)
+        coinbaseMaturity = COINBASE_MATURITY_TESTNET;
+
     int nRequiredDepth = (int)(coinbaseMaturity-1);
 
     int nDepth = pindexPrev->nHeight - coin.nHeight;

@@ -8076,7 +8076,7 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHe
             break;
 
         int64_t n = pcoin->tx->vout[i].nValue;
-        LogPrintf("\nSelectCoinsForStaking() amount %llf\n", n);
+        //LogPrintf("\nSelectCoinsForStaking() amount %llf\n", n);
         std::pair<int64_t, std::pair<const CWalletTx*, unsigned int> > coin = std::make_pair(n, std::make_pair(pcoin, i));
 
         if (n >= nTargetValue)
@@ -8138,7 +8138,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         {
             LOCK(cs_wallet);
             // Found a kernel
-            LogPrint(BCLog::POS, "%s: Kernel found.\n", __func__);
+            LogPrintf("%s: Kernel found.\n", __func__);
 
 
             CTxOut kernelOut = pcoin.first->tx->vout[pcoin.second];
@@ -8527,9 +8527,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
 
     CKey key;
     pblock->nVersion = ComputeBlockVersion(pindexPrev, Params().GetConsensus());
-    // pblock->nVersion = NIX_BLOCK_VERSION;
     pblock->nBits = GetNextTargetRequired(pindexPrev);
-    LogPrint(BCLog::POS, "%s, nBits %d\n", __func__, pblock->nBits);
 
     std::vector<unsigned char> commitment;
     uint256 witnessroot = BlockWitnessMerkleRoot(*pblock, nullptr);

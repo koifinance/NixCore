@@ -61,7 +61,7 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
 
     // Updating time can change work required on testnet:
     if (consensusParams.fPowAllowMinDifficultyBlocks)
-        pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
+        pblock->nBits = GetNextTargetRequired(pindexPrev);
 
     return nNewTime - nOldTime;
 }
@@ -146,16 +146,16 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     // To airdrop
     if (nHeight == 1) {
-
-        //Split 38m into 100 unique addresses for faster tx processing
-        CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/100;
-        //Subtract 38m from block
-        coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-        CScript AIRDROP_SCRIPT;
-        std::string addresses;
-        CAmount amountForGhostnodes = (40000 * COIN);
         //Draw from mainnet addresses
         if (!fTestNet) {
+            //Split 38m into 100 unique addresses for faster tx processing
+            CAmount airdropValuePerAddress = GetBlockSubsidy(nHeight, chainparams.GetConsensus())/100;
+            //Subtract 38m from block
+            coinbaseTx.vout[0].nValue -= GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+            CScript AIRDROP_SCRIPT;
+            std::string addresses;
+            CAmount amountForGhostnodes = (40000 * COIN);
+
             for(int i = 0; i < 100; i++){
                 addresses = airdrop_addresses[i];
                 AIRDROP_SCRIPT = GetScriptForDestination(DecodeDestination(addresses));
@@ -171,13 +171,12 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     // To devs
     if (nHeight >= 2) {
-
-        coinbaseTx.vout[0].nValue -= DEVELOPMENT_REWARD * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-
-        CScript DEV_1_SCRIPT;
-        CScript DEV_2_SCRIPT;
-
         if (!fTestNet) {
+            coinbaseTx.vout[0].nValue -= DEVELOPMENT_REWARD * GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+
+            CScript DEV_1_SCRIPT;
+            CScript DEV_2_SCRIPT;
+
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
             // And give it to the dev fund

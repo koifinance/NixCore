@@ -238,7 +238,7 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
             continue;
         };
 
-        if (nBestHeight < Params().GetConsensus().nPosHeightActivate)
+        if (nBestHeight + 1 < Params().GetConsensus().nPosHeightActivate)
         {
             fIsStaking = false;
             LogPrint(BCLog::POS, "%s: nBestHeight < nPosHeightActivate(), %d, %d\n", __func__, nBestHeight, GetNumBlocksOfPeers());
