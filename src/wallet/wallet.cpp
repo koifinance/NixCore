@@ -3687,7 +3687,18 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
             int nIn = 0;
             for (const auto& coin : setCoins)
             {
-                const CScript& scriptPubKey = coin.txout.scriptPubKey;
+                CScript scriptPubKeyOut = coin.txout.scriptPubKey;
+
+                //check if this is a coldstake
+                if ((HasIsCoinstakeOp(scriptPubKeyOut)))
+                {
+                    CScript nonCoinstakePath;
+                    if (!GetNonCoinstakeScriptPath(scriptPubKeyOut, nonCoinstakePath))
+                        return error("%s: Cannot retrieve non-coinstake script.", __func__);;
+                    scriptPubKeyOut = nonCoinstakePath;
+                }
+
+                const CScript& scriptPubKey = scriptPubKeyOut;
                 SignatureData sigdata;
 
                 if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata))

@@ -270,66 +270,14 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 const payments::Output& out = details.outputs(i);
                 if (out.amount() <= 0) continue;
 
-                if (IsGhostAddress(rcp.address.toStdString()))
-                {
-                    CGhostAddress sxAddr;
-                    if (sxAddr.SetEncoded(rcp.address.toStdString()))
-                    {
-                        ec_secret ephem_secret;
-                        ec_secret secretShared;
-                        ec_point pkSendTo;
-                        ec_point ephem_pubkey;
 
+                subtotal += out.amount();
+                const unsigned char* scriptStr = (const unsigned char*)out.script().data();
+                CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
+                CAmount nAmount = out.amount();
+                CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
+                vecSend.push_back(recipient);
 
-                        if (GenerateRandomSecret(ephem_secret) != 0)
-                        {
-                            LogPrintf("GenerateRandomSecret failed.\n");
-                            return InvalidAddress;
-                        };
-
-                        if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
-                        {
-                            LogPrintf("Could not generate receiving public key.\n");
-                            return InvalidAmount;
-                        };
-
-                        CPubKey cpkTo(pkSendTo);
-                        if (!cpkTo.IsValid())
-                        {
-                            LogPrintf("Invalid public key generated.\n");
-                            return InvalidAddress;
-                        };
-
-                        CKeyID ckidTo = cpkTo.GetID();
-
-                        CBitcoinAddress addrTo(ckidTo);
-
-                        if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
-                        {
-                            LogPrintf("Could not generate ephem public key.\n");
-                            return InvalidAddress;
-                        };
-
-                        CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
-                        //CScript scriptPubKey = GetScriptForDestination(GetDestinationForKey(cpkTo, g_address_type));
-
-                        subtotal += out.amount();
-                        CAmount nAmount = out.amount();
-                        CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
-                        vecSend.push_back(recipient);
-                        CScript scriptP = CScript() << OP_RETURN << ephem_pubkey;
-                        recipient = {scriptP, 0, rcp.fSubtractFeeFromAmount};
-                        vecSend.push_back(recipient);
-                    }
-                }
-                else{
-                    subtotal += out.amount();
-                    const unsigned char* scriptStr = (const unsigned char*)out.script().data();
-                    CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
-                    CAmount nAmount = out.amount();
-                    CRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
-                    vecSend.push_back(recipient);
-                }
             }
             if (subtotal <= 0)
             {
@@ -351,59 +299,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             setAddress.insert(rcp.address);
             ++nAddresses;
 
-            if (IsGhostAddress(rcp.address.toStdString()))
-            {
-                CGhostAddress sxAddr;
-                if (sxAddr.SetEncoded(rcp.address.toStdString()))
-                {
-                    ec_secret ephem_secret;
-                    ec_secret secretShared;
-                    ec_point pkSendTo;
-                    ec_point ephem_pubkey;
-
-
-                    if (GenerateRandomSecret(ephem_secret) != 0)
-                    {
-                        LogPrintf("GenerateRandomSecret failed.\n");
-                        return InvalidAddress;
-                    };
-
-                    if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
-                    {
-                        LogPrintf("Could not generate receiving public key.\n");
-                        return InvalidAmount;
-                    };
-
-                    CPubKey cpkTo(pkSendTo);
-                    if (!cpkTo.IsValid())
-                    {
-                        LogPrintf("Invalid public key generated.\n");
-                        return InvalidAddress;
-                    };
-
-                    CKeyID ckidTo = cpkTo.GetID();
-
-                    CBitcoinAddress addrTo(ckidTo);
-
-                    if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
-                    {
-                        LogPrintf("Could not generate ephem public key.\n");
-                        return InvalidAddress;
-                    };
-
-                    CScript scriptPubKey = GetScriptForDestination(addrTo.Get());
-                    CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
-                    vecSend.push_back(recipient);
-                    CScript scriptP = CScript() << OP_RETURN << ephem_pubkey;
-                    recipient = {scriptP, 0, rcp.fSubtractFeeFromAmount};
-                    vecSend.push_back(recipient);
-                }
-            }
-            else{
-                CScript scriptPubKey = GetScriptForDestination(DecodeDestination(rcp.address.toStdString()));
-                CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
-                vecSend.push_back(recipient);
-            }
+            CScript scriptPubKey = GetScriptForDestination(DecodeDestination(rcp.address.toStdString()));
+            CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+            vecSend.push_back(recipient);
 
             total += rcp.amount;
         }

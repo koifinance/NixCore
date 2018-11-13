@@ -1806,7 +1806,18 @@ bool CWallet::DummySignTx(CMutableTransaction &txNew, const ContainerType &coins
     int nIn = 0;
     for (const auto& coin : coins)
     {
-        const CScript& scriptPubKey = coin.txout.scriptPubKey;
+        CScript scriptPubKeyOut = coin.txout.scriptPubKey;
+
+        //check if this is a coldstake
+        if ((HasIsCoinstakeOp(scriptPubKeyOut)))
+        {
+            CScript nonCoinstakePath;
+            if (!GetNonCoinstakeScriptPath(scriptPubKeyOut, nonCoinstakePath))
+                return error("%s: Cannot retrieve non-coinstake script.", __func__);;
+            scriptPubKeyOut = nonCoinstakePath;
+        }
+
+        const CScript& scriptPubKey = scriptPubKeyOut;
         SignatureData sigdata;
 
         if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata))
