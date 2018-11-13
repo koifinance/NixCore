@@ -8462,8 +8462,16 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     {
         uint32_t nPrev = txNew.vin[nIn].prevout.n;
         CScript scriptPubKeyOut = pcoin->tx->vout[nPrev].scriptPubKey;
-        CAmount nAmount = pcoin->tx->vout[nPrev].nValue;
 
+        //check if this is a coldstake
+        if ((HasIsCoinstakeOp(scriptPubKeyOut)))
+        {
+            CScript coinstakePath;
+            if (!GetCoinstakeScriptPath(scriptPubKeyOut, coinstakePath))
+                return error("%s: Cannot retrieve coinstake script.", __func__);;
+            scriptPubKeyOut = coinstakePath;
+        }
+        CAmount nAmount = pcoin->tx->vout[nPrev].nValue;
         SignatureData sigdata;
         CTransaction txToConst(txNew);
         if (!ProduceSignature(TransactionSignatureCreator(this,&txToConst, nIn, nAmount, SIGHASH_ALL), scriptPubKeyOut, sigdata))

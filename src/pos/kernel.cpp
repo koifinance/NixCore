@@ -210,7 +210,6 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
             REJECT_INVALID, "check-kernel-failed");
 
     // Ensure the input scripts all match and that the total output value to the input script is not less than the total input value.
-    // The foundation fund split is user selectable, making it difficult to check the blockreward here.
     // Leaving a window for compromised staking nodes to reassign the blockreward to an attacker's address.
     // If coin owners detect this, they can move their coin to a new address.
     if (HasIsCoinstakeOp(kernelPubKey))
