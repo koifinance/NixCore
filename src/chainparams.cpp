@@ -327,16 +327,20 @@ public:
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //1135275
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 720;
-        consensus.nGhostnodeInitialize = 600;
+        consensus.nGhostnodePaymentsStartBlock = 50;
+        consensus.nGhostnodeInitialize = 20;
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 1000;
+        consensus.nPosHeightActivate = 6;
         nModifierInterval = 10 * 60;    // 10 minutes
         nStakeMinConfirmations = 2;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
+
+        consensus.nCoinMaturityReductionHeight = 2;
+        consensus.nStartGhostFeeDistribution = 1000;
+        consensus.nGhostFeeDistributionCycle = 720;
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 

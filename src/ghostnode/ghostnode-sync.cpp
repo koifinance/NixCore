@@ -95,8 +95,13 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
     }
 
     std::vector < CNode * > vNodesCopy = g_connman->CopyNodeVector();
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    int enough_peers = GHOSTNODE_SYNC_ENOUGH_PEERS;
+    if(fTestNet)
+        enough_peers = GHOSTNODE_SYNC_ENOUGH_PEERS_TESTNET;
+
     // We have enough peers and assume most of them are synced
-    if (vNodesCopy.size() >= GHOSTNODE_SYNC_ENOUGH_PEERS) {
+    if (vNodesCopy.size() >= enough_peers) {
         // Check to see how many of our peers are (almost) at the same height as we are
         int nNodesAtSameHeight = 0;
         BOOST_FOREACH(CNode * pnode, vNodesCopy)
@@ -107,7 +112,7 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
             }
             nNodesAtSameHeight++;
             // if we have decent number of such peers, most likely we are synced now
-            if (nNodesAtSameHeight >= GHOSTNODE_SYNC_ENOUGH_PEERS) {
+            if (nNodesAtSameHeight >= enough_peers) {
                 //LogPrint("CGhostnodeSync::IsBlockchainSynced -- found enough peers on the same height as we are, done\n");
                 fBlockchainSynced = true;
                 g_connman->ReleaseNodeVector(vNodesCopy);

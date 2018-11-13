@@ -4960,6 +4960,11 @@ int CMerkleTx::GetBlocksToMaturity() const
         coinbaseMaturity = nCachedHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ?
                     COINBASE_MATURITY_V2 : COINBASE_MATURITY;
     }
+
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    if(fTestNet)
+        coinbaseMaturity = COINBASE_MATURITY_TESTNET;
+
     return std::max(0, (coinbaseMaturity+1) - GetDepthInMainChain());
 }
 
@@ -7999,6 +8004,11 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
 
         int nHeight = chainActive.Tip()->nHeight;
         int coinbaseMaturity = nHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+        if(fTestNet)
+            coinbaseMaturity = COINBASE_MATURITY_TESTNET;
+
         int nRequiredDepth = coinbaseMaturity + 1;
 
         for (MapWallet_t::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
@@ -8067,7 +8077,7 @@ bool CWallet::SelectCoinsForStaking(int64_t nTargetValue, int64_t nTime, int nHe
             break;
 
         int64_t n = pcoin->tx->vout[i].nValue;
-
+        LogPrintf("\nSelectCoinsForStaking() amount %llf\n", n);
         std::pair<int64_t, std::pair<const CWalletTx*, unsigned int> > coin = std::make_pair(n, std::make_pair(pcoin, i));
 
         if (n >= nTargetValue)
@@ -8124,6 +8134,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         COutPoint prevoutStake = COutPoint(pcoin.first->GetHash(), pcoin.second);
 
         int64_t nBlockTime;
+
         if (CheckKernel(pindexPrev, nBits, nTime, prevoutStake, &nBlockTime))
         {
             LOCK(cs_wallet);
@@ -8372,7 +8383,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
 
     //payout 10 ghostnodes for rewards
-    if(!(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution)){
+    if(chainActive.Height() + 1 < Params().GetConsensus().nStartGhostFeeDistribution){
         if(nGhostFees > 0 && chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
             CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees/10;
             FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
@@ -8400,9 +8411,11 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         if(!GetGhostnodeFeePayment(returnFee, payFees, block))
             return error("%s: GetGhostnodeFeePayment failed.", __func__);
 
+        //Pay node winner block reward
         CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
         FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
 
+        //pay or dont pay the fees to all nodes
         if(payFees){
             vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
 
