@@ -498,11 +498,19 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         SortForBlock(ancestors, iter, sortedEntries);
 
         for (size_t i=0; i<sortedEntries.size(); ++i) {
+            //require 0.25% tx fee for new zerocoin mints
+            if(sortedEntries[i]->GetTx().IsZerocoinMint() && !sortedEntries[i]->GetTx().IsZerocoinSpend()){
+                CAmount mintAmount = 0;
+                for(int k = 0; k < sortedEntries[i]->GetTx().vout.size(); k++){
+                    if(sortedEntries[i]->GetTx().vout[k].scriptPubKey.IsZerocoinMint())
+                        mintAmount += sortedEntries[i]->GetTx().vout[k].nValue;
+                }
+                CAmount feeReq = mintAmount * 0.0025;
 
-            if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
-                if(MAX_SPEND_ZC_TX_PER_BLOCK >= COUNT_SPEND_ZC_TX)
-                    AddToBlock(sortedEntries[i]);
-                //COUNT_SPEND_ZC_TX++;
+                if(sortedEntries[i]->GetFee() < feeReq)
+                    continue;
+
+                AddToBlock(sortedEntries[i]);
             }
             else{
                 if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
