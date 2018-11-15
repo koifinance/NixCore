@@ -184,12 +184,11 @@ public:
         consensus.nPosTimeActivation = 1536779552; //time of PoS activation
         consensus.nPosHeightActivate = 53000;
         nModifierInterval = 10 * 60;    // 10 minutes
-        nStakeMinConfirmations = 500;   // 500 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 
-        consensus.nCoinMaturityReductionHeight = 97000;
-        consensus.nStartGhostFeeDistribution = 110000;
+        consensus.nCoinMaturityReductionHeight = 999999;
+        consensus.nStartGhostFeeDistribution = 999999;
         consensus.nGhostFeeDistributionCycle = 720;
 
 
@@ -334,7 +333,6 @@ public:
         consensus.nPosTimeActivation = 9999999999; //always active
         consensus.nPosHeightActivate = 6;
         nModifierInterval = 10 * 60;    // 10 minutes
-        nStakeMinConfirmations = 2;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 
@@ -458,7 +456,6 @@ public:
         consensus.nPosTimeActivation = 9999999999; //always active
         consensus.nPosHeightActivate = 800;
         nModifierInterval = 10 * 60;    // 10 minutes
-        nStakeMinConfirmations = 2;   // 501 * 2 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 

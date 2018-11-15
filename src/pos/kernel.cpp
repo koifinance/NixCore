@@ -95,6 +95,7 @@ bool CheckStakeKernelHash(const CBlockIndex *pindexPrev,
     ss << nBlockFromTime << prevout.hash << prevout.n << nTime;
     hashProofOfStake = Hash(ss.begin(), ss.end());
 
+    /*
     LogPrintf("CheckStakeKernelHash(): \n"
               "nValue=%llf, \n"
               "bnTarget=%s > hashProofOfStake=%s \n"
@@ -104,6 +105,7 @@ bool CheckStakeKernelHash(const CBlockIndex *pindexPrev,
               "block from time =%d\n"
               "current block time =%d\n"
               , nValueIn/COIN, bnTarget.ToString(), hashProofOfStake.ToString(), bnStakeModifier.ToString(), prevout.hash.ToString(), prevout.n, nBlockFromTime, nTime);
+    */
     // Now check if proof-of-stake hash meets target protocol
     if (UintToArith256(hashProofOfStake) > bnTarget)
         return false;
@@ -129,7 +131,12 @@ static bool CheckAge(const CBlockIndex *pindexTip, const uint256 &hashKernelBloc
     // pindexTip is the current tip of the chain
     // hashKernelBlock is the hash of the block containing the kernel transaction
 
-    int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(pindexTip->nHeight / 2));
+    int nRequiredDepth = pindexTip->nHeight + 1 >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    if(fTestNet)
+        nRequiredDepth = COINBASE_MATURITY_TESTNET;
 
     if (IsConfirmedInNPrevBlocks(hashKernelBlock, pindexTip, nRequiredDepth, nDepth))
         return false;
@@ -184,7 +191,14 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
             return state.DoS(100, error("%s: invalid-prevout", __func__), REJECT_INVALID, "invalid-prevout");
 
         nDepth = pindexPrev->nHeight - coin.nHeight;
-        int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(pindexPrev->nHeight / 2));
+
+        int nRequiredDepth = pindexPrev->nHeight + 1 >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                    COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+        if(fTestNet)
+            nRequiredDepth = COINBASE_MATURITY_TESTNET;
+
         if (nRequiredDepth > nDepth)
             return state.DoS(100, error("%s: Tried to stake at depth %d", __func__, nDepth + 1), REJECT_INVALID, "invalid-stake-depth");
 
@@ -212,6 +226,8 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
     // Ensure the input scripts all match and that the total output value to the input script is not less than the total input value.
     // Leaving a window for compromised staking nodes to reassign the blockreward to an attacker's address.
     // If coin owners detect this, they can move their coin to a new address.
+
+    //Check if delegate service is charging a fee and is just
     if (HasIsCoinstakeOp(kernelPubKey))
     {
         // Sum value from any extra inputs

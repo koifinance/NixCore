@@ -2578,12 +2578,14 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         int64_t returnFee = 0;
         bool payFees = false;
         //Check for ghost fee distribution
+        /*
         if(!GetGhostnodeFeePayment(returnFee, payFees, block))
             return state.DoS(100, error("ConnectBlock() : GetGhostnodeFeePayment incorrect ghost fee scheduling."), REJECT_INVALID, "bad-cs-amount");
 
         if(!payFees){
             blockReward = blockReward - returnFee;
         }
+        */
 
         //less than 4 outputs misses development fund and or ghostnode payments
         if(txCoinstake->vout.size() < 3)

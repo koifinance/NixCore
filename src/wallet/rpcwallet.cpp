@@ -779,7 +779,8 @@ UniValue delegatestaking(const JSONRPCRequest& request)
 
     // Generate new key for local wallet, remove coins from existing address
     CScript scriptPubKeyKernel = coinbaseScript->reserveScript;
-
+    CScript delegateRewardScript;
+    float delegateRewardFee = 1.0;
     //set up contract
     CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
     //cold stake address
@@ -788,6 +789,12 @@ UniValue delegatestaking(const JSONRPCRequest& request)
     //local wallet address
     script += scriptPubKeyKernel;
     script << OP_ENDIF;
+    script << OP_NOP;
+
+    //push delegate reward address and percentage to take from stake reward
+    script << delegateRewardScript;
+    script << OP_PUSHDATA4;
+    script << delegateRewardFee;
 
     scriptPubKeyKernel = script;
 
@@ -4713,7 +4720,13 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
     int nMaxDepth = 0x7FFFFFFF;
 
     int nHeight = chainActive.Tip()->nHeight;
-    int nRequiredDepth = std::min((int)(Params().GetStakeMinConfirmations()-1), (int)(nHeight / 2));
+
+    int nRequiredDepth = nHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+                COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    if(fTestNet)
+        nRequiredDepth = COINBASE_MATURITY_TESTNET;
 
     pwallet->AvailableCoins(vecOutputs, include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth, AvailableCoinsType::ALL_COINS, true);
 
@@ -5182,6 +5195,8 @@ UniValue getstakingaverage(const JSONRPCRequest& request)
     int sample = 500;
     vector<int64_t> stakeVector;
     stakeVector.clear();
+    if(chainActive.Tip()->nHeight < sample)
+        sample = chainActive.Tip()->nHeight;
     int startHeight = chainActive.Tip()->nHeight - sample;
     for(auto it = startHeight; it < chainActive.Tip()->nHeight; it++){
         CBlock block;
