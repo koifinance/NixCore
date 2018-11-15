@@ -8013,7 +8013,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
         LOCK2(cs_main, cs_wallet);
 
         int nHeight = chainActive.Tip()->nHeight;
-        int coinbaseMaturity = nHeight >= Params().GetConsensus().nCoinMaturityReductionHeight ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+        int coinbaseMaturity = nHeight >= Params().GetConsensus().nStartGhostFeeDistribution ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
         bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
         if(fTestNet)
@@ -8677,14 +8677,22 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
 CAmount CWallet::GetStaked()
 {
     int64_t nTotal = 0;
+
+    int nHeight = chainActive.Tip()->nHeight + 1;
+    int coinbaseMaturity = nHeight >= Params().GetConsensus().nStartGhostFeeDistribution ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+    coinbaseMaturity++;
     LOCK2(cs_main, cs_wallet);
     for (std::pair<const uint256, CWalletTx>& item : mapWallet)
     {
         CWalletTx &wtx = item.second;
 
+        int mature = 0;
+        if(wtx.GetDepthInMainChainCached() > 0)
+            mature = coinbaseMaturity - wtx.GetDepthInMainChainCached();
+
         if (wtx.IsCoinStake()
             && wtx.GetDepthInMainChainCached() > 0 // checks for hashunset
-            && wtx.GetBlocksToMaturity() > 0)
+            && wtx.GetBlocksToMaturity() > 0 && mature <= 0)
         {
             nTotal += CWallet::GetCredit(*wtx.tx, ISMINE_SPENDABLE);
         }

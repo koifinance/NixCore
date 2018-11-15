@@ -187,7 +187,7 @@ public:
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 
-        consensus.nCoinMaturityReductionHeight = 999999;
+        consensus.nCoinMaturityReductionHeight = 97000;
         consensus.nStartGhostFeeDistribution = 999999;
         consensus.nGhostFeeDistributionCycle = 720;
 

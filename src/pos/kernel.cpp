@@ -131,7 +131,7 @@ static bool CheckAge(const CBlockIndex *pindexTip, const uint256 &hashKernelBloc
     // pindexTip is the current tip of the chain
     // hashKernelBlock is the hash of the block containing the kernel transaction
 
-    int nRequiredDepth = pindexTip->nHeight + 1 >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+    int nRequiredDepth = pindexTip->nHeight + 1 >= Params().GetConsensus().nStartGhostFeeDistribution ?
                 COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
     bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
@@ -192,7 +192,7 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
 
         nDepth = pindexPrev->nHeight - coin.nHeight;
 
-        int nRequiredDepth = pindexPrev->nHeight + 1 >= Params().GetConsensus().nCoinMaturityReductionHeight ?
+        int nRequiredDepth = pindexPrev->nHeight + 1 >= Params().GetConsensus().nStartGhostFeeDistribution ?
                     COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
         bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
