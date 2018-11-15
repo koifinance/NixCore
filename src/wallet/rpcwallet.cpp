@@ -5293,7 +5293,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getalladdresses",                  &getalladdresses,               {} },
     { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
     { "wallet",             "getstakingaverage",                &getstakingaverage,             {} },
-    { "wallet",             "delegatestaking",                  &delegatestaking,               {"address","amount","comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
+    //{ "wallet",             "delegatestaking",                  &delegatestaking,               {"address","amount","comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
 
 
 

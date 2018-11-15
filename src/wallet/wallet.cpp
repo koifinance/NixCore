@@ -8221,7 +8221,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                     scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
 
                 // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
-                std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
+                //std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
+                std::string coldStakeAddress = "";
 
                 //set up coldstake script
                 if (coldStakeAddress  != "")
