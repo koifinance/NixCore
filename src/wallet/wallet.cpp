@@ -8221,8 +8221,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                     scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
 
                 // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
-                //std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
-                std::string coldStakeAddress = "";
+                std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
 
                 //set up coldstake script
                 if (coldStakeAddress  != "")
@@ -8680,7 +8679,13 @@ CAmount CWallet::GetStaked()
 
     int nHeight = chainActive.Tip()->nHeight + 1;
     int coinbaseMaturity = nHeight >= Params().GetConsensus().nStartGhostFeeDistribution ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
+
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    if(fTestNet)
+        coinbaseMaturity = COINBASE_MATURITY_TESTNET;
+
     coinbaseMaturity++;
+
     LOCK2(cs_main, cs_wallet);
     for (std::pair<const uint256, CWalletTx>& item : mapWallet)
     {
