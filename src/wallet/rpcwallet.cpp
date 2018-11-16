@@ -789,13 +789,14 @@ UniValue delegatestaking(const JSONRPCRequest& request)
     //local wallet address
     script += scriptPubKeyKernel;
     script << OP_ENDIF;
-    script << OP_NOP;
 
+    /*
+    script << OP_NOP;
     //push delegate reward address and percentage to take from stake reward
     script << delegateRewardScript;
     script << OP_PUSHDATA4;
     script << delegateRewardFee;
-
+    */
     scriptPubKeyKernel = script;
 
 
