@@ -672,28 +672,29 @@ UniValue delegatestaking(const JSONRPCRequest& request)
             "\nDelegate an amount to a certain address to stake.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
-            "1. \"address\"            (string, required) The nix address to delegate stakes to.\n"
-            "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
-            "3. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
+            "1. \"delegate address\"                    (string, required) The nix address to delegate stakes to.\n"
+            "2. \"amount\"                              (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "3. \"fee percent\"                         (numeric, optional) The percentage to allow delegator to take. eg 11.9 (11.9%)\n"
+            "4. \"delegate percent reward address\"     (string, optional) The nix address to force delegate fee stakes to.\n"
+
+            "5. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
-            "4. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
+            "6. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
             "                             to which you're sending the transaction. This is not part of the \n"
             "                             transaction, just kept in your wallet.\n"
-            "5. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "7. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
             "                             The recipient will receive less nix than you enter in the amount field.\n"
-            "6. replaceable            (boolean, optional) Allow this transaction to be replaced by a transaction with higher fees via BIP 125\n"
-            "7. conf_target            (numeric, optional) Confirmation target (in blocks)\n"
-            "8. \"estimate_mode\"      (string, optional, default=UNSET) The fee estimate mode, must be one of:\n"
+            "8. replaceable            (boolean, optional) Allow this transaction to be replaced by a transaction with higher fees via BIP 125\n"
+            "9. conf_target            (numeric, optional) Confirmation target (in blocks)\n"
+            "10. \"estimate_mode\"      (string, optional, default=UNSET) The fee estimate mode, must be one of:\n"
             "       \"UNSET\"\n"
             "       \"ECONOMICAL\"\n"
             "       \"CONSERVATIVE\"\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
-            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
-            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"\" \"\" true")
-            + HelpExampleRpc("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
+            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 150")
+            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 150 11.9 \"NG72Sfpbz1BLpXFHz9m3CdqATR44JDaydd\"")
         );
 
     ObserveSafeMode();
@@ -719,27 +720,27 @@ UniValue delegatestaking(const JSONRPCRequest& request)
 
     // Wallet comments
     CWalletTx wtx;
-    if (!request.params[2].isNull() && !request.params[2].get_str().empty())
-        wtx.mapValue["comment"] = request.params[2].get_str();
-    if (!request.params[3].isNull() && !request.params[3].get_str().empty())
-        wtx.mapValue["to"]      = request.params[3].get_str();
+    if (!request.params[4].isNull() && !request.params[4].get_str().empty())
+        wtx.mapValue["comment"] = request.params[4].get_str();
+    if (!request.params[5].isNull() && !request.params[5].get_str().empty())
+        wtx.mapValue["to"]      = request.params[5].get_str();
 
     bool fSubtractFeeFromAmount = false;
-    if (!request.params[4].isNull()) {
-        fSubtractFeeFromAmount = request.params[4].get_bool();
+    if (!request.params[6].isNull()) {
+        fSubtractFeeFromAmount = request.params[6].get_bool();
     }
 
     CCoinControl coin_control;
-    if (!request.params[5].isNull()) {
-        coin_control.signalRbf = request.params[5].get_bool();
-    }
-
-    if (!request.params[6].isNull()) {
-        coin_control.m_confirm_target = ParseConfirmTarget(request.params[6]);
-    }
-
     if (!request.params[7].isNull()) {
-        if (!FeeModeFromString(request.params[7].get_str(), coin_control.m_fee_mode)) {
+        coin_control.signalRbf = request.params[7].get_bool();
+    }
+
+    if (!request.params[8].isNull()) {
+        coin_control.m_confirm_target = ParseConfirmTarget(request.params[8]);
+    }
+
+    if (!request.params[9].isNull()) {
+        if (!FeeModeFromString(request.params[9].get_str(), coin_control.m_fee_mode)) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid estimate_mode parameter");
         }
     }
@@ -779,8 +780,6 @@ UniValue delegatestaking(const JSONRPCRequest& request)
 
     // Generate new key for local wallet, remove coins from existing address
     CScript scriptPubKeyKernel = coinbaseScript->reserveScript;
-    CScript delegateRewardScript;
-    float delegateRewardFee = 1.0;
     //set up contract
     CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
     //cold stake address
@@ -790,15 +789,66 @@ UniValue delegatestaking(const JSONRPCRequest& request)
     script += scriptPubKeyKernel;
     script << OP_ENDIF;
 
-    /*
-    script << OP_NOP;
-    //push delegate reward address and percentage to take from stake reward
-    script << delegateRewardScript;
-    script << OP_PUSHDATA4;
-    script << delegateRewardFee;
-    */
+    // Fee
+    int64_t nFeePercent = 0;
+    if (!request.params[2].isNull()){
+        nFeePercent = int64_t(AmountFromValue(request.params[2])/1000000);
+        if(nFeePercent > 10000 || nFeePercent < 0){
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "nFeePercent too large. Must be between 0 and 100");;
+        }
+        script << nFeePercent;
+        script << OP_DROP;
+    }
+    // Reward address
+    if (!request.params[3].isNull() && !request.params[3].get_str().empty()){
+        if(!IsValidDestination(DecodeDestination(request.params[3].get_str())))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid reward address");
+        // Parse coldstaking fee reward address
+        // Take only txdestination, leave out hash160 and equal when including in script
+        CScript delegateScriptRewardTemp = GetScriptForDestination(DecodeDestination(request.params[3].get_str()));
+        if (!delegateScriptRewardTemp.IsPayToScriptHash())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid delagate key");
+
+        //Returns false if not coldstake or p2sh script
+        CScriptID destReward;
+        if (!ExtractStakingKeyID(delegateScriptRewardTemp, destReward))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "ExtractStakingKeyID return false");            ;
+        script << ToByteVector(destReward);
+        script << OP_DROP;
+    }
+
     scriptPubKeyKernel = script;
 
+    /*
+    // Check if contract allows fee payouts
+    int64_t feeOut = 0;
+    CAmount feeAmount = 0;
+    CAmount nReward = 2.24 * COIN;
+    CAmount amount = 100 * COIN;
+    if(GetCoinstakeScriptFee(scriptPubKeyKernel, feeOut)){
+        double feePercent = (double)feeOut;
+        if(feeOut > 10000 || feeOut < 0){
+            return false;
+        }
+        feePercent /= 100;
+        amount += nReward * (double)((100.0 - feePercent)/100.0);
+        feeAmount = nReward * ((feePercent)/100);
+        LogPrintf("\nScriptFee\n");
+    }
+
+
+    CScript scriptOut;
+    if(GetCoinstakeScriptFeeRewardAddress(scriptPubKeyKernel, scriptOut)){
+        LogPrintf("\nFeeRewardAddress\n");
+    }
+
+    CTxDestination destination;
+    ExtractDestination(scriptOut, destination);
+    CBitcoinAddress btcTest(destination);
+
+    LogPrintf("\nRunning Test: feeAmount=%llf, nReward=%llf, amount=%llf, destination=%s", feeAmount, nReward, amount, btcTest.ToString());
+    return "null";
+    */
 
     // Create and send the transaction
     CReserveKey reservekey(pwallet);
@@ -5294,7 +5344,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getalladdresses",                  &getalladdresses,               {} },
     { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
     { "wallet",             "getstakingaverage",                &getstakingaverage,             {} },
-    { "wallet",             "delegatestaking",                  &delegatestaking,               {"address","amount","comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
+    { "wallet",             "delegatestaking",                  &delegatestaking,               {"delegate address","amount", "fee percent","delegate percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
 
 
 

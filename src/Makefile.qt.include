@@ -142,6 +142,7 @@ QT_FORMS_UI = \
   qt/forms/transactiondescdialog.ui \
   qt/forms/ghostvault.ui \
   qt/forms/ghostnode.ui \
+  qt/forms/delegatedstaking.ui \
   qt/forms/mnemonicdialog.ui
 
 QT_MOC_CPP = \
@@ -149,6 +150,7 @@ QT_MOC_CPP = \
   qt/moc_addresstablemodel.cpp \
   qt/moc_askpassphrasedialog.cpp \
   qt/moc_bantablemodel.cpp \
+  qt/moc_delegatedstaking.cpp \
   qt/moc_ghostvault.cpp \
   qt/moc_ghostnode.cpp \
   qt/moc_mnemonicdialog.cpp \
@@ -271,6 +273,7 @@ NIX_QT_H = \
   qt/walletview.h \
   qt/winshutdownmonitor.h \
   qt/mnemonicdialog.h \
+  qt/delegatedstaking.h \
   qt/ghostvault.h \
   qt/ghostnode.h
 
@@ -385,6 +388,7 @@ NIX_QT_WALLET_CPP = \
   qt/walletmodel.cpp \
   qt/walletmodeltransaction.cpp \
   qt/walletview.cpp \
+  qt/delegatedstaking.cpp \
   qt/ghostvault.cpp \
   qt/ghostnode.cpp
 

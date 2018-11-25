@@ -86,6 +86,9 @@ protocol.cpp
 protocol.h
 pubkey.cpp
 pubkey.h
+qt/delegatedstaking.cpp
+qt/delegatedstaking.h
+qt/forms/delegatedstaking.ui
 qt/res/nix-qt-res.rc
 random.cpp
 random.h

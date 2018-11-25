@@ -341,7 +341,11 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
 
 bool CScript::IsPayToScriptHash_CS() const
 {
-    return this->size() == 50
+    //3 options:
+    //Only delegate address
+    //Only delegate address and fee percent
+    //All delegate address, fee percent, and delegate reward address
+    return (this->size() == 50 || this->size() == 57 || this->size() == 79)
         && (*this)[0] == OP_ISCOINSTAKE
         && (*this)[1] == OP_IF
         && MatchPayToScriptHash(2)

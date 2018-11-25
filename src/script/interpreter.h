@@ -198,5 +198,7 @@ bool HasIsCoinstakeOp(const CScript &script);
 bool GetCoinstakeScriptPath(const CScript &scriptIn, CScript &scriptOut);
 bool GetNonCoinstakeScriptPath(const CScript &scriptIn, CScript &scriptOut);
 bool SplitConditionalCoinstakeScript(const CScript &scriptIn, CScript &scriptOutA, CScript &scriptOutB);
+bool GetCoinstakeScriptFee(const CScript &scriptIn, int64_t &feeOut);
+bool GetCoinstakeScriptFeeRewardAddress(const CScript &scriptIn, CScript &scriptOut);
 
 #endif // BITCOIN_SCRIPT_INTERPRETER_H

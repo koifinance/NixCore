@@ -230,7 +230,7 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
     //Check if delegate service is charging a fee and is just
     if (HasIsCoinstakeOp(kernelPubKey))
     {
-        // Sum value from any extra inputs
+        // Sum value from any extra inputs and check script is the same
         for (size_t k = 1; k < tx.vin.size(); ++k)
         {
             const CTxIn &txin = tx.vin[k];
@@ -253,23 +253,61 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
                 if (kernelPubKey != coin.out.scriptPubKey)
                     return state.DoS(100, error("%s: mixed-prevout-scripts %d", __func__, k), REJECT_INVALID, "mixed-prevout-scripts");
                 amount += coin.out.nValue;
-            };
-        };
+            }
+        }
+
+        // Get block reward
+        CAmount nReward = Params().GetProofOfStakeReward(pindexPrev, 0);
+        if (nReward < 0)
+            return false;
+
+        // Check if contract allows fee payouts
+        int64_t feeOut = 0;
+        CAmount feeAmount = 0;
+        if(GetCoinstakeScriptFee(kernelPubKey, feeOut)){
+            double feePercent = (double)feeOut;
+            if(feeOut > 10000 || feeOut < 0){
+                return state.DoS(100, error("%s: GetCoinstakeScriptFee-failed, txn %s", __func__, tx.GetHash().ToString()),
+                    REJECT_INVALID, "GetCoinstakeScriptFee-failed");
+            }
+            feePercent /= 100;
+            amount += nReward * (double)((100.0 - feePercent)/100.0);
+            feeAmount = nReward * ((feePercent)/100);
+        }
+        else
+            amount += nReward;
+
+        CScript scriptOut;
+        bool hasScriptFeeAddress = false;
+        bool foundFeeAddress = true;
+        if(GetCoinstakeScriptFeeRewardAddress(kernelPubKey, scriptOut)){
+            hasScriptFeeAddress = true;
+            foundFeeAddress = false;
+        }
 
         CAmount nVerify = 0;
         for (const auto &txout : tx.vout)
         {
-
             const CScript pOutPubKey = txout.scriptPubKey;
 
             if (pOutPubKey == kernelPubKey)
                 nVerify += txout.nValue;
-        };
+
+            //Check for delegate fee address payout
+            if(hasScriptFeeAddress){
+                if(scriptOut == pOutPubKey && feeAmount == txout.nValue)
+                    foundFeeAddress = true;
+            }
+        }
 
         if (nVerify < amount)
             return state.DoS(100, error("%s: verify-amount-script-failed, txn %s", __func__, tx.GetHash().ToString()),
                 REJECT_INVALID, "verify-amount-script-failed");
-    };
+
+        if (!foundFeeAddress)
+            return state.DoS(100, error("%s: foundFeeAddress-failed, txn %s", __func__, tx.GetHash().ToString()),
+                REJECT_INVALID, "foundFeeAddress-failed");
+    }
 
     return true;
 }

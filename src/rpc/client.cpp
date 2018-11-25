@@ -175,9 +175,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "reservebalance", 0, "enabled" },
 
     { "delegatestaking", 1, "amount" },
-    { "delegatestaking", 4, "subtractfeefromamount" },
-    { "delegatestaking", 5 , "replaceable" },
-    { "delegatestaking", 6 , "conf_target" },
+    { "delegatestaking", 2, "fee percent" },
+    { "delegatestaking", 6, "subtractfeefromamount" },
+    { "delegatestaking", 7 , "replaceable" },
+    { "delegatestaking", 8 , "conf_target" },
 
     {"payunloadedpubcoins", 0, "amount"},
     {"refillghostkeys", 0, "amount"},

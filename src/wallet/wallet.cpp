@@ -8348,29 +8348,56 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     CAmount nRewardOut;
     nRewardOut = nReward;
 
-    if (!rewardAddress.IsValid())
-        nCredit += nRewardOut;
+    // Check if contract allows fee payouts, require delegate address payout for now
+    int64_t nfeeOut = 0;
+    CAmount nFeeAmount = 0;
+    CAmount nAmount = 0;
+    if(GetCoinstakeScriptFee(scriptPubKeyKernel, nfeeOut)){
+        double feePercent = (double)nfeeOut;
+        if(nfeeOut > 10000 || nfeeOut < 0){
+            return false;
+        }
+        feePercent /= 100;
+        //coldstake reward
+        nAmount = nReward * (double)((100.0 - feePercent)/100.0);
+        //delegate fee reward
+        nFeeAmount = nReward * (double)((feePercent)/100.0);
 
+        CScript scriptOut;
+        if(!GetCoinstakeScriptFeeRewardAddress(scriptPubKeyKernel, scriptOut)){
+            return false;
+        }
+
+        nCredit += nAmount;
+
+        if (nCredit >= nStakeSplitThreshold)
+        {
+            txNew.vout.back().nValue = (nCredit / 2);
+            txNew.vout.push_back(CTxOut((nCredit - txNew.vout.back().nValue), scriptPubKeyKernel));
+        } else
+        {
+            txNew.vout.back().nValue = (nCredit);
+        }
+
+        //push back delegate fee reward
+        txNew.vout.push_back((CTxOut(nFeeAmount, scriptOut)));
+    }
     // Set output amount, split outputs if > nStakeSplitThreshold
-    if (nCredit >= nStakeSplitThreshold)
+    else if (nCredit >= nStakeSplitThreshold)
     {
+        if (!rewardAddress.IsValid())
+            nCredit += nRewardOut;
+
         txNew.vout.back().nValue = (nCredit / 2);
         txNew.vout.push_back(CTxOut((nCredit - txNew.vout.back().nValue), scriptPubKeyKernel));
     } else
     {
+        if (!rewardAddress.IsValid())
+            nCredit += nRewardOut;
+
         txNew.vout.back().nValue = (nCredit);
-    };
+    }
 
-    // Create output for reward
-    if (rewardAddress.IsValid())
-    {
-        CScript scriptReward;
-        std::vector<uint8_t> vData;
-        if (!GetScriptForAddress(scriptReward, rewardAddress, true, &vData))
-            return error("%s: Could not get script for reward address.", __func__);
-
-        txNew.vout.push_back(CTxOut(nRewardOut,scriptReward));
-    };
 
 
     // Place dev fund output
