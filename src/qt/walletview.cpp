@@ -20,6 +20,7 @@
 #include <qt/walletmodel.h>
 #include <qt/ghostnode.h>
 #include <qt/ghostvault.h>
+#include <qt/delegatedstaking.h>
 #include <timedata.h>
 #include <validation.h>
 
@@ -64,6 +65,7 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     usedReceivingAddressesPage = new AddressBookPage(platformStyle, AddressBookPage::ForEditing, AddressBookPage::ReceivingTab, this);
 
     ghostnodePage = new GhostNode(platformStyle);
+    delegatedStakingPage = new DelegatedStaking(platformStyle);
     ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
 
     overviewPage->ghostVaultPage = ghostVaultPage;
@@ -74,6 +76,7 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     addWidget(sendCoinsPage);
     addWidget(ghostnodePage);
     addWidget(ghostVaultPage);
+    addWidget(delegatedStakingPage);
 
     // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
@@ -89,6 +92,8 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     connect(sendCoinsPage, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
     // Pass through messages from transactionView
     connect(transactionView, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+    // Pass through messages from delegatedStakingPage
+    connect(delegatedStakingPage, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
 }
 
 WalletView::~WalletView()
@@ -136,6 +141,7 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
     ghostnodePage->setWalletModel(_walletModel);
+    delegatedStakingPage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
     usedReceivingAddressesPage->setWalletModel(_walletModel);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
@@ -214,6 +220,11 @@ void WalletView::gotoGhostnodePage()
 void WalletView::gotoGhostVaultPage()
 {
     setCurrentWidget(ghostVaultPage);
+}
+
+void WalletView::gotoDelegatedStakingPage()
+{
+    setCurrentWidget(delegatedStakingPage);
 }
 
 void WalletView::gotoSignMessageTab(QString addr)

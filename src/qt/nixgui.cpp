@@ -337,6 +337,13 @@ void BitcoinGUI::createActions()
     ghostVaultMenuAction->setStatusTip(ghostVaultAction->statusTip());
     ghostVaultMenuAction->setToolTip(ghostVaultMenuAction->statusTip());
 
+    delegatedStakingAction = new QAction(platformStyle->SingleColorIcon(":/icons/eye"), tr("&DPoS"), this);
+    delegatedStakingAction->setStatusTip(tr("Create DPoS smart contracts"));
+    delegatedStakingAction->setToolTip(delegatedStakingAction->statusTip());
+    delegatedStakingAction->setCheckable(true);
+    delegatedStakingAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+    tabGroup->addAction(delegatedStakingAction);
+
 #ifdef ENABLE_WALLET
     // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
@@ -355,6 +362,8 @@ void BitcoinGUI::createActions()
     connect(ghostnodeAction, SIGNAL(triggered()), this, SLOT(gotoGhostnodePage()));
     connect(ghostVaultAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(ghostVaultAction, SIGNAL(triggered()), this, SLOT(gotoGhostVaultPage()));
+    connect(delegatedStakingAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(delegatedStakingAction, SIGNAL(triggered()), this, SLOT(gotoDelegatedStakingPage()));
         // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -515,6 +524,7 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(historyAction);
         toolbar->addAction(ghostnodeAction);
         toolbar->addAction(ghostVaultAction);
+        toolbar->addAction(delegatedStakingAction);
         overviewAction->setChecked(true);
     }
 }
@@ -627,6 +637,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedReceivingAddressesAction->setEnabled(enabled);
     ghostnodeAction->setEnabled(enabled);
     ghostVaultAction->setEnabled(enabled);
+    delegatedStakingAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
 }
 
@@ -773,11 +784,19 @@ void BitcoinGUI::gotoGhostnodePage()
     ghostnodeAction->setChecked(true);
     if (walletFrame) walletFrame->gotoGhostnodePage();
 }
+
 void BitcoinGUI::gotoGhostVaultPage()
 {
     QSettings settings;
     ghostVaultAction->setChecked(true);
     if (walletFrame) walletFrame->gotoGhostVaultPage();
+}
+
+void BitcoinGUI::gotoDelegatedStakingPage()
+{
+    QSettings settings;
+    delegatedStakingAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoDelegatedStakingPage();
 }
 
 void BitcoinGUI::gotoVerifyMessageTab(QString addr)

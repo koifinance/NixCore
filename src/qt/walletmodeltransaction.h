@@ -37,9 +37,10 @@ public:
 
     void reassignAmounts(int nChangePosRet); // needed for the subtract-fee-from-amount feature
 
+    CWalletTx *walletTransaction;
+
 private:
     QList<SendCoinsRecipient> recipients;
-    CWalletTx *walletTransaction;
     std::unique_ptr<CReserveKey> keyChange;
     CAmount fee;
 };

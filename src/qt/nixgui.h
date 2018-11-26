@@ -117,6 +117,7 @@ private:
     QAction *ghostVaultAction;
     QAction *ghostVaultMenuAction;
     QAction *ghostnodeAction;
+    QAction *delegatedStakingAction;
 
 
     QSystemTrayIcon *trayIcon;
@@ -221,6 +222,7 @@ private Q_SLOTS:
     void gotoGhostnodePage();
 
     void gotoGhostVaultPage();
+    void gotoDelegatedStakingPage();
 #endif // ENABLE_WALLET
     /** Show configuration dialog */
     void optionsClicked();

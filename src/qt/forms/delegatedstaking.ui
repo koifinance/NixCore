@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>601</width>
-    <height>300</height>
+    <width>669</width>
+    <height>244</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -43,7 +43,7 @@
       <number>0</number>
      </property>
      <property name="topMargin">
-      <number>20</number>
+      <number>0</number>
      </property>
      <item>
       <spacer name="horizontalSpacer_3">
@@ -60,6 +60,9 @@
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_6">
+       <property name="spacing">
+        <number>20</number>
+       </property>
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -68,6 +71,9 @@
        </property>
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_6">
+         <property name="spacing">
+          <number>20</number>
+         </property>
          <property name="topMargin">
           <number>12</number>
          </property>
@@ -87,6 +93,22 @@
            </property>
            <property name="text">
             <string>Delegate to:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_4">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Amount:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -120,19 +142,31 @@
            <property name="text">
             <string>Reward Address:</string>
            </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
           </widget>
          </item>
         </layout>
        </item>
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_7">
+         <property name="spacing">
+          <number>20</number>
+         </property>
+         <property name="topMargin">
+          <number>12</number>
+         </property>
          <property name="rightMargin">
           <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>12</number>
          </property>
          <item>
           <widget class="QLineEdit" name="delegateTo">
            <property name="enabled">
-            <bool>false</bool>
+            <bool>true</bool>
            </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -156,9 +190,12 @@
             <string/>
            </property>
            <property name="placeholderText">
-            <string>e.g. NGshe11sePfsXGNn6oJQ1CzeGMGhhYTQxV/yd12XEHUs1y2Z9NYSufNxKOWftA74gYb8Q7l4jrGlGRpc6/ry0X4FUfApaFkJtyAYAAXJKWSpw3jshPeKQ9isJ6ysSIZ3BDf8qEyDl5iS9WGey1dIR6wOyhm2njcVzL6pltNS32cWDYuFuhtG8opsXmh0v1B12h7IcME/28QxIMA</string>
+            <string>e.g. NGshe11sePfsXGNn6oJQ1CzeGMGhhYTQxV</string>
            </property>
           </widget>
+         </item>
+         <item>
+          <widget class="BitcoinAmountField" name="payAmount"/>
          </item>
          <item>
           <widget class="QLineEdit" name="feePercent">
@@ -176,7 +213,7 @@
          <item>
           <widget class="QLineEdit" name="rewardTo">
            <property name="placeholderText">
-            <string>e.g. NGshe11sePfsXGNn6oJQ1CzeGMGhhYTQxV/yd12XEHUs1y2Z9NYSufNxKOWftA74gYb8Q7l4jrGlGRpc6/ry0X4FUfApaFkJtyAYAAXJKWSpw3jshPeKQ9isJ6ysSIZ3BDf8qEyDl5iS9WGey1dIR6wOyhm2njcVzL6pltNS32cWDYuFuhtG8opsXmh0v1B12h7IcME/28QxIMA</string>
+            <string>e.g. NRahe11sePfsXGNn6oJQ1CzeGMGhhYTQxV</string>
            </property>
           </widget>
          </item>
@@ -185,10 +222,10 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_8">
          <property name="spacing">
-          <number>-1</number>
+          <number>20</number>
          </property>
          <property name="topMargin">
-          <number>30</number>
+          <number>12</number>
          </property>
          <property name="rightMargin">
           <number>0</number>
@@ -197,17 +234,24 @@
           <number>0</number>
          </property>
          <item>
-          <spacer name="verticalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
+          <widget class="QLabel" name="label_5">
+           <property name="maximumSize">
             <size>
-             <width>20</width>
-             <height>40</height>
+             <width>111</width>
+             <height>16</height>
             </size>
            </property>
-          </spacer>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkboxSubtractFeeFromAmount">
+           <property name="text">
+            <string>Subtract fee from amount</string>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QCheckBox" name="enableFeePayout">
@@ -269,6 +313,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>BitcoinAmountField</class>
+   <extends>QLineEdit</extends>
+   <header>qt/nixamountfield.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

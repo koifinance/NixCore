@@ -21,6 +21,7 @@ class WalletModel;
 class AddressBookPage;
 class GhostVault;
 class GhostNode;
+class DelegatedStaking;
 
 QT_BEGIN_NAMESPACE
 class QModelIndex;
@@ -68,6 +69,8 @@ private:
     AddressBookPage *usedReceivingAddressesPage;
     GhostNode *ghostnodePage;
     GhostVault *ghostVaultPage;
+    DelegatedStaking *delegatedStakingPage;
+
 
     TransactionView *transactionView;
 
@@ -85,6 +88,7 @@ public Q_SLOTS:
     void gotoSendCoinsPage(QString addr = "");
     void gotoGhostnodePage();
     void gotoGhostVaultPage();
+    void gotoDelegatedStakingPage();
 
     /** Show Sign/Verify Message dialog and switch to sign message tab */
     void gotoSignMessageTab(QString addr = "");

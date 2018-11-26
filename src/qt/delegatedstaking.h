@@ -8,6 +8,7 @@
 #include <QWidget>
 #include <QTableWidget>
 #include <amount.h>
+#include <qt/walletmodel.h>
 
 class AddressTableModel;
 class OptionsModel;
@@ -39,10 +40,9 @@ public:
         ForEditing  /**< Open address book for editing */
     };
 
-    explicit DelegatedStaking(const PlatformStyle *platformStyle, Mode mode, QWidget *parent);
+    explicit DelegatedStaking(const PlatformStyle *platformStyle, QWidget *parent = 0);
     ~DelegatedStaking();
 
-    void setModel(AddressTableModel *model);
     void setWalletModel(WalletModel *walletmodel);
     const QString &getReturnValue() const { return returnValue; }
     void setVaultBalance(CAmount confirmed, CAmount unconfirmed);
@@ -59,6 +59,9 @@ private:
     QAction *deleteAction; // to be able to explicitly disable it
     QString newAddressToSelect;
     QModelIndex selectedRow();
+    const PlatformStyle *platformStyle;
+
+    void processDelegatedCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
 
 private Q_SLOTS:
     /** Send button clicked */
@@ -66,9 +69,8 @@ private Q_SLOTS:
     /** Fee Payout checked */
     void enableFeePayoutCheckBoxChecked(int);
 
-    void showMenu(const QPoint &point);
-    void copyKey();
-    void setKeyListTrigger(int);
+Q_SIGNALS:
+    void message(const QString &title, const QString &message, unsigned int style);
 };
 
 

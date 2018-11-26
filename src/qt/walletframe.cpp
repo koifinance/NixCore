@@ -137,11 +137,19 @@ void WalletFrame::gotoGhostnodePage()
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
         i.value()->gotoGhostnodePage();
 }
+
 void WalletFrame::gotoGhostVaultPage()
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
         i.value()->gotoGhostVaultPage();
+}
+
+void WalletFrame::gotoDelegatedStakingPage()
+{
+    QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+        i.value()->gotoDelegatedStakingPage();
 }
 
 void WalletFrame::gotoSendCoinsPage(QString addr)
