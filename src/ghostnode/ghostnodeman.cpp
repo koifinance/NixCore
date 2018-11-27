@@ -602,7 +602,7 @@ CGhostnode* CGhostnodeMan::GetNextGhostnodeInQueueForPayment(int nBlockHeight, b
     /*
         Make a vector with all of the last paid times
     */
-    LogPrintf("\nGhostnode InQueueForPayment \n");
+    //LogPrintf("\nGhostnode InQueueForPayment \n");
     int nMnCount = CountEnabled();
     int index = 0;
     BOOST_FOREACH(CGhostnode &mn, vGhostnodes)

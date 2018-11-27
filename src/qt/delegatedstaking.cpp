@@ -68,7 +68,7 @@ DelegatedStaking::DelegatedStaking(const PlatformStyle *platformStyle, QWidget *
 
     ui->labelExplanation->setTextFormat(Qt::RichText);
     ui->labelExplanation->setText(
-                tr("Create DPoS smart contracts straight from your wallet."));
+                tr("Create DPoS smart contracts straight from your wallet. (Tip: This page works with coin-control)"));
 
     ui->enableFeePayout->setVisible(true);
 

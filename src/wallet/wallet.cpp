@@ -2586,8 +2586,8 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                     found = !IsDenominatedAmount(pcoin->tx->vout[i].nValue);
                     if (found && fGhostNode) found = pcoin->tx->vout[i].nValue != GHOSTNODE_COIN_REQUIRED * COIN; // do not use Hot MN funds
                 } else if (nCoinType == ONLY_40000) {
-                    LogPrintf("nCoinType = ONLY_40000\n");
-                    LogPrintf("pcoin->vout[i].nValue = %s\n", pcoin->tx->vout[i].nValue);
+                    //LogPrintf("nCoinType = ONLY_40000\n");
+                    //LogPrintf("pcoin->vout[i].nValue = %s\n", pcoin->tx->vout[i].nValue);
                     found = pcoin->tx->vout[i].nValue == GHOSTNODE_COIN_REQUIRED * COIN;
                     isGN = true;
                 } else if (nCoinType == ONLY_PRIVATESEND_COLLATERAL) {
@@ -5525,9 +5525,17 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
         std::set<CInputCoin> setCoins;
         LOCK2(cs_main, cs_wallet);
         {
+            std::vector<COutput> vAvailableCoinsTemp;
             std::vector<COutput> vAvailableCoins;
-            AvailableCoins(vAvailableCoins, true, &coinControl);
+            vAvailableCoins.clear();
+            AvailableCoins(vAvailableCoinsTemp, true, &coinControl);
 
+            //Remove any delegated coins
+            for(int i = 0; i < vAvailableCoinsTemp.size(); i++){
+                if (!vAvailableCoinsTemp[i].tx->tx->vout[vAvailableCoinsTemp[i].i].scriptPubKey.IsPayToScriptHash_CS()) {
+                    vAvailableCoins.push_back(vAvailableCoinsTemp[i]);
+                }
+            }
 
             // Create change script that will be used if we need change
             // TODO: pass in scriptChange instead of reservekey so

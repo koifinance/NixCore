@@ -2198,7 +2198,8 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
     if(ghostnodeSync.IsSynced(chainActive.Height())){
         if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
             //Time to payout all ghostnodes and check
-            if(chainActive.Height() + 1 % Params().GetConsensus().nGhostFeeDistributionCycle == 0){
+            LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n", (chainActive.Height() + 1), ((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle));
+            if(((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle) == 0){
                 //Subtract 1 from sample since we check current block fees
                 int sample = Params().GetConsensus().nGhostFeeDistributionCycle - 1;
                 mintVector.clear();
