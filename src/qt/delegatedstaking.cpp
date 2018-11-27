@@ -17,6 +17,7 @@
 #include <qt/editaddressdialog.h>
 #include <net.h>
 
+#include <script/script.h>
 #include <qt/nixunits.h>
 #include <qt/clientmodel.h>
 #include <qt/coincontroldialog.h>

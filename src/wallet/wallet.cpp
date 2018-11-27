@@ -1110,6 +1110,7 @@ bool CWallet::LoadToWallet(const CWalletTx& wtxIn)
     }
 
     int nBestHeight = chainActive.Height();
+
     if (wtx.IsCoinStake() && wtx.isAbandoned())
     {
         if (wtx.nCachedHeight > 0 && wtx.nCachedHeight < INT_MAX && wtx.nCachedHeight > nBestHeight - (MAX_STAKE_SEEN_SIZE))
@@ -8048,7 +8049,6 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 const CScript pscriptPubKey = txout.scriptPubKey;
 
                 CScriptID dest;
-
                 //Returns false if not coldstake or p2sh script
                 if (!ExtractStakingKeyID(pscriptPubKey, dest))
                     continue;
@@ -8452,8 +8452,11 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
         FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
 
+        //add current block fee since we skip it in GetGhostnodeFeePayment()
+        returnFee += nGhostFees;
+
         //pay or dont pay the fees to all nodes
-        if(payFees){
+        if(payFees && returnFee != 0){
             vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
 
             int totalActiveNodes = 0;
@@ -8462,9 +8465,6 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 if(node.IsEnabled())
                     totalActiveNodes++;
             }
-
-            //add current block fee since we skip it in GetGhostnodeFeePayment()
-            returnFee += nGhostFees;
 
             CAmount feePayout = returnFee/totalActiveNodes;
 

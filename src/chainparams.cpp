@@ -326,6 +326,7 @@ public:
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //1135275
 
         // ghostnode params
+        consensus.nGhostnodeMinimumConfirmations = 1;
         consensus.nGhostnodePaymentsStartBlock = 50;
         consensus.nGhostnodeInitialize = 20;
 

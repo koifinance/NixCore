@@ -160,7 +160,6 @@ void ReprocessBlocks(int nBlocks) {
 
 bool GetUTXOCoin(const COutPoint& outpoint, Coin& coin)
 {
-        LogPrintf("\n GETUTXOCOIN \n");
     LOCK(cs_main);
     if (!pcoinsTip->GetCoin(outpoint, coin))
         return false;
@@ -2200,22 +2199,26 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
         if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
             //Time to payout all ghostnodes and check
             if(chainActive.Height() + 1 % Params().GetConsensus().nGhostFeeDistributionCycle == 0){
-                int sample = Params().GetConsensus().nGhostFeeDistributionCycle;
+                //Subtract 1 from sample since we check current block fees
+                int sample = Params().GetConsensus().nGhostFeeDistributionCycle - 1;
                 mintVector.clear();
-                int startHeight = chainActive.Height() - sample;
+
+                //Assume chainactive+1 is current block check height
+                int startHeight = chainActive.Height() + 1 - sample;
+                //Grab fee from current block being checked
+                for(auto ctx: pBlock.vtx){
+                    //Found ghost fee transaction
+                    if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                        for(auto mintTx: ctx->vout){
+                            if(mintTx.scriptPubKey.IsZerocoinMint())
+                                mintVector.push_back(mintTx.nValue);
+                        }
+                    }
+                }
+                //Grab fee from other blocks
                 for(auto it = startHeight; it < chainActive.Height() + 1; it++){
                     CBlock block;
                     CBlockIndex *pindex = chainActive[it];
-                    //Get fee for current block we are checking
-                    for(auto ctx: pBlock.vtx){
-                        //Found ghost fee transaction
-                        if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
-                            for(auto mintTx: ctx->vout){
-                                if(mintTx.scriptPubKey.IsZerocoinMint())
-                                    mintVector.push_back(mintTx.nValue);
-                            }
-                        }
-                    }
                     // Now get fees from past 719 blocks
                     if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
                         for(auto ctx: block.vtx){
@@ -2236,6 +2239,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                 //Calculate total fees for the 720 block cycle
                 returnFee = totalGhosted * 0.0025;
                 payFees = true;
+                return true;
             }
             //Make sure all ghost fees in this block are not paid out
             else{
@@ -2254,6 +2258,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                 //Calculate total fees for the current block
                 returnFee = totalGhosted * 0.0025;
                 payFees = false;
+                return true;
             }
         }
     }
@@ -2575,17 +2580,12 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     if (block.IsProofOfStake()) // check payment information on staked blocks
     {
         CTransactionRef txCoinstake = block.vtx[0];
+
         int64_t returnFee = 0;
         bool payFees = false;
         //Check for ghost fee distribution
-        /*
         if(!GetGhostnodeFeePayment(returnFee, payFees, block))
             return state.DoS(100, error("ConnectBlock() : GetGhostnodeFeePayment incorrect ghost fee scheduling."), REJECT_INVALID, "bad-cs-amount");
-
-        if(!payFees){
-            blockReward = blockReward - returnFee;
-        }
-        */
 
         //less than 4 outputs misses development fund and or ghostnode payments
         if(txCoinstake->vout.size() < 3)
@@ -2602,8 +2602,17 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
         blockReward = nCalculatedStakeReward;
 
-        if (nStakeReward < 0 || nStakeReward > nCalculatedStakeReward)
-            return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward), REJECT_INVALID, "bad-cs-amount");
+        //Make sure current fees in this block are not paid out
+        if(!payFees){
+            blockReward = blockReward - returnFee;
+        }
+        //Payout fees for ghostnode fee cycle
+        else{
+            blockReward = blockReward + returnFee;
+        }
+
+        if (nStakeReward < 0 || nStakeReward > blockReward)
+            return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, blockReward), REJECT_INVALID, "bad-cs-amount");
 
         if (pindex->pprev->IsProofOfStake()) // check for cache
         {
@@ -3860,8 +3869,11 @@ bool CheckBlockSignature(const CBlock &block)
 
 bool AddToMapStakeSeen(const COutPoint &kernel, const uint256 &blockHash)
 {
-    // Overwrites existing values
+    //Stop using this function after next upgrade
+    if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution)
+        return true;
 
+    // Overwrites existing values
     std::pair<std::map<COutPoint, uint256>::iterator,bool> ret;
     ret = mapStakeSeen.insert(std::pair<COutPoint, uint256>(kernel, blockHash));
     if (ret.second == false) // existing element
@@ -3877,6 +3889,10 @@ bool AddToMapStakeSeen(const COutPoint &kernel, const uint256 &blockHash)
 
 bool CheckStakeUnused(const COutPoint &kernel)
 {
+    //Stop using this function after next upgrade
+    if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution)
+        return true;
+
     std::map<COutPoint, uint256>::const_iterator mi = mapStakeSeen.find(kernel);
     if (mi != mapStakeSeen.end())
         return false;
@@ -3885,6 +3901,10 @@ bool CheckStakeUnused(const COutPoint &kernel)
 
 bool CheckStakeUnique(const CBlock &block, bool fUpdate)
 {
+    //Stop using this function after next upgrade
+    if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution)
+        return true;
+
     uint256 blockHash = block.GetHash();
     const COutPoint &kernel = block.vtx[0]->vin[0].prevout;
 
@@ -3989,6 +4009,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     if (block.zerocoinTxInfo == NULL)
         block.zerocoinTxInfo = std::make_shared<CZerocoinTxInfo>();
     bool blockHasMint = false;
+
+    //Ignore checks on startup sync
+    if(IsInitialBlockDownload())
+        nHeight == INT_MAX - 1;
     // Check transactions
     for (const auto& tx : block.vtx){
         if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo.get())){
@@ -3998,26 +4022,6 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         if(tx->IsZerocoinMint())
             blockHasMint = true;
     }
-
-    /* Check for Ghostprotocol fee payment in block */
-    /*
-    if(nHeight != INT_MAX && nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock && blockHasMint){
-        int i = 0;
-        for (const auto& tx : block.vtx){
-            if(!tx->IsCoinBase() && !tx->IsCoinStake())
-                continue;
-            BOOST_FOREACH(const CTxOut &output, tx->vout) {
-                i++;
-            }
-        }
-        //pay to 10+ recipients
-        //Limit to 1 node for now
-        if(i < 1){
-            return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
-                             "CTransaction::CheckTransaction() : invalid ghostnode fee payment");
-        }
-    }
-    */
 
     block.zerocoinTxInfo->Complete();
 
