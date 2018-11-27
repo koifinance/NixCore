@@ -4709,8 +4709,10 @@ UniValue getstakinginfo(const JSONRPCRequest &request)
     if (pwallet->nReserveBalance > 0)
         obj.pushKV("reserve", ValueFromAmount(pwallet->nReserveBalance));
 
-    if (pwallet->nWalletDevFundCedePercent > 0)
-        obj.pushKV("walletdonationpercent", pwallet->nWalletDevFundCedePercent);
+    if (pwallet->nWalletDonationPercent > 0)
+        obj.pushKV("walletdonationpercent", pwallet->nWalletDonationPercent);
+    if (pwallet->nWalletDonationAddress != "")
+        obj.pushKV("walletdonationaddress", pwallet->nWalletDonationAddress);
 
     obj.pushKV("currentblocksize", (uint64_t)nLastBlockSize);
     obj.pushKV("currentblocktx", (uint64_t)nLastBlockTx);
@@ -4957,8 +4959,9 @@ UniValue refillghostkeys(const JSONRPCRequest& request)
     for(string key: ghostKey)
         fullKey+=key;
 
-    return "Sucessfully created ghostkey: \n"
-            + fullKey;
+    UniValue results(UniValue::VARR);
+    results.push_back("Sucessfully created ghostkey amount: " + fullKey);
+    return results;
 }
 
 UniValue listunloadedpubcoins(const JSONRPCRequest& request) {
@@ -4986,6 +4989,7 @@ UniValue listunloadedpubcoins(const JSONRPCRequest& request) {
 }
 
 UniValue getpubcoinpack(const JSONRPCRequest& request) {
+
     if (request.fHelp || request.params.size() > 1)
         throw runtime_error(
                 "getpubcoinpack amount(default=10)\n"
@@ -5029,6 +5033,7 @@ UniValue getpubcoinpack(const JSONRPCRequest& request) {
     return results;
 }
 UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
+
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
                 "payunloadedpubcoins\n"
@@ -5057,12 +5062,19 @@ UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
     else
         return "Not Valid Pack";
 
-    return strError;
+    UniValue results(UniValue::VARR);
+    results.push_back(strError);
+    return results;
 }
 
 
 UniValue resetzerocoinamounts(const JSONRPCRequest& request)
 {
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "resetzerocoinamounts\n"
+                        "\Erases unconfirmed zerocoins\n");
 
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
@@ -5071,17 +5083,26 @@ UniValue resetzerocoinamounts(const JSONRPCRequest& request)
     CWalletDB walletdb(pwalletMain->GetDBHandle());
     walletdb.ListPubCoin(listPubcoin);
 
-    //refill keys to 100 in wallet
+    UniValue results(UniValue::VARR);
+
     for(CZerocoinEntry &zcEntry: listPubcoin){
-        if (!walletdb.EraseZerocoinEntry(zcEntry))
-            return "ghostkeys() Error: Only able to create";
+        if (!walletdb.EraseZerocoinEntry(zcEntry)){
+            results.push_back("Unable to erase zerocoins");
+            return results;
+        }
     }
 
-    return "Sucessfully created ghostkey: \n";
+    results.push_back("Sucessfully erased all zerocoins");
+    return results;
 }
 
 UniValue resetzerocoinunconfirmed(const JSONRPCRequest& request)
 {
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "resetzerocoinunconfirmed\n"
+                        "\Erases unconfirmed zerocoins\n");
 
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
@@ -5131,13 +5152,21 @@ UniValue resetzerocoinunconfirmed(const JSONRPCRequest& request)
             }
         }
     }
+    UniValue results(UniValue::VARR);
+    results.push_back("Sucessfully erased unconfirmed zerocoins");
 
-    return "Sucessfully created ghostkey: \n";
+    return results;
 }
 
 
 UniValue listallserials(const JSONRPCRequest& request)
 {
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "listallserials height(default=current_height)\n"
+                        "\Lists all zerocoin serials spent from height\n");
+
     UniValue results(UniValue::VARR);
     if(request.params.size() > 0){
         CBlockIndex *temp = chainActive[request.params[0].get_int()];
@@ -5164,6 +5193,11 @@ UniValue listallserials(const JSONRPCRequest& request)
 
 UniValue eraseusedzerocoindata(const JSONRPCRequest& request)
 {
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "eraseunusedzerocoindata\n"
+                        "\Erase zerocoin metadata from spent zerocoins\n");
+
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
     int i = 0;
 
@@ -5179,11 +5213,19 @@ UniValue eraseusedzerocoindata(const JSONRPCRequest& request)
             }
         }
     }
-    return "Removed " + std::to_string(i) + " used zerocoin objects from wallet.dat";
+
+    UniValue results(UniValue::VARR);
+    results.push_back("Sucessfully removed " + std::to_string(i) +  " used zerocoin objects from wallet.dat");
+    return results;
 }
 
 UniValue encryptallzerocoins(const JSONRPCRequest& request)
 {
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "encryptallzerocoins\n"
+                        "\Encrypt all zerocoin data\n");
+
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
     int i = 0;
     {
@@ -5207,11 +5249,20 @@ UniValue encryptallzerocoins(const JSONRPCRequest& request)
             i++;
         }
     }
-    return "Encrypted " + std::to_string(i) + " zerocoins";
+
+    UniValue results(UniValue::VARR);
+    results.push_back("Encrypted " + std::to_string(i) + " zerocoins");
+    return results;
 }
 
 UniValue decryptallzerocoins(const JSONRPCRequest& request)
 {
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "decryptallzerocoins\n"
+                        "\Decrypt all encrypted zerocoin data\n");
+
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
     int i = 0;
     {
@@ -5234,11 +5285,20 @@ UniValue decryptallzerocoins(const JSONRPCRequest& request)
             i++;
         }
     }
-    return "Encrypted " + std::to_string(i) + " zerocoins";
+
+    UniValue results(UniValue::VARR);
+    results.push_back("Decrypted " + std::to_string(i) + " zerocoins");
+    return results;
 }
 
 UniValue getstakingaverage(const JSONRPCRequest& request)
 {
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "getstakingaverage\n"
+                        "\Get the average stake amount in the last 500 block sample.\n");
+
     UniValue entry(UniValue::VOBJ);
     if(IsInitialBlockDownload())
         return "Wait until node is fully synced.";

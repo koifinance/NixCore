@@ -48,11 +48,15 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-minstakeinterval=<n>", _("Minimum time in seconds between successful stakes (default: 0)"));
     strUsage += HelpMessageOpt("-minersleep=<n>", _("Milliseconds between stake attempts. Lowering this param will not result in more stakes. (default: 500)"));
     strUsage += HelpMessageOpt("-reservebalance=<amount>", _("Ensure available balance remains above reservebalance. (default: 0)"));
-    strUsage += HelpMessageOpt("-donationpercent=<n>", _("Percentage of block reward donated to the development fund, overridden by system minimum. (default: 0)"));
+    strUsage += HelpMessageOpt("-donationpercent=<n>", _("Percentage of block reward donated to the donation address. e.g. 1190 (11.90%) (default: 0)"));
+    strUsage += HelpMessageOpt("-donationaddress=<n>", _("Destination to send donated staking rewards. (default: N/A)"));
     strUsage += HelpMessageOpt("-stakesplitthreshold=<n>", _("Maximum amount of coins to stake before splitting into two outputs. (default: 20000)"));
     strUsage += HelpMessageOpt("-stakecombinethreshold=<n>", _("Minimum amount of NIX to combine into one stake if wallet has multiple outputs to stake. (default: 5000)"));
     strUsage += HelpMessageOpt("-maxstakecombine=<n>", _("Maximim of outputs to combine when achieving stakecombinethreshold. (default: 3)"));
-    strUsage += HelpMessageOpt("-coldstakeaddress=", _("Coldstaking address used for smart contract staking. To be used for local wallet setup. (default: "" (None)"));
+    strUsage += HelpMessageOpt("-coldstakeaddress=<n>", _("Coldstaking address used for smart contract staking. To be used for local wallet setup. (default: "" (None)"));
+    strUsage += HelpMessageOpt("-minimumdelagatepercentage=<n>", _("Minimum delegate percentage required for a contract to stake if you are delegating stakes. Value can be between 0 and 10000 e.g. 1191 (11.91%) (default: 0"));
+    strUsage += HelpMessageOpt("-delegaterewardaddresses=<n>", _("Stake only DPoS contracts with reward fee addresses specified by this command. e.g. x1,x2,x3 (default: \"\""));
+    strUsage += HelpMessageOpt("-delegaterewardtome=<n>", _("Stake only DPoS contracts with reward fee addresses that this local wallet owns <true/false> (default: false)"));
 
     if (showDebug)
     {

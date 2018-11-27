@@ -188,7 +188,8 @@ public:
         nTargetTimespan = 24 * 60;      // 24 mins
 
         consensus.nCoinMaturityReductionHeight = 97000;
-        consensus.nStartGhostFeeDistribution = 999999;
+        //Checkpoint to enable ghostfee distribution, fee powered DPoS, 200 conf staking
+        consensus.nStartGhostFeeDistribution = 114000;
         consensus.nGhostFeeDistributionCycle = 720;
 
 

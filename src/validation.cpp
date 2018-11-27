@@ -1956,39 +1956,19 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             for (unsigned int k = tx.vout.size(); k-- > 0;) {
                 const CTxOut &out = tx.vout[k];
 
-                if (out.scriptPubKey.IsPayToScriptHash()) {
-                    std::vector<uint8_t> hashBytes;
-                    int scriptType = 0;
-                    const Coin &coin = view.AccessCoin(tx.vin[k].prevout);
-                    const CScript *pScript = &coin.out.scriptPubKey;
-                    if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
-                            || scriptType == 0)
-                        continue;
-
-                    // undo receiving activity
-                    view.addressIndex.push_back(make_pair(CAddressIndexKey(2, uint256(hashBytes.data(), hashBytes.size()), pindex->nHeight, i, hash, k, false), out.nValue));
-
-                    // undo unspent index
-                    view.addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(2, uint256(hashBytes.data(), hashBytes.size()), hash, k), CAddressUnspentValue()));
-
-                } else if (out.scriptPubKey.IsPayToPublicKeyHash()) {
-                    std::vector<uint8_t> hashBytes;
-                    int scriptType = 0;
-                    const Coin &coin = view.AccessCoin(tx.vin[k].prevout);
-                    const CScript *pScript = &coin.out.scriptPubKey;
-                    if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
-                            || scriptType == 0)
-                        continue;
-
-                    // undo receiving activity
-                    view.addressIndex.push_back(make_pair(CAddressIndexKey(1, uint256(hashBytes.data(), hashBytes.size()), pindex->nHeight, i, hash, k, false), out.nValue));
-
-                    // undo unspent index
-                    view.addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, uint256(hashBytes.data(), hashBytes.size()), hash, k), CAddressUnspentValue()));
-
-                } else {
+                std::vector<uint8_t> hashBytes;
+                int scriptType = 0;
+                const Coin &coin = view.AccessCoin(tx.vin[k].prevout);
+                const CScript *pScript = &coin.out.scriptPubKey;
+                if (!ExtractIndexInfo(pScript, scriptType, hashBytes)
+                        || scriptType == 0)
                     continue;
-                }
+
+                // undo receiving activity
+                view.addressIndex.push_back(make_pair(CAddressIndexKey(scriptType, uint256(hashBytes.data(), hashBytes.size()), pindex->nHeight, i, hash, k, false), out.nValue));
+
+                // undo unspent index
+                view.addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(scriptType, uint256(hashBytes.data(), hashBytes.size()), hash, k), CAddressUnspentValue()));
 
             }
 
@@ -2197,7 +2177,8 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
     mintVector.clear();
     if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
         //Time to payout all ghostnodes and check
-        LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n", (chainActive.Height() + 1), ((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle));
+        //LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n",
+        //          (chainActive.Height() + 1), ((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle));
         if(((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle) == 0){
             //Subtract 1 from sample since we check current block fees
             int sample = Params().GetConsensus().nGhostFeeDistributionCycle - 1;
@@ -2265,6 +2246,46 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
 
     returnFee = 0;
     payFees = false;
+    return true;
+}
+
+//Be careful of using this check, if a clients list is not similar to to others, it could cause a fork
+bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
+    //If current node is synced with node list, check honesty of payouts
+    if(ghostnodeSync.IsSynced(chainActive.Height())){
+
+        vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
+        vector<CScript> ghostnodeVectorWinners;
+        ghostnodeVectorWinners.clear();
+
+        int totalActiveNodes = 0;
+        int startBlock = (chainActive.Height() + 1) - (Params().GetConsensus().nGhostFeeDistributionCycle - 1);
+        int64_t ensureNodeActiveBefore = chainActive[startBlock]->GetBlockTime();
+
+        for(auto node: ghostnodeVector){
+
+            if(node.IsEnabled() && (node.sigTime >= ensureNodeActiveBefore)){
+                totalActiveNodes++;
+                CTxDestination dest = node.pubKeyCollateralAddress.GetID();
+                CScript nodeScript = GetScriptForDestination(dest);
+                ghostnodeVectorWinners.push_back(nodeScript);
+            }
+        }
+
+        CAmount feePayout = totalFees/totalActiveNodes;
+        int totalNodesPaid = 0;
+        for(CTxOut out: pBlock.vtx[0]->vout){
+            if((std::find(ghostnodeVectorWinners.begin(), ghostnodeVectorWinners.end(), out.scriptPubKey) != ghostnodeVectorWinners.end()) && out.nValue == feePayout) {
+                //erase this check to prevent duplicate payouts
+                ghostnodeVectorWinners.erase(std::find(ghostnodeVectorWinners.begin(), ghostnodeVectorWinners.end(), out.scriptPubKey));
+                totalNodesPaid++;
+            }
+        }
+
+        if(totalNodesPaid != totalActiveNodes)
+            return false;
+    }
+
     return true;
 }
 
@@ -2608,6 +2629,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
         //Payout fees for ghostnode fee cycle
         else{
+            if(!CheckGhostProtocolFeePayouts(block, returnFee))
+                return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
+
             blockReward = blockReward + returnFee;
         }
 

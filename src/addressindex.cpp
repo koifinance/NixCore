@@ -1,4 +1,5 @@
 // Copyright (c) 2017 The Particl Core developers
+// Copyright (c) 2018 The NIX Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -24,19 +25,10 @@ bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8
     else
     if (pScript->IsPayToScriptHash_CS())
     {
-        hashBytes.assign(pScript->begin()+4, pScript->begin()+24);
+        //use owners address
+        hashBytes.assign(pScript->begin()+28, pScript->begin()+48);
         scriptType = ADDR_INDT_SCRIPT_ADDRESS;
-    } else
-    if (pScript->IsPayToPublicKeyHash256())
-    {
-        hashBytes.assign(pScript->begin()+3, pScript->begin()+35);
-        scriptType = ADDR_INDT_PUBKEY_ADDRESS_256;
-    } else
-    if (pScript->IsPayToScriptHash256())
-    {
-        hashBytes.assign(pScript->begin()+2, pScript->begin()+34);
-        scriptType = ADDR_INDT_SCRIPT_ADDRESS_256;
-    };
+    }
 
     return true;
 };

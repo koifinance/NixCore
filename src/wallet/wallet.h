@@ -1515,9 +1515,12 @@ public:
     bool fStakingEnabled;
     CAmount nStakeCombineThreshold;
     CAmount nStakeSplitThreshold;
+    CAmount nMinimumDelagatePercentage;
+    std::vector<std::string> nDelegateRewardAddresses;
+    bool nDelegateRewardToMe;
     size_t nMaxStakeCombine = 3;
-    int nWalletDevFundCedePercent;
-    CBitcoinAddress rewardAddress;
+    CAmount nWalletDonationPercent;
+    std::string nWalletDonationAddress;
     int nStakeLimitHeight = 0; // for regtest, don't stake above nStakeLimitHeight
 
     bool fUnlockForStakingOnly = false; // Use coldstaking instead

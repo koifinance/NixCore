@@ -8050,11 +8050,52 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
 
                 COutPoint kernel(wtxid, i);
                 if (!CheckStakeUnused(kernel) ||
-                     IsSpent(wtxid, i)
-                     || IsLockedCoin(wtxid, i))
+                        IsSpent(wtxid, i)
+                        || IsLockedCoin(wtxid, i))
                     continue;
 
                 const CScript pscriptPubKey = txout.scriptPubKey;
+
+                if(pscriptPubKey.IsPayToScriptHash_CS()){
+                    // Check if contract allows fee payouts
+                    int64_t feeOut = 0;
+                    if(GetCoinstakeScriptFee(pscriptPubKey, feeOut)){
+                        if(feeOut < nMinimumDelagatePercentage)
+                            continue;
+                    }
+                    //If script does not include fee and percentage is set, skip
+                    else if(nMinimumDelagatePercentage > 0)
+                        continue;
+
+                    CScript scriptOut;
+                    if(GetCoinstakeScriptFeeRewardAddress(pscriptPubKey, scriptOut)){
+                        if(nDelegateRewardToMe){
+                            const CScriptID delegateRewardID(scriptOut);
+                            if(!HaveCScript(delegateRewardID))
+                                continue;
+                        }
+                        else if(!nDelegateRewardAddresses.empty()){
+                            bool found = false;
+                            for(std::string addressString: nDelegateRewardAddresses){
+                                CBitcoinAddress rewardAddress(addressString);
+                                if(!rewardAddress.IsValid() || !rewardAddress.IsScript())
+                                    continue;
+
+                                CScriptID delegateRewardID(scriptOut);
+                                CTxDestination rewardDest = rewardAddress.Get();
+                                CScriptID rewardID = boost::get<CScriptID>(rewardDest);
+
+                                if(rewardID == delegateRewardID)
+                                    found = true;
+                            }
+
+                        }
+
+                    }
+                    //If script does not include reward addres and fields are set, skip
+                    else if(nDelegateRewardToMe || !nDelegateRewardAddresses.empty())
+                        continue;
+                }
 
                 CScriptID dest;
                 //Returns false if not coldstake or p2sh script
@@ -8066,8 +8107,8 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 if (HaveCScript(destScriptID))
                     vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
 
-            };
-        };
+            }
+        }
     }
 
     //Sort staking list by (amount/height) instead of randomness
@@ -8393,16 +8434,12 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     // Set output amount, split outputs if > nStakeSplitThreshold
     else if (nCredit >= nStakeSplitThreshold)
     {
-        if (!rewardAddress.IsValid())
-            nCredit += nRewardOut;
-
+        nCredit += nRewardOut;
         txNew.vout.back().nValue = (nCredit / 2);
         txNew.vout.push_back(CTxOut((nCredit - txNew.vout.back().nValue), scriptPubKeyKernel));
     } else
     {
-        if (!rewardAddress.IsValid())
-            nCredit += nRewardOut;
-
+        nCredit += nRewardOut;
         txNew.vout.back().nValue = (nCredit);
     }
 
@@ -8468,16 +8505,19 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
 
             int totalActiveNodes = 0;
+            int startBlock = (chainActive.Height() + 1) - (Params().GetConsensus().nGhostFeeDistributionCycle - 1);
+            int64_t ensureNodeActiveBefore = chainActive[startBlock]->GetBlockTime();
 
             for(auto node: ghostnodeVector){
-                if(node.IsEnabled())
+
+                if(node.IsEnabled() && (node.sigTime >= ensureNodeActiveBefore))
                     totalActiveNodes++;
             }
 
             CAmount feePayout = returnFee/totalActiveNodes;
 
             for(auto node: ghostnodeVector){
-                if(node.IsEnabled()){
+                if(node.IsEnabled() && (node.sigTime >= ensureNodeActiveBefore)){
                     CScript mnpayee;
                     mnpayee = GetScriptForDestination(node.pubKeyCollateralAddress.GetID());
                     txNew.vout.push_back(CTxOut(feePayout,mnpayee));
@@ -8577,7 +8617,7 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
     else
         nFees -= nGhostFees;
 
-    LogPrintf("\nGhost Fees: nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
+    //LogPrintf("\nGhost Fees: nGhostFees=%llf, nFees=%llf \n", nGhostFees, nFees);
 
     CKey key;
     pblock->nVersion = ComputeBlockVersion(pindexPrev, Params().GetConsensus());
@@ -8670,37 +8710,64 @@ CAmount CWallet::GetStakeableBalance() const
 
 bool CWallet::ProcessStakingSettings(std::string &sError)
 {
-    nWalletDevFundCedePercent = gArgs.GetArg("-donationpercent", 0);
+    nWalletDonationPercent = gArgs.GetArg("-donationpercent", 0);
+    nWalletDonationAddress = gArgs.GetArg("-donationaddress", "");
     nStakeSplitThreshold = gArgs.GetArg("-stakesplitthreshold", 10000) * COIN;
     nStakeCombineThreshold = gArgs.GetArg("-stakecombinethreshold", 5000) * COIN;
     nMaxStakeCombine = gArgs.GetArg("-maxstakecombine", 3);
+    nMinimumDelagatePercentage = gArgs.GetArg("-minimumdelagatepercentage", 0);
+    std::string delegateAddressesString = gArgs.GetArg("-delegaterewardaddresses", "");
+    nDelegateRewardToMe = gArgs.GetArg("-delegaterewardtome", false);
+    nDelegateRewardAddresses.clear();
 
-    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, coldstake address: %s \n",
-              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine, gArgs.GetArg("-coldstakeaddress", ""));
+    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, coldstake address: %s, min delegate percent: %llf, delegate reward to me: %d \n",
+              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine, gArgs.GetArg("-coldstakeaddress", ""), nMinimumDelagatePercentage, nDelegateRewardToMe);
+    LogPrintf("DelegateRewardAddresses: ");
 
+    char sep = ',';
+    std::string::size_type b = 0;
+    while ((b = delegateAddressesString.find_first_not_of(sep, b)) != std::string::npos) {
+        auto e = delegateAddressesString.find_first_of(sep, b);
+        nDelegateRewardAddresses.push_back(delegateAddressesString.substr(b, e-b));
+        b = e;
+    }
+
+    for(auto addr: nDelegateRewardAddresses)
+        LogPrintf("\n%s", addr);
 
     if (nStakeCombineThreshold < 100 * COIN)
     {
         sError = "stakecombinethreshold must be >= 100 and <= 5000.";
         nStakeCombineThreshold = 100 * COIN;
-    };
+    }
 
     if (nStakeSplitThreshold < nStakeCombineThreshold * 2 )
     {
         sError = "stakesplitthreshold must be >= 2x stakecombinethreshold.";
         nStakeSplitThreshold = nStakeCombineThreshold * 2;
-    };
+    }
 
-    if (nWalletDevFundCedePercent < 0)
+    if (nWalletDonationPercent < 0)
     {
-        LogPrintf("%s: Warning donationpercent out of range %d, clamped to %d\n", nWalletDevFundCedePercent, 0);
-        nWalletDevFundCedePercent = 0;
-    } else
-    if (nWalletDevFundCedePercent > 100)
+        sError = "nWalletDonationPercent must be >= 0";
+        nWalletDonationPercent = 0;
+    }
+    else if (nWalletDonationPercent > 10000)
     {
-        LogPrintf("%s: Warning donationpercent out of range %d, clamped to %d\n", nWalletDevFundCedePercent, 100);
-        nWalletDevFundCedePercent = 100;
-    };
+        sError = "nWalletDonationPercent must be <= 10000";
+        nWalletDonationPercent = 10000;
+    }
+
+    if (nMinimumDelagatePercentage < 0)
+    {
+        sError = "nMinimumDelagatePercentage must be >= 0";
+        nMinimumDelagatePercentage = 0;
+    }
+    else if (nMinimumDelagatePercentage > 10000)
+    {
+        sError = "nMinimumDelagatePercentage must be <= 10000";
+        nMinimumDelagatePercentage = 10000;
+    }
 
     return true;
 }
