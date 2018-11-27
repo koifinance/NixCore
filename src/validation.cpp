@@ -2195,74 +2195,73 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
     CAmount totalGhosted = 0;
     vector<CAmount> mintVector;
     mintVector.clear();
-    if(ghostnodeSync.IsSynced(chainActive.Height())){
-        if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
-            //Time to payout all ghostnodes and check
-            LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n", (chainActive.Height() + 1), ((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle));
-            if(((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle) == 0){
-                //Subtract 1 from sample since we check current block fees
-                int sample = Params().GetConsensus().nGhostFeeDistributionCycle - 1;
-                mintVector.clear();
+    if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
+        //Time to payout all ghostnodes and check
+        LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n", (chainActive.Height() + 1), ((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle));
+        if(((chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle) == 0){
+            //Subtract 1 from sample since we check current block fees
+            int sample = Params().GetConsensus().nGhostFeeDistributionCycle - 1;
+            mintVector.clear();
 
-                //Assume chainactive+1 is current block check height
-                int startHeight = chainActive.Height() + 1 - sample;
-                //Grab fee from current block being checked
-                for(auto ctx: pBlock.vtx){
-                    //Found ghost fee transaction
-                    if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
-                        for(auto mintTx: ctx->vout){
-                            if(mintTx.scriptPubKey.IsZerocoinMint())
-                                mintVector.push_back(mintTx.nValue);
-                        }
+            //Assume chainactive+1 is current block check height
+            int startHeight = chainActive.Height() + 1 - sample;
+            //Grab fee from current block being checked
+            for(auto ctx: pBlock.vtx){
+                //Found ghost fee transaction
+                if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.scriptPubKey.IsZerocoinMint())
+                            mintVector.push_back(mintTx.nValue);
                     }
                 }
-                //Grab fee from other blocks
-                for(auto it = startHeight; it < chainActive.Height() + 1; it++){
-                    CBlock block;
-                    CBlockIndex *pindex = chainActive[it];
-                    // Now get fees from past 719 blocks
-                    if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
-                        for(auto ctx: block.vtx){
-                            //Found ghost fee transaction
-                            if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
-                                for(auto mintTx: ctx->vout){
-                                    if(mintTx.scriptPubKey.IsZerocoinMint())
-                                        mintVector.push_back(mintTx.nValue);
-                                }
+            }
+            //Grab fee from other blocks
+            for(auto it = startHeight; it < chainActive.Height() + 1; it++){
+                CBlock block;
+                CBlockIndex *pindex = chainActive[it];
+                // Now get fees from past 719 blocks
+                if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+                    for(auto ctx: block.vtx){
+                        //Found ghost fee transaction
+                        if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                            for(auto mintTx: ctx->vout){
+                                if(mintTx.scriptPubKey.IsZerocoinMint())
+                                    mintVector.push_back(mintTx.nValue);
                             }
                         }
                     }
-                    else
-                        return false;
                 }
-                for(auto f: mintVector)
-                    totalGhosted += f;
-                //Calculate total fees for the 720 block cycle
-                returnFee = totalGhosted * 0.0025;
-                payFees = true;
-                return true;
+                else
+                    return false;
             }
-            //Make sure all ghost fees in this block are not paid out
-            else{
-                for(auto ctx: pBlock.vtx){
-                    //Found ghost fee transaction
-                    if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
-                        for(auto mintTx: ctx->vout){
-                            if(mintTx.scriptPubKey.IsZerocoinMint())
-                                mintVector.push_back(mintTx.nValue);
-                        }
+            for(auto f: mintVector)
+                totalGhosted += f;
+            //Calculate total fees for the 720 block cycle
+            returnFee = totalGhosted * 0.0025;
+            payFees = true;
+            return true;
+        }
+        //Make sure all ghost fees in this block are not paid out
+        else{
+            for(auto ctx: pBlock.vtx){
+                //Found ghost fee transaction
+                if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.scriptPubKey.IsZerocoinMint())
+                            mintVector.push_back(mintTx.nValue);
                     }
                 }
-
-                for(auto f: mintVector)
-                    totalGhosted += f;
-                //Calculate total fees for the current block
-                returnFee = totalGhosted * 0.0025;
-                payFees = false;
-                return true;
             }
+
+            for(auto f: mintVector)
+                totalGhosted += f;
+            //Calculate total fees for the current block
+            returnFee = totalGhosted * 0.0025;
+            payFees = false;
+            return true;
         }
     }
+
 
     returnFee = 0;
     payFees = false;
