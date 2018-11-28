@@ -2621,22 +2621,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees, true) +
                     ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
         }
-        blockReward = nCalculatedStakeReward;
-
-        //Make sure current fees in this block are not paid out
-        if(!payFees){
-            blockReward = blockReward - returnFee;
-        }
-        //Payout fees for ghostnode fee cycle
-        else{
-            if(!CheckGhostProtocolFeePayouts(block, returnFee))
-                return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
-
-            blockReward = blockReward + returnFee;
-        }
-
-        if (nStakeReward < 0 || nStakeReward > blockReward)
-            return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, blockReward), REJECT_INVALID, "bad-cs-amount");
 
         if (pindex->pprev->IsProofOfStake()) // check for cache
         {
@@ -2678,10 +2662,39 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
 
         //check if dev rewards were found
-        if (!(found_1 && found_2)) {
-            return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                             "CTransaction::CheckTransaction() : dev reward missing");
+        if(chainActive.Height() + 1 < Params().GetConsensus().nStartGhostFeeDistribution){
+            if (!(found_1 && found_2)) {
+                return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                 "CTransaction::CheckTransaction() : dev reward missing");
+            }
         }
+        //allow payouts to not include dev fund after nStartGhostFeeDistribution
+        else{
+            //If any dev fund payout is not included, prevent amount from being added to another address
+            if (!(found_1 && found_2)) {
+                nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) +
+                        ((GHOSTNODE_REWARD_POST_POS) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
+            }
+        }
+
+        blockReward = nCalculatedStakeReward;
+
+        //Make sure current fees in this block are not paid out
+        if(!payFees){
+            blockReward = blockReward - returnFee;
+        }
+        //Payout fees for ghostnode fee cycle
+        else{
+            /*
+            if(!CheckGhostProtocolFeePayouts(block, returnFee))
+                return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
+            */
+            blockReward = blockReward + returnFee;
+        }
+
+        if (nStakeReward < 0 || nStakeReward > blockReward)
+            return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, blockReward), REJECT_INVALID, "bad-cs-amount");
+
 
         found_1 = false;
         CAmount ghostnodeReward = (int64_t)(GHOSTNODE_REWARD_POST_POS * GetBlockSubsidy(nHeight, Params().GetConsensus()));

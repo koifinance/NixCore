@@ -250,11 +250,6 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
     const CAmount value_out= tx.GetValueOut();
 
     if(tx.IsCoinStake()){
-
-        //nValueIn += DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(chainActive.Height(), pParams()->GetConsensus());
-        //CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height(), 0);
-        //nValueIn += ghostnodePayment;
-
         // Return stake reward in nTxFee
         txfee = value_out - nValueIn;
 

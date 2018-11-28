@@ -8088,6 +8088,8 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                                 if(rewardID == delegateRewardID)
                                     found = true;
                             }
+                            if(!found)
+                                continue;
 
                         }
 
