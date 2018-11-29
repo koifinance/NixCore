@@ -3594,7 +3594,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
 
                 // Fill in dummy signatures for fee calculation.
                 if (!DummySignTx(txNew, setCoins)) {
-                    strFailReason = _("Signing transaction failed");
+                    strFailReason = _("Dummy Signing transaction failed");
                     return false;
                 }
 
@@ -4436,6 +4436,9 @@ void CWallet::GetScriptForMining(std::shared_ptr<CReserveScript> &script)
     CPubKey pubkey;
     if (!rKey->GetReservedKey(pubkey))
         return;
+
+
+    LearnRelatedScripts(pubkey, g_address_type);
 
     script = rKey;
     CTxDestination dest = GetDestinationForKey(pubkey, output_type);
@@ -8070,7 +8073,8 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                     CScript scriptOut;
                     if(GetCoinstakeScriptFeeRewardAddress(pscriptPubKey, scriptOut)){
                         if(nDelegateRewardToMe){
-                            const CScriptID delegateRewardID(scriptOut);
+                            CScriptID delegateRewardID;
+                            ExtractStakingKeyID(scriptOut, delegateRewardID);
                             if(!HaveCScript(delegateRewardID))
                                 continue;
                         }
@@ -8081,7 +8085,9 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                                 if(!rewardAddress.IsValid() || !rewardAddress.IsScript())
                                     continue;
 
-                                CScriptID delegateRewardID(scriptOut);
+                                CScriptID delegateRewardID;
+                                ExtractStakingKeyID(scriptOut, delegateRewardID);
+
                                 CTxDestination rewardDest = rewardAddress.Get();
                                 CScriptID rewardID = boost::get<CScriptID>(rewardDest);
 

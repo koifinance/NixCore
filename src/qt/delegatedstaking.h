@@ -14,6 +14,7 @@ class AddressTableModel;
 class OptionsModel;
 class PlatformStyle;
 class WalletModel;
+class COutPoint;
 
 namespace Ui {
     class DelegatedStaking;
@@ -60,14 +61,21 @@ private:
     QString newAddressToSelect;
     QModelIndex selectedRow();
     const PlatformStyle *platformStyle;
+    std::vector <COutPoint> activeContractsOutpoints;
+    std::vector <CAmount> activeContractsAmounts;
 
     void processDelegatedCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
+    void updateContractList();
 
 private Q_SLOTS:
     /** Send button clicked */
     void on_sendButton_clicked();
     /** Fee Payout checked */
     void enableFeePayoutCheckBoxChecked(int);
+
+    void cancelContract();
+
+    void showContextMenu(const QPoint &);
 
 Q_SIGNALS:
     void message(const QString &title, const QString &message, unsigned int style);

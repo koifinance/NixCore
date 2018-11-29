@@ -19,6 +19,7 @@
 #include <wallet/wallet.h>
 #include "qt/recentrequeststablemodel.h"
 #include <ghost-address/commitmentkey.h>
+#include <qt/coincontroldialog.h>
 
 #include <QIcon>
 #include <QMenu>

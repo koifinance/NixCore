@@ -27,6 +27,7 @@
 #include <qt/walletmodel.h>
 #include <wallet/wallet.h>
 #include <wallet/coincontrol.h>
+#include <script/ismine.h>
 #include <qt/recentrequeststablemodel.h>
 #include <ghost-address/commitmentkey.h>
 
@@ -43,6 +44,7 @@
 #include <QMenu>
 #include <QPoint>
 #include <QVariant>
+#include <QString>
 
 DelegatedStaking::DelegatedStaking(const PlatformStyle *platformStyle, QWidget *parent) :
     QWidget(parent),
@@ -65,15 +67,28 @@ DelegatedStaking::DelegatedStaking(const PlatformStyle *platformStyle, QWidget *
 
     ui->feePercent->setEnabled(false);
     ui->rewardTo->setEnabled(false);
-
-    //ui->labelExplanation->setTextFormat(Qt::RichText);
-    //ui->labelExplanation->setText(tr("Create DPoS smart contracts straight from your wallet. (Tip: This page works with coin-control)"));
-
     ui->enableFeePayout->setVisible(true);
+
+    ui->activeContractsView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->activeContractsView->setAlternatingRowColors(true);
+    ui->activeContractsView->setContextMenuPolicy(Qt::CustomContextMenu);
+
+
+    contextMenu = new QMenu(this);
+    contextMenu->setObjectName("contextMenu");
+
+
+    QAction *cancelContractAction = new QAction(tr("Cancel contract"), this);
+    contextMenu->addAction(cancelContractAction);
 
     connect(ui->sendButton, SIGNAL(triggered()), this, SLOT(on_sendButton_clicked()));
 
     connect(ui->enableFeePayout, SIGNAL(stateChanged(int)), this, SLOT(enableFeePayoutCheckBoxChecked(int)));
+
+    connect(cancelContractAction, SIGNAL(triggered()), this, SLOT(cancelContract()));
+
+    connect(ui->activeContractsView, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(showContextMenu(const QPoint&)));
+
 }
 
 DelegatedStaking::~DelegatedStaking() {
@@ -85,6 +100,7 @@ void DelegatedStaking::setWalletModel(WalletModel *walletmodel) {
         return;
 
     this->walletModel = walletmodel;
+    updateContractList();
 }
 
 void DelegatedStaking::enableFeePayoutCheckBoxChecked(int state){
@@ -265,18 +281,24 @@ void DelegatedStaking::on_sendButton_clicked()
     questionString.append("<hr /><span>");
     questionString.append("</span>");
 
-    std::shared_ptr<CReserveScript> coinbaseScript;
-    walletModel->getWallet()->GetScriptForMining(coinbaseScript);
-    if (!coinbaseScript) {
-        return;// error("%s: Error: Keypool ran out, please call keypoolrefill first.", __func__);
+    if (!walletModel->getWallet()->IsLocked()) {
+        walletModel->getWallet()->TopUpKeyPool();
     }
-    if (coinbaseScript->reserveScript.empty()) {
-        return;// error("%s: No coinbase script available.", __func__);
+
+    // Generate a new key that is added to wallet
+    CPubKey newKey;
+    if (!walletModel->getWallet()->GetKeyFromPool(newKey)) {
+        return;
     }
+
+    walletModel->getWallet()->LearnRelatedScripts(newKey, g_address_type);
+    CTxDestination dest = GetDestinationForKey(newKey, g_address_type);
+
+    walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
 
     CScript  delegateScript = GetScriptForDestination(CBitcoinAddress(ui->delegateTo->text().toStdString()).Get());
 
-    CScript scriptPubKeyKernel = coinbaseScript->reserveScript;
+    CScript scriptPubKeyKernel = GetScriptForDestination(dest);
     //set up contract
     CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
     //cold stake address
@@ -349,6 +371,235 @@ void DelegatedStaking::on_sendButton_clicked()
 
     //accept();
     CoinControlDialog::coinControl()->UnSelectAll();
+    updateContractList();
     //coinControlUpdateLabels();
 }
 
+
+void DelegatedStaking::updateContractList() {
+
+    if (!walletModel)
+        return;
+
+    ui->activeContractsView->setRowCount(0);
+    activeContractsOutpoints.clear();
+    activeContractsAmounts.clear();
+    std::map<QString, std::vector<COutput> > mapCoins;
+    walletModel->listCoins(mapCoins);
+
+    for (const std::pair<QString, std::vector<COutput>>& coins : mapCoins) {
+        CAmount nSum = 0;
+        for (const COutput& out : coins.second) {
+            nSum = out.tx->tx->vout[out.i].nValue;
+
+            // address
+            CTxDestination ownerDest;
+            if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToScriptHash_CS()){
+                if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, ownerDest))
+                {
+                    CScript delegateScript;
+                    int64_t feeAmount;
+                    CScript feeRewardScript;
+                    CScriptID hash = boost::get<CScriptID>(ownerDest);
+
+                    if(walletModel->getWallet()->HaveCScript(hash)){
+                        GetCoinstakeScriptPath(out.tx->tx->vout[out.i].scriptPubKey, delegateScript);
+                        bool hasFee = GetCoinstakeScriptFee(out.tx->tx->vout[out.i].scriptPubKey, feeAmount);
+                        GetCoinstakeScriptFeeRewardAddress(out.tx->tx->vout[out.i].scriptPubKey, feeRewardScript);
+
+                        CBitcoinAddress addr1(ownerDest);
+
+                        CTxDestination delegateDest;
+                        ExtractDestination(delegateScript, delegateDest);
+                        CBitcoinAddress addr2(delegateDest);
+
+                        CTxDestination rewardFeeDest;
+                        ExtractDestination(feeRewardScript, rewardFeeDest);
+                        CBitcoinAddress addr3(rewardFeeDest);
+
+                        if(!hasFee)
+                            feeAmount = 0;
+
+                        std::string ownerAddrString = addr1.ToString();
+                        if(walletModel->getWallet()->mapAddressBook.find(ownerDest) != walletModel->getWallet()->mapAddressBook.end())
+                        {
+                            ownerAddrString = walletModel->getWallet()->mapAddressBook[ownerDest].name;
+                        }
+
+                        QTableWidgetItem *myAddress = new QTableWidgetItem(QString::fromStdString(ownerAddrString));
+                        QTableWidgetItem *delegateAddress = new QTableWidgetItem(QString::fromStdString(addr2.ToString()));
+                        QTableWidgetItem *contractFee = new QTableWidgetItem(QString::fromStdString(std::to_string((double)feeAmount/100.00)));
+                        QTableWidgetItem *rewardFeeAddress = new QTableWidgetItem(QString::fromStdString(addr3.ToString()));
+                        QTableWidgetItem *coinAmount = new QTableWidgetItem(BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), nSum));
+
+                        if(!hasFee)
+                             rewardFeeAddress = new QTableWidgetItem(QString::fromStdString("N/A"));
+
+                        ui->activeContractsView->insertRow(0);
+                        ui->activeContractsView->setItem(0, 0, myAddress);
+                        ui->activeContractsView->setItem(0, 1, delegateAddress);
+                        ui->activeContractsView->setItem(0, 2, contractFee);
+                        ui->activeContractsView->setItem(0, 3, rewardFeeAddress);
+                        ui->activeContractsView->setItem(0, 4, coinAmount);
+
+                        //Lock contracts
+                        COutPoint outpt(out.tx->tx->GetHash(), out.i);
+                        walletModel->lockCoin(outpt);
+
+                        activeContractsOutpoints.push_back(outpt);
+                        activeContractsAmounts.push_back(nSum);
+                    }
+
+                }
+            }
+
+        }
+    }
+}
+
+void DelegatedStaking::showContextMenu(const QPoint &point)
+{
+    QTableWidgetItem *item = ui->activeContractsView->itemAt(point);
+    if(item) contextMenu->exec(QCursor::pos());
+}
+
+void DelegatedStaking::cancelContract(){
+
+    if(!ui->activeContractsView || !ui->activeContractsView->selectionModel())
+        return;
+
+    QModelIndexList selection = ui->activeContractsView->selectionModel()->selectedRows(0);
+
+    if(!selection.isEmpty())
+    {
+        // Select proper transaction inputs to coincontrol
+        CCoinControl ctrl;
+        ctrl = *CoinControlDialog::coinControl();
+        ctrl.UnSelectAll();
+        int row = -1;
+        for(QModelIndex rowIndex: selection) {
+            row = rowIndex.row();
+            //unlock contract
+            walletModel->unlockCoin(activeContractsOutpoints[activeContractsOutpoints.size() - 1 - row]);
+            ctrl.Select(activeContractsOutpoints[activeContractsOutpoints.size() - 1 - row]);
+        }
+        CAmount totalAmount = activeContractsAmounts[activeContractsAmounts.size() - 1 - row];
+
+        WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+        if(!ctx.isValid())
+        {
+            // Unlock wallet was cancelled
+            return;
+        }
+
+        if (!walletModel->getWallet()->IsLocked()) {
+            walletModel->getWallet()->TopUpKeyPool();
+        }
+
+        // Generate a new key that is added to wallet
+        CPubKey newKey;
+        if (!walletModel->getWallet()->GetKeyFromPool(newKey)) {
+            return;
+        }
+
+        walletModel->getWallet()->LearnRelatedScripts(newKey, g_address_type);
+        CTxDestination dest = GetDestinationForKey(newKey, g_address_type);
+
+        if(ui->contractLabel->text().toStdString() != "")
+            walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
+
+        CScript scriptPubKey = GetScriptForDestination(dest);
+
+
+        // Create and send the transaction
+        CReserveKey reservekey(walletModel->getWallet());
+        CAmount nFeeRequired;
+        std::string strError;
+        std::vector<CRecipient> vecSend;
+        int nChangePosRet = -1;
+        CRecipient recipient = {scriptPubKey, totalAmount, true};
+        vecSend.push_back(recipient);
+
+        CWalletTx wtx;
+
+        if (!walletModel->getWallet()->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, ctrl)) {
+            Q_EMIT message(tr("Cancel Contract"), tr(strError.c_str()), CClientUIInterface::MSG_ERROR);
+            return;
+        }
+
+        /**************************************************************************************************************
+         **************************************************************************************************************
+         **************************************************************************************************************
+         *  Format send dialog  */
+
+        // Format confirmation message
+        QStringList formatted;
+
+        // generate bold amount string
+        QString amount = "<b>" + BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), totalAmount);
+        amount.append("</b>");
+
+        QString recipientElement;
+
+        recipientElement = tr("contract of %1 cancelled").arg(amount);
+
+
+        formatted.append(recipientElement);
+
+
+        QString questionString = tr("Are you sure you want to cancel this contract?");
+        questionString.append("<br /><br />%1");
+
+        if(nFeeRequired > 0)
+        {
+            // append fee string if a fee is required
+            questionString.append("<hr /><span style='color:#aa0000;'>");
+            questionString.append(BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), nFeeRequired));
+            questionString.append("</span> ");
+            questionString.append(tr("subtracted as transaction fee"));
+
+            // append transaction size
+            questionString.append(" (" + QString::number((double)GetTransactionWeight(*wtx.tx) / 1000) + " kB)");
+        }
+
+        // add total amount in all subdivision units
+        questionString.append("<hr />");
+        QStringList alternativeUnits;
+        for (BitcoinUnits::Unit u : BitcoinUnits::availableUnits())
+        {
+            if(u != walletModel->getOptionsModel()->getDisplayUnit())
+                alternativeUnits.append(BitcoinUnits::formatHtmlWithUnit(u, totalAmount));
+        }
+        questionString.append(tr("Total Amount %1")
+            .arg(BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), totalAmount)));
+        questionString.append(QString("<span style='font-size:10pt;font-weight:normal;'><br />(=%1)</span>")
+            .arg(alternativeUnits.join(" " + tr("or") + "<br />")));
+
+        questionString.append("<hr /><span>");
+        questionString.append("</span>");
+
+        SendConfirmationDialog confirmationDialog(tr("Confirm cancel contract"),
+            questionString.arg(formatted.join("<br />")), SEND_CONFIRM_DELAY, this);
+        confirmationDialog.exec();
+        QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
+
+        if(retval != QMessageBox::Yes)
+        {
+            return;
+        }
+
+        /**************************************************************************************************************
+         **************************************************************************************************************
+         **************************************************************************************************************
+         *  End send dialog  */
+
+        CValidationState state;
+        if (!walletModel->getWallet()->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+            Q_EMIT message(tr("Cancel Contract"), tr(strError.c_str()), CClientUIInterface::MSG_ERROR);
+            return;
+        }
+
+        CoinControlDialog::coinControl()->UnSelectAll();
+        updateContractList();
+    }
+}
