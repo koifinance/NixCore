@@ -1798,14 +1798,14 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         if(GetNumBlocksOfPeers() > nHeight)
             nHeight = GetNumBlocksOfPeers();
 
-        static const int FORK_MIN_PEER_PROTO_VERSION = nHeight >= Params().GetConsensus().nPosHeightActivate ? MIN_PEER_POS_PROTO_VERSION : MIN_PEER_PROTO_VERSION;
+        static const int FORK_MIN_PEER_PROTO_VERSION = nHeight >= Params().GetConsensus().nStartGhostFeeDistribution ? MIN_PEER_DPOS_PROTO_VERSION : MIN_PEER_PROTO_VERSION;
 
         if (nVersion < FORK_MIN_PEER_PROTO_VERSION)
         {
             // disconnect from peers older than this proto version
             LogPrint(BCLog::NET, "peer=%d using obsolete version %i; disconnecting\n", pfrom->GetId(), nVersion);
             connman->PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                               strprintf("Version must be %d or greater", MIN_PEER_PROTO_VERSION)));
+                               strprintf("Version must be %d or greater", FORK_MIN_PEER_PROTO_VERSION)));
             pfrom->fDisconnect = true;
             return false;
         }

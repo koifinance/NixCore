@@ -25,7 +25,7 @@ static const int MNPAYMENTS_SIGNATURES_TOTAL            = 10;
 // V1 - Last protocol version before update
 // V2 - Newest protocol version
 static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_1 = 70020;
-static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2 = 70020;
+static const int MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2 = 70021;
 
 extern CCriticalSection cs_vecPayees;
 extern CCriticalSection cs_mapGhostnodeBlocks;

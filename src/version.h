@@ -9,7 +9,10 @@
  * network protocol versioning
  */
 
-static const int PROTOCOL_VERSION = 70020;
+static const int PROTOCOL_VERSION = 70021;
+
+//! minimum DPoS protocol version
+static const int MIN_PEER_DPOS_PROTO_VERSION = 70021;
 
 //! minimum PoS protocol version
 static const int MIN_PEER_POS_PROTO_VERSION = 70020;

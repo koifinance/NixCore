@@ -173,6 +173,12 @@ void DelegatedStaking::on_sendButton_clicked()
     if(!walletModel)
         return;
 
+    if(chainActive.Height() < Params().GetConsensus().nStartGhostFeeDistribution)
+        Q_EMIT message(tr("Delegate Coins"), tr("You must wait until block 114,000 to create DPoS contracts!"), CClientUIInterface::MSG_ERROR);
+
+    if(IsInitialBlockDownload())
+        Q_EMIT message(tr("Delegate Coins"), tr("You must wait until you are fully synced create DPoS contracts!"), CClientUIInterface::MSG_ERROR);
+
     QList<SendCoinsRecipient> recipients;
 
     SendCoinsRecipient dposRecipient;
@@ -505,8 +511,8 @@ void DelegatedStaking::cancelContract(){
         walletModel->getWallet()->LearnRelatedScripts(newKey, g_address_type);
         CTxDestination dest = GetDestinationForKey(newKey, g_address_type);
 
-        if(ui->contractLabel->text().toStdString() != "")
-            walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
+        //if(ui->contractLabel->text().toStdString() != "")
+            //walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
 
         CScript scriptPubKey = GetScriptForDestination(dest);
 

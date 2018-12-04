@@ -12,6 +12,7 @@
 #include "spork.h"
 #include "util.h"
 #include "netmessagemaker.h"
+#include "chainparams.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -185,6 +186,9 @@ void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHe
 }
 
 int CGhostnodePayments::GetMinGhostnodePaymentsProto() {
+    if(chainActive.Height() > Params().GetConsensus().nStartGhostFeeDistribution)
+        return MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2;
+
     return sporkManager.IsSporkActive(SPORK_10_GHOSTNODE_PAY_UPDATED_NODES)
            ? MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2
            : MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_1;
