@@ -659,7 +659,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     return wtx.GetHash().GetHex();
 }
 
-UniValue delegatestaking(const JSONRPCRequest& request)
+UniValue leasestaking(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
@@ -668,14 +668,14 @@ UniValue delegatestaking(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 8)
         throw std::runtime_error(
-            "delegatestaking \"address\" amount ( \"comment\" \"comment_to\" subtractfeefromamount replaceable conf_target \"estimate_mode\")\n"
-            "\nDelegate an amount to a certain address to stake.\n"
+            "leasestaking \"address\" amount ( \"comment\" \"comment_to\" subtractfeefromamount replaceable conf_target \"estimate_mode\")\n"
+            "\nLease an amount of nix to a certain address to stake.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
-            "1. \"delegate address\"                    (string, required) The nix address to delegate stakes to.\n"
+            "1. \"lease address\"                    (string, required) The nix address to lease stakes to.\n"
             "2. \"amount\"                              (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "3. \"fee percent\"                         (numeric, optional) The percentage to allow delegator to take. eg 11.9 (11.9%)\n"
-            "4. \"delegate percent reward address\"     (string, optional) The nix address to force delegate fee stakes to.\n"
+            "4. \"lease percent reward address\"     (string, optional) The nix address to force lease fee stakes to.\n"
 
             "5. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
@@ -693,8 +693,8 @@ UniValue delegatestaking(const JSONRPCRequest& request)
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 150")
-            + HelpExampleCli("delegatestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 150 11.9 \"NG72Sfpbz1BLpXFHz9m3CdqATR44JDaydd\"")
+            + HelpExampleCli("leasestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 150")
+            + HelpExampleCli("leasestaking", "\"Nf72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 150 11.9 \"NG72Sfpbz1BLpXFHz9m3CdqATR44JDaydd\"")
         );
 
     ObserveSafeMode();
@@ -702,6 +702,9 @@ UniValue delegatestaking(const JSONRPCRequest& request)
     // Make sure the results are valid at least up to the most recent block
     // the user could have gotten from another RPC command prior to now
     pwallet->BlockUntilSyncedToCurrentChain();
+
+    if(chainActive.Height() < Params().GetConsensus().nStartGhostFeeDistribution)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot create lease contract until block 114,000");
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
@@ -766,7 +769,7 @@ UniValue delegatestaking(const JSONRPCRequest& request)
 
 
     if (!delegateScript.IsPayToScriptHash())
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid delagate key");
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid lease key");
 
 
     std::shared_ptr<CReserveScript> coinbaseScript;
@@ -5404,7 +5407,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getalladdresses",                  &getalladdresses,               {} },
     { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
     { "wallet",             "getstakingaverage",                &getstakingaverage,             {} },
-    { "wallet",             "delegatestaking",                  &delegatestaking,               {"delegate address","amount", "fee percent","delegate percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
+    { "wallet",             "leasestaking",                     &leasestaking,                  {"lease address","amount", "fee percent","lease percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
 
 
 

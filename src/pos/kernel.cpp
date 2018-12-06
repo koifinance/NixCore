@@ -230,6 +230,9 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
     //Check if delegate service is charging a fee and is just
     if (HasIsCoinstakeOp(kernelPubKey))
     {
+        if(pindexPrev->nHeight + 1 < Params().GetConsensus().nStartGhostFeeDistribution)
+            return state.DoS(100, error("%s: DPoS contract cannot be staked now.", __func__), REJECT_INVALID, "nStartGhostFeeDistribution-start-too-soon");
+
         // Sum value from any extra inputs and check script is the same
         for (size_t k = 1; k < tx.vin.size(); ++k)
         {

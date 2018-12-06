@@ -20,7 +20,7 @@
    <item>
     <widget class="QLabel" name="labelExplanation">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Create &lt;span style=&quot; font-weight:600;&quot;&gt;DPoS smart-contracts&lt;/span&gt; straight from your wallet. (&lt;span style=&quot; font-weight:600;&quot;&gt;Tip&lt;/span&gt;: This page works with coin-control)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Create &lt;span style=&quot; font-weight:600;&quot;&gt;LPoS smart-contracts&lt;/span&gt; straight from your wallet. (&lt;span style=&quot; font-weight:600;&quot;&gt;Tip&lt;/span&gt;: This page works with coin-control)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="textFormat">
       <enum>Qt::RichText</enum>
@@ -36,7 +36,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -86,7 +86,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Delegate to:</string>
+                 <string>Lease to:</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -346,7 +346,7 @@
          </column>
          <column>
           <property name="text">
-           <string>Delegate Address</string>
+           <string>Lease Address</string>
           </property>
          </column>
          <column>

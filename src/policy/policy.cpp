@@ -13,6 +13,7 @@
 #include <tinyformat.h>
 #include <util.h>
 #include <utilstrencodings.h>
+#include <chainparams.h>
 
 
 CAmount GetDustThreshold(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
@@ -56,6 +57,17 @@ bool IsDust(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
 
 bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled)
 {
+
+    if (chainActive.Height() >= Params().GetConsensus().nStartGhostFeeDistribution) {
+        if (HasIsCoinstakeOp(scriptPubKey)) {
+            CScript scriptA, scriptB;
+            if (!SplitConditionalCoinstakeScript(scriptPubKey, scriptA, scriptB)) {
+                return false;
+            }
+            return IsStandard(scriptA, whichType) && IsStandard(scriptB, whichType);
+        }
+    }
+
     std::vector<std::vector<unsigned char> > vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
@@ -175,11 +187,12 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
     {
         const CTxOut& prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
 
-        std::vector<std::vector<unsigned char> > vSolutions;
+        //std::vector<std::vector<unsigned char> > vSolutions;
         txnouttype whichType;
         // get the scriptPubKey corresponding to this input:
         const CScript& prevScript = prev.scriptPubKey;
-        if (!Solver(prevScript, whichType, vSolutions))
+
+        if (!::IsStandard(prevScript, whichType))
             return false;
 
         if (whichType == TX_SCRIPTHASH)
@@ -217,7 +230,7 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
         // get the scriptPubKey corresponding to this input:
         CScript prevScript = prev.scriptPubKey;
 
-        if (prevScript.IsPayToScriptHash()) {
+        if (prevScript.IsPayToScriptHashAny()) {
             std::vector <std::vector<unsigned char> > stack;
             // If the scriptPubKey is P2SH, we try to extract the redeemScript casually by converting the scriptSig
             // into a stack. We do not check IsPushOnly nor compare the hash as these will be done later anyway.

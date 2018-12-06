@@ -337,8 +337,8 @@ void BitcoinGUI::createActions()
     ghostVaultMenuAction->setStatusTip(ghostVaultAction->statusTip());
     ghostVaultMenuAction->setToolTip(ghostVaultMenuAction->statusTip());
 
-    delegatedStakingAction = new QAction(platformStyle->SingleColorIcon(":/icons/eye"), tr("&DPoS"), this);
-    delegatedStakingAction->setStatusTip(tr("Create DPoS smart contracts"));
+    delegatedStakingAction = new QAction(platformStyle->SingleColorIcon(":/icons/lease"), tr("&LPoS"), this);
+    delegatedStakingAction->setStatusTip(tr("Create LPoS smart contracts"));
     delegatedStakingAction->setToolTip(delegatedStakingAction->statusTip());
     delegatedStakingAction->setCheckable(true);
     delegatedStakingAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
