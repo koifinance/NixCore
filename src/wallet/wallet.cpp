@@ -8723,14 +8723,14 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
     nStakeSplitThreshold = gArgs.GetArg("-stakesplitthreshold", 10000) * COIN;
     nStakeCombineThreshold = gArgs.GetArg("-stakecombinethreshold", 5000) * COIN;
     nMaxStakeCombine = gArgs.GetArg("-maxstakecombine", 3);
-    nMinimumDelagatePercentage = gArgs.GetArg("-minimumdelagatepercentage", 0);
-    std::string delegateAddressesString = gArgs.GetArg("-delegaterewardaddresses", "");
-    nDelegateRewardToMe = gArgs.GetArg("-delegaterewardtome", false);
+    nMinimumDelagatePercentage = gArgs.GetArg("-minimumleasepercentage", 0);
+    std::string delegateAddressesString = gArgs.GetArg("-leaserewardaddresses", "");
+    nDelegateRewardToMe = gArgs.GetArg("-leaserewardtome", false);
     nDelegateRewardAddresses.clear();
 
-    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, coldstake address: %s, min delegate percent: %llf, delegate reward to me: %d \n",
+    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, coldstake address: %s, min lease percent: %llf, lease reward to me: %d \n",
               nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine, gArgs.GetArg("-coldstakeaddress", ""), nMinimumDelagatePercentage, nDelegateRewardToMe);
-    LogPrintf("DelegateRewardAddresses: ");
+    LogPrintf("LeaseRewardAddresses: ");
 
     char sep = ',';
     std::string::size_type b = 0;
@@ -8768,12 +8768,12 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
 
     if (nMinimumDelagatePercentage < 0)
     {
-        sError = "nMinimumDelagatePercentage must be >= 0";
+        sError = "nMinimumLeasePercentage must be >= 0";
         nMinimumDelagatePercentage = 0;
     }
     else if (nMinimumDelagatePercentage > 10000)
     {
-        sError = "nMinimumDelagatePercentage must be <= 10000";
+        sError = "nMinimumLeasePercentage must be <= 10000";
         nMinimumDelagatePercentage = 10000;
     }
 
