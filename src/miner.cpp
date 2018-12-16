@@ -511,6 +511,9 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
 
                 AddToBlock(sortedEntries[i]);
             }
+            else if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
+                AddToBlock(sortedEntries[i]);
+            }
             else{
                 if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
                     // Everything else we might consider has a lower fee rate
