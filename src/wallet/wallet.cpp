@@ -8518,14 +8518,14 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
             for(auto node: ghostnodeVector){
 
-                if(node.IsEnabled() && (node.sigTime >= ensureNodeActiveBefore))
+                if(node.IsEnabled() && (node.sigTime <= ensureNodeActiveBefore))
                     totalActiveNodes++;
             }
 
             CAmount feePayout = returnFee/totalActiveNodes;
 
             for(auto node: ghostnodeVector){
-                if(node.IsEnabled() && (node.sigTime >= ensureNodeActiveBefore)){
+                if(node.IsEnabled() && (node.sigTime <= ensureNodeActiveBefore)){
                     CScript mnpayee;
                     mnpayee = GetScriptForDestination(node.pubKeyCollateralAddress.GetID());
                     txNew.vout.push_back(CTxOut(feePayout,mnpayee));

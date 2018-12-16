@@ -55,7 +55,7 @@ DelegatedStaking::DelegatedStaking(const PlatformStyle *platformStyle, QWidget *
 
     ui->setupUi(this);
 
-    setWindowTitle(tr("Delegated Staking"));
+    setWindowTitle(tr("Leased Staking"));
 
     QDoubleValidator *doubleValidator= new QDoubleValidator(this);
     doubleValidator->setBottom(0.00);
@@ -165,7 +165,7 @@ void DelegatedStaking::processDelegatedCoinsReturn(const WalletModel::SendCoinsR
         return;
     }
 
-    Q_EMIT message(tr("Delegate Coins"), msgParams.first, msgParams.second);
+    Q_EMIT message(tr("Lease Coins"), msgParams.first, msgParams.second);
 }
 
 void DelegatedStaking::on_sendButton_clicked()
@@ -174,10 +174,10 @@ void DelegatedStaking::on_sendButton_clicked()
         return;
 
     if(chainActive.Height() < Params().GetConsensus().nStartGhostFeeDistribution)
-        Q_EMIT message(tr("Delegate Coins"), tr("You must wait until block 114,000 to create DPoS contracts!"), CClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Lease Coins"), tr("You must wait until block 115,921 to create LPoS contracts!"), CClientUIInterface::MSG_ERROR);
 
     if(IsInitialBlockDownload())
-        Q_EMIT message(tr("Delegate Coins"), tr("You must wait until you are fully synced create DPoS contracts!"), CClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Lease Coins"), tr("You must wait until you are fully synced create LPoS contracts!"), CClientUIInterface::MSG_ERROR);
 
     QList<SendCoinsRecipient> recipients;
 
@@ -235,12 +235,12 @@ void DelegatedStaking::on_sendButton_clicked()
         {
             if(rcp.label.length() > 0) // label with address
             {
-                recipientElement = tr("%1 delegated to %2").arg(amount, GUIUtil::HtmlEscape(rcp.label));
+                recipientElement = tr("%1 leased to %2").arg(amount, GUIUtil::HtmlEscape(rcp.label));
                 recipientElement.append(QString(" (%1)").arg(address));
             }
             else // just address
             {
-                recipientElement = tr("%1 delegated to %2").arg(amount, address);
+                recipientElement = tr("%1 leased to %2").arg(amount, address);
             }
         }
         else if(!rcp.authenticatedMerchant.isEmpty()) // authenticated payment request
@@ -318,7 +318,7 @@ void DelegatedStaking::on_sendButton_clicked()
 
         int64_t nFeePercent = (int64_t) (ui->feePercent->text().toDouble() * 100);
         if(nFeePercent > 10000 || nFeePercent < 0){
-            Q_EMIT message(tr("Delegate Coins"), tr("Delegate fee percent is not valid"), CClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Lease Coins"), tr("Lease fee percent is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }
         script << nFeePercent;
@@ -326,14 +326,14 @@ void DelegatedStaking::on_sendButton_clicked()
 
         CBitcoinAddress delegateReward(ui->rewardTo->text().toStdString());
         if(!delegateReward.IsValid() || !delegateReward.IsScript()){
-            Q_EMIT message(tr("Delegate Coins"), tr("Delegate reward address is not valid"), CClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Lease Coins"), tr("Lease reward address is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }
 
         //Returns false if not coldstake or p2sh script
         CScriptID destDelegateReward;
         if (!ExtractStakingKeyID(GetScriptForDestination(delegateReward.Get()), destDelegateReward)){
-            Q_EMIT message(tr("Delegate Coins"), tr("ExtractStakingKeyID is not valid"), CClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Lease Coins"), tr("ExtractStakingKeyID is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }
 
@@ -343,7 +343,7 @@ void DelegatedStaking::on_sendButton_clicked()
 
     scriptPubKeyKernel = script;
 
-    SendConfirmationDialog confirmationDialog(tr("Confirm delegate coins"),
+    SendConfirmationDialog confirmationDialog(tr("Confirm lease coins"),
         questionString.arg(formatted.join("<br />")), SEND_CONFIRM_DELAY, this);
     confirmationDialog.exec();
     QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
@@ -365,12 +365,12 @@ void DelegatedStaking::on_sendButton_clicked()
     CWalletTx wtx;
 
     if (!walletModel->getWallet()->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, ctrl)) {
-        Q_EMIT message(tr("Delegate Coins"), tr(strError.c_str()), CClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Lease Coins"), tr(strError.c_str()), CClientUIInterface::MSG_ERROR);
         return;
     }
     CValidationState state;
     if (!walletModel->getWallet()->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        Q_EMIT message(tr("Delegate Coins"), tr(strError.c_str()), CClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Lease Coins"), tr(strError.c_str()), CClientUIInterface::MSG_ERROR);
         return;
     }
 

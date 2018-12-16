@@ -51,7 +51,7 @@ double GetPoSKernelPS()
 
     int nBestHeight = pindex->nHeight;
 
-    int nPoSInterval = 501; // blocks sampled
+    int nPoSInterval = 200; // blocks sampled
     double dStakeKernelsTriedAvg = 0;
     int nStakesHandled = 0, nStakesTime = 0;
 

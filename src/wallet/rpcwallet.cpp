@@ -5330,6 +5330,74 @@ UniValue getstakingaverage(const JSONRPCRequest& request)
     return entry;
 }
 
+#include <ghostnode/ghostnodeman.h>
+UniValue ghostfeepayouttotal(const JSONRPCRequest& request)
+{
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "ghostfeepayouttotal\n"
+                        "\Get the ghostfee payout total in the upcoming cycle.\n");
+
+    UniValue entry(UniValue::VOBJ);
+    if(IsInitialBlockDownload())
+        return "Wait until node is fully synced.";
+
+    CAmount returnFee = 0;
+    CAmount totalGhosted = 0;
+    vector<CAmount> mintVector;
+    mintVector.clear();
+
+    int totalCount = (chainActive.Height() + 1) % 720;
+    //Subtract 1 from sample since we check current block fees
+    mintVector.clear();
+
+    //Assume chainactive+1 is current block check height
+    int startHeight = chainActive.Height() + 1 - totalCount;
+    //Grab fee from other blocks
+    for(auto it = startHeight; it < chainActive.Height() + 1; it++){
+        CBlock block;
+        CBlockIndex *pindex = chainActive[it];
+        // Now get fees from past 719 blocks
+        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            for(auto ctx: block.vtx){
+                //Found ghost fee transaction
+                if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.scriptPubKey.IsZerocoinMint())
+                            mintVector.push_back(mintTx.nValue);
+                    }
+                }
+            }
+        }
+        else
+            return "ReadBlockFromDisk failed!";
+    }
+
+    for(auto f: mintVector)
+        totalGhosted += f;
+    //Calculate total fees for the 720 block cycle
+    returnFee = totalGhosted * 0.0025;
+
+    vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
+
+    int totalActiveNodes = 0;
+    int64_t ensureNodeActiveBefore = chainActive[startHeight]->GetBlockTime();
+
+    for(auto node: ghostnodeVector){
+
+        if(node.IsEnabled() && (node.sigTime <= ensureNodeActiveBefore))
+            totalActiveNodes++;
+    }
+
+
+    entry.push_back(Pair("ghost_fee_payout", (returnFee/COIN)));
+    entry.push_back(Pair("total_active_nodes", (totalActiveNodes)));
+
+    return entry;
+}
+
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -5431,6 +5499,8 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "eraseusedzerocoindata",    &eraseusedzerocoindata,     {""} },
     { "NIX Ghost Protocol",             "encryptallzerocoins",      &encryptallzerocoins,       {""} },
     { "NIX Ghost Protocol",             "decryptallzerocoins",      &decryptallzerocoins,       {""} },
+    { "NIX Ghost Protocol",             "ghostfeepayouttotal",      &ghostfeepayouttotal,       {""} },
+
 
 
 
