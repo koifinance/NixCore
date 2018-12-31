@@ -5397,6 +5397,99 @@ UniValue ghostfeepayouttotal(const JSONRPCRequest& request)
     return entry;
 }
 
+UniValue ghostprivacysets(const JSONRPCRequest& request)
+{
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "ghostprivacysets\n"
+                        "\Get the total ghosted denomination amounts in the network.\n");
+
+    UniValue entry(UniValue::VOBJ);
+    if(IsInitialBlockDownload())
+        return "Wait until node is fully synced.";
+
+    int mintVector[8] = {0,0,0,0,0,0,0,0};
+
+    //Ghostprotocol active since 53k
+    int startHeight = 53000;
+    //Grab fee from other blocks
+    for(auto it = startHeight; it < chainActive.Height() + 1; it++){
+        CBlock block;
+        CBlockIndex *pindex = chainActive[it];
+        // Now get fees from past 719 blocks
+        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            for(auto ctx: block.vtx){
+                //Found ghost fee transaction
+                if(ctx->IsZerocoinMint()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.scriptPubKey.IsZerocoinMint()){
+                            if(mintTx.nValue == 1 * COIN)
+                                mintVector[0]++;
+                            else if(mintTx.nValue == 5 * COIN)
+                                mintVector[1]++;
+                            else if(mintTx.nValue == 10 * COIN)
+                                mintVector[2]++;
+                            else if(mintTx.nValue == 50 * COIN)
+                                mintVector[3]++;
+                            else if(mintTx.nValue == 100 * COIN)
+                                mintVector[4]++;
+                            else if(mintTx.nValue == 500 * COIN)
+                                mintVector[5]++;
+                            else if(mintTx.nValue == 1000 * COIN)
+                                mintVector[6]++;
+                            else if(mintTx.nValue == 5000 * COIN)
+                                mintVector[7]++;
+                        }
+                    }
+                }
+
+                //Found ghost fee transaction
+                if(ctx->IsZerocoinSpend()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.nValue == 1 * COIN)
+                            mintVector[0]--;
+                        else if(mintTx.nValue == 5 * COIN)
+                            mintVector[1]--;
+                        else if(mintTx.nValue == 10 * COIN)
+                            mintVector[2]--;
+                        else if(mintTx.nValue == 50 * COIN)
+                            mintVector[3]--;
+                        else if(mintTx.nValue == 100 * COIN)
+                            mintVector[4]--;
+                        else if(mintTx.nValue == 500 * COIN)
+                            mintVector[5]--;
+                        else if(mintTx.nValue == 1000 * COIN)
+                            mintVector[6]--;
+                        else if(mintTx.nValue == 5000 * COIN)
+                            mintVector[7]--;
+                    }
+                }
+            }
+        }
+        else
+            return "ReadBlockFromDisk failed!";
+    }
+
+    CAmount total = (mintVector[0] * 1) + (mintVector[1] * 5) + (mintVector[2] * 10) +
+            (mintVector[3] * 50) + (mintVector[4] * 100) + (mintVector[5] * 500) +
+            (mintVector[6] * 1000) + (mintVector[7] * 5000);
+
+    entry.push_back(Pair("1", (mintVector[0])));
+    entry.push_back(Pair("5", (mintVector[1])));
+    entry.push_back(Pair("10", (mintVector[2])));
+    entry.push_back(Pair("50", (mintVector[3])));
+    entry.push_back(Pair("100", (mintVector[4])));
+    entry.push_back(Pair("500", (mintVector[5])));
+    entry.push_back(Pair("1000", (mintVector[6])));
+    entry.push_back(Pair("5000", (mintVector[7])));
+    entry.push_back(Pair("total", total));
+
+
+    return entry;
+}
+
+
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
@@ -5500,6 +5593,7 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "encryptallzerocoins",      &encryptallzerocoins,       {""} },
     { "NIX Ghost Protocol",             "decryptallzerocoins",      &decryptallzerocoins,       {""} },
     { "NIX Ghost Protocol",             "ghostfeepayouttotal",      &ghostfeepayouttotal,       {""} },
+    { "NIX Ghost Protocol",             "ghostprivacysets",         &ghostprivacysets,       {""} },
 
 
 
