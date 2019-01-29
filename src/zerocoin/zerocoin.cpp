@@ -21,7 +21,6 @@ static CBigNum bnTrustedSeed(ZEROCOIN_SEED);
 // Set up the Zerocoin Params object
 libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus, bnTrustedSeed);
 
-
 static CZerocoinState zerocoinState;
 
 static map<uint256, int64_t> ghostedCoins;

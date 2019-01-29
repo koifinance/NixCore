@@ -344,6 +344,10 @@ bool fAddressIndex = false;
 bool fSpentIndex = false;
 bool fTimestampIndex = false;
 
+/*****NIX Data Index*******/
+bool fDataIndex = false;
+/*************************/
+
 uint256 hashAssumeValid;
 arith_uint256 nMinimumChainWork;
 
@@ -4933,6 +4937,10 @@ bool static LoadBlockIndexDB(const CChainParams& chainparams)
     pblocktree->ReadFlag("spentindex", fSpentIndex);
     LogPrintf("%s: spent index %s\n", __func__, fSpentIndex ? "enabled" : "disabled");
 
+    // Check whether we have a data index
+    pblocktree->ReadFlag("dataindex", fDataIndex);
+    LogPrintf("%s: data index %s\n", __func__, fDataIndex ? "enabled" : "disabled");
+
     // some blocks in index can change as a result of ZerocoinBuildStateFromIndex() call
     set<CBlockIndex *> changes;
     ZerocoinBuildStateFromIndex(&chainActive, changes);
@@ -5352,6 +5360,11 @@ bool LoadBlockIndex(const CChainParams& chainparams)
         fSpentIndex = gArgs.GetBoolArg("-spentindex", DEFAULT_SPENTINDEX);
         pblocktree->WriteFlag("spentindex", fSpentIndex);
         LogPrintf("%s: spent index %s\n", __func__, fSpentIndex ? "enabled" : "disabled");
+
+        fDataIndex = gArgs.GetBoolArg("-dataindex", DEFAULT_DATAINDEX);
+        pblocktree->WriteFlag("dataindex", fDataIndex);
+        LogPrintf("%s: data index %s\n", __func__, fDataIndex ? "enabled" : "disabled");
+
     }
     return true;
 }

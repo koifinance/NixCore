@@ -273,6 +273,8 @@ struct CNodeState {
         m_chain_sync = { 0, nullptr, false, false };
         m_last_block_announcement = 0;
     }
+
+    std::map<int, int> spamHeaders;
 };
 
 /** Map maintaining per-node state. Requires cs_main. */
@@ -1487,6 +1489,8 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
         return true;
     }
 
+    int ret = true;
+    std::string strErr = "";
     bool received_new_header = false;
     const CBlockIndex *pindexLast = nullptr;
     {
@@ -1519,12 +1523,13 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
             }
             return true;
         }
-
         uint256 hashLastBlock;
         for (const CBlockHeader& header : headers) {
             if (!hashLastBlock.IsNull() && header.hashPrevBlock != hashLastBlock) {
                 Misbehaving(pfrom->GetId(), 20);
-                return error("non-continuous headers sequence");
+                ret = false;
+                strErr = "non-continuous headers sequence";
+                //return error("non-continuous headers sequence");
             }
             hashLastBlock = header.GetHash();
         }
@@ -1579,9 +1584,50 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
                 // etc), and not just the duplicate-invalid case.
                 pfrom->fDisconnect = true;
             }
-            return error("invalid header received");
+            ret = false;
+            strErr = "invalid header received";
+            //return error("invalid header received");
         }
     }
+
+    {
+        LOCK(cs_main);
+        CNodeState *nodestate = State(pfrom->GetId());
+        if(nodestate->spamHeaders.size() >= 200)
+        {
+            nodestate->spamHeaders.erase(nodestate->spamHeaders.begin());
+        }
+        int amtSeen = 0;
+        auto mi = nodestate->spamHeaders.find(pindexLast->nHeight);
+         if (mi != nodestate->spamHeaders.end())
+             amtSeen = (*mi).second;
+         amtSeen++;
+         nodestate->spamHeaders[pindexLast->nHeight] = amtSeen;
+
+         size_t nHeaders = 0;
+         for(auto point : nodestate->spamHeaders)
+            nHeaders += point.second;
+
+         double nAvgValue = (double)nHeaders / nodestate->spamHeaders.size();
+
+         bool banNode = (nAvgValue >= 1.5 * 10 && nodestate->spamHeaders.size() >= 10) ||
+                 (nAvgValue >= 10 && nHeaders >= 200) ||
+                 (nHeaders >= 200 * 3);
+
+         if(banNode)
+         {
+             // Clear the points and ban the node
+             nodestate->spamHeaders.clear();
+             Misbehaving(pfrom->GetId(), 100);
+             if(ret)
+                 strErr = "header spam protection";
+             ret = false;
+         }
+
+         if(!ret)
+             return error(strErr.c_str());
+    }
+
 
     {
         LOCK(cs_main);

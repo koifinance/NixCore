@@ -156,6 +156,7 @@ static const int DEFAULT_STOPATHEIGHT = 0;
 static const bool DEFAULT_TIMESTAMPINDEX = false;
 static const bool DEFAULT_ADDRESSINDEX = false;
 static const bool DEFAULT_SPENTINDEX = false;
+static const bool DEFAULT_DATAINDEX = false;
 
 struct BlockHasher
 {
@@ -186,6 +187,12 @@ public:
     bool GetCoinStake(const uint256 &blockHash, CTransactionRef &tx);
     bool InsertCoinStake(const uint256 &blockHash, const CTransactionRef &tx);
 };
+
+/*************************/
+/****NIX OP_DATA Flag*****/
+extern bool fDataIndex;
+/*************************/
+/*************************/
 
 extern std::map<uint256, StakeConflict> mapStakeConflict;
 extern CoinStakeCache coinStakeCache;
