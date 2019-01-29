@@ -1616,7 +1616,7 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
 
          if(banNode)
          {
-             // Clear the points and ban the node
+             // Clear the headers and ban the node
              nodestate->spamHeaders.clear();
              Misbehaving(pfrom->GetId(), 100);
              if(ret)

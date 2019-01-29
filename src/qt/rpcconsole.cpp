@@ -660,7 +660,6 @@ void RPCConsole::setClientModel(ClientModel *model)
         ui->dataDir->setText(model->dataDir());
         ui->startupTime->setText(model->formatClientStartupTime());
         ui->networkName->setText(QString::fromStdString(Params().NetworkIDString()));
-        ui->totalGhosted->setText(QString::fromStdString(std::to_string(TotalGhosted())));
 
         //Setup autocomplete and attach it
         QStringList wordList;

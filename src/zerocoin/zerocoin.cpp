@@ -23,8 +23,6 @@ libzerocoin::Params *ZCParams = new libzerocoin::Params(bnTrustedModulus, bnTrus
 
 static CZerocoinState zerocoinState;
 
-static map<uint256, int64_t> ghostedCoins;
-
 static bool CheckZerocoinSpendSerial(CValidationState &state, CZerocoinTxInfo *zerocoinTxInfo, libzerocoin::CoinDenomination denomination, const CBigNum &serial, int nHeight, bool fConnectTip) {
     // check for zerocoin transaction in this block as well
     if (zerocoinTxInfo && !zerocoinTxInfo->fInfoIsComplete && zerocoinTxInfo->spentSerials.count(serial) > 0)
@@ -445,7 +443,6 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                     return state.DoS(100, error("CheckZerocoinTransaction : invalid spending txout value"));
                 }
             }
-            ghostedCoins[hashTx] = tx.GetValueOut();
             i++;
         }
     }
@@ -1008,23 +1005,4 @@ CBigNum ZerocoinGetSpendSerialNumber(const CTransaction &tx, int i) {
     catch (const std::runtime_error &) {
         return CBigNum(0);
     }
-}
-
-uint64_t CZerocoinState::GetTotalZerocoins(){
-
-    uint64_t totalZerocoins = 0;
-    //total coins minted
-    for(auto it = mintedPubCoins.begin(); it != mintedPubCoins.end(); it++) {
-        totalZerocoins += it->second.denomination;
-    }
-    //total coins spent
-    for(auto it = ghostedCoins.begin(); it != ghostedCoins.end(); it++) {
-        totalZerocoins -= it->second/COIN;
-    }
-
-    return totalZerocoins;
-}
-
-uint64_t TotalGhosted(){
-    return zerocoinState.GetTotalZerocoins();
 }

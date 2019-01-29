@@ -155,8 +155,6 @@ public:
 
     static CZerocoinState *GetZerocoinState();
 
-    uint64_t GetTotalZerocoins();
-
     // Check if there is a conflicting mint tx in the blockchain or mempool
     bool CanAddMintToMempool(const CBigNum &coinMint);
 
@@ -170,7 +168,5 @@ public:
     void RemoveMintFromMempool(const CBigNum &coinMint);
 
 };
-
-uint64_t TotalGhosted();
 
 #endif //ZEROCOIN_H

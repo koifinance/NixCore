@@ -4381,16 +4381,6 @@ UniValue setmintzerocoinstatus(const JSONRPCRequest& request) {
     return results;
 }
 
-UniValue totalghosted(const JSONRPCRequest& request) {
-
-    if (request.fHelp || request.params.size() > 1)
-        throw runtime_error(
-                "totalghosted\n"
-                        "Returns total amount of ghosted NIX on the network\n");
-
-    return TotalGhosted();
-}
-
 //TOR/I2P Config
 UniValue enableTor(const JSONRPCRequest& request){
 
@@ -5580,8 +5570,6 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "setghostednixstatus",      &setmintzerocoinstatus,     {} },
     { "NIX Ghost Protocol",             "listghostednix",           &listmintzerocoins,         {"all"} },
     { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,              {} },
-    { "NIX Ghost Protocol",             "totalghosted",             &totalghosted,              {} },
-
     { "NIX Ghost Protocol",             "refillghostkeys",          &refillghostkeys,           {"amount"} },
     { "NIX Ghost Protocol",             "listunloadedpubcoins",     &listunloadedpubcoins,      {"amount"} },
     { "NIX Ghost Protocol",             "payunloadedpubcoins",      &payunloadedpubcoins,       {"amount", "address"} },
