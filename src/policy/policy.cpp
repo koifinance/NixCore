@@ -187,13 +187,19 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
     {
         const CTxOut& prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
 
-        //std::vector<std::vector<unsigned char> > vSolutions;
+        std::vector<std::vector<unsigned char> > vSolutions;
         txnouttype whichType;
         // get the scriptPubKey corresponding to this input:
         const CScript& prevScript = prev.scriptPubKey;
 
-        if (!::IsStandard(prevScript, whichType))
-            return false;
+        if (HasIsCoinstakeOp(prevScript)) {
+            if (!::IsStandard(prevScript, whichType))
+                return false;
+        }
+        else{
+            if (!Solver(prevScript, whichType, vSolutions))
+                return false;
+        }
 
         if (whichType == TX_SCRIPTHASH)
         {
