@@ -433,8 +433,8 @@ public:
         consensus.BIP65Height = 0; // BIP65 activated on regtest (Used in rpc activation tests)
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in rpc activation tests)
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-        consensus.nPowTargetSpacing = 1;
+        consensus.nPowTargetTimespan = 5; // two weeks
+        consensus.nPowTargetSpacing = 5;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
         consensus.nRuleChangeActivationThreshold = 1; // 75% for testchains
@@ -457,7 +457,7 @@ public:
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 800;
+        consensus.nPosHeightActivate = 215;
         nModifierInterval = 10 * 60;    // 10 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
@@ -469,6 +469,9 @@ public:
         strSporkPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
         strGhostnodePaymentsPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
 
+        consensus.nCoinMaturityReductionHeight = 1;
+        consensus.nStartGhostFeeDistribution = 1;
+        consensus.nGhostFeeDistributionCycle = 200;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
