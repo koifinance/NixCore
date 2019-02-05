@@ -6883,7 +6883,7 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
 
     CValidationState state;
 
-    if (true)
+    if (fBroadcastTransactions)
     {
         // Broadcast
         if (!wtx.AcceptToMemoryPool(maxTxFee, state)) {
@@ -6891,7 +6891,7 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
             strError = _(err.c_str());
             return strError;
         } else {
-            //wtx.RelayWalletTransaction(g_connman.get());
+            wtx.RelayWalletTransaction(g_connman.get());
         }
     }
 
