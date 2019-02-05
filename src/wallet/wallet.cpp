@@ -2129,12 +2129,22 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
 
             const CScript pscriptPubKey = txout.scriptPubKey;
 
-            //only check p2sh balances for staking
+            //only check p2sh and bech32 balances for staking
             if(fForStaking){
                 CTxDestination dest;
                 if (!ExtractDestination(pscriptPubKey, dest))
                     continue;
                 if(boost::get<CScriptID>(&dest)){
+                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
+                    if (!MoneyRange(nCredit))
+                        throw std::runtime_error(std::string(__func__) + " : value out of range");
+                }
+                else if(boost::get<TX_WITNESS_V0_KEYHASH>(&dest)){
+                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
+                    if (!MoneyRange(nCredit))
+                        throw std::runtime_error(std::string(__func__) + " : value out of range");
+                }
+                else if(boost::get<TX_WITNESS_V0_SCRIPTHASH>(&dest)){
                     nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
                     if (!MoneyRange(nCredit))
                         throw std::runtime_error(std::string(__func__) + " : value out of range");

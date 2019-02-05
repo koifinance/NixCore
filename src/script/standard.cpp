@@ -560,8 +560,7 @@ bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &keyID)
         keyID = CScriptID(uint160(&scriptPubKey[2], 20));
         return true;
     };
-
-    if (scriptPubKey.IsPayToScriptHash_CS())
+    else if (scriptPubKey.IsPayToScriptHash_CS())
     {
         keyID = CScriptID(uint160(&scriptPubKey[4], 20));
         return true;
