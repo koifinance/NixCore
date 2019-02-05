@@ -5565,8 +5565,7 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
 
     if (request.fHelp || request.params.size() != 6)
         throw runtime_error(
-                "spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>, <spendtoaddress> \n"
-                + HelpRequiringPassphrase(pwalletMain));
+                "spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>, <spendtoaddress> \n");
 
 
     int64_t nAmount = 0;
@@ -5612,10 +5611,6 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
 
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "rpcwallet spendghostdata(): Invalid spendtoaddress address");
-
-    if (pwalletMain->IsLocked())
-        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
-                           "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
     /*
     UniValue pub_data(UniValue::VOBJ);

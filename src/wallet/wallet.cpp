@@ -6733,13 +6733,8 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
                               CBigNum randomness, CBigNum serial, CBigNum pubValue, std::string &strError) {
 
     // Do not allow spend to take place until fully synced
-    if (fImporting || fReindex /*|| ghostnodeSync.IsBlockchainSynced()*/){
+    if (fImporting || fReindex || ghostnodeSync.IsBlockchainSynced()){
         strError = _("Not fully synced yet");
-        return strError;
-    }
-
-    if (IsLocked()) {
-        strError = _("Error: Wallet locked, unable to create transaction!");
         return strError;
     }
 
