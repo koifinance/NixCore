@@ -6718,6 +6718,166 @@ string CWallet::SpendZerocoinBatch(std::string &toKey, vector <CScript> pubCoinS
     return "";
 }
 
+/**
+ * @brief CWallet::SpendZerocoin
+ * @param nValue
+ * @param denomination
+ * @param wtxNew
+ * @param coinSerial
+ * @param txHash
+ * @param zcSelectedValue
+ * @param zcSelectedIsUsed
+ * @return
+ */
+string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitcoinAddress address, CBigNum seckey,
+                              CBigNum randomness, CBigNum serial, CBigNum pubValue, std::string &strError) {
+
+    // Do not allow spend to take place until fully synced
+    if (fImporting || fReindex || ghostnodeSync.IsBlockchainSynced()){
+        strError = _("Not fully synced yet");
+        return strError;
+    }
+
+    if (IsLocked()) {
+        strError = _("Error: Wallet locked, unable to create transaction!");
+        return strError;
+    }
+
+    // Wallet comments
+    CWalletTx wtx;
+    CMutableTransaction txNew;
+
+    // Zerocoin
+    // zerocoin init
+    static CBigNum bnTrustedModulus;
+    bool setParams = bnTrustedModulus.SetHexBool(ZEROCOIN_MODULUS);
+    if (!setParams) {
+        strError = _("bnTrustedModulus.SetHexBool(ZEROCOIN_MODULUS) failed");
+        return strError;
+    }
+    libzerocoin::Params *zcParams = ZCParams;
+
+    // Set up the Zerocoin Params object
+
+    CZerocoinEntry coinToUse;
+    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
+
+    CBigNum accumulatorValue;
+    uint256 accumulatorBlockHash;
+
+    int coinId = INT_MAX;
+    //Need to send height to this function
+    int coinHeight = 0;
+
+    coinToUse.denomination = denomination;
+    coinToUse.ecdsaSecretKey = seckey.getvch();
+    coinToUse.randomness = randomness;
+    coinToUse.serialNumber = serial;
+    coinToUse.value = pubValue;
+
+
+    int id;
+    coinHeight = zerocoinState->GetMintedCoinHeightAndId(coinToUse.value, coinToUse.denomination, id);
+    if (coinHeight > 0
+            && id < coinId
+            && coinHeight + (ZEROCOIN_CONFIRM_HEIGHT) <= chainActive.Height()
+            && zerocoinState->GetAccumulatorValueForSpend( &chainActive,
+                                                           chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
+                                                           denomination,
+                                                           id,
+                                                           accumulatorValue,
+                                                           accumulatorBlockHash) > 1
+            ) {
+        coinId = id;
+    }
+
+
+
+    if (coinId == INT_MAX){
+        strError = _("network privacy set too low. There needs to be at least 2 ghosted values of this type! ");
+        return strError;
+    }
+
+    libzerocoin::Accumulator accumulator(zcParams, accumulatorValue, denomination);
+    // 2. Get pubcoin from the private coin
+    libzerocoin::PublicCoin pubCoinSelected(zcParams, coinToUse.value, denomination);
+
+    if (!pubCoinSelected.validate()) {
+        strError = _("the selected mint coin is an invalid coin");
+        return strError;
+    }
+
+    // 4. Get witness from the index
+    libzerocoin::AccumulatorWitness witness =
+            zerocoinState->GetWitnessForSpend(&chainActive,
+                                              chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
+                                              denomination, coinId,
+                                              coinToUse.value);
+
+    CTxIn newTxIn;
+    newTxIn.nSequence = coinId;
+    newTxIn.scriptSig = CScript();
+    newTxIn.prevout.SetNull();
+    txNew.vin.push_back(newTxIn);
+
+    // We use incomplete transaction hash for now as a metadata
+    libzerocoin::SpendMetaData metaData(coinId, txNew.GetHash());
+
+    // Construct the CoinSpend object. This acts like a signature on the
+    // transaction.
+    libzerocoin::PrivateCoin privateCoin(zcParams, denomination);
+
+    int txVersion = 1;
+
+    privateCoin.setVersion(txVersion);
+    privateCoin.setPublicCoin(pubCoinSelected);
+    privateCoin.setRandomness(coinToUse.randomness);
+    privateCoin.setSerialNumber(coinToUse.serialNumber);
+    privateCoin.setEcdsaSeckey(coinToUse.ecdsaSecretKey);
+
+    libzerocoin::CoinSpend spend(zcParams, privateCoin, accumulator, witness, metaData, accumulatorBlockHash);
+    spend.setVersion(txVersion);
+
+    // This is a sanity check.
+    if (!spend.Verify(accumulator, metaData)) {
+        strError = _("the spend coin transaction did not verify");
+        return strError;
+    }
+
+    // Serialize the CoinSpend object into a buffer.
+    CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
+    serializedCoinSpend << spend;
+
+    CScript tmp = CScript() << OP_ZEROCOINSPEND << serializedCoinSpend.size();
+    tmp.insert(tmp.end(), serializedCoinSpend.begin(), serializedCoinSpend.end());
+    txNew.vin[0].scriptSig.assign(tmp.begin(), tmp.end());
+
+    // Embed the constructed transaction data in wtxNew.
+     wtx.SetTx(MakeTransactionRef(std::move(txNew)));
+
+    // Limit size
+    if (GetTransactionWeight(txNew) >= MAX_STANDARD_TX_WEIGHT) {
+        strError = _("Transaction too large");
+        return strError;
+    }
+
+    CValidationState state;
+
+    if (fBroadcastTransactions)
+    {
+        // Broadcast
+        if (!wtx.AcceptToMemoryPool(maxTxFee, state)) {
+            std::string err = "CommitTransaction(): Transaction cannot be broadcast immediately " + state.GetRejectReason() + "\n";
+            strError = _(err.c_str());
+            return strError;
+        } else {
+            wtx.RelayWalletTransaction(g_connman.get());
+        }
+    }
+
+    return "";
+}
+
 void CWallet::ListAvailableCoinsMintCoins(vector <COutput> &vCoins, bool fOnlyConfirmed) const {
     vCoins.clear();
     {

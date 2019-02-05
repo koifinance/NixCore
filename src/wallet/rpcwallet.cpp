@@ -5479,7 +5479,159 @@ UniValue ghostprivacysets(const JSONRPCRequest& request)
     return entry;
 }
 
+UniValue mintghostdata(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error("mintghostdata <amount>(1,5,10,50,100,500,1000,5000)\n" );
 
+    UniValue entry(UniValue::VOBJ);
+    int64_t nAmount = 0;
+    libzerocoin::CoinDenomination denomination;
+    // Amount
+    if (request.params[0].get_real() == 1.0) {
+        denomination = libzerocoin::ZQ_ONE;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 5.0) {
+        denomination = libzerocoin::ZQ_FIVE;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 10.0) {
+        denomination = libzerocoin::ZQ_TEN;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 50.0) {
+        denomination = libzerocoin::ZQ_FIFTY;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 100.0) {
+        denomination = libzerocoin::ZQ_ONE_HUNDRED;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 500.0) {
+        denomination = libzerocoin::ZQ_FIVE_HUNDRED;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 1000.0) {
+        denomination = libzerocoin::ZQ_ONE_THOUSAND;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 5000.0) {
+        denomination = libzerocoin::ZQ_FIVE_THOUSAND;
+        nAmount = AmountFromValue(request.params[0]);
+    } else {
+        throw runtime_error("mintghostdata <amount>(1,5,10,50,100,500,1000,5000)\n");
+    }
+
+    // Set up the Zerocoin Params object
+    libzerocoin::Params *zcParams = ZCParams;
+
+    int mintVersion = 1;
+
+    // The following constructor does all the work of minting a brand
+    // new zerocoin. It stores all the private values inside the
+    // PrivateCoin object. This includes the coin secrets, which must be
+    // stored in a secure location (wallet) at the client.
+    libzerocoin::PrivateCoin newCoin(zcParams, denomination, mintVersion);
+
+    // Get a copy of the 'public' portion of the coin. You should
+    // embed this into a Zerocoin 'MINT' transaction along with a series
+    // of currency inputs totaling the assigned value of one zerocoin.
+    libzerocoin::PublicCoin pubCoin = newCoin.getPublicCoin();
+
+    // Validate
+    if (pubCoin.validate()) {
+
+        UniValue pub_data(UniValue::VOBJ);
+        UniValue priv_data(UniValue::VOBJ);
+        pub_data.push_back(Pair("size", (uint64_t)pubCoin.getValue().getvch().size()));
+        pub_data.push_back(Pair("pubcoin", (pubCoin.getValue().GetHex())));
+        pub_data.push_back(Pair("amount", (denomination)));
+
+
+        const unsigned char *ecdsaSecretKey = newCoin.getEcdsaSeckey();
+        std::vector<unsigned char> seckey = std::vector<unsigned char>(ecdsaSecretKey, ecdsaSecretKey+32);
+        priv_data.push_back(Pair("seckey", (CBigNum(seckey).GetHex())));
+        priv_data.push_back(Pair("randomness", (newCoin.getRandomness().GetHex())));
+        priv_data.push_back(Pair("serial", (newCoin.getSerialNumber().GetHex())));
+
+        entry.push_back(Pair("pub_data", (pub_data)));
+        entry.push_back(Pair("priv_data", (priv_data)));
+
+    } else {
+        return "error: 404";
+    }
+
+    return entry;
+}
+
+UniValue spendghostdata(const JSONRPCRequest& request) {
+
+    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() != 5)
+        throw runtime_error(
+                "spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>, <spendtoaddress> \n"
+                + HelpRequiringPassphrase(pwalletMain));
+
+
+    int64_t nAmount = 0;
+    libzerocoin::CoinDenomination denomination;
+    // Amount
+    if (request.params[0].get_real() == 1.0) {
+        denomination = libzerocoin::ZQ_ONE;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 5.0) {
+        denomination = libzerocoin::ZQ_FIVE;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 10.0) {
+        denomination = libzerocoin::ZQ_TEN;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 50.0) {
+        denomination = libzerocoin::ZQ_FIFTY;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 100.0) {
+        denomination = libzerocoin::ZQ_ONE_HUNDRED;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 500.0) {
+        denomination = libzerocoin::ZQ_FIVE_HUNDRED;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 1000.0) {
+        denomination = libzerocoin::ZQ_ONE_THOUSAND;
+        nAmount = AmountFromValue(request.params[0]);
+    } else if (request.params[0].get_real() == 5000.0) {
+        denomination = libzerocoin::ZQ_FIVE_THOUSAND;
+        nAmount = AmountFromValue(request.params[0]);
+    } else {
+        throw runtime_error("spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>,<spendtoaddress>\n");
+    }
+
+    CBitcoinAddress address;
+
+    CBigNum seckey = CBigNum(request.params[1].get_str().c_str());
+    CBigNum randomness = CBigNum(request.params[2].get_str().c_str());
+    CBigNum serial = CBigNum(request.params[3].get_str().c_str());
+    CBigNum pubValue = CBigNum(request.params[4].get_str().c_str());
+
+
+    // Address
+    address = CBitcoinAddress(request.params[5].get_str());
+
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "rpcwallet spendghostdata(): Invalid spendtoaddress address");
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
+                           "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    UniValue pub_data(UniValue::VOBJ);
+    pub_data.push_back(Pair("amount", nAmount));
+    pub_data.push_back(Pair("address", address.ToString()));
+
+    pub_data.push_back(Pair("seckey", seckey.GetHex()));
+    pub_data.push_back(Pair("randomness", randomness.GetHex()));
+    pub_data.push_back(Pair("serial", serial.GetHex()));
+
+    return pub_data;
+
+    std::string strError = "";
+    pwalletMain->SpendGhostData(denomination, address, seckey, randomness, serial, pubValue, strError);
+
+    return strError;
+}
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
@@ -5583,6 +5735,8 @@ static const CRPCCommand commands[] =
     { "NIX Ghost Protocol",             "ghostfeepayouttotal",      &ghostfeepayouttotal,       {""} },
     { "NIX Ghost Protocol",             "ghostprivacysets",         &ghostprivacysets,       {""} },
 
+    { "NIX Ghost Protocol",             "mintghostdata",         &mintghostdata,       {""} },
+    { "NIX Ghost Protocol",             "spendghostdata",         &spendghostdata,       {""} },
 
 
 

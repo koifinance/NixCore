@@ -1457,6 +1457,8 @@ public:
     bool EncryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintPlain);
     bool DecryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintSecret);
 
+    std::string SpendGhostData(libzerocoin::CoinDenomination denomination, CBitcoinAddress address, CBigNum seckey,
+                                  CBigNum randomness, CBigNum serial, CBigNum pubValue, std::string &strError);
 
     /**
      * Add ghost functions

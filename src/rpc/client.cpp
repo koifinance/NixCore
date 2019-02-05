@@ -170,6 +170,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "importstealthaddress", 0 ,"scan_secret"},
     { "liststealthaddresses", 0, "show_secrets"},
 
+    { "mintghostdata", 0, "amount"},
+    { "spendghostdata", 0, "amount"},
+
+
     //NIX Staking functions
     { "walletsettings", 1, "json" },
     { "reservebalance", 0, "enabled" },
