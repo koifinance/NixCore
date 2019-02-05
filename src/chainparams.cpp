@@ -452,12 +452,12 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 720;
+        consensus.nGhostnodePaymentsStartBlock = 220;
         consensus.nGhostnodeInitialize = 600;
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 215;
+        consensus.nPosHeightActivate = 220;
         nModifierInterval = 10 * 60;    // 10 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins

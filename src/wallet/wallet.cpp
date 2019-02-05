@@ -6733,7 +6733,7 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
                               CBigNum randomness, CBigNum serial, CBigNum pubValue, std::string &strError) {
 
     // Do not allow spend to take place until fully synced
-    if (fImporting || fReindex || ghostnodeSync.IsBlockchainSynced()){
+    if (fImporting || fReindex /*|| ghostnodeSync.IsBlockchainSynced()*/){
         strError = _("Not fully synced yet");
         return strError;
     }
@@ -6746,36 +6746,58 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
     // Wallet comments
     CWalletTx wtx;
     CMutableTransaction txNew;
+    txNew.vin.clear();
+    txNew.vout.clear();
+
+    CScript output = GetScriptForDestination(address.Get());
+
+    int64_t nAmount = 0;
+    // Amount
+    if (denomination == libzerocoin::ZQ_ONE) {
+        nAmount = COIN;
+    } else if (denomination == libzerocoin::ZQ_FIVE) {
+        nAmount = 5 * COIN;
+    } else if (denomination == libzerocoin::ZQ_TEN) {
+        nAmount = 10 * COIN;
+    } else if (denomination == libzerocoin::ZQ_FIFTY) {
+        nAmount = 50 * COIN;
+    } else if (denomination == libzerocoin::ZQ_ONE_HUNDRED) {
+        nAmount = 100 * COIN;
+    } else if (denomination == libzerocoin::ZQ_FIVE_HUNDRED) {
+        nAmount = 500 * COIN;
+    } else if (denomination == libzerocoin::ZQ_ONE_THOUSAND) {
+         nAmount = 1000 * COIN;
+    } else if (denomination == libzerocoin::ZQ_FIVE_THOUSAND) {
+        nAmount = 5000 * COIN;
+    }
+
+    CTxOut newTxOut(nAmount, output);
+    txNew.vout.push_back(newTxOut);
 
     // Zerocoin
-    // zerocoin init
     static CBigNum bnTrustedModulus;
     bool setParams = bnTrustedModulus.SetHexBool(ZEROCOIN_MODULUS);
     if (!setParams) {
         strError = _("bnTrustedModulus.SetHexBool(ZEROCOIN_MODULUS) failed");
         return strError;
     }
+    // Set up the Zerocoin Params object
     libzerocoin::Params *zcParams = ZCParams;
 
-    // Set up the Zerocoin Params object
-
     CZerocoinEntry coinToUse;
-    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
-
-    CBigNum accumulatorValue;
-    uint256 accumulatorBlockHash;
-
-    int coinId = INT_MAX;
-    //Need to send height to this function
-    int coinHeight = 0;
-
     coinToUse.denomination = denomination;
     coinToUse.ecdsaSecretKey = seckey.getvch();
     coinToUse.randomness = randomness;
     coinToUse.serialNumber = serial;
     coinToUse.value = pubValue;
 
+    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
 
+    CBigNum accumulatorValue;
+    uint256 accumulatorBlockHash;
+
+    int coinId = INT_MAX;
+    int coinHeight;
     int id;
     coinHeight = zerocoinState->GetMintedCoinHeightAndId(coinToUse.value, coinToUse.denomination, id);
     if (coinHeight > 0
@@ -6790,8 +6812,6 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
             ) {
         coinId = id;
     }
-
-
 
     if (coinId == INT_MAX){
         strError = _("network privacy set too low. There needs to be at least 2 ghosted values of this type! ");
@@ -6863,7 +6883,7 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
 
     CValidationState state;
 
-    if (fBroadcastTransactions)
+    if (true)
     {
         // Broadcast
         if (!wtx.AcceptToMemoryPool(maxTxFee, state)) {
@@ -6871,7 +6891,7 @@ string CWallet::SpendGhostData(libzerocoin::CoinDenomination denomination, CBitc
             strError = _(err.c_str());
             return strError;
         } else {
-            wtx.RelayWalletTransaction(g_connman.get());
+            //wtx.RelayWalletTransaction(g_connman.get());
         }
     }
 

@@ -20,6 +20,12 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const Consens
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     //NIX works off DarkGravityWave to calculate diff
+    if (Params().MineBlocksOnDemand())
+    {
+        unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
+        return nProofOfWorkLimit;
+    }
+
     return DarkGravityWave(pindexLast, params);
 }
 
@@ -30,6 +36,12 @@ unsigned int GetNextTargetRequired(const CBlockIndex *pindexLast)
     arith_uint256 bnProofOfWorkLimit;
     unsigned int nProofOfWorkLimit;
     int nHeight = pindexLast ? pindexLast->nHeight+1 : 0;
+
+    if (Params().MineBlocksOnDemand())
+    {
+        unsigned int nProofOfWorkLimit = UintToArith256(consensus.powLimit).GetCompact();
+        return nProofOfWorkLimit;
+    }
 
     if (GetAdjustedTime() < Params().GetConsensus().nPosTimeActivation && nHeight < Params().GetConsensus().nPosHeightActivate)
     {

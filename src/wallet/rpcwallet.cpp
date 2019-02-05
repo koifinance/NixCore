@@ -4277,6 +4277,7 @@ UniValue listmintzerocoins(const JSONRPCRequest& request) {
             entry.push_back(Pair("serialNumber", zerocoinItem.serialNumber.GetHex()));
             entry.push_back(Pair("nHeight", zerocoinItem.nHeight));
             entry.push_back(Pair("randomness", zerocoinItem.randomness.GetHex()));
+            entry.push_back(Pair("seckey", CBigNum(zerocoinItem.ecdsaSecretKey).GetHex()));
             results.push_back(entry);
         }
     }
@@ -5552,7 +5553,7 @@ UniValue mintghostdata(const JSONRPCRequest& request)
         entry.push_back(Pair("priv_data", (priv_data)));
 
     } else {
-        return "error: 404";
+        return "pubCoin.validate() failed\n";
     }
 
     return entry;
@@ -5562,7 +5563,7 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    if (request.fHelp || request.params.size() != 5)
+    if (request.fHelp || request.params.size() != 6)
         throw runtime_error(
                 "spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>, <spendtoaddress> \n"
                 + HelpRequiringPassphrase(pwalletMain));
@@ -5596,7 +5597,7 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
         denomination = libzerocoin::ZQ_FIVE_THOUSAND;
         nAmount = AmountFromValue(request.params[0]);
     } else {
-        throw runtime_error("spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>,<spendtoaddress>\n");
+        throw runtime_error("spendghostdata <amount>(1,5,10,50,100,500,1000,5000), <seckey>, <randomness>, <serial>, <pubValue>, <spendtoaddress>\n");
     }
 
     CBitcoinAddress address;
@@ -5605,7 +5606,6 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
     CBigNum randomness = CBigNum(request.params[2].get_str().c_str());
     CBigNum serial = CBigNum(request.params[3].get_str().c_str());
     CBigNum pubValue = CBigNum(request.params[4].get_str().c_str());
-
 
     // Address
     address = CBitcoinAddress(request.params[5].get_str());
@@ -5617,6 +5617,7 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
                            "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
+    /*
     UniValue pub_data(UniValue::VOBJ);
     pub_data.push_back(Pair("amount", nAmount));
     pub_data.push_back(Pair("address", address.ToString()));
@@ -5626,6 +5627,7 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
     pub_data.push_back(Pair("serial", serial.GetHex()));
 
     return pub_data;
+    */
 
     std::string strError = "";
     pwalletMain->SpendGhostData(denomination, address, seckey, randomness, serial, pubValue, strError);
