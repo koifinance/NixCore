@@ -459,7 +459,8 @@ bool CGhostnodeBlockPayees::IsTransactionValid(const CTransaction &txNew) {
             hasValidPayee = true;
 
             BOOST_FOREACH(CTxOut txout, txNew.vout) {
-                if (payee.GetPayee() == txout.scriptPubKey && nGhostnodePayment == txout.nValue) {
+                // check nGhostnodePayment <= in the case for ghostnode fee payouts
+                if (payee.GetPayee() == txout.scriptPubKey && nGhostnodePayment <= txout.nValue) {
                     //LogPrint("mnpayments", "CGhostnodeBlockPayees::IsTransactionValid -- Found required payment\n");
                     return true;
                 }

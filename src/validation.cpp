@@ -2701,17 +2701,20 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
 
         found_1 = false;
-        CAmount ghostnodeReward = (int64_t)(GHOSTNODE_REWARD_POST_POS * GetBlockSubsidy(nHeight, Params().GetConsensus()));
+
         //check ghostnode payout,
         if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock || (mnodeman.GetFullGhostnodeVector().size() < 10)){
             found_1 = true;
         }
         else{
-            BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
-                //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
-                if (output.nValue >= ghostnodeReward) {
-                    found_1 = true;
-                }
+            //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
+            //enforce proper ghostnode list payout
+            if(ghostnodeSync.IsSynced(100)){
+                CTransaction ghostnodeTransaction = *txCoinstake;
+                found_1 = mnpayments.IsTransactionValid(ghostnodeTransaction, nHeight);
+            }
+            else{
+                found_1 = true;
             }
         }
 
