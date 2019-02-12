@@ -555,6 +555,9 @@ bool IsValidDestination(const CTxDestination& dest) {
 
 bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &keyID)
 {
+    if(scriptPubKey.IsPayToPublicKeyHash())
+        return false;
+
     if (scriptPubKey.IsPayToScriptHash())
     {
         keyID = CScriptID(uint160(&scriptPubKey[2], 20));
@@ -564,6 +567,12 @@ bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &keyID)
     {
         keyID = CScriptID(uint160(&scriptPubKey[4], 20));
         return true;
+    }
+    else if (scriptPubKey.IsPayToWitnessScriptHash()){
+
+    }
+    else if (scriptPubKey.IsPayToWitnessKeyHash()){
+
     }
 
     return false;

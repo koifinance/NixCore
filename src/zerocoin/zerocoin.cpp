@@ -802,6 +802,37 @@ int CZerocoinState::GetMintedCoinHeightAndId(const CBigNum &pubCoin, int denomin
         return -1;
 }
 
+bool CZerocoinState::GetWitnessForAllSpends(std::vector<CBigNum> &accValues) {
+
+    int denoms[8] = {1,5,10,50,100,500,1000,5000};
+    int mintId = 1;
+    try{
+        for(int i = 0; i < 8; i++){
+            int denomValue = denoms[i];
+            libzerocoin::CoinDenomination d = (libzerocoin::CoinDenomination)denomValue;
+            pair<int, int> denomAndId = pair<int, int>(denomValue, mintId);
+            assert(coinGroups.count(denomAndId) > 0);
+
+            CoinGroupInfo coinGroup = coinGroups[denomAndId];
+            CBlockIndex *lastBlock = coinGroup.lastBlock;
+            accValues.push_back(lastBlock->accumulatorChanges[make_pair(denomValue,mintId)].first);
+        }
+    }
+    catch(...){
+        return false;
+    }
+
+    //Lite client would calculate accumulator like this:
+    /*
+    libzerocoin::Accumulator accumulator(ZCParams, d);
+
+    accumulator = libzerocoin::Accumulator(ZCParams, block->accumulatorChanges[denomAndId].first, d);
+
+    return libzerocoin::AccumulatorWitness(ZCParams, accumulator, libzerocoin::PublicCoin(ZCParams, pubCoin, d));
+    */
+    return true;
+}
+
 bool ZerocoinUpgradeBlockIndex(CChain *chain) {
     CBlockIndex	*blockIndex = chain->Genesis();
     if (blockIndex->nVersion != 130500)

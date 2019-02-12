@@ -259,6 +259,9 @@ extern const char *DSFINALTX;
 extern const char *TXLOCKVOTE;
 extern const char *DSTX;
 extern const char *TXLOCKREQUEST;
+
+//Lite zerocoin
+extern const char *ZCACC;
 };
 
 /* Get a vector of all valid message types (see above) */
@@ -409,6 +412,7 @@ enum GetDataMsg
     MSG_TXLOCK_VOTE,
     MSG_DSTX,
     DSQUEUE,
+    MSG_ZEROCOIN_ACC,
 };
 
 /** inv message data */

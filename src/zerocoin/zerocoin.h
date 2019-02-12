@@ -167,6 +167,50 @@ public:
     // Remove mint from the mempool (usually as the result of adding tx to the block)
     void RemoveMintFromMempool(const CBigNum &coinMint);
 
+    //Lite zerocoin clients
+    bool GetWitnessForAllSpends(std::vector<CBigNum> &accValues);
+
+};
+
+// lite zerocoin
+class CZerocoinAccumulator
+{
+public:
+    /** Public zerocoin accumulator values */
+    std::vector<unsigned char> acc1;
+    std::vector<unsigned char> acc5;
+    std::vector<unsigned char> acc10;
+    std::vector<unsigned char> acc50;
+    std::vector<unsigned char> acc100;
+    std::vector<unsigned char> acc500;
+    std::vector<unsigned char> acc1000;
+    std::vector<unsigned char> acc5000;
+
+
+    CZerocoinAccumulator(std::vector<CBigNum> zcaccs){
+        acc1 = zcaccs[0].getvch();
+        acc5 = zcaccs[1].getvch();
+        acc10 = zcaccs[2].getvch();
+        acc50 = zcaccs[3].getvch();
+        acc100 = zcaccs[4].getvch();
+        acc500 = zcaccs[5].getvch();
+        acc1000 = zcaccs[6].getvch();
+        acc5000 = zcaccs[7].getvch();
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(acc1);
+        READWRITE(acc5);
+        READWRITE(acc10);
+        READWRITE(acc50);
+        READWRITE(acc100);
+        READWRITE(acc500);
+        READWRITE(acc1000);
+        READWRITE(acc5000);
+    }
 };
 
 #endif //ZEROCOIN_H

@@ -59,6 +59,7 @@ const char *DSQUEUE = "dsq";
 const char *DSEG = "dseg";
 const char *SYNCSTATUSCOUNT = "ssc";
 const char *MNVERIFY = "mnv";
+const char *ZCACC = "zcacc";
 const char *TXLOCKREQUEST = "ix";
 } // namespace NetMsgType
 
@@ -79,6 +80,8 @@ static const char *ppszTypeName[] =
     NetMsgType::MNPING,
     NetMsgType::DSTX,
     NetMsgType::MNVERIFY,
+    //Lite zerocoin
+    NetMsgType::ZCACC,
 };
 /** All known message types. Keep this in the same order as the list of
  * messages above and in protocol.h.
@@ -130,6 +133,9 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::DSEG,
     NetMsgType::SYNCSTATUSCOUNT,
     NetMsgType::MNVERIFY,
+    //Lite Zerocoin
+    NetMsgType::ZCACC,
+
 };
 const static std::vector<std::string> allNetMessageTypesVec(allNetMessageTypes, allNetMessageTypes+ARRAYLEN(allNetMessageTypes));
 
@@ -238,6 +244,7 @@ std::string CInv::GetCommand() const
     case MSG_GHOSTNODE_PING:            return cmd.append(NetMsgType::MNPING);
     case MSG_DSTX:                      return cmd.append(NetMsgType::DSTX);
     case MSG_GHOSTNODE_VERIFY:          return cmd.append(NetMsgType::MNVERIFY);
+    case MSG_ZEROCOIN_ACC:              return cmd.append(NetMsgType::ZCACC);
     default:
         throw std::out_of_range(strprintf("CInv::GetCommand(): type=%d unknown type", type));
     }

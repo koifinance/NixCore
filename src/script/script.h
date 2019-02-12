@@ -651,7 +651,7 @@ public:
     bool IsNormalPaymentScript() const;
 
     bool IsPayToPublicKeyHash() const;
-    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToTimeLockedScriptHash() || IsPayToScriptHash_CS() || IsPayToWitnessScriptHash();}
+    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToTimeLockedScriptHash() || IsPayToScriptHash_CS() || IsPayToWitnessScriptHash() || IsPayToWitnessKeyHash();}
     bool IsPayToScriptHash() const;
     bool MatchPayToScriptHash(size_t ofs) const;
     bool MatchPayToPublicKeyHash(size_t ofs) const;
@@ -661,6 +661,7 @@ public:
     bool MatchPayToScriptHash256(size_t ofs) const;
     bool IsPayToTimeLockedScriptHash() const;
     bool IsPayToWitnessScriptHash() const;
+    bool IsPayToWitnessKeyHash() const;
     bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
 
     bool IsPayToScriptHash_CS() const;

@@ -1423,6 +1423,29 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                     }
                 }
 
+                if (!pushed && inv.type == MSG_ZEROCOIN_ACC) {
+                    if(ghostnodeSync.IsGhostnodeListSynced()) {
+                        CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
+                        std::vector<CBigNum> accValues;
+                        accValues.clear();
+                        zerocoinState->GetWitnessForAllSpends(accValues);
+                        CZerocoinAccumulator zcAcc(accValues);
+
+                        const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
+                        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, zcAcc));
+                        pushed = true;
+                    }
+                    else{
+                        // return 0xFF stream to signal an unsynced node
+                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                        ss.reserve(1000);
+                        ss << 0xff;
+                        const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
+                        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, ss));
+                        pushed = true;
+                    }
+                }
+
                 if (!pushed)
                     vNotFound.push_back(inv);
         }

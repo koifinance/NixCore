@@ -2134,25 +2134,15 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
                 CTxDestination dest;
                 if (!ExtractDestination(pscriptPubKey, dest))
                     continue;
-                if(boost::get<CScriptID>(&dest)){
-                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
-                    if (!MoneyRange(nCredit))
-                        throw std::runtime_error(std::string(__func__) + " : value out of range");
-                }
-                /*
-                else if(boost::get<TX_WITNESS_V0_KEYHASH>(&dest)){
-                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
-                    if (!MoneyRange(nCredit))
-                        throw std::runtime_error(std::string(__func__) + " : value out of range");
-                }
-                else if(boost::get<TX_WITNESS_V0_SCRIPTHASH>(&dest)){
-                    nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
-                    if (!MoneyRange(nCredit))
-                        throw std::runtime_error(std::string(__func__) + " : value out of range");
-                }
-                */
-                else
+
+                //Skip legacy addresses
+                if(boost::get<CKeyID>(&dest))
                     continue;
+
+                nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
+                if (!MoneyRange(nCredit))
+                    throw std::runtime_error(std::string(__func__) + " : value out of range");
+
             }
             else{
                 nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
