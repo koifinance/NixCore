@@ -5902,7 +5902,7 @@ bool CWallet::CreateZerocoinSpendTransaction(std::string &toKey, int64_t nValue,
                     return false;
                 }
 
-                const OutputType change_type = OUTPUT_TYPE_P2SH_SEGWIT;
+                const OutputType change_type = g_change_type;
 
                 LearnRelatedScripts(vchPubKey, change_type);
                 scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));

@@ -58,6 +58,8 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-leaserewardaddresses=<n>", _("Stake only LPoS contracts with reward fee addresses specified by this command. e.g. x1,x2,x3 (default: \"\""));
     strUsage += HelpMessageOpt("-leaserewardtome=<n>", _("Stake only LPoS contracts with reward fee addresses that this local wallet owns <true/false> (default: false)"));
 
+    strUsage += HelpMessageOpt("-dxmode", _("Set wallet change and default addressing to legacy for third-party dx support <true/false> (default: false)"));
+
     if (showDebug)
     {
         strUsage += HelpMessageGroup(_("Wallet debugging/testing options:"));
@@ -203,6 +205,12 @@ bool WalletParameterInteraction()
     g_change_type = ParseOutputType(gArgs.GetArg("-changetype", ""), OUTPUT_TYPE_DEFAULT);
     if (g_change_type == OUTPUT_TYPE_DEFAULT && !gArgs.GetArg("-changetype", "").empty()) {
         return InitError(strprintf("Unknown change type '%s'", gArgs.GetArg("-changetype", "")));
+    }
+
+    // If we are using dxmode, set change and address type to legacy for universal support
+    if (gArgs.GetBoolArg("-dxmode", false)){
+        g_change_type = OUTPUT_TYPE_LEGACY;
+        g_address_type = OUTPUT_TYPE_LEGACY;
     }
 
     return true;
