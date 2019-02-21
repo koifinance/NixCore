@@ -58,7 +58,7 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-leaserewardaddresses=<n>", _("Stake only LPoS contracts with reward fee addresses specified by this command. e.g. x1,x2,x3 (default: \"\""));
     strUsage += HelpMessageOpt("-leaserewardtome=<n>", _("Stake only LPoS contracts with reward fee addresses that this local wallet owns <true/false> (default: false)"));
 
-    strUsage += HelpMessageOpt("-dxmode", _("Set wallet change and default addressing to legacy for third-party dx support <true/false> (default: false)"));
+    strUsage += HelpMessageOpt("-dxmode", _("Set wallet change and default addressing to legacy for third-party dx support (default: false)"));
 
     if (showDebug)
     {
@@ -211,6 +211,7 @@ bool WalletParameterInteraction()
     if (gArgs.GetBoolArg("-dxmode", false)){
         g_change_type = OUTPUT_TYPE_LEGACY;
         g_address_type = OUTPUT_TYPE_LEGACY;
+        LogPrintf("Set wallet to dxmode\n");
     }
 
     return true;

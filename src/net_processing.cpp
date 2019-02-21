@@ -1615,40 +1615,42 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
 
     {
         LOCK(cs_main);
-        CNodeState *nodestate = State(pfrom->GetId());
-        if(nodestate->spamHeaders.size() >= 200)
-        {
-            nodestate->spamHeaders.erase(nodestate->spamHeaders.begin());
+        if(pindexLast){
+            CNodeState *nodestate = State(pfrom->GetId());
+            if(nodestate->spamHeaders.size() >= 200)
+            {
+                nodestate->spamHeaders.erase(nodestate->spamHeaders.begin());
+            }
+            int amtSeen = 0;
+            auto mi = nodestate->spamHeaders.find(pindexLast->nHeight);
+             if (mi != nodestate->spamHeaders.end())
+                 amtSeen = (*mi).second;
+             amtSeen++;
+             nodestate->spamHeaders[pindexLast->nHeight] = amtSeen;
+
+             size_t nHeaders = 0;
+             for(auto point : nodestate->spamHeaders)
+                nHeaders += point.second;
+
+             double nAvgValue = (double)nHeaders / nodestate->spamHeaders.size();
+
+             bool banNode = (nAvgValue >= 1.5 * 10 && nodestate->spamHeaders.size() >= 10) ||
+                     (nAvgValue >= 10 && nHeaders >= 200) ||
+                     (nHeaders >= 200 * 3);
+
+             if(banNode)
+             {
+                 // Clear the headers and ban the node
+                 nodestate->spamHeaders.clear();
+                 Misbehaving(pfrom->GetId(), 100);
+                 if(ret)
+                     strErr = "header spam protection";
+                 ret = false;
+             }
+
+             if(!ret)
+                 return error(strErr.c_str());
         }
-        int amtSeen = 0;
-        auto mi = nodestate->spamHeaders.find(pindexLast->nHeight);
-         if (mi != nodestate->spamHeaders.end())
-             amtSeen = (*mi).second;
-         amtSeen++;
-         nodestate->spamHeaders[pindexLast->nHeight] = amtSeen;
-
-         size_t nHeaders = 0;
-         for(auto point : nodestate->spamHeaders)
-            nHeaders += point.second;
-
-         double nAvgValue = (double)nHeaders / nodestate->spamHeaders.size();
-
-         bool banNode = (nAvgValue >= 1.5 * 10 && nodestate->spamHeaders.size() >= 10) ||
-                 (nAvgValue >= 10 && nHeaders >= 200) ||
-                 (nHeaders >= 200 * 3);
-
-         if(banNode)
-         {
-             // Clear the headers and ban the node
-             nodestate->spamHeaders.clear();
-             Misbehaving(pfrom->GetId(), 100);
-             if(ret)
-                 strErr = "header spam protection";
-             ret = false;
-         }
-
-         if(!ret)
-             return error(strErr.c_str());
     }
 
 

@@ -50,7 +50,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
                                 CZerocoinTxInfo *zerocoinTxInfo, int indexOfSpend) {
 
     // Check for inputs only, everything else was checked before
-    LogPrintf("CheckSpendZerocoinTransaction denomination=%d nHeight=%d\n", targetDenomination, nHeight);
+    //LogPrintf("CheckSpendZerocoinTransaction denomination=%d nHeight=%d\n", targetDenomination, nHeight);
 
     const CTxIn &txin = tx.vin[indexOfSpend];
 
@@ -144,7 +144,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
             libzerocoin::Accumulator accumulator(ZCParams,
                                                  index->accumulatorChanges[denominationAndId].first,
                                                  targetDenomination);
-            LogPrintf("CheckSpendZerocoinTransaction: accumulator=%s\n", accumulator.getValue().ToString().substr(0,15));
+            //LogPrintf("CheckSpendZerocoinTransaction: accumulator=%s\n", accumulator.getValue().ToString().substr(0,15));
             passVerify = newSpend.Verify(accumulator, newMetadata);
 
         }
