@@ -651,7 +651,7 @@ public:
     bool IsNormalPaymentScript() const;
 
     bool IsPayToPublicKeyHash() const;
-    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToTimeLockedScriptHash() || IsPayToScriptHash_CS() || IsPayToWitnessScriptHash() || IsPayToWitnessKeyHash();}
+    bool IsPayToScriptHashAny() const {return IsPayToScriptHash() || IsPayToTimeLockedScriptHash() || IsPayToScriptHash_CS();}
     bool IsPayToScriptHash() const;
     bool MatchPayToScriptHash(size_t ofs) const;
     bool MatchPayToPublicKeyHash(size_t ofs) const;
@@ -665,6 +665,9 @@ public:
     bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
 
     bool IsPayToScriptHash_CS() const;
+    bool IsPayToWitness_CS() const;
+    bool MatchPayToWitnessKeyHash(size_t ofs) const;
+    bool MatchPayToWitnessScriptHash(size_t ofs) const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;

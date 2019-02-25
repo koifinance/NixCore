@@ -971,6 +971,11 @@ UniValue signmessage(const JSONRPCRequest& request)
     std::string strMessage = request.params[1].get_str();
 
     CTxDestination dest = DecodeDestination(strAddress);
+    CommitmentKeyPack commitment(strAddress);
+
+    if(commitment.IsValidPack()){
+        return true;
+    }
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
     }

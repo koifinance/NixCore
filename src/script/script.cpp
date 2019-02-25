@@ -321,12 +321,28 @@ bool CScript::IsPayToWitnessScriptHash() const
             (*this)[1] == 0x20);
 }
 
+bool CScript::MatchPayToWitnessScriptHash(size_t ofs) const
+{
+    // Extra-fast test for pay-to-script-hash CScripts:
+    return (this->size() - ofs >= 34 &&
+        (*this)[ofs+0] == OP_0 &&
+        (*this)[ofs+1] == 0x20);
+}
+
 bool CScript::IsPayToWitnessKeyHash() const
 {
     // Extra-fast test for pay-to-witness-key-hash CScripts:
     return (this->size() == 20 &&
             (*this)[0] == OP_0 &&
             (*this)[1] == 0x14);
+}
+
+bool CScript::MatchPayToWitnessKeyHash(size_t ofs) const
+{
+    // Extra-fast test for pay-to-script-hash CScripts:
+    return (this->size() - ofs >= 20 &&
+        (*this)[ofs+0] == OP_0 &&
+        (*this)[ofs+1] == 0x14);
 }
 
 // A witness program is any valid CScript that consists of a 1-byte push opcode
@@ -353,13 +369,72 @@ bool CScript::IsPayToScriptHash_CS() const
     //Only delegate address
     //Only delegate address and fee percent
     //All delegate address, fee percent, and delegate reward address
-    return (this->size() == 50 || this->size() == 57 || this->size() == 76 || this->size() == 79)
-        && (*this)[0] == OP_ISCOINSTAKE
-        && (*this)[1] == OP_IF
-        && MatchPayToScriptHash(2)
-        && (*this)[25] == OP_ELSE
-        && MatchPayToScriptHash(26)
-        && (*this)[49] == OP_ENDIF;
+    //Since 2.2.0.2, accept any cold stake script to allow bech32, legacy denial in kernel.cpp
+    //p2sh/p2wkh/p2wsh - 23, 20, 34
+    int addr1_type = 0;
+    int addr2_type = 0;
+    int script_size = 2;
+    if((*this)[0] != OP_ISCOINSTAKE || (*this)[1] != OP_IF)
+        return false;
+
+    //p2sh - 23
+    if(MatchPayToScriptHash(2)){
+        addr1_type = 1;
+        script_size += 23;
+        if(MatchPayToScriptHash(26))
+            addr2_type = 1;
+        else if(MatchPayToWitnessKeyHash(26))
+            addr2_type = 2;
+        else if(MatchPayToWitnessScriptHash(26))
+            addr2_type = 3;
+
+        if((*this)[25] != OP_ELSE)
+            return false;
+    }
+    //p2wkh - 20
+    else if(MatchPayToWitnessKeyHash(2)){
+        addr1_type = 2;
+        script_size += 20;
+        if(MatchPayToScriptHash(23))
+            addr2_type = 1;
+        else if(MatchPayToWitnessKeyHash(23))
+            addr2_type = 2;
+        else if(MatchPayToWitnessScriptHash(23))
+            addr2_type = 3;
+
+        if((*this)[22] != OP_ELSE)
+            return false;
+    }
+    //p2wsh - 34
+    else if(MatchPayToWitnessScriptHash(2)){
+        addr1_type = 3;
+        script_size += 34;
+        if(MatchPayToScriptHash(37))
+            addr2_type = 1;
+        else if(MatchPayToWitnessKeyHash(37))
+            addr2_type = 2;
+        else if(MatchPayToWitnessScriptHash(37))
+            addr2_type = 3;
+
+        if((*this)[36] != OP_ELSE)
+            return false;
+    }
+    else
+        return false;
+
+    // add 1 for OP_ELSE
+    script_size += 1;
+
+    // add size of remaining scripts
+    if(addr2_type == 1)
+        script_size += 23;
+    else if(addr2_type == 2)
+        script_size += 20;
+    else if(addr2_type == 3)
+        script_size += 34;
+
+    if(addr1_type == 0 ||  addr2_type == 0 || (*this)[script_size] != OP_ENDIF)
+        return false;
 }
 
 bool CScript::IsPushOnly(const_iterator pc) const
