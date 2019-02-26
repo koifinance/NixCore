@@ -299,14 +299,31 @@ void DelegatedStaking::on_sendButton_clicked()
         return;
     }
 
-    walletModel->getWallet()->LearnRelatedScripts(newKey, g_address_type);
-    CTxDestination dest = GetDestinationForKey(newKey, g_address_type);
+    CScript  delegateScript = GetScriptForDestination(DecodeDestination(ui->delegateTo->text().toStdString()));
+
+    if(delegateScript.IsPayToPublicKeyHash()){
+        Q_EMIT message(tr("Lease Coins"), tr("Lease to address is not valid"), CClientUIInterface::MSG_ERROR);
+        return;
+    }
+
+    OutputType outType = OUTPUT_TYPE_DEFAULT;
+
+    if(delegateScript.IsPayToScriptHash())
+        outType = OUTPUT_TYPE_P2SH_SEGWIT;
+    else if(delegateScript.IsPayToWitnessKeyHash())
+        outType = OUTPUT_TYPE_BECH32;
+    else{
+        Q_EMIT message(tr("Lease Coins"), tr("Lease to address is not valid"), CClientUIInterface::MSG_ERROR);
+        return;
+    }
+
+    walletModel->getWallet()->LearnRelatedScripts(newKey, outType);
+    CTxDestination dest = GetDestinationForKey(newKey, outType);
 
     walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
 
-    CScript  delegateScript = GetScriptForDestination(DecodeDestination(ui->rewardTo->text().toStdString()));
-
     CScript scriptPubKeyKernel = GetScriptForDestination(dest);
+
     //set up contract
     CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
     //cold stake address
@@ -329,8 +346,10 @@ void DelegatedStaking::on_sendButton_clicked()
         CTxDestination des = DecodeDestination(ui->rewardTo->text().toStdString());
         CScript scriptPubKey = GetScriptForDestination(des);
 
-        if(!IsValidDestination(des) || scriptPubKey.IsPayToPublicKeyHash()){
-            Q_EMIT message(tr("Lease Coins"), tr("Lease reward address is not valid"), CClientUIInterface::MSG_ERROR);
+        if(!IsValidDestination(des) || scriptPubKey.IsPayToPublicKeyHash()
+                || (outType == OUTPUT_TYPE_BECH32 && !scriptPubKey.IsPayToWitnessKeyHash())
+                || (outType == OUTPUT_TYPE_P2SH_SEGWIT && !scriptPubKey.IsPayToScriptHash())){
+            Q_EMIT message(tr("Lease Coins"), tr("Lease reward address is not valid. Must match address type of Lease To address."), CClientUIInterface::MSG_ERROR);
             return;
         }
 
@@ -405,7 +424,8 @@ void DelegatedStaking::updateContractList() {
 
             // address
             CTxDestination ownerDest;
-            if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToScriptHash_CS()){
+            if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToScriptHash_CS()
+                    || out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
                 if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, ownerDest))
                 {
                     CScript delegateScript;

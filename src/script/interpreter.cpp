@@ -1722,6 +1722,9 @@ bool GetCoinstakeScriptFeeRewardAddress(const CScript &scriptIn, CScript &script
     valtype vchPushValue;
 
     bool fFoundOp = false;
+    CScript sOut;
+    if(!GetNonCoinstakeScriptPath(scriptIn, sOut))
+        return false;
     while (pc < pend)
     {
         if (!scriptIn.GetOp(pc, opcode, vchPushValue))
@@ -1737,7 +1740,15 @@ bool GetCoinstakeScriptFeeRewardAddress(const CScript &scriptIn, CScript &script
         {
             if (!scriptIn.GetOp(pcStart, opcode, vchPushValue))
                 return false;
-            scriptOut << OP_HASH160 << (vchPushValue) << OP_EQUAL;
+            //p2sh
+            if(sOut.size() == 23)
+                scriptOut << OP_HASH160 << (vchPushValue) << OP_EQUAL;
+            //p2wkh
+            else if(sOut.size() == 22)
+                scriptOut << OP_0 << (vchPushValue);
+            else
+                return false;
+
             return true;
         }
     }

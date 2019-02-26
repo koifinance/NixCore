@@ -347,8 +347,22 @@ bool CScript::MatchPayToWitnessKeyHash(size_t ofs) const
 
 // A witness program is any valid CScript that consists of a 1-byte push opcode
 // followed by a data push between 2 and 40 bytes.
-bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program) const
+// if isCoinstake, the transaction is a coinstake, verify coinstake script
+bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program, bool isCoinstake) const
 {
+    if (this->IsPayToWitnessKeyHash_CS()){
+        // Skip OP_COINSTAKE and OP_IF
+        if(isCoinstake){
+            version = DecodeOP_N((opcodetype)(*this)[2]);
+            program = std::vector<unsigned char>(this->begin() + 2, this->begin() + 24);
+        }
+        else{
+            version = DecodeOP_N((opcodetype)(*this)[25]);
+            program = std::vector<unsigned char>(this->begin() + 25, this->begin() + 47);
+        }
+
+        return true;
+    }
     if (this->size() < 4 || this->size() > 42) {
         return false;
     }

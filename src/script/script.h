@@ -662,7 +662,7 @@ public:
     bool IsPayToTimeLockedScriptHash() const;
     bool IsPayToWitnessScriptHash() const;
     bool IsPayToWitnessKeyHash() const;
-    bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
+    bool IsWitnessProgram(int& version, std::vector<unsigned char>& program, bool isCoinstake) const;
 
     bool IsPayToScriptHash_CS() const;
     bool IsPayToWitnessKeyHash_CS() const;
