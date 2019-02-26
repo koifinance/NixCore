@@ -173,12 +173,14 @@ void DelegatedStaking::on_sendButton_clicked()
     if(!walletModel)
         return;
 
-    if(chainActive.Height() < Params().GetConsensus().nStartGhostFeeDistribution)
+    if(chainActive.Height() < Params().GetConsensus().nStartGhostFeeDistribution){
         Q_EMIT message(tr("Lease Coins"), tr("You must wait until block 115,921 to create LPoS contracts!"), CClientUIInterface::MSG_ERROR);
-
-    if(IsInitialBlockDownload())
+        return;
+    }
+    if(!Params().NetworkIDString() == "regtest" && IsInitialBlockDownload()){
         Q_EMIT message(tr("Lease Coins"), tr("You must wait until you are fully synced create LPoS contracts!"), CClientUIInterface::MSG_ERROR);
-
+        return;
+    }
     QList<SendCoinsRecipient> recipients;
 
     SendCoinsRecipient dposRecipient;
@@ -325,7 +327,7 @@ void DelegatedStaking::on_sendButton_clicked()
         script << OP_DROP;
 
         CBitcoinAddress delegateReward(ui->rewardTo->text().toStdString());
-        if(!delegateReward.IsValid() || !delegateReward.IsScript()){
+        if(!delegateReward.IsValid() || delegateReward.IsPubKey()){
             Q_EMIT message(tr("Lease Coins"), tr("Lease reward address is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }

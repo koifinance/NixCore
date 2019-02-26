@@ -134,7 +134,7 @@ static bool CheckAge(const CBlockIndex *pindexTip, const uint256 &hashKernelBloc
     int nRequiredDepth = pindexTip->nHeight + 1 >= Params().GetConsensus().nStartGhostFeeDistribution ?
                 COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
     if(fTestNet)
         nRequiredDepth = COINBASE_MATURITY_TESTNET;
 
@@ -195,7 +195,7 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
         int nRequiredDepth = pindexPrev->nHeight + 1 >= Params().GetConsensus().nStartGhostFeeDistribution ?
                     COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
         if(fTestNet)
             nRequiredDepth = COINBASE_MATURITY_TESTNET;
 
@@ -339,7 +339,7 @@ bool CheckKernel(const CBlockIndex *pindexPrev, unsigned int nBits, int64_t nTim
     int coinbaseMaturity = chainActive.Height() >= Params().GetConsensus().nCoinMaturityReductionHeight ?
                 COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
     if(fTestNet)
         coinbaseMaturity = COINBASE_MATURITY_TESTNET;
 

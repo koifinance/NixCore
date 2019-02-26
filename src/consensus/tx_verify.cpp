@@ -229,7 +229,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         // If prev is coinbase, check that it's matured
         int coinbaseMaturity = nSpendHeight >= Params().nCoinMaturityReductionHeight ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-        bool fTestNet = (pParams()->NetworkIDString() == CBaseChainParams::TESTNET);
+        bool fTestNet = (pParams()->NetworkIDString() == CBaseChainParams::TESTNET || pParams()->NetworkIDString() == CBaseChainParams::REGTEST);
         if(fTestNet)
             coinbaseMaturity = COINBASE_MATURITY_TESTNET;
 

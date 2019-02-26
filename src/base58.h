@@ -135,6 +135,7 @@ public:
     bool GetKeyID(CKeyID &keyID, CChainParams::Base58Type prefix) const;
     bool GetIndexKey(uint256 &hashBytes, int &type) const;
     bool IsScript() const;
+    bool IsPubKey() const;
 };
 
 /**

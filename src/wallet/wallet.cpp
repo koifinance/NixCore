@@ -4975,7 +4975,7 @@ int CMerkleTx::GetBlocksToMaturity() const
                     COINBASE_MATURITY_V2 : COINBASE_MATURITY;
     }
 
-    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
     if(fTestNet)
         coinbaseMaturity = COINBASE_MATURITY_TESTNET;
 
@@ -8201,7 +8201,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
         int nHeight = chainActive.Tip()->nHeight;
         int coinbaseMaturity = nHeight >= Params().GetConsensus().nStartGhostFeeDistribution ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
         if(fTestNet)
             coinbaseMaturity = COINBASE_MATURITY_TESTNET;
 
@@ -8412,17 +8412,29 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             };
 
             LogPrint(BCLog::POS, "%s: Parsed kernel type=%d.\n", __func__, whichType);
-            CKeyID spendId;
             CScriptID idScript;
-            /*
-            if (whichType == TX_PUBKEYHASH)
-            {
-                spendId = CKeyID(uint160(vSolutions[0]));
-            }
-            */
+            WitnessV0KeyHash idWitness;
+            const CWallet *pw = this;
+
             if(whichType == TX_SCRIPTHASH){
-                if (vSolutions[0].size() == 20)
+                if (vSolutions[0].size() == 20){
                     idScript = CScriptID(uint160(vSolutions[0]));
+                    if(!GetKey(GetKeyForDestination(*pw, idScript), key)){
+                        LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
+                        break;  // unable to find corresponding key
+                    }
+                }
+                else
+                    break;
+            }
+            else if(whichType == TX_WITNESS_V0_KEYHASH){
+                if (vSolutions[0].size() == 20){
+                    idWitness = WitnessV0KeyHash(uint160(vSolutions[0]));
+                    if(!GetKey(GetKeyForDestination(*pw, idWitness), key)){
+                        LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
+                        break;  // unable to find corresponding key
+                    }
+                }
                 else
                     break;
             }
@@ -8432,18 +8444,6 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 break;  // only support pay to address (pay to pubkey hash)
             }
 
-            const CWallet *pw = this;
-            /*
-            if ((whichType != TX_SCRIPTHASH) && !GetKey(spendId, key))
-            {
-                LogPrint(BCLog::POS, "%s: Failed to get key for kernel type=%d.\n", __func__, whichType);
-                break;  // unable to find corresponding key
-            }
-            */
-            if(!GetKey(GetKeyForDestination(*pw, idScript), key)){
-                LogPrint(BCLog::POS, "%s: Failed to get script key for kernel type=%d.\n", __func__, whichType);
-                break;  // unable to find corresponding key
-            }
 
             //staking existing cold stake output
             if (fConditionalStake)
@@ -8454,6 +8454,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 //payment to scripthash only
                 if(whichType == TX_SCRIPTHASH)
                     scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
+                if(whichType == TX_WITNESS_V0_KEYHASH)
+                    scriptPubKeyKernel << OP_0 << ToByteVector(idWitness);
 
                 // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
                 std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
@@ -8921,10 +8923,10 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
     for(auto addr: nDelegateRewardAddresses)
         LogPrintf("\n%s", addr);
 
-    if (nStakeCombineThreshold < 100 * COIN)
+    if (nStakeCombineThreshold < 50 * COIN)
     {
-        sError = "stakecombinethreshold must be >= 100 and <= 5000.";
-        nStakeCombineThreshold = 100 * COIN;
+        sError = "stakecombinethreshold must be >= 50 and <= 5000.";
+        nStakeCombineThreshold = 50 * COIN;
     }
 
     if (nStakeSplitThreshold < nStakeCombineThreshold * 2 )
@@ -8968,7 +8970,7 @@ CAmount CWallet::GetStaked()
     int nHeight = chainActive.Tip()->nHeight + 1;
     int coinbaseMaturity = nHeight >= Params().GetConsensus().nStartGhostFeeDistribution ? COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+    bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
     if(fTestNet)
         coinbaseMaturity = COINBASE_MATURITY_TESTNET;
 

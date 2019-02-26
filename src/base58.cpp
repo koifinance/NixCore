@@ -640,6 +640,11 @@ bool CBitcoinAddress::IsScript() const
     return IsValid() && vchVersion == Params().Base58Prefix(CChainParams::SCRIPT_ADDRESS);
 }
 
+bool CBitcoinAddress::IsPubKey() const
+{
+    return IsValid() && vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS);
+}
+
 namespace
 {
 class DestinationEncoder : public boost::static_visitor<std::string>
