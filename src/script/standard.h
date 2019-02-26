@@ -186,7 +186,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
  */
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CTxDestination>& addressRet, int& nRequiredRet);
 
-bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &keyID);
+bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &scriptID, WitnessV0ScriptHash &witnessScriptID);
 
 /**
  * Generate a Bitcoin scriptPubKey for the given CTxDestination. Returns a P2PKH

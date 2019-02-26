@@ -332,7 +332,8 @@ void DelegatedStaking::on_sendButton_clicked()
 
         //Returns false if not coldstake or p2sh script
         CScriptID destDelegateReward;
-        if (!ExtractStakingKeyID(GetScriptForDestination(delegateReward.Get()), destDelegateReward)){
+        WitnessV0ScriptHash destScriptHashReward;
+        if (!ExtractStakingKeyID(GetScriptForDestination(delegateReward.Get()), destDelegateReward, destScriptHashReward)){
             Q_EMIT message(tr("Lease Coins"), tr("ExtractStakingKeyID is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }

@@ -1780,7 +1780,8 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
                     CScript scriptOut;
                     if (GetCoinstakeScriptPath(scriptPubKey, scriptOut)){
                         CScriptID coinstakeScript;
-                        ExtractStakingKeyID(scriptOut, coinstakeScript);
+                        WitnessV0ScriptHash wit_script_dest;
+                        ExtractStakingKeyID(scriptOut, coinstakeScript, wit_script_dest);
                         addressStake = coinstakeScript;
                     }
                 };
@@ -2132,11 +2133,7 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
             //only check p2sh and bech32 balances for staking
             if(fForStaking){
                 CTxDestination dest;
-                if (!ExtractDestination(pscriptPubKey, dest))
-                    continue;
-
-                //Skip legacy addresses
-                if(boost::get<CKeyID>(&dest))
+                if (!ExtractDestination(pscriptPubKey, dest) || !pscriptPubKey.IsPayToScriptHash_CS())
                     continue;
 
                 nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
@@ -8251,7 +8248,9 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                     if(GetCoinstakeScriptFeeRewardAddress(pscriptPubKey, scriptOut)){
                         if(nDelegateRewardToMe){
                             CScriptID delegateRewardID;
-                            ExtractStakingKeyID(scriptOut, delegateRewardID);
+                            WitnessV0ScriptHash wit_script_dest;
+                            ExtractStakingKeyID(scriptOut, delegateRewardID, wit_script_dest);
+
                             if(!HaveCScript(delegateRewardID))
                                 continue;
                         }
@@ -8263,7 +8262,8 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                                     continue;
 
                                 CScriptID delegateRewardID;
-                                ExtractStakingKeyID(scriptOut, delegateRewardID);
+                                WitnessV0ScriptHash wit_script_dest;
+                                ExtractStakingKeyID(scriptOut, delegateRewardID, wit_script_dest);
 
                                 CTxDestination rewardDest = rewardAddress.Get();
                                 CScriptID rewardID = boost::get<CScriptID>(rewardDest);
@@ -8282,13 +8282,14 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                         continue;
                 }
 
-                CScriptID dest;
-                //Returns false if not coldstake or p2sh script
-                if (!ExtractStakingKeyID(pscriptPubKey, dest))
+                CScriptID script_dest;
+                WitnessV0ScriptHash wit_script_dest;
+                //Returns false if not coldstake
+                if (!ExtractStakingKeyID(pscriptPubKey, script_dest, wit_script_dest))
                     continue;
 
-                // for staking we ONLY support P2SH Segwit
-                const CScriptID& destScriptID = dest;
+                // for staking we do not support p2pkh
+                const CScriptID& destScriptID = script_dest;
                 if (HaveCScript(destScriptID))
                     vCoins.push_back(COutput(pcoin, i, nDepth, true, true, true));
 

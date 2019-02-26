@@ -814,8 +814,9 @@ UniValue leasestaking(const JSONRPCRequest& request)
 
         //Returns false if not coldstake or p2sh script
         CScriptID destReward;
-        if (!ExtractStakingKeyID(delegateScriptRewardTemp, destReward))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "ExtractStakingKeyID return false");            ;
+        WitnessV0ScriptHash witness_ID;
+        if (!ExtractStakingKeyID(delegateScriptRewardTemp, destReward, witness_ID))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "ExtractStakingKeyID return false");
         script << ToByteVector(destReward);
         script << OP_DROP;
     }
@@ -4787,6 +4788,7 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
     CAmount nWalletStaking = 0;
 
     CScriptID keyID;
+    WitnessV0ScriptHash witness_ID;
     for (const auto &out : vecOutputs)
     {
         const CScript scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
@@ -4803,7 +4805,7 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
             // Show output on both the spending and staking wallets
             if (!out.fSpendable)
             {
-                if (!ExtractStakingKeyID(scriptPubKey, keyID))
+                if (!ExtractStakingKeyID(scriptPubKey, keyID, witness_ID))
                     continue;
                 CBitcoinAddress addrTo(keyID);
                 LogPrintf("\n IsPayToScriptHash_CS key: %s", addrTo.ToString());
@@ -4819,7 +4821,7 @@ UniValue getcoldstakinginfo(const JSONRPCRequest &request)
         if (out.nDepth < nRequiredDepth)
             continue;
 
-        if (!ExtractStakingKeyID(scriptPubKey, keyID))
+        if (!ExtractStakingKeyID(scriptPubKey, keyID, witness_ID))
             continue;
 
         if(pwallet->HaveCScript(keyID))

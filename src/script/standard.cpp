@@ -553,26 +553,45 @@ bool IsValidDestination(const CTxDestination& dest) {
     return dest.which() != 0;
 }
 
-bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &keyID)
+bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &scriptID, WitnessV0ScriptHash &witnessScriptID)
 {
-    if(scriptPubKey.IsPayToPublicKeyHash())
-        return false;
-
     if (scriptPubKey.IsPayToScriptHash())
     {
-        keyID = CScriptID(uint160(&scriptPubKey[2], 20));
+        scriptID = CScriptID(uint160(&scriptPubKey[2], 20));
+        return true;
+    }
+    else if (scriptPubKey.MatchPayToWitnessKeyHash(0))
+    {
+        CScript wit_script = GetScriptForDestination(WitnessV0KeyHash(uint160(&scriptPubKey[2], 20)));
+
+        CScriptID wit_id(wit_script);
+        scriptID = wit_id;
+        return true;
+    }
+    else if (scriptPubKey.MatchPayToWitnessScriptHash(0))
+    {
+        witnessScriptID = WitnessV0ScriptHash(uint256(&scriptPubKey[4], 34));
         return true;
     }
     else if (scriptPubKey.IsPayToScriptHash_CS())
     {
-        keyID = CScriptID(uint160(&scriptPubKey[4], 20));
-        return true;
-    }
-    else if (scriptPubKey.IsPayToWitnessScriptHash()){
-
-    }
-    else if (scriptPubKey.IsPayToWitnessKeyHash()){
-
+        //p2sh - 23
+        if(scriptPubKey.MatchPayToScriptHash(2)){
+            scriptID = CScriptID(uint160(&scriptPubKey[4], 20));
+            return true;
+        }
+        //p2wkh - 20
+        else if(scriptPubKey.MatchPayToWitnessKeyHash(2)){
+            CScript wit_script = GetScriptForDestination(WitnessV0KeyHash(uint160(&scriptPubKey[4], 20)));
+            CScriptID wit_id(wit_script);
+            scriptID = wit_id;
+            return true;
+        }
+        //p2wsh - 34
+        else if(scriptPubKey.MatchPayToWitnessScriptHash(2)){
+            witnessScriptID = WitnessV0ScriptHash(uint256(&scriptPubKey[4], 34));
+            return true;
+        }
     }
 
     return false;
