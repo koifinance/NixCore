@@ -3901,10 +3901,8 @@ bool CheckBlockSignature(const CBlock &block)
         return false;
 
     const auto &txin = block.vtx[0]->vin[0];
-    LogPrintf("ScriptWitness stack size = %d", txin.scriptWitness.stack.size());
     if (txin.scriptWitness.stack.size() != 2)
         return false;
-    LogPrintf("ScriptWitness stack 1 size = %d", txin.scriptWitness.stack[1].size());
     if (txin.scriptWitness.stack[1].size() != 33)
         return false;
 

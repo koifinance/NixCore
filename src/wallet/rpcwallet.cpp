@@ -768,7 +768,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
     CScript delegateScript = GetScriptForDestination(dest);
 
 
-    if (!delegateScript.IsPayToScriptHash())
+    if (delegateScript.IsPayToPublicKeyHash())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid lease key");
 
 
@@ -809,7 +809,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
         // Parse coldstaking fee reward address
         // Take only txdestination, leave out hash160 and equal when including in script
         CScript delegateScriptRewardTemp = GetScriptForDestination(DecodeDestination(request.params[3].get_str()));
-        if (!delegateScriptRewardTemp.IsPayToScriptHash())
+        if (delegateScriptRewardTemp.IsPayToPublicKeyHash())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid delagate key");
 
         //Returns false if not coldstake or p2sh script
@@ -817,13 +817,14 @@ UniValue leasestaking(const JSONRPCRequest& request)
         WitnessV0ScriptHash witness_ID;
         if (!ExtractStakingKeyID(delegateScriptRewardTemp, destReward, witness_ID))
             throw JSONRPCError(RPC_INVALID_PARAMETER, "ExtractStakingKeyID return false");
+        LogPrintf("\nLength =%d", ToByteVector(destReward).size());
         script << ToByteVector(destReward);
         script << OP_DROP;
     }
 
     scriptPubKeyKernel = script;
 
-    /*
+
     // Check if contract allows fee payouts
     int64_t feeOut = 0;
     CAmount feeAmount = 0;
@@ -852,7 +853,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
 
     LogPrintf("\nRunning Test: feeAmount=%llf, nReward=%llf, amount=%llf, destination=%s", feeAmount, nReward, amount, btcTest.ToString());
     return "null";
-    */
+
 
     // Create and send the transaction
     CReserveKey reservekey(pwallet);

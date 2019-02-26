@@ -665,6 +665,7 @@ public:
     bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
 
     bool IsPayToScriptHash_CS() const;
+    bool IsPayToWitnessKeyHash_CS() const;
     bool MatchPayToWitnessKeyHash(size_t ofs) const;
     bool MatchPayToWitnessScriptHash(size_t ofs) const;
 

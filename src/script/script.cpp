@@ -332,7 +332,7 @@ bool CScript::MatchPayToWitnessScriptHash(size_t ofs) const
 bool CScript::IsPayToWitnessKeyHash() const
 {
     // Extra-fast test for pay-to-witness-key-hash CScripts:
-    return (this->size() == 20 &&
+    return (this->size() == 22 &&
             (*this)[0] == OP_0 &&
             (*this)[1] == 0x14);
 }
@@ -340,7 +340,7 @@ bool CScript::IsPayToWitnessKeyHash() const
 bool CScript::MatchPayToWitnessKeyHash(size_t ofs) const
 {
     // Extra-fast test for pay-to-script-hash CScripts:
-    return (this->size() - ofs >= 20 &&
+    return (this->size() - ofs >= 22 &&
         (*this)[ofs+0] == OP_0 &&
         (*this)[ofs+1] == 0x14);
 }
@@ -394,15 +394,15 @@ bool CScript::IsPayToScriptHash_CS() const
     //p2wkh - 20
     else if(MatchPayToWitnessKeyHash(2)){
         addr1_type = 2;
-        script_size += 20;
-        if(MatchPayToScriptHash(23))
+        script_size += 22;
+        if(MatchPayToScriptHash(25))
             addr2_type = 1;
-        else if(MatchPayToWitnessKeyHash(23))
+        else if(MatchPayToWitnessKeyHash(25))
             addr2_type = 2;
-        else if(MatchPayToWitnessScriptHash(23))
+        else if(MatchPayToWitnessScriptHash(25))
             addr2_type = 3;
 
-        if((*this)[22] != OP_ELSE)
+        if((*this)[24] != OP_ELSE)
             return false;
     }
     //p2wsh - 34
@@ -429,12 +429,92 @@ bool CScript::IsPayToScriptHash_CS() const
     if(addr2_type == 1)
         script_size += 23;
     else if(addr2_type == 2)
-        script_size += 20;
+        script_size += 22;
     else if(addr2_type == 3)
         script_size += 34;
 
-    if(addr1_type == 0 ||  addr2_type == 0 || (*this)[script_size] != OP_ENDIF)
+    // check for p2sh only
+    if(addr1_type != 1 ||  addr2_type != 1 || (*this)[script_size] != OP_ENDIF)
         return false;
+
+    return true;
+}
+
+bool CScript::IsPayToWitnessKeyHash_CS() const
+{
+    //3 options:
+    //Only delegate address
+    //Only delegate address and fee percent
+    //All delegate address, fee percent, and delegate reward address
+    //Since 2.2.0.2, accept any cold stake script to allow bech32, legacy denial in kernel.cpp
+    //p2sh/p2wkh/p2wsh - 23, 20, 34
+    int addr1_type = 0;
+    int addr2_type = 0;
+    int script_size = 2;
+    if((*this)[0] != OP_ISCOINSTAKE || (*this)[1] != OP_IF)
+        return false;
+
+    //p2sh - 23
+    if(MatchPayToScriptHash(2)){
+        addr1_type = 1;
+        script_size += 23;
+        if(MatchPayToScriptHash(26))
+            addr2_type = 1;
+        else if(MatchPayToWitnessKeyHash(26))
+            addr2_type = 2;
+        else if(MatchPayToWitnessScriptHash(26))
+            addr2_type = 3;
+
+        if((*this)[25] != OP_ELSE)
+            return false;
+    }
+    //p2wkh - 20
+    else if(MatchPayToWitnessKeyHash(2)){
+        addr1_type = 2;
+        script_size += 22;
+        if(MatchPayToScriptHash(25))
+            addr2_type = 1;
+        else if(MatchPayToWitnessKeyHash(25))
+            addr2_type = 2;
+        else if(MatchPayToWitnessScriptHash(25))
+            addr2_type = 3;
+
+        if((*this)[24] != OP_ELSE)
+            return false;
+    }
+    //p2wsh - 34
+    else if(MatchPayToWitnessScriptHash(2)){
+        addr1_type = 3;
+        script_size += 34;
+        if(MatchPayToScriptHash(37))
+            addr2_type = 1;
+        else if(MatchPayToWitnessKeyHash(37))
+            addr2_type = 2;
+        else if(MatchPayToWitnessScriptHash(37))
+            addr2_type = 3;
+
+        if((*this)[36] != OP_ELSE)
+            return false;
+    }
+    else
+        return false;
+
+    // add 1 for OP_ELSE
+    script_size += 1;
+
+    // add size of remaining scripts
+    if(addr2_type == 1)
+        script_size += 23;
+    else if(addr2_type == 2)
+        script_size += 22;
+    else if(addr2_type == 3)
+        script_size += 34;
+
+    // check for p2wkh only
+    if(addr1_type != 2 ||  addr2_type != 2 || (*this)[script_size] != OP_ENDIF)
+        return false;
+
+    return true;
 }
 
 bool CScript::IsPushOnly(const_iterator pc) const

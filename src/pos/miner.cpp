@@ -342,7 +342,7 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
                 int coinbaseMaturity = chainActive.Height() >= Params().GetConsensus().nCoinMaturityReductionHeight ?
                             COINBASE_MATURITY_V2 : COINBASE_MATURITY;
 
-                bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+                bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET || Params().NetworkIDString() == CBaseChainParams::REGTEST);
                 if(fTestNet)
                     coinbaseMaturity = COINBASE_MATURITY_TESTNET;
 

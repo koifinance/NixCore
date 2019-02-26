@@ -575,21 +575,19 @@ bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &scriptID, Witne
     }
     else if (scriptPubKey.IsPayToScriptHash_CS())
     {
-        //p2sh - 23
+        //p2sh
         if(scriptPubKey.MatchPayToScriptHash(2)){
             scriptID = CScriptID(uint160(&scriptPubKey[4], 20));
             return true;
         }
-        //p2wkh - 20
-        else if(scriptPubKey.MatchPayToWitnessKeyHash(2)){
+
+    }
+    else if (scriptPubKey.IsPayToWitnessKeyHash_CS()){
+        //p2wkh
+        if(scriptPubKey.MatchPayToWitnessKeyHash(2)){
             CScript wit_script = GetScriptForDestination(WitnessV0KeyHash(uint160(&scriptPubKey[4], 20)));
             CScriptID wit_id(wit_script);
             scriptID = wit_id;
-            return true;
-        }
-        //p2wsh - 34
-        else if(scriptPubKey.MatchPayToWitnessScriptHash(2)){
-            witnessScriptID = WitnessV0ScriptHash(uint256(&scriptPubKey[4], 34));
             return true;
         }
     }

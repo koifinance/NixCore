@@ -2133,7 +2133,7 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, bool fForStaking) const
             //only check p2sh and bech32 balances for staking
             if(fForStaking){
                 CTxDestination dest;
-                if (!ExtractDestination(pscriptPubKey, dest) || !pscriptPubKey.IsPayToScriptHash_CS())
+                if (!ExtractDestination(pscriptPubKey, dest) || pscriptPubKey.IsPayToPublicKeyHash())
                     continue;
 
                 nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE) + pwallet->GetCredit(txout, ISMINE_WATCH_COLDSTAKE);
@@ -5534,7 +5534,8 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
 
             //Remove any delegated coins
             for(int i = 0; i < vAvailableCoinsTemp.size(); i++){
-                if (!vAvailableCoinsTemp[i].tx->tx->vout[vAvailableCoinsTemp[i].i].scriptPubKey.IsPayToScriptHash_CS()) {
+                if (!vAvailableCoinsTemp[i].tx->tx->vout[vAvailableCoinsTemp[i].i].scriptPubKey.IsPayToScriptHash_CS() ||
+                        !vAvailableCoinsTemp[i].tx->tx->vout[vAvailableCoinsTemp[i].i].scriptPubKey.IsPayToWitnessKeyHash_CS()) {
                     vAvailableCoins.push_back(vAvailableCoinsTemp[i]);
                 }
             }
@@ -8233,7 +8234,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
 
                 const CScript pscriptPubKey = txout.scriptPubKey;
 
-                if(pscriptPubKey.IsPayToScriptHash_CS()){
+                if(pscriptPubKey.IsPayToScriptHash_CS() || pscriptPubKey.IsPayToWitnessKeyHash_CS()){
                     // Check if contract allows fee payouts
                     int64_t feeOut = 0;
                     if(GetCoinstakeScriptFee(pscriptPubKey, feeOut)){

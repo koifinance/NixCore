@@ -177,7 +177,7 @@ void DelegatedStaking::on_sendButton_clicked()
         Q_EMIT message(tr("Lease Coins"), tr("You must wait until block 115,921 to create LPoS contracts!"), CClientUIInterface::MSG_ERROR);
         return;
     }
-    if(!Params().NetworkIDString() == "regtest" && IsInitialBlockDownload()){
+    if(Params().NetworkIDString() != CBaseChainParams::REGTEST && IsInitialBlockDownload()){
         Q_EMIT message(tr("Lease Coins"), tr("You must wait until you are fully synced create LPoS contracts!"), CClientUIInterface::MSG_ERROR);
         return;
     }
@@ -304,7 +304,7 @@ void DelegatedStaking::on_sendButton_clicked()
 
     walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
 
-    CScript  delegateScript = GetScriptForDestination(CBitcoinAddress(ui->delegateTo->text().toStdString()).Get());
+    CScript  delegateScript = GetScriptForDestination(DecodeDestination(ui->rewardTo->text().toStdString()));
 
     CScript scriptPubKeyKernel = GetScriptForDestination(dest);
     //set up contract
@@ -326,8 +326,10 @@ void DelegatedStaking::on_sendButton_clicked()
         script << nFeePercent;
         script << OP_DROP;
 
-        CBitcoinAddress delegateReward(ui->rewardTo->text().toStdString());
-        if(!delegateReward.IsValid() || delegateReward.IsPubKey()){
+        CTxDestination des = DecodeDestination(ui->rewardTo->text().toStdString());
+        CScript scriptPubKey = GetScriptForDestination(des);
+
+        if(!IsValidDestination(des) || scriptPubKey.IsPayToPublicKeyHash()){
             Q_EMIT message(tr("Lease Coins"), tr("Lease reward address is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }
@@ -335,7 +337,7 @@ void DelegatedStaking::on_sendButton_clicked()
         //Returns false if not coldstake or p2sh script
         CScriptID destDelegateReward;
         WitnessV0ScriptHash destScriptHashReward;
-        if (!ExtractStakingKeyID(GetScriptForDestination(delegateReward.Get()), destDelegateReward, destScriptHashReward)){
+        if (!ExtractStakingKeyID(scriptPubKey, destDelegateReward, destScriptHashReward)){
             Q_EMIT message(tr("Lease Coins"), tr("ExtractStakingKeyID is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }
