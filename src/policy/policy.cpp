@@ -69,7 +69,7 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool w
     }
 
     std::vector<std::vector<unsigned char> > vSolutions;
-    if (!Solver(scriptPubKey, whichType, vSolutions))
+    if (!Solver(scriptPubKey, whichType, vSolutions, false))
         return false;
 
     if (whichType == TX_MULTISIG)
@@ -197,7 +197,7 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
                 return false;
         }
         else{
-            if (!Solver(prevScript, whichType, vSolutions))
+            if (!Solver(prevScript, whichType, vSolutions, tx.IsCoinStake()))
                 return false;
         }
 

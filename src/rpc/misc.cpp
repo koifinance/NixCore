@@ -49,7 +49,7 @@ public:
         // Always present: script type and redeemscript
         txnouttype which_type;
         std::vector<std::vector<unsigned char>> solutions_data;
-        Solver(subscript, which_type, solutions_data);
+        Solver(subscript, which_type, solutions_data, false);
         obj.pushKV("script", GetTxnOutputType(which_type));
         obj.pushKV("hex", HexStr(subscript.begin(), subscript.end()));
 

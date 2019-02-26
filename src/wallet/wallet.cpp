@@ -2975,7 +2975,7 @@ bool CWallet::SignTransaction(CMutableTransaction &tx)
         const CScript& scriptPubKey = mi->second.tx->vout[input.prevout.n].scriptPubKey;
         const CAmount& amount = mi->second.tx->vout[input.prevout.n].nValue;
         SignatureData sigdata;
-        if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, amount, SIGHASH_ALL), scriptPubKey, sigdata)) {
+        if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, amount, SIGHASH_ALL), scriptPubKey, sigdata, tx.IsCoinStake())) {
             return false;
         }
         UpdateTransaction(tx, nIn, sigdata);
@@ -3701,7 +3701,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                 const CScript& scriptPubKey = scriptPubKeyOut;
                 SignatureData sigdata;
 
-                if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+                if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata, txNew.IsCoinStake()))
                 {
                     strFailReason = _("Signing transaction failed");
                     return false;
@@ -5039,7 +5039,7 @@ void CWallet::LearnRelatedScripts(const CPubKey& key, OutputType type)
         CTxDestination witdest = WitnessV0KeyHash(key.GetID());
         CScript witprog = GetScriptForDestination(witdest);
         // Make sure the resulting program is solvable.
-        assert(IsSolvable(*this, witprog));
+        assert(IsSolvable(*this, witprog, false));
         AddCScript(witprog);
     }
 }
@@ -5094,7 +5094,7 @@ CTxDestination CWallet::AddAndGetDestinationForScript(const CScript& script, Out
         CTxDestination witdest = hash;
         CScript witprog = GetScriptForDestination(witdest);
         // Check if the resulting program is solvable (i.e. doesn't use an uncompressed key)
-        if (!IsSolvable(*this, witprog)) return CScriptID(script);
+        if (!IsSolvable(*this, witprog, false)) return CScriptID(script);
         // Add the redeemscript, so that P2WSH and P2SH-P2WSH outputs are recognized as ours.
         AddCScript(witprog);
         if (type == OUTPUT_TYPE_BECH32) {
@@ -5770,7 +5770,7 @@ bool CWallet::CreateZerocoinMintTransaction(const vector <CRecipient> &vecSend, 
                 const CScript& scriptPubKey = coin.txout.scriptPubKey;
                 SignatureData sigdata;
 
-                if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+                if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata, txNew.IsCoinStake()))
                 {
                     strFailReason = _("Signing transaction failed");
                     return false;
@@ -8406,7 +8406,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 pscriptPubKey = &coinstakePath;
             };
 
-            if (!Solver(*pscriptPubKey, whichType, vSolutions))
+            if (!Solver(*pscriptPubKey, whichType, vSolutions, true))
             {
                 LogPrint(BCLog::POS, "%s: Failed to parse kernel.\n", __func__);
                 break;
@@ -8749,7 +8749,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         CAmount nAmount = pcoin->tx->vout[nPrev].nValue;
         SignatureData sigdata;
         CTransaction txToConst(txNew);
-        if (!ProduceSignature(TransactionSignatureCreator(this,&txToConst, nIn, nAmount, SIGHASH_ALL), scriptPubKeyOut, sigdata))
+        if (!ProduceSignature(TransactionSignatureCreator(this,&txToConst, nIn, nAmount, SIGHASH_ALL), scriptPubKeyOut, sigdata, true))
             return error("%s: ProduceSignature failed.", __func__);
 
         UpdateTransaction(txNew, nIn, sigdata);

@@ -431,7 +431,18 @@ void DelegatedStaking::updateContractList() {
                     CScript delegateScript;
                     int64_t feeAmount;
                     CScript feeRewardScript;
-                    CScriptID hash = boost::get<CScriptID>(ownerDest);
+                    CScriptID hash;
+
+                    if (out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
+                        //p2wkh
+                        if(out.tx->tx->vout[out.i].scriptPubKey.MatchPayToWitnessKeyHash(2)){
+                            CScript wit_script = GetScriptForDestination(WitnessV0KeyHash(uint160(&out.tx->tx->vout[out.i].scriptPubKey[27], 20)));
+                            CScriptID wit_id(wit_script);
+                            hash = wit_id;
+                        }
+                    }
+                    else
+                        hash = boost::get<CScriptID>(ownerDest);
 
                     if(walletModel->getWallet()->HaveCScript(hash)){
                         GetCoinstakeScriptPath(out.tx->tx->vout[out.i].scriptPubKey, delegateScript);

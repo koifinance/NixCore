@@ -1615,7 +1615,7 @@ public:
         if (pwallet) {
             CScript basescript = GetScriptForDestination(keyID);
             CScript witscript = GetScriptForWitness(basescript);
-            if (!IsSolvable(*pwallet, witscript)) {
+            if (!IsSolvable(*pwallet, witscript, false)) {
                 return false;
             }
             return ExtractDestination(witscript, result);
@@ -1628,13 +1628,13 @@ public:
         if (pwallet && pwallet->GetCScript(scriptID, subscript)) {
             int witnessversion;
             std::vector<unsigned char> witprog;
-            if (subscript.IsWitnessProgram(witnessversion, witprog)) {
+            if (subscript.IsWitnessProgram(witnessversion, witprog, false)) {
                 ExtractDestination(subscript, result);
                 already_witness = true;
                 return true;
             }
             CScript witscript = GetScriptForWitness(subscript);
-            if (!IsSolvable(*pwallet, witscript)) {
+            if (!IsSolvable(*pwallet, witscript, false)) {
                 return false;
             }
             return ExtractDestination(witscript, result);

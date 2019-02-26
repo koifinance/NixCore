@@ -64,14 +64,14 @@ static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureC
  * Returns false if scriptPubKey could not be completely satisfied.
  */
 static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptPubKey,
-                     std::vector<valtype>& ret, txnouttype& whichTypeRet, SigVersion sigversion)
+                     std::vector<valtype>& ret, txnouttype& whichTypeRet, SigVersion sigversion, bool isCoinstake)
 {
     CScript scriptRet;
     uint160 h160;
     ret.clear();
 
     std::vector<valtype> vSolutions;
-    if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
+    if (!Solver(scriptPubKey, whichTypeRet, vSolutions, isCoinstake))
         return false;
 
     CKeyID keyID;
@@ -161,12 +161,12 @@ static CScript PushAll(const std::vector<valtype>& values)
     return result;
 }
 
-bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata)
+bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPubKey, SignatureData& sigdata, bool isCoinstake)
 {
     CScript script = fromPubKey;
     std::vector<valtype> result;
     txnouttype whichType;
-    bool solved = SignStep(creator, script, result, whichType, SIGVERSION_BASE);
+    bool solved = SignStep(creator, script, result, whichType, SIGVERSION_BASE, isCoinstake);
     bool P2SH = false;
     CScript subscript;
     sigdata.scriptWitness.stack.clear();
@@ -177,7 +177,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
         // the final scriptSig is the signatures from that
         // and then the serialized subscript:
         script = subscript = CScript(result[0].begin(), result[0].end());
-        solved = solved && SignStep(creator, script, result, whichType, SIGVERSION_BASE) && whichType != TX_SCRIPTHASH;
+        solved = solved && SignStep(creator, script, result, whichType, SIGVERSION_BASE, isCoinstake) && whichType != TX_SCRIPTHASH;
         P2SH = true;
     }
 
@@ -186,7 +186,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
         CScript witnessscript;
         witnessscript << OP_DUP << OP_HASH160 << ToByteVector(result[0]) << OP_EQUALVERIFY << OP_CHECKSIG;
         txnouttype subType;
-        solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0);
+        solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0, isCoinstake);
         sigdata.scriptWitness.stack = result;
         result.clear();
     }
@@ -194,7 +194,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
     {
         CScript witnessscript(result[0].begin(), result[0].end());
         txnouttype subType;
-        solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0) && subType != TX_SCRIPTHASH && subType != TX_WITNESS_V0_SCRIPTHASH && subType != TX_WITNESS_V0_KEYHASH;
+        solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0, isCoinstake) && subType != TX_SCRIPTHASH && subType != TX_WITNESS_V0_SCRIPTHASH && subType != TX_WITNESS_V0_KEYHASH;
         result.push_back(std::vector<unsigned char>(witnessscript.begin(), witnessscript.end()));
         sigdata.scriptWitness.stack = result;
         result.clear();
@@ -206,7 +206,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
     sigdata.scriptSig = PushAll(result);
 
     // Test solution
-    return solved && VerifyScript(sigdata.scriptSig, fromPubKey, &sigdata.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
+    return solved && VerifyScript(sigdata.scriptSig, fromPubKey, &sigdata.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker(), isCoinstake);
 }
 
 SignatureData DataFromTransaction(const CMutableTransaction& tx, unsigned int nIn)
@@ -233,7 +233,7 @@ bool SignSignature(const CKeyStore &keystore, const CScript& fromPubKey, CMutabl
     TransactionSignatureCreator creator(&keystore, &txToConst, nIn, amount, nHashType);
 
     SignatureData sigdata;
-    bool ret = ProduceSignature(creator, fromPubKey, sigdata);
+    bool ret = ProduceSignature(creator, fromPubKey, sigdata, txTo.IsCoinStake());
     UpdateTransaction(txTo, nIn, sigdata);
     return ret;
 }
@@ -363,7 +363,7 @@ static Stacks CombineSignatures(const CScript& scriptPubKey, const BaseSignature
 
             txnouttype txType2;
             std::vector<std::vector<unsigned char> > vSolutions2;
-            Solver(pubKey2, txType2, vSolutions2);
+            Solver(pubKey2, txType2, vSolutions2, false);
             sigs1.script.pop_back();
             sigs2.script.pop_back();
             Stacks result = CombineSignatures(pubKey2, checker, txType2, vSolutions2, sigs1, sigs2, sigversion);
@@ -384,7 +384,7 @@ static Stacks CombineSignatures(const CScript& scriptPubKey, const BaseSignature
             CScript pubKey2(sigs1.witness.back().begin(), sigs1.witness.back().end());
             txnouttype txType2;
             std::vector<valtype> vSolutions2;
-            Solver(pubKey2, txType2, vSolutions2);
+            Solver(pubKey2, txType2, vSolutions2, false);
             sigs1.witness.pop_back();
             sigs1.script = sigs1.witness;
             sigs1.witness.clear();
@@ -403,11 +403,11 @@ static Stacks CombineSignatures(const CScript& scriptPubKey, const BaseSignature
 }
 
 SignatureData CombineSignatures(const CScript& scriptPubKey, const BaseSignatureChecker& checker,
-                          const SignatureData& scriptSig1, const SignatureData& scriptSig2)
+                          const SignatureData& scriptSig1, const SignatureData& scriptSig2, bool isCoinstake)
 {
     txnouttype txType;
     std::vector<std::vector<unsigned char> > vSolutions;
-    Solver(scriptPubKey, txType, vSolutions);
+    Solver(scriptPubKey, txType, vSolutions, isCoinstake);
 
     return CombineSignatures(scriptPubKey, checker, txType, vSolutions, Stacks(scriptSig1), Stacks(scriptSig2), SIGVERSION_BASE).Output();
 }
@@ -448,7 +448,7 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
     return true;
 }
 
-bool IsSolvable(const CKeyStore& store, const CScript& script)
+bool IsSolvable(const CKeyStore& store, const CScript& script, bool isCoinstake)
 {
     // This check is to make sure that the script we created can actually be solved for and signed by us
     // if we were to have the private keys. This is just to make sure that the script is valid and that,
@@ -459,9 +459,9 @@ bool IsSolvable(const CKeyStore& store, const CScript& script)
     // Make sure that STANDARD_SCRIPT_VERIFY_FLAGS includes SCRIPT_VERIFY_WITNESS_PUBKEYTYPE, the most
     // important property this function is designed to test for.
     static_assert(STANDARD_SCRIPT_VERIFY_FLAGS & SCRIPT_VERIFY_WITNESS_PUBKEYTYPE, "IsSolvable requires standard script flags to include WITNESS_PUBKEYTYPE");
-    if (ProduceSignature(creator, script, sigs)) {
+    if (ProduceSignature(creator, script, sigs, isCoinstake)) {
         // VerifyScript check is just defensive, and should never fail.
-        assert(VerifyScript(sigs.scriptSig, script, &sigs.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker()));
+        assert(VerifyScript(sigs.scriptSig, script, &sigs.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker(), isCoinstake));
         return true;
     }
     return false;

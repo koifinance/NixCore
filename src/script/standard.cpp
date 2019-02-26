@@ -320,7 +320,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
         return ExtractDestination(scriptB, addressRet);
     }
 
-    if (!Solver(scriptPubKey, whichType, vSolutions))
+    if (!Solver(scriptPubKey, whichType, vSolutions, false))
         return false;
 
     if (whichType == TX_PUBKEY)
@@ -392,7 +392,7 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::
         return true;
     }
 
-    if (!Solver(scriptPubKey, typeRet, vSolutions))
+    if (!Solver(scriptPubKey, typeRet, vSolutions, false))
         return false;
 
     if (typeRet == TX_NULL_DATA){
@@ -537,7 +537,7 @@ CScript GetScriptForWitness(const CScript& redeemscript)
 
     txnouttype typ;
     std::vector<std::vector<unsigned char> > vSolutions;
-    if (Solver(redeemscript, typ, vSolutions)) {
+    if (Solver(redeemscript, typ, vSolutions, false)) {
         if (typ == TX_PUBKEY) {
             return GetScriptForDestination(WitnessV0KeyHash(Hash160(vSolutions[0].begin(), vSolutions[0].end())));
         } else if (typ == TX_PUBKEYHASH) {

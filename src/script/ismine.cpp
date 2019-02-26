@@ -88,7 +88,7 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
 
     std::vector<valtype> vSolutions;
     txnouttype whichType;
-    if (!Solver(scriptPubKey, whichType, vSolutions)) {
+    if (!Solver(scriptPubKey, whichType, vSolutions, false)) {
         if (keystore.HaveWatchOnly(scriptPubKey))
             return ISMINE_WATCH_UNSOLVABLE;
         return ISMINE_NO;
@@ -215,7 +215,7 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
     if (keystore.HaveWatchOnly(scriptPubKey)) {
         // TODO: This could be optimized some by doing some work after the above solver
         SignatureData sigs;
-        return ProduceSignature(DummySignatureCreator(&keystore), scriptPubKey, sigs) ? ISMINE_WATCH_SOLVABLE : ISMINE_WATCH_UNSOLVABLE;
+        return ProduceSignature(DummySignatureCreator(&keystore), scriptPubKey, sigs, false) ? ISMINE_WATCH_SOLVABLE : ISMINE_WATCH_UNSOLVABLE;
     }
     return ISMINE_NO;
 }

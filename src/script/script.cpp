@@ -354,11 +354,11 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
         // Skip OP_COINSTAKE and OP_IF
         if(isCoinstake){
             version = DecodeOP_N((opcodetype)(*this)[2]);
-            program = std::vector<unsigned char>(this->begin() + 2, this->begin() + 24);
+            program = std::vector<unsigned char>(this->begin() + 4, this->begin() + 24);
         }
         else{
             version = DecodeOP_N((opcodetype)(*this)[25]);
-            program = std::vector<unsigned char>(this->begin() + 25, this->begin() + 47);
+            program = std::vector<unsigned char>(this->begin() + 27, this->begin() + 47);
         }
 
         return true;

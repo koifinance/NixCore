@@ -1825,7 +1825,7 @@ bool CWallet::DummySignTx(CMutableTransaction &txNew, const ContainerType &coins
         const CScript& scriptPubKey = scriptPubKeyOut;
         SignatureData sigdata;
 
-        if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata))
+        if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata, false))
         {
             return false;
         } else {
