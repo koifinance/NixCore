@@ -30,6 +30,7 @@
 #include <script/ismine.h>
 #include <qt/recentrequeststablemodel.h>
 #include <ghost-address/commitmentkey.h>
+#include <core_io.h>
 
 #include <QIcon>
 #include <QMenu>
@@ -354,16 +355,17 @@ void DelegatedStaking::on_sendButton_clicked()
 
         //Returns false if not coldstake or p2sh script
         CScriptID destDelegateReward;
-        WitnessV0ScriptHash destScriptHashReward;
-        if (!ExtractStakingKeyID(scriptPubKey, destDelegateReward, destScriptHashReward)){
+        WitnessV0KeyHash destKeyHash;
+        destKeyHash.IsNull();
+        if (!ExtractStakingKeyID(scriptPubKey, destDelegateReward, destKeyHash)){
             Q_EMIT message(tr("Lease Coins"), tr("ExtractStakingKeyID is not valid"), CClientUIInterface::MSG_ERROR);
             return;
         }
-        if(outType == OUTPUT_TYPE_BECH32){
+        if(destKeyHash.IsNull())
+            script << ToByteVector(destDelegateReward);
+        else
+            script << ToByteVector(destKeyHash);
 
-        }
-
-        script << ToByteVector(destDelegateReward);
         script << OP_DROP;
     }
 

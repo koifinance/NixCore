@@ -1780,9 +1780,12 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
                     CScript scriptOut;
                     if (GetCoinstakeScriptPath(scriptPubKey, scriptOut)){
                         CScriptID coinstakeScript;
-                        WitnessV0ScriptHash wit_script_dest;
+                        WitnessV0KeyHash wit_script_dest;
+                        wit_script_dest.SetNull();
                         ExtractStakingKeyID(scriptOut, coinstakeScript, wit_script_dest);
-                        addressStake = coinstakeScript;
+                        addressStake = wit_script_dest;
+                        if(wit_script_dest.IsNull())
+                            addressStake = coinstakeScript;
                     }
                 };
             };
@@ -4842,6 +4845,15 @@ CWallet* CWallet::CreateWalletFromFile(const std::string walletFile)
         LogPrintf("setKeyPool.size() = %u\n",      walletInstance->GetKeyPoolSize());
         LogPrintf("mapWallet.size() = %u\n",       walletInstance->mapWallet.size());
         LogPrintf("mapAddressBook.size() = %u\n",  walletInstance->mapAddressBook.size());
+    }
+
+    // Check for abandoned coinstake transactions
+    for (map<uint256, CWalletTx>::const_iterator it = walletInstance->mapWallet.begin(); it != walletInstance->mapWallet.end(); ++it) {
+        const CWalletTx *pcoin = &(*it).second;
+        if(pcoin->GetDepthInMainChain(false) == 0 && pcoin->IsCoinStake()){
+            const uint256 hashTX = (it->first);
+            walletInstance->AbandonTransaction(hashTX);
+        }
     }
 
     return walletInstance;
@@ -8249,7 +8261,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                     if(GetCoinstakeScriptFeeRewardAddress(pscriptPubKey, scriptOut)){
                         if(nDelegateRewardToMe){
                             CScriptID delegateRewardID;
-                            WitnessV0ScriptHash wit_script_dest;
+                            WitnessV0KeyHash wit_script_dest;
                             ExtractStakingKeyID(scriptOut, delegateRewardID, wit_script_dest);
 
                             if(!HaveCScript(delegateRewardID))
@@ -8263,7 +8275,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                                     continue;
 
                                 CScriptID delegateRewardID;
-                                WitnessV0ScriptHash wit_script_dest;
+                                WitnessV0KeyHash wit_script_dest;
                                 ExtractStakingKeyID(scriptOut, delegateRewardID, wit_script_dest);
 
                                 CTxDestination rewardDest = rewardAddress.Get();
@@ -8284,7 +8296,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 }
 
                 CScriptID script_dest;
-                WitnessV0ScriptHash wit_script_dest;
+                WitnessV0KeyHash wit_script_dest;
                 //Returns false if not coldstake
                 if (!ExtractStakingKeyID(pscriptPubKey, script_dest, wit_script_dest))
                     continue;

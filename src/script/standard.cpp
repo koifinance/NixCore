@@ -553,7 +553,7 @@ bool IsValidDestination(const CTxDestination& dest) {
     return dest.which() != 0;
 }
 
-bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &scriptID, WitnessV0ScriptHash &witnessScriptID)
+bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &scriptID, WitnessV0KeyHash &witnessKeyID)
 {
     if (scriptPubKey.IsPayToScriptHash())
     {
@@ -562,15 +562,11 @@ bool ExtractStakingKeyID(const CScript &scriptPubKey, CScriptID &scriptID, Witne
     }
     else if (scriptPubKey.MatchPayToWitnessKeyHash(0))
     {
+        //to check for ownership
         CScript wit_script = GetScriptForDestination(WitnessV0KeyHash(uint160(&scriptPubKey[2], 20)));
-
-        CScriptID wit_id(wit_script);
-        scriptID = wit_id;
-        return true;
-    }
-    else if (scriptPubKey.MatchPayToWitnessScriptHash(0))
-    {
-        witnessScriptID = WitnessV0ScriptHash(uint256(&scriptPubKey[4], 34));
+        scriptID = CScriptID(wit_script);
+        //to receive payout
+        witnessKeyID = WitnessV0KeyHash(uint160(&scriptPubKey[2], 20));
         return true;
     }
     else if (scriptPubKey.IsPayToScriptHash_CS())
