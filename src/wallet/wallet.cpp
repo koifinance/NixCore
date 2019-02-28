@@ -8591,6 +8591,9 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     CAmount nFeeAmount = 0;
     CAmount nAmount = 0;
     if(GetCoinstakeScriptFee(scriptPubKeyKernel, nfeeOut)){
+        //Remove fees from reward address
+        nReward -= nFees;
+
         double feePercent = (double)nfeeOut;
         if(nfeeOut > 10000 || nfeeOut < 0){
             return false;
@@ -8607,6 +8610,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         }
 
         nCredit += nAmount;
+        //Add fees back to owner payment
+        nCredit += nFees;
 
         if (nCredit >= nStakeSplitThreshold)
         {
