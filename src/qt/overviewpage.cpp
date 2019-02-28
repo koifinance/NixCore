@@ -15,6 +15,7 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/walletmodel.h>
 #include <qt/ghostvault.h>
+#include <qt/delegatedstaking.h>
 #include <../../wallet/wallet.h>
 #include "util.h"
 #include <timedata.h>
@@ -227,6 +228,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
 
     ghostVaultPage->setVaultBalance(ghostBalance, ghostBalanceUnconfirmed);
     ghostVaultPage->setKeyList();
+    //lposPage->updateContractList();
 }
 
 // show/hide watch-only labels

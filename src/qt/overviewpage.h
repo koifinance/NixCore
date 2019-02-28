@@ -17,6 +17,7 @@ class TxViewDelegate;
 class PlatformStyle;
 class WalletModel;
 class GhostVault;
+class DelegatedStaking;
 
 namespace Ui {
     class OverviewPage;
@@ -41,6 +42,7 @@ public:
     QLabel *isStaking;
 
     GhostVault *ghostVaultPage;
+    DelegatedStaking *lposPage;
 
 public Q_SLOTS:
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,

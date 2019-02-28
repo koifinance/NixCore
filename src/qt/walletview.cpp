@@ -69,6 +69,7 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
 
     overviewPage->ghostVaultPage = ghostVaultPage;
+    overviewPage->lposPage = delegatedStakingPage;
 
     addWidget(overviewPage);
     addWidget(transactionsPage);

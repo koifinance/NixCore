@@ -350,56 +350,6 @@ bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHe
             }
         }
     }
-    //PoS reward distribution
-    else{
-
-        bool found_1 = false;
-        bool found_2 = false;
-
-        CScript DEV_1_SCRIPT;
-        CScript DEV_2_SCRIPT;
-
-        if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
-
-            //7% development fee total
-            BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                //5% for first address
-                if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                    found_1 = true;
-                }
-                //2% for second address
-                if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                    found_2 = true;
-                }
-            }
-
-            if (!(found_1 && found_2)) {
-                return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                                 "CTransaction::CheckTransaction() : dev reward missing");
-            }
-        }
-
-        /* Check for Ghostnode payment in block */
-
-        if(nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
-
-            int total_payment_tx = 0;
-            CAmount ghostnodePayment = GetGhostnodePayment(nHeight, 0);
-
-            BOOST_FOREACH(const CTxOut &output, tx.vout) {
-                if (output.nValue >= ghostnodePayment) {
-                    total_payment_tx = total_payment_tx + 1;
-                }
-            }
-            // no more than 1 output for payment, possible no winner if list is not populated
-            if (total_payment_tx > 1) {
-                return state.DoS(100, false, REJECT_INVALID_GHOSTNODE_PAYMENT,
-                                 "CTransaction::CheckTransaction() : invalid ghostnode payment");
-            }
-        }
-    }
 
     return true;
 }

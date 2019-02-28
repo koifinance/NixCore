@@ -8633,47 +8633,47 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     }
 
 
+    CAmount devAmount = DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus());
+    // new payout cycle set to daily
+    if((chainActive.Height() + 1) >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight){
 
-    // Place dev fund output
-    CScript DEV_1_SCRIPT;
-    CScript DEV_2_SCRIPT;
-    if (!fTestNet) {
-        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
-    }
-    else {
-        DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-        DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
-    }
+        if(((chainActive.Height() + 1) % Params().GetConsensus().nNewDevelopmentPayoutCycle) == 0){
 
-    //Push dev block reward of 2% based on coinbase rewards, 1% each
-    txNew.vout.push_back(CTxOut(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_1_SCRIPT.begin(), DEV_1_SCRIPT.end())));
-    txNew.vout.push_back(CTxOut(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus()), CScript(DEV_2_SCRIPT.begin(), DEV_2_SCRIPT.end())));
+            CScript DEV_SCRIPT;
+
+            bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+
+            if (!fTestNet) {
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+            }
+            else {
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+            }
+
+            txNew.vout.push_back(CTxOut(devAmount * Params().GetConsensus().nNewDevelopmentPayoutCycle, DEV_SCRIPT));
+        }
+    }else{
+        // Place dev fund output
+        CScript DEV_1_SCRIPT;
+        CScript DEV_2_SCRIPT;
+        if (!fTestNet) {
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+        }
+        else {
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
+        }
+
+        //Push dev block reward of 2% based on coinbase rewards, 1% each
+        txNew.vout.push_back(CTxOut(devAmount/2, DEV_1_SCRIPT));
+        txNew.vout.push_back(CTxOut(devAmount/2, DEV_2_SCRIPT));
+    }
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
-
-    //payout 10 ghostnodes for rewards
-    if(chainActive.Height() + 1 < Params().GetConsensus().nStartGhostFeeDistribution){
-        if(nGhostFees > 0 && chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock){
-            CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0) + nGhostFees/10;
-            FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
-
-            for(int g = 2; g < 11; g++){
-                CTxOut tempTx;
-                mnpayments.FillBlockPayee(txNew, chainActive.Height() + g, nGhostFees/10, tempTx);
-            }
-        }
-        //no ghostnode fees
-        else{
-            if (chainActive.Height() >= Params().GetConsensus().nGhostnodePaymentsStartBlock) {
-                CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
-                FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
-            }
-        }
-    }
-    //Utilize new distribuition model
-    else{
+    //Utilize gn distribuition model
+    {
         int64_t returnFee = 0;
         bool payFees = false;
         //Check for ghost fee distribution

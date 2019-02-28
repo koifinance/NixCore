@@ -96,7 +96,9 @@ struct Params {
     int nStartGhostFeeDistribution;
     int nGhostFeeDistributionCycle;
 
-
+    // new development address - gets paid daily instead of per block, reduces bloat
+    int nNewDevelopmentPayoutCycleStartHeight;
+    int nNewDevelopmentPayoutCycle;
 };
 } // namespace Consensus
 

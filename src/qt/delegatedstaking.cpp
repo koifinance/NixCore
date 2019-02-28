@@ -343,10 +343,9 @@ void DelegatedStaking::on_sendButton_clicked()
         script << nFeePercent;
         script << OP_DROP;
 
-        CTxDestination des = DecodeDestination(ui->rewardTo->text().toStdString());
-        CScript scriptPubKey = GetScriptForDestination(des);
+        CScript scriptPubKey = GetScriptForDestination(DecodeDestination(ui->rewardTo->text().toStdString()));
 
-        if(!IsValidDestination(des) || scriptPubKey.IsPayToPublicKeyHash()
+        if(scriptPubKey.IsPayToPublicKeyHash()
                 || (outType == OUTPUT_TYPE_BECH32 && !scriptPubKey.IsPayToWitnessKeyHash())
                 || (outType == OUTPUT_TYPE_P2SH_SEGWIT && !scriptPubKey.IsPayToScriptHash())){
             Q_EMIT message(tr("Lease Coins"), tr("Lease reward address is not valid. Must match address type of Lease To address."), CClientUIInterface::MSG_ERROR);
@@ -359,6 +358,9 @@ void DelegatedStaking::on_sendButton_clicked()
         if (!ExtractStakingKeyID(scriptPubKey, destDelegateReward, destScriptHashReward)){
             Q_EMIT message(tr("Lease Coins"), tr("ExtractStakingKeyID is not valid"), CClientUIInterface::MSG_ERROR);
             return;
+        }
+        if(outType == OUTPUT_TYPE_BECH32){
+
         }
 
         script << ToByteVector(destDelegateReward);

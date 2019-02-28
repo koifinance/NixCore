@@ -48,6 +48,7 @@ public:
     const QString &getReturnValue() const { return returnValue; }
     void setVaultBalance(CAmount confirmed, CAmount unconfirmed);
     void setKeyList();
+    void updateContractList();
 
 private:
     Ui::DelegatedStaking *ui;
@@ -65,7 +66,6 @@ private:
     std::vector <CAmount> activeContractsAmounts;
 
     void processDelegatedCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
-    void updateContractList();
 
 private Q_SLOTS:
     /** Send button clicked */

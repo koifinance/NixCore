@@ -2293,6 +2293,103 @@ bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
     return true;
 }
 
+bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationState &state, CAmount &nCalculatedStakeReward){
+
+    CTransactionRef txCoinstake = block.vtx[0];
+    CAmount devFee = (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()));
+    CAmount fullDevFee = (int64_t)(DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(nHeight, Params().GetConsensus()));
+
+    // Add Ghostnode reward to theoretical payout
+    nCalculatedStakeReward = ((nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0) * GetBlockSubsidy(nHeight, Params().GetConsensus());
+    // new payout cycle set to daily
+    if(nHeight >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight){
+
+        if((nHeight % Params().GetConsensus().nNewDevelopmentPayoutCycle) == 0){
+            bool found_dev = false;
+            CScript DEV_SCRIPT;
+
+            bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+
+            if (!fTestNet) {
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+            }
+            else {
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+            }
+
+            //development fee per block * cycles missed
+            BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
+                if (output.scriptPubKey == DEV_SCRIPT && output.nValue == (fullDevFee * Params().GetConsensus().nNewDevelopmentPayoutCycle)) {
+                    found_dev = true;
+                }
+            }
+
+            //check if dev rewards were found
+            if (!found_dev) {
+                return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                                 "CheckRequiredInputAmounts() : dev reward missing");
+            }
+
+            nCalculatedStakeReward += (fullDevFee * Params().GetConsensus().nNewDevelopmentPayoutCycle);
+        }
+    }
+    else{
+        bool found_dev_1 = false;
+        bool found_dev_2 = false;
+
+        CScript DEV_1_SCRIPT;
+        CScript DEV_2_SCRIPT;
+
+        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
+
+        if (!fTestNet) {
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+        }
+        else {
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
+        }
+
+        //2% development fee total
+        BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
+            //1% for first address
+            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == devFee) {
+                found_dev_1 = true;
+            }
+            //1% for second address
+            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == devFee) {
+                found_dev_2 = true;
+            }
+        }
+
+        //check if dev rewards were found
+        if (!(found_dev_1 && found_dev_2)) {
+            return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                             "CheckRequiredInputAmounts() : dev reward missing");
+        }
+
+        nCalculatedStakeReward += fullDevFee;
+    }
+
+
+    bool found_gn = true;
+
+    //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
+    //enforce proper ghostnode list payout
+    if(ghostnodeSync.IsSynced(100)){
+        found_gn = false;
+        CTransaction ghostnodeTransaction = *txCoinstake;
+        found_gn = mnpayments.IsTransactionValid(ghostnodeTransaction, nHeight);
+    }
+    if(!found_gn){
+        return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
+                         "CheckRequiredInputAmounts() : ghostnode reward missing");
+    }
+
+    return true;
+}
+
 static int64_t nTimeCheck = 0;
 static int64_t nTimeForks = 0;
 static int64_t nTimeVerify = 0;
@@ -2612,19 +2709,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         if(!GetGhostnodeFeePayment(returnFee, payFees, block))
             return state.DoS(100, error("ConnectBlock() : GetGhostnodeFeePayment incorrect ghost fee scheduling."), REJECT_INVALID, "bad-cs-amount");
 
-        //less than 4 outputs misses development fund and or ghostnode payments
-        if(txCoinstake->vout.size() < 3)
-            return state.DoS(100, error("ConnectBlock() : not enought coinstake outputs(actual=%d vs realistic=3)", txCoinstake->vout.size()), REJECT_INVALID, "bad-cs-amount");
-
-        CAmount nCalculatedStakeReward;
-        if(pindex->nHeight > 64000){
-            nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) +
-                    ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
-        }
-        else{
-            nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees, true) +
-                    ((DEVELOPMENT_REWARD_POST_POS + ((chainActive.Height() + 1 >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0)) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
-        }
+        CAmount nCalculatedStakeReward = 0;
 
         if (pindex->pprev->IsProofOfStake()) // check for cache
         {
@@ -2635,50 +2720,17 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             assert(txPrevCoinstake->IsCoinStake()); // Sanity check
         }
 
-        bool found_1 = false;
-        bool found_2 = false;
+        // Adds dev reward and ghostnode reward to nCalculatedStakeReward
+        if(!CheckRequiredInputAmounts(block, pindex->nHeight, state, nCalculatedStakeReward))
+            return state.DoS(100, error("%s: Failed to validate coinstake amounts.", __func__), REJECT_INVALID, "bad-coinstake");
 
-        CScript DEV_1_SCRIPT;
-        CScript DEV_2_SCRIPT;
 
-        bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
-
-        if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+        // Add staking reward to nCalculatedStakeReward
+        if(pindex->nHeight > 64000){
+            nCalculatedStakeReward += Params().GetProofOfStakeReward(pindex->pprev, nFees);
         }
-        else {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
-        }
-
-        int nHeight = pindex->nHeight;
-        //2% development fee total
-        BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
-            //1% for first address
-            if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                found_1 = true;
-            }
-            //1% for second address
-            if (output.scriptPubKey == DEV_2_SCRIPT && output.nValue == (int64_t)(DEVELOPMENT_REWARD_POST_POS/2 * GetBlockSubsidy(nHeight, Params().GetConsensus()))) {
-                found_2 = true;
-            }
-        }
-
-        //check if dev rewards were found
-        if(chainActive.Height() + 1 < Params().GetConsensus().nStartGhostFeeDistribution){
-            if (!(found_1 && found_2)) {
-                return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                                 "CTransaction::CheckTransaction() : dev reward missing");
-            }
-        }
-        //allow payouts to not include dev fund after nStartGhostFeeDistribution
         else{
-            //If any dev fund payout is not included, prevent amount from being added to another address
-            if (!(found_1 && found_2)) {
-                nCalculatedStakeReward = Params().GetProofOfStakeReward(pindex->pprev, nFees) +
-                        ((GHOSTNODE_REWARD_POST_POS) * GetBlockSubsidy(pindex->nHeight, Params().GetConsensus()));
-            }
+            nCalculatedStakeReward += Params().GetProofOfStakeReward(pindex->pprev, nFees, true);
         }
 
         blockReward = nCalculatedStakeReward;
@@ -2689,39 +2741,15 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
         //Payout fees for ghostnode fee cycle
         else{
-            /*
             if(!CheckGhostProtocolFeePayouts(block, returnFee))
                 return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
-            */
+
             blockReward = blockReward + returnFee;
         }
 
         if (nStakeReward < 0 || nStakeReward > blockReward)
             return state.DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, blockReward), REJECT_INVALID, "bad-cs-amount");
 
-
-        found_1 = false;
-
-        //check ghostnode payout,
-        if(chainActive.Height() + 1 < Params().GetConsensus().nGhostnodePaymentsStartBlock || (mnodeman.GetFullGhostnodeVector().size() < 10)){
-            found_1 = true;
-        }
-        else{
-            //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
-            //enforce proper ghostnode list payout
-            if(ghostnodeSync.IsSynced(100)){
-                CTransaction ghostnodeTransaction = *txCoinstake;
-                found_1 = mnpayments.IsTransactionValid(ghostnodeTransaction, nHeight);
-            }
-            else{
-                found_1 = true;
-            }
-        }
-
-        if(!found_1){
-            return state.DoS(100, false, REJECT_FOUNDER_REWARD_MISSING,
-                             "CTransaction::CheckTransaction() : ghostnode reward missing");
-        }
 
         coinStakeCache.InsertCoinStake(blockHash, txCoinstake);
     }

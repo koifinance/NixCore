@@ -200,6 +200,10 @@ public:
         strSporkPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
         strGhostnodePaymentsPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
 
+
+        // new development address - gets paid daily instead of per block, reduces bloat
+        consensus.nNewDevelopmentPayoutCycleStartHeight = 200161;
+        consensus.nNewDevelopmentPayoutCycle = 720;
         /**
          * The message start string is designed to be unlikely to occur in normal data.
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
@@ -472,6 +476,9 @@ public:
         consensus.nCoinMaturityReductionHeight = 1;
         consensus.nStartGhostFeeDistribution = 1;
         consensus.nGhostFeeDistributionCycle = 200;
+
+        consensus.nNewDevelopmentPayoutCycleStartHeight = 221;
+        consensus.nNewDevelopmentPayoutCycle = 20;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
