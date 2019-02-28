@@ -1221,6 +1221,9 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                 // If block is later reconnected tx will be unabandoned by AddToWallet
                 if (!AbandonTransaction(hashTx))
                     LogPrintf("ERROR: %s - Orphaning stake, AbandonTransaction failed for %s\n", __func__, hashTx.ToString());
+
+                WakeThreadStakeMiner(this);
+                return true;
             }
 
             CWalletTx wtx(this, ptx);
