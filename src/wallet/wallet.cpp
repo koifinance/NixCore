@@ -8250,6 +8250,9 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                 const CScript pscriptPubKey = txout.scriptPubKey;
 
                 if(pscriptPubKey.IsPayToScriptHash_CS() || pscriptPubKey.IsPayToWitnessKeyHash_CS()){
+                    // Ignore witness LPOS contracts until clients are updated
+                    if(pscriptPubKey.IsPayToWitnessKeyHash_CS() && ((nHeight + 1) < Params().GetConsensus().nStartWitnessLposContracts))
+                        continue;
                     // Check if contract allows fee payouts
                     int64_t feeOut = 0;
                     if(GetCoinstakeScriptFee(pscriptPubKey, feeOut)){
@@ -8664,10 +8667,10 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
 
             if (!fTestNet) {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
             }
             else {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
             }
 
             txNew.vout.push_back(CTxOut(devAmount * Params().GetConsensus().nNewDevelopmentPayoutCycle, DEV_SCRIPT));
@@ -8677,8 +8680,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         CScript DEV_1_SCRIPT;
         CScript DEV_2_SCRIPT;
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));

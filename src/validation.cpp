@@ -2311,10 +2311,10 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
             bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
 
             if (!fTestNet) {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
             }
             else {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qlp5tje9acgyva0sswnjca5yylrc24ryevt0tdr"));
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
             }
 
             //development fee per block * cycles missed
@@ -2343,8 +2343,8 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
         bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
 
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));

@@ -204,6 +204,8 @@ public:
         // new development address - gets paid daily instead of per block, reduces bloat
         consensus.nNewDevelopmentPayoutCycleStartHeight = 200161;
         consensus.nNewDevelopmentPayoutCycle = 720;
+
+        consensus.nStartWitnessLposContracts = 177150;
         /**
          * The message start string is designed to be unlikely to occur in normal data.
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
@@ -477,7 +479,8 @@ public:
         consensus.nStartGhostFeeDistribution = 1;
         consensus.nGhostFeeDistributionCycle = 200;
 
-        consensus.nNewDevelopmentPayoutCycleStartHeight = 221;
+        consensus.nStartWitnessLposContracts = 1;
+        consensus.nNewDevelopmentPayoutCycleStartHeight = 241;
         consensus.nNewDevelopmentPayoutCycle = 20;
 
         // The best chain should have at least this much work.

@@ -99,6 +99,9 @@ struct Params {
     // new development address - gets paid daily instead of per block, reduces bloat
     int nNewDevelopmentPayoutCycleStartHeight;
     int nNewDevelopmentPayoutCycle;
+
+    // height to enable lpos witness contracts
+    int nStartWitnessLposContracts;
 };
 } // namespace Consensus
 
