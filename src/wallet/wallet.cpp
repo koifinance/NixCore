@@ -8680,8 +8680,8 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         CScript DEV_1_SCRIPT;
         CScript DEV_2_SCRIPT;
         if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
+            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
+            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
         }
         else {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
