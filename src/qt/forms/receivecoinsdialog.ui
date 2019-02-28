@@ -117,6 +117,11 @@
               <string>Ghostnode Address</string>
              </property>
             </item>
+            <item>
+             <property name="text">
+              <string>Bech32 Address</string>
+             </property>
+            </item>
            </widget>
           </item>
           <item>

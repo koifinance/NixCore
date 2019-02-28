@@ -144,11 +144,11 @@ void ReceiveCoinsDialog::on_receiveButton_clicked()
     /* Generate new receiving address */
     OutputType address_type = model->getDefaultAddressType();
 
-    if (ui->addressType->currentText() == "Ghost Address")
-        address_type = OUTPUT_TYPE_GHOST;
-
     if (ui->addressType->currentText() == "Ghostnode Address")
         address_type = OUTPUT_TYPE_LEGACY;
+
+    if (ui->addressType->currentText() == "Bech32 Address")
+        address_type = OUTPUT_TYPE_BECH32;
 
     address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "", address_type);
     SendCoinsRecipient info(address, label,
