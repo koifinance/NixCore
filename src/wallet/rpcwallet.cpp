@@ -5658,7 +5658,7 @@ UniValue getzerocoinacc(const JSONRPCRequest& request)
         LogPrintf("Relaying get ZCACC to peers \n");
     }
 
-    //return "null";
+    return "null";
 }
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
