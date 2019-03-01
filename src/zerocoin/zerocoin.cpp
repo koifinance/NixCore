@@ -8,6 +8,7 @@
 #include <sstream>
 #include <chrono>
 #include <boost/foreach.hpp>
+#include <net_processing.h>
 #include "utilstrencodings.h"
 #include "consensus/airdropaddresses.h"
 
@@ -986,4 +987,21 @@ CBigNum ZerocoinGetSpendSerialNumber(const CTransaction &tx, int i) {
     catch (const std::runtime_error &) {
         return CBigNum(0);
     }
+}
+
+// As a precaution avoid spam attacks, ban peers that request zcacc faster every block
+// lite nodes should not require zcacc more than 1 time per block
+bool CZerocoinState::PeerRequestedZCACC(CNode* pfrom)
+{
+    std::map<NodeId, int>::iterator i = pAskedForZCACC.find(pfrom->GetId());
+    if (i != pAskedForZCACC.end()){
+        int lastHeight = (*i).second;
+        if (chainActive.Height() =< lastHeight) {
+            Misbehaving(pfrom->GetId(), 33);
+            LogPrintf("Peer asking for ZCACC more than 1 time per block, misbehaving +33 peer=%llf\n", pfrom->GetId());
+            false;
+        }
+    }
+    pAskedForZCACC[pfrom->GetId()] = chainActive.Height()
+    return true;
 }
