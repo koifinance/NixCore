@@ -186,6 +186,16 @@ public:
     std::vector<unsigned char> acc1000;
     std::vector<unsigned char> acc5000;
 
+    CZerocoinAccumulator() :
+        acc1(std::vector<unsigned char>()),
+        acc5(std::vector<unsigned char>()),
+        acc10(std::vector<unsigned char>()),
+        acc50(std::vector<unsigned char>()),
+        acc100(std::vector<unsigned char>()),
+        acc500(std::vector<unsigned char>()),
+        acc1000(std::vector<unsigned char>()),
+        acc5000(std::vector<unsigned char>())
+        {}
 
     CZerocoinAccumulator(std::vector<CBigNum> zcaccs){
         acc1 = zcaccs[0].getvch();

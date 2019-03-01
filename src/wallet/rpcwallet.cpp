@@ -5568,6 +5568,21 @@ UniValue mintghostdata(const JSONRPCRequest& request)
     return entry;
 }
 
+UniValue getzerocoinacc()
+{
+    if (g_connman) {
+        // hash is not used
+        CInv inv(MSG_ZEROCOIN_ACC, uint256());
+        g_connman->ForEachNode([&inv](CNode* pnode)
+        {
+            pnode->PushInventory(inv);
+        });
+        LogPrintf("Relaying get ZCACC to peers \n");
+    }
+
+    return "null";
+}
+
 UniValue spendghostdata(const JSONRPCRequest& request) {
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
@@ -5743,6 +5758,9 @@ static const CRPCCommand commands[] =
 
     { "NIX Ghost Protocol",             "mintghostdata",         &mintghostdata,       {""} },
     { "NIX Ghost Protocol",             "spendghostdata",         &spendghostdata,       {""} },
+
+    // NIX Lite Zerocoin
+    { "NIX Ghost Protocol",             "getzerocoinacc",         &getzerocoinacc,       {""} },
 
 
 

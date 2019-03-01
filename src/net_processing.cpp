@@ -2410,6 +2410,33 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::HEADERS, vHeaders));
     }
 
+    // lite zerocoin acc
+    // debugging purposes, no need for full nodes to request zc acc values
+    else if(strCommand == NetMsgType::ZCACC){
+        CZerocoinAccumulator zcAcc;
+        vRecv >> zcAcc;
+
+        vector<CBigNum> accValues;
+        accValues.push_back(CBigNum(zcAcc.acc1));
+        accValues.push_back(CBigNum(zcAcc.acc5));
+        accValues.push_back(CBigNum(zcAcc.acc10));
+        accValues.push_back(CBigNum(zcAcc.acc50));
+        accValues.push_back(CBigNum(zcAcc.acc100));
+        accValues.push_back(CBigNum(zcAcc.acc500));
+        accValues.push_back(CBigNum(zcAcc.acc1000));
+        accValues.push_back(CBigNum(zcAcc.acc5000));
+        LogPrintf("\nZCACC received from peer %d, values: \n"
+                  "1: %s\n"
+                  "5: %s\n"
+                  "10: %s\n"
+                  "50: %s\n"
+                  "100: %s\n"
+                  "500: %s\n"
+                  "1000: %s\n"
+                  "5000: %s\n", accValues[0].GetHex(),accValues[1].GetHex(),accValues[2].GetHex(),
+                  accValues[3].GetHex(),accValues[4].GetHex(),accValues[5].GetHex(),accValues[6].GetHex(),
+                  accValues[7].GetHex());
+    }
 
     else if (strCommand == NetMsgType::TX || strCommand == NetMsgType::DSTX || strCommand == NetMsgType::TXLOCKREQUEST || strCommand == "witness-tx")
     {
