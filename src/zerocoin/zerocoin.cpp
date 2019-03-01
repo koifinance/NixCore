@@ -996,12 +996,12 @@ bool CZerocoinState::PeerRequestedZCACC(CNode* pfrom)
     std::map<NodeId, int>::iterator i = pAskedForZCACC.find(pfrom->GetId());
     if (i != pAskedForZCACC.end()){
         int lastHeight = (*i).second;
-        if (chainActive.Height() =< lastHeight) {
+        if (chainActive.Height() <= lastHeight) {
             Misbehaving(pfrom->GetId(), 33);
             LogPrintf("Peer asking for ZCACC more than 1 time per block, misbehaving +33 peer=%llf\n", pfrom->GetId());
             false;
         }
     }
-    pAskedForZCACC[pfrom->GetId()] = chainActive.Height()
+    pAskedForZCACC[pfrom->GetId()] = chainActive.Height();
     return true;
 }

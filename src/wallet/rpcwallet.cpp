@@ -5568,45 +5568,6 @@ UniValue mintghostdata(const JSONRPCRequest& request)
     return entry;
 }
 
-UniValue getzerocoinacc(const JSONRPCRequest& request)
-{
-    if (request.fHelp)
-        throw runtime_error(
-                "getzerocoinacc \n");
-
-    UniValue entry(UniValue::VOBJ);
-
-    /*
-    if (g_connman) {
-        // hash is not used
-        CInv inv(MSG_ZEROCOIN_ACC, uint256());
-        g_connman->ForEachNode([&inv](CNode* pnode)
-        {
-            pnode->PushInventory(inv);
-        });
-        LogPrintf("Relaying get ZCACC to peers \n");
-    }
-    */
-    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
-
-    std::vector<CBigNum> accValues;
-    accValues.clear();
-    zerocoinState->GetWitnessForAllSpends(accValues);
-    CZerocoinAccumulator zcAcc(accValues);
-
-    entry.push_back(Pair("1", (accValues[0].GetHex())));
-    entry.push_back(Pair("5", (accValues[1].GetHex())));
-    entry.push_back(Pair("10", (accValues[2].GetHex())));
-    entry.push_back(Pair("50", (accValues[3].GetHex())));
-    entry.push_back(Pair("100", (accValues[4].GetHex())));
-    entry.push_back(Pair("500", (accValues[5].GetHex())));
-    entry.push_back(Pair("1000", (accValues[6].GetHex())));
-    entry.push_back(Pair("5000", (accValues[7].GetHex())));
-
-    //return "null";
-    return entry;
-}
-
 UniValue spendghostdata(const JSONRPCRequest& request) {
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
@@ -5676,6 +5637,45 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
     pwalletMain->SpendGhostData(denomination, address, seckey, randomness, serial, pubValue, strError);
 
     return strError;
+}
+
+UniValue getzerocoinacc(const JSONRPCRequest& request)
+{
+    if (request.fHelp)
+        throw runtime_error(
+                "getzerocoinacc \n");
+
+    UniValue entry(UniValue::VOBJ);
+
+    /*
+    if (g_connman) {
+        // hash is not used
+        CInv inv(MSG_ZEROCOIN_ACC, uint256());
+        g_connman->ForEachNode([&inv](CNode* pnode)
+        {
+            pnode->PushInventory(inv);
+        });
+        LogPrintf("Relaying get ZCACC to peers \n");
+    }
+    */
+    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
+
+    std::vector<CBigNum> accValues;
+    accValues.clear();
+    zerocoinState->GetWitnessForAllSpends(accValues);
+    CZerocoinAccumulator zcAcc(accValues);
+
+    entry.push_back(Pair("1", (accValues[0].GetHex())));
+    entry.push_back(Pair("5", (accValues[1].GetHex())));
+    entry.push_back(Pair("10", (accValues[2].GetHex())));
+    entry.push_back(Pair("50", (accValues[3].GetHex())));
+    entry.push_back(Pair("100", (accValues[4].GetHex())));
+    entry.push_back(Pair("500", (accValues[5].GetHex())));
+    entry.push_back(Pair("1000", (accValues[6].GetHex())));
+    entry.push_back(Pair("5000", (accValues[7].GetHex())));
+
+    //return "null";
+    return entry;
 }
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
