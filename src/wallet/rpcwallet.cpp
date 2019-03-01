@@ -5639,6 +5639,8 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
     return strError;
 }
 
+#include <netmessagemaker.h>
+
 UniValue getzerocoinacc(const JSONRPCRequest& request)
 {
     if (request.fHelp)
@@ -5650,10 +5652,14 @@ UniValue getzerocoinacc(const JSONRPCRequest& request)
 
     if (g_connman) {
         // hash is not used
+        std::vector<CInv> vGetData;
         CInv inv(MSG_ZEROCOIN_ACC, uint256());
-        g_connman->ForEachNode([&inv](CNode* pnode)
+        vGetData.push_back(inv);
+        g_connman->ForEachNode([&](CNode* pnode)
         {
-            pnode->PushInventory(inv);
+            const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+            g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::GETDATA, vGetData));
+            //pnode->PushInventory(inv);
         });
         LogPrintf("Relaying get ZCACC to peers \n");
     }
