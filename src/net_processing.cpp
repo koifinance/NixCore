@@ -2177,9 +2177,6 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             if (interruptMsgProc)
                 return true;
 
-            if(inv.type == MSG_ZEROCOIN_ACC){
-                LogPrintf("\nReceived invite\n");
-            }
             bool fAlreadyHave = AlreadyHave(inv);
             LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->GetId());
 
@@ -2431,17 +2428,15 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         accValues.push_back(CBigNum(zcAcc.acc500));
         accValues.push_back(CBigNum(zcAcc.acc1000));
         accValues.push_back(CBigNum(zcAcc.acc5000));
-        LogPrintf("\nZCACC received from peer %d, values: \n"
-                  "1: %s\n"
-                  "5: %s\n"
-                  "10: %s\n"
-                  "50: %s\n"
-                  "100: %s\n"
-                  "500: %s\n"
-                  "1000: %s\n"
-                  "5000: %s\n", accValues[0].GetHex(),accValues[1].GetHex(),accValues[2].GetHex(),
-                  accValues[3].GetHex(),accValues[4].GetHex(),accValues[5].GetHex(),accValues[6].GetHex(),
-                  accValues[7].GetHex());
+        LogPrintf("\nZCACC 1 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[0].GetHex());
+        LogPrintf("\nZCACC 5 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[1].GetHex());
+        LogPrintf("\nZCACC 10 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[2].GetHex());
+        LogPrintf("\nZCACC 50 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[3].GetHex());
+        LogPrintf("\nZCACC 100 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[4].GetHex());
+        LogPrintf("\nZCACC 500 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[5].GetHex());
+        LogPrintf("\nZCACC 1000 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[6].GetHex());
+        LogPrintf("\nZCACC 5000 received from peer %llf, values: %s\n", pfrom->GetId(), accValues[7].GetHex());
+
     }
 
     else if (strCommand == NetMsgType::TX || strCommand == NetMsgType::DSTX || strCommand == NetMsgType::TXLOCKREQUEST || strCommand == "witness-tx")

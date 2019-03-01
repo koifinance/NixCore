@@ -5639,9 +5639,35 @@ UniValue spendghostdata(const JSONRPCRequest& request) {
     return strError;
 }
 
-#include <netmessagemaker.h>
-
 UniValue getzerocoinacc(const JSONRPCRequest& request)
+{
+    if (request.fHelp)
+        throw runtime_error(
+                "getzerocoinacc \n");
+
+    UniValue entry(UniValue::VOBJ);
+
+    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
+
+    std::vector<CBigNum> accValues;
+    accValues.clear();
+    zerocoinState->GetWitnessForAllSpends(accValues);
+
+    entry.push_back(Pair("1", (accValues[0].GetHex())));
+    entry.push_back(Pair("5", (accValues[1].GetHex())));
+    entry.push_back(Pair("10", (accValues[2].GetHex())));
+    entry.push_back(Pair("50", (accValues[3].GetHex())));
+    entry.push_back(Pair("100", (accValues[4].GetHex())));
+    entry.push_back(Pair("500", (accValues[5].GetHex())));
+    entry.push_back(Pair("1000", (accValues[6].GetHex())));
+    entry.push_back(Pair("5000", (accValues[7].GetHex())));
+
+    //return "null";
+    return entry;
+}
+
+#include <netmessagemaker.h>
+UniValue getdatazerocoinacc(const JSONRPCRequest& request)
 {
     if (request.fHelp)
         throw runtime_error(
@@ -5774,7 +5800,7 @@ static const CRPCCommand commands[] =
 
     // NIX Lite Zerocoin
     { "NIX Ghost Protocol",             "getzerocoinacc",         &getzerocoinacc,       {""} },
-
+    { "NIX Ghost Protocol",             "getdatazerocoinacc",         &getdatazerocoinacc,       {""} },
 
 
     //NIX TOR routing functions
