@@ -1430,8 +1430,10 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         if(zerocoinState->PeerRequestedZCACC(pfrom)){
                             std::vector<CBigNum> accValues;
                             accValues.clear();
-                            zerocoinState->GetWitnessForAllSpends(accValues);
-                            CZerocoinAccumulator zcAcc(accValues);
+                            std::vector<uint256> accBlockHashes;
+                            accBlockHashes.clear();
+                            zerocoinState->GetWitnessForAllSpends(accValues, accBlockHashes);
+                            CZerocoinAccumulator zcAcc(accValues, accBlockHashes);
 
                             const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
                             connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, zcAcc));

@@ -5651,7 +5651,9 @@ UniValue getzerocoinacc(const JSONRPCRequest& request)
 
     std::vector<CBigNum> accValues;
     accValues.clear();
-    zerocoinState->GetWitnessForAllSpends(accValues);
+    std::vector<uint256> accBlockHashes;
+    accBlockHashes.clear();
+    zerocoinState->GetWitnessForAllSpends(accValues, accBlockHashes);
 
     entry.push_back(Pair("1", (accValues[0].GetHex())));
     entry.push_back(Pair("5", (accValues[1].GetHex())));

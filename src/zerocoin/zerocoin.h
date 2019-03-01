@@ -170,7 +170,7 @@ public:
     void RemoveMintFromMempool(const CBigNum &coinMint);
 
     //Lite zerocoin clients
-    bool GetWitnessForAllSpends(std::vector<CBigNum> &accValues);
+    bool GetWitnessForAllSpends(std::vector<CBigNum> &accValues, std::vector<uint256> &accBlockHashes);
     bool PeerRequestedZCACC(CNode* pfrom);
 };
 
@@ -188,6 +188,16 @@ public:
     std::vector<unsigned char> acc1000;
     std::vector<unsigned char> acc5000;
 
+    /** Last known blockhash for acc values */
+    uint256 acc1Hash;
+    uint256 acc5Hash;
+    uint256 acc10Hash;
+    uint256 acc50Hash;
+    uint256 acc100Hash;
+    uint256 acc500Hash;
+    uint256 acc1000Hash;
+    uint256 acc5000Hash;
+
     CZerocoinAccumulator() :
         acc1(std::vector<unsigned char>()),
         acc5(std::vector<unsigned char>()),
@@ -196,10 +206,18 @@ public:
         acc100(std::vector<unsigned char>()),
         acc500(std::vector<unsigned char>()),
         acc1000(std::vector<unsigned char>()),
-        acc5000(std::vector<unsigned char>())
+        acc5000(std::vector<unsigned char>()),
+        acc1Hash(uint256()),
+        acc5Hash(uint256()),
+        acc10Hash(uint256()),
+        acc50Hash(uint256()),
+        acc100Hash(uint256()),
+        acc500Hash(uint256()),
+        acc1000Hash(uint256()),
+        acc5000Hash(uint256())
         {}
 
-    CZerocoinAccumulator(std::vector<CBigNum> zcaccs){
+    CZerocoinAccumulator(std::vector<CBigNum> zcaccs, std::vector<uint256> accBlockHashes){
         acc1 = zcaccs[0].getvch();
         acc5 = zcaccs[1].getvch();
         acc10 = zcaccs[2].getvch();
@@ -208,12 +226,22 @@ public:
         acc500 = zcaccs[5].getvch();
         acc1000 = zcaccs[6].getvch();
         acc5000 = zcaccs[7].getvch();
+
+        acc1Hash = accBlockHashes[0];
+        acc5Hash = accBlockHashes[1];
+        acc10Hash = accBlockHashes[2];
+        acc50Hash = accBlockHashes[3];
+        acc100Hash = accBlockHashes[4];
+        acc500Hash = accBlockHashes[5];
+        acc1000Hash = accBlockHashes[6];
+        acc5000Hash = accBlockHashes[7];
     }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
+        // Acc values
         READWRITE(acc1);
         READWRITE(acc5);
         READWRITE(acc10);
@@ -222,6 +250,15 @@ public:
         READWRITE(acc500);
         READWRITE(acc1000);
         READWRITE(acc5000);
+        // Acc block hashes
+        READWRITE(acc1Hash);
+        READWRITE(acc5Hash);
+        READWRITE(acc10Hash);
+        READWRITE(acc50Hash);
+        READWRITE(acc100Hash);
+        READWRITE(acc500Hash);
+        READWRITE(acc1000Hash);
+        READWRITE(acc5000Hash);
     }
 };
 

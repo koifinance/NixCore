@@ -753,7 +753,7 @@ int CZerocoinState::GetMintedCoinHeightAndId(const CBigNum &pubCoin, int denomin
         return -1;
 }
 
-bool CZerocoinState::GetWitnessForAllSpends(std::vector<CBigNum> &accValues) {
+bool CZerocoinState::GetWitnessForAllSpends(std::vector<CBigNum> &accValues, std::vector<uint256> &accBlockHashes) {
 
     int denoms[8] = {1,5,10,50,100,500,1000,5000};
     int mintId = 1;
@@ -767,6 +767,7 @@ bool CZerocoinState::GetWitnessForAllSpends(std::vector<CBigNum> &accValues) {
             CoinGroupInfo coinGroup = coinGroups[denomAndId];
             CBlockIndex *lastBlock = coinGroup.lastBlock;
             accValues.push_back(lastBlock->accumulatorChanges[make_pair(denomValue,mintId)].first);
+            accBlockHashes.push_back(lastBlock->GetBlockHash());
         }
     }
     catch(...){
