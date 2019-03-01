@@ -5663,7 +5663,6 @@ UniValue getzerocoinacc(const JSONRPCRequest& request)
     std::vector<CBigNum> accValues;
     accValues.clear();
     zerocoinState->GetWitnessForAllSpends(accValues);
-    CZerocoinAccumulator zcAcc(accValues);
 
     entry.push_back(Pair("1", (accValues[0].GetHex())));
     entry.push_back(Pair("5", (accValues[1].GetHex())));
