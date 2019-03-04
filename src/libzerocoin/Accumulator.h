@@ -141,7 +141,7 @@ public:
 	 * @param rhs the PublicCoin to add
 	 * @return
 	 */
-	AccumulatorWitness& operator +=(const PublicCoin& rhs);
+    AccumulatorWitness& operator +=(const PublicCoin& rhs);
 private:
     const Params* params;
 	Accumulator witness;

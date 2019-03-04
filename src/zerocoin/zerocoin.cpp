@@ -785,6 +785,45 @@ bool CZerocoinState::GetWitnessForAllSpends(std::vector<CBigNum> &accValues, std
     return true;
 }
 
+CBigNum CZerocoinState::GetWitnessForHeight(int denomination, int mintHeight, int maxHeight) {
+    libzerocoin::CoinDenomination d = (libzerocoin::CoinDenomination)denomination;
+    pair<int, int> denomAndId = pair<int, int>(denomination, 1);
+
+    assert(coinGroups.count(denomAndId) > 0);
+
+    CoinGroupInfo coinGroup = coinGroups[denomAndId];
+
+
+    // Find accumulator value preceding mint operation
+    CBlockIndex *mintBlock = chainActive[mintHeight];
+    CBlockIndex *block = mintBlock;
+    libzerocoin::Accumulator accumulator(ZCParams, d);
+    if (block != coinGroup.firstBlock) {
+        do {
+            block = block->pprev;
+        } while (block->accumulatorChanges.count(denomAndId) == 0);
+        accumulator = libzerocoin::Accumulator(ZCParams, block->accumulatorChanges[denomAndId].first, d);
+    }
+
+    // Now add to the accumulator every coin minted since that moment except pubCoin
+    block = coinGroup.lastBlock;
+    while(true) {
+        if (block->nHeight <= maxHeight && block->mintedPubCoins.count(denomAndId) > 0) {
+            vector<CBigNum> &pubCoins = block->mintedPubCoins[denomAndId];
+            for (const CBigNum &coin: pubCoins) {
+                if (block != mintBlock)
+                    accumulator += libzerocoin::PublicCoin(ZCParams, coin, d);
+            }
+        }
+        if (block != mintBlock)
+            block = block->pprev;
+        else
+            break;
+    }
+
+    return accumulator.getValue();
+}
+
 bool ZerocoinUpgradeBlockIndex(CChain *chain) {
     CBlockIndex	*blockIndex = chain->Genesis();
     if (blockIndex->nVersion != 130500)

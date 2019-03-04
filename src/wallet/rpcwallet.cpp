@@ -5680,14 +5680,17 @@ UniValue getdatazerocoinacc(const JSONRPCRequest& request)
 
     if (g_connman) {
         // hash is not used
+        // to send (2*n): pubcoin height & denomination
+        // receive (3*n): witness & accval & accval blockhash
         std::vector<CInv> vGetData;
-        CInv inv(MSG_ZEROCOIN_ACC, uint256());
-        vGetData.push_back(inv);
+        CInv invHeight(MSG_ZEROCOIN_ACC, uint256S("0x100"));
+        CInv invDenom(MSG_ZEROCOIN_ACC, uint256S("0xa"));
+        vGetData.push_back(invHeight);
+        vGetData.push_back(invDenom);
         g_connman->ForEachNode([&](CNode* pnode)
         {
             const CNetMsgMaker msgMaker(pnode->GetSendVersion());
             g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::GETDATA, vGetData));
-            //pnode->PushInventory(inv);
         });
         LogPrintf("Relaying get ZCACC to peers \n");
     }

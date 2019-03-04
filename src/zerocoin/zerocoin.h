@@ -172,6 +172,7 @@ public:
     //Lite zerocoin clients
     bool GetWitnessForAllSpends(std::vector<CBigNum> &accValues, std::vector<uint256> &accBlockHashes);
     bool PeerRequestedZCACC(CNode* pfrom);
+    CBigNum GetWitnessForHeight(int denomination, int mintHeight, int maxHeight);
 };
 
 // lite zerocoin
@@ -259,6 +260,41 @@ public:
         READWRITE(acc500Hash);
         READWRITE(acc1000Hash);
         READWRITE(acc5000Hash);
+    }
+};
+
+class CZerocoinWitness
+{
+public:
+    /** Public zerocoin accumulator value */
+    std::vector<unsigned char> acc;
+    /** Public zerocoin accumulator witness */
+    std::vector<unsigned char> accWit;
+    /** Last known blockhash for acc values */
+    uint256 accHash;
+
+    CZerocoinWitness() :
+        acc(std::vector<unsigned char>()),
+        accWit(std::vector<unsigned char>()),
+        accHash(uint256())
+        {}
+
+    CZerocoinWitness(CBigNum zcacc, CBigNum zcaccWit, uint256 accBlockHash){
+        acc = zcacc.getvch();
+        accWit = zcaccWit.getvch();
+        accHash = accBlockHash;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        // Acc value
+        READWRITE(acc);
+        // Acc wit value
+        READWRITE(accWit);
+        // Acc block hash
+        READWRITE(accHash);
     }
 };
 

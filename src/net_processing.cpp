@@ -1264,6 +1264,44 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
     {
         LOCK(cs_main);
 
+        // if zerocoin acc request, process seperately
+        while (it != pfrom->vRecvGetData.end() && it->type == MSG_ZEROCOIN_ACC && (pfrom->vRecvGetData.size() == 2)){
+            bool pushed = false;
+            const CInv &inv = *it;
+            if (!pushed && inv.type == MSG_ZEROCOIN_ACC) {
+                if(ghostnodeSync.IsGhostnodeListSynced()) {
+                    CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
+                    // Only send data to behaving nodes
+                    if(zerocoinState->PeerRequestedZCACC(pfrom)){
+                        std::vector<CBigNum> accValues;
+                        accValues.clear();
+                        std::vector<uint256> accBlockHashes;
+                        accBlockHashes.clear();
+                        zerocoinState->GetWitnessForAllSpends(accValues, accBlockHashes);
+                        CZerocoinAccumulator zcAcc(accValues, accBlockHashes);
+                        //int pubHeight;
+                        //int pubDenom;
+                        //CBigNum accWit = zerocoinState->GetWitnessForHeight(pubDenom, pubHeight, INT_MAX);
+                        //CZerocoinWitness zcAccWit(accValues[0], accWit, accBlockHashes[0]);
+
+                        const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
+                        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, zcAcc));
+                    }
+                    pushed = true;
+                }
+                else{
+                    // return 0x00 stream to signal an unsynced node
+                    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                    ss.reserve(1000);
+                    ss << 0x00;
+                    const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
+                    connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, ss));
+                    pushed = true;
+                }
+            }
+            it++;
+        }
+
         while (it != pfrom->vRecvGetData.end() && !(it->type == MSG_BLOCK || it->type == MSG_FILTERED_BLOCK || it->type == MSG_CMPCT_BLOCK || it->type == MSG_WITNESS_BLOCK)) {
             if (interruptMsgProc)
                 return;
@@ -1419,34 +1457,6 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         ss << mnodeman.mapSeenGhostnodeVerification[inv.hash];
                         const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
                         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::MNVERIFY, ss));
-                        pushed = true;
-                    }
-                }
-
-                if (!pushed && inv.type == MSG_ZEROCOIN_ACC) {
-                    if(ghostnodeSync.IsGhostnodeListSynced()) {
-                        CZerocoinState *zerocoinState = CZerocoinState::GetZerocoinState();
-                        // Only send data to behaving nodes
-                        if(zerocoinState->PeerRequestedZCACC(pfrom)){
-                            std::vector<CBigNum> accValues;
-                            accValues.clear();
-                            std::vector<uint256> accBlockHashes;
-                            accBlockHashes.clear();
-                            zerocoinState->GetWitnessForAllSpends(accValues, accBlockHashes);
-                            CZerocoinAccumulator zcAcc(accValues, accBlockHashes);
-
-                            const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
-                            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, zcAcc));
-                        }
-                        pushed = true;
-                    }
-                    else{
-                        // return 0xFF stream to signal an unsynced node
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << 0xff;
-                        const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
-                        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::ZCACC, ss));
                         pushed = true;
                     }
                 }
