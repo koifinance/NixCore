@@ -16,18 +16,27 @@ bool ExtractIndexInfo(const CScript *pScript, int &scriptType, std::vector<uint8
     {
         hashBytes.assign(pScript->begin()+3, pScript->begin()+23);
         scriptType = ADDR_INDT_PUBKEY_ADDRESS;
-    } else
-    if (pScript->IsPayToScriptHash())
+    }
+    else if (pScript->IsPayToScriptHash())
     {
         hashBytes.assign(pScript->begin()+2, pScript->begin()+22);
         scriptType = ADDR_INDT_SCRIPT_ADDRESS;
     }
-    else
-    if (pScript->IsPayToScriptHash_CS())
+    else if (pScript->IsPayToScriptHash_CS())
     {
         //use owners address
         hashBytes.assign(pScript->begin()+28, pScript->begin()+48);
         scriptType = ADDR_INDT_SCRIPT_ADDRESS;
+    }
+    else if (pScript->IsPayToWitnessKeyHash())
+    {
+        hashBytes.assign(pScript->begin()+2, pScript->begin()+22);
+        scriptType = ADDR_INDT_WITNESS_KEY_HASH;
+    }
+    else if (pScript->IsPayToWitnessKeyHash_CS())
+    {
+        hashBytes.assign(pScript->begin()+27, pScript->begin()+47);
+        scriptType = ADDR_INDT_WITNESS_KEY_HASH;
     }
 
     return true;

@@ -618,20 +618,6 @@ bool CBitcoinAddress::GetIndexKey(uint256 &hashBytes, int &type) const
         return true;
     };
 
-    if (vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS_256))
-    {
-        memcpy(&hashBytes, &vchData[0], 32);
-        type = ADDR_INDT_PUBKEY_ADDRESS_256;
-        return true;
-    };
-
-    if (vchVersion == Params().Base58Prefix(CChainParams::SCRIPT_ADDRESS_256))
-    {
-        memcpy(&hashBytes, &vchData[0], 32);
-        type = ADDR_INDT_SCRIPT_ADDRESS_256;
-        return true;
-    };
-
     return false;
 };
 

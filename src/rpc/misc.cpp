@@ -738,13 +738,11 @@ static UniValue getinfo_deprecated(const JSONRPCRequest& request)
 bool getAddressFromIndex(const int &type, const uint256 &hash, std::string &address)
 {
     if (type == ADDR_INDT_SCRIPT_ADDRESS) {
-        address = CBitcoinAddress(CScriptID(uint160(hash.begin(), 20))).ToString();
+        address = EncodeDestination(CScriptID(uint160(hash.begin(), 20)));
     } else if (type == ADDR_INDT_PUBKEY_ADDRESS) {
-        address = CBitcoinAddress(CKeyID(uint160(hash.begin(), 20))).ToString();
-    } else if (type == ADDR_INDT_SCRIPT_ADDRESS_256) {
-        address = CBitcoinAddress(CScriptID256(hash)).ToString();
-    } else if (type == ADDR_INDT_PUBKEY_ADDRESS_256) {
-        address = CBitcoinAddress(CKeyID256(hash)).ToString();
+        address = EncodeDestination(CKeyID(uint160(hash.begin(), 20)));
+    } else if (type == ADDR_INDT_WITNESS_KEY_HASH) {
+        address = EncodeDestination(WitnessV0KeyHash(uint160(hash.begin(), 20)), true);
     } else {
         return false;
     }
@@ -754,13 +752,24 @@ bool getAddressFromIndex(const int &type, const uint256 &hash, std::string &addr
 bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint256, int> > &addresses)
 {
     if (params[0].isStr()) {
-        CBitcoinAddress address(params[0].get_str());
-        uint256 hashBytes;
-        int type = 0;
-        if (!address.GetIndexKey(hashBytes, type)) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+        CTxDestination des = DecodeDestination(params[0].get_str());
+        if(des.type() == typeid(WitnessV0KeyHash)){
+            CScript desScript = GetScriptForDestination(des);
+            std::vector<uint8_t> hashBytes;
+            hashBytes.assign(desScript.begin()+2, desScript.begin()+22);
+            uint256 hashByte = uint256(hashBytes.data(), hashBytes.size());
+            int type = ADDR_INDT_WITNESS_KEY_HASH;
+            addresses.push_back(std::make_pair(hashByte, type));
         }
-        addresses.push_back(std::make_pair(hashBytes, type));
+        else{
+            CBitcoinAddress address(params[0].get_str());
+            uint256 hashBytes;
+            int type = 0;
+            if (!address.GetIndexKey(hashBytes, type)) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            }
+            addresses.push_back(std::make_pair(hashBytes, type));
+        }
     } else if (params[0].isObject()) {
 
         UniValue addressValues = find_value(params[0].get_obj(), "addresses");
@@ -772,13 +781,24 @@ bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint25
 
         for (std::vector<UniValue>::iterator it = values.begin(); it != values.end(); ++it) {
 
-            CBitcoinAddress address(it->get_str());
-            uint256 hashBytes;
-            int type = 0;
-            if (!address.GetIndexKey(hashBytes, type)) {
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            CTxDestination des = DecodeDestination(it->get_str());
+            if(des.type() == typeid(WitnessV0KeyHash)){
+                CScript desScript = GetScriptForDestination(des);
+                std::vector<uint8_t> hashBytes;
+                hashBytes.assign(desScript.begin()+2, desScript.begin()+22);
+                uint256 hashByte = uint256(hashBytes.data(), hashBytes.size());
+                int type = ADDR_INDT_WITNESS_KEY_HASH;
+                addresses.push_back(std::make_pair(hashByte, type));
             }
-            addresses.push_back(std::make_pair(hashBytes, type));
+            else{
+                CBitcoinAddress address(it->get_str());
+                uint256 hashBytes;
+                int type = 0;
+                if (!address.GetIndexKey(hashBytes, type)) {
+                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+                }
+                addresses.push_back(std::make_pair(hashBytes, type));
+            }
         }
     } else {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");

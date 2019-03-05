@@ -1580,7 +1580,8 @@ bool AppInitMain()
     boost::filesystem::path pathVersionSetting = GetDataDir()/"nixversion.dat";
     std::pair<bool,std::string> versionArg = ReadBinaryFileTor(pathVersionSetting.string().c_str());
 
-    if(versionArg.second == "" || std::stoi(versionArg.second) < CLIENT_VERSION){
+    static const int REQUIRED_CLIENT_VERSION = 2020000;
+    if(versionArg.second == "" || std::stoi(versionArg.second) < REQUIRED_CLIENT_VERSION){
         LogPrintf("AppInitMain(): Initial %s startup, reindexing \n", std::to_string(CLIENT_VERSION));
         WriteBinaryFileTor(pathVersionSetting.string().c_str(), std::to_string(CLIENT_VERSION));
         versionArg.second = std::to_string(CLIENT_VERSION);
