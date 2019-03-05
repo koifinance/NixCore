@@ -2268,7 +2268,7 @@ bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
 
         for(auto node: ghostnodeVector){
 
-            if(node.IsEnabled() && (node.sigTime >= ensureNodeActiveBefore)){
+            if(node.IsEnabled() && (node.sigTime <= ensureNodeActiveBefore)){
                 totalActiveNodes++;
                 CTxDestination dest = node.pubKeyCollateralAddress.GetID();
                 CScript nodeScript = GetScriptForDestination(dest);
