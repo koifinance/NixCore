@@ -8667,10 +8667,10 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
 
             if (!fTestNet) {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("nix1qr7y5gtwrpuadsluk7v2wdn9pwx3s4asf25hcq2"));
             }
             else {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("rnix1qamv9mjp59cwmqsa0z493mytxx6hsez3xmqkkpv"));
+                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("nix1qr7y5gtwrpuadsluk7v2wdn9pwx3s4asf25hcq2"));
             }
 
             txNew.vout.push_back(CTxOut(devAmount * Params().GetConsensus().nNewDevelopmentPayoutCycle, DEV_SCRIPT));
