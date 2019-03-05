@@ -2377,7 +2377,7 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
 
     //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
     //enforce proper ghostnode list payout
-    if(ghostnodeSync.IsSynced(100)){
+    if(ghostnodeSync.IsSynced(100) && (nHeight >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight)){
         found_gn = false;
         CTransaction ghostnodeTransaction = *txCoinstake;
         found_gn = mnpayments.IsTransactionValid(ghostnodeTransaction, nHeight);
