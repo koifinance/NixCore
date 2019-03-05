@@ -1664,10 +1664,9 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
                      strErr = "header spam protection";
                  ret = false;
              }
-
-             if(!ret)
-                 return error(strErr.c_str());
         }
+        if(!ret)
+            return error(strErr.c_str());
     }
 
 
