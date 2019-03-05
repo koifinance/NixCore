@@ -1265,6 +1265,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
         LOCK(cs_main);
 
         // if zerocoin acc request, process seperately
+        /*
         while (it != pfrom->vRecvGetData.end() && it->type == MSG_ZEROCOIN_ACC && (pfrom->vRecvGetData.size() == 2)){
             bool pushed = false;
             const CInv &inv = *it;
@@ -1301,6 +1302,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
             }
             it++;
         }
+        */
 
         while (it != pfrom->vRecvGetData.end() && !(it->type == MSG_BLOCK || it->type == MSG_FILTERED_BLOCK || it->type == MSG_CMPCT_BLOCK || it->type == MSG_WITNESS_BLOCK)) {
             if (interruptMsgProc)
