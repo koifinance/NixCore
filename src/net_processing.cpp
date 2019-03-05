@@ -1924,15 +1924,6 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             SeenLocal(addrMe);
         }
 
-        if(strSubVer == "/Nix Core:1.0.0/"){
-            // disconnect from peers older than this version due to min tx fee
-            LogPrint(BCLog::NET, "peer=%d using obsolete version %i; disconnecting\n", pfrom->GetId(), nVersion);
-            connman->PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                               strprintf("Version must be %d or greater", 1001)));
-            pfrom->fDisconnect = true;
-            return false;
-        }
-
         // Be shy and don't send version until we hear
         if (pfrom->fInbound)
             PushNodeVersion(pfrom, connman, GetAdjustedTime());

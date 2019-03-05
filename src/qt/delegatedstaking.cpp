@@ -432,6 +432,7 @@ void DelegatedStaking::updateContractList() {
                     || out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
                 if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, ownerDest))
                 {
+                    CScript ownerScript;
                     CScript delegateScript;
                     int64_t feeAmount;
                     CScript feeRewardScript;
@@ -439,11 +440,8 @@ void DelegatedStaking::updateContractList() {
 
                     if (out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
                         //p2wkh
-                        if(out.tx->tx->vout[out.i].scriptPubKey.MatchPayToWitnessKeyHash(2)){
-                            CScript wit_script = GetScriptForDestination(WitnessV0KeyHash(uint160(&out.tx->tx->vout[out.i].scriptPubKey[27], 20)));
-                            CScriptID wit_id(wit_script);
-                            hash = wit_id;
-                        }
+                        GetNonCoinstakeScriptPath(out.tx->tx->vout[out.i].scriptPubKey, ownerScript);
+                        hash =  CScriptID(ownerScript);
                     }
                     else
                         hash = boost::get<CScriptID>(ownerDest);
@@ -467,15 +465,25 @@ void DelegatedStaking::updateContractList() {
                             feeAmount = 0;
 
                         std::string ownerAddrString = addr1.ToString();
+                        std::string leaseAddress = addr2.ToString();
+                        std::string rewardAddress = addr3.ToString();
+
+                        if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
+                            ownerAddrString = EncodeDestination(ownerDest, true);
+                            leaseAddress = EncodeDestination(delegateDest, true);
+                            rewardAddress = EncodeDestination(rewardFeeDest, true);
+                        }
+
                         if(walletModel->getWallet()->mapAddressBook.find(ownerDest) != walletModel->getWallet()->mapAddressBook.end())
                         {
-                            ownerAddrString = walletModel->getWallet()->mapAddressBook[ownerDest].name;
+                            if(walletModel->getWallet()->mapAddressBook[ownerDest].name != "")
+                                ownerAddrString = walletModel->getWallet()->mapAddressBook[ownerDest].name;
                         }
 
                         QTableWidgetItem *myAddress = new QTableWidgetItem(QString::fromStdString(ownerAddrString));
-                        QTableWidgetItem *delegateAddress = new QTableWidgetItem(QString::fromStdString(addr2.ToString()));
+                        QTableWidgetItem *delegateAddress = new QTableWidgetItem(QString::fromStdString(leaseAddress));
                         QTableWidgetItem *contractFee = new QTableWidgetItem(QString::fromStdString(std::to_string((double)feeAmount/100.00)));
-                        QTableWidgetItem *rewardFeeAddress = new QTableWidgetItem(QString::fromStdString(addr3.ToString()));
+                        QTableWidgetItem *rewardFeeAddress = new QTableWidgetItem(QString::fromStdString(rewardAddress));
                         QTableWidgetItem *coinAmount = new QTableWidgetItem(BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), nSum));
 
                         if(!hasFee)
@@ -523,13 +531,15 @@ void DelegatedStaking::cancelContract(){
         ctrl = *CoinControlDialog::coinControl();
         ctrl.UnSelectAll();
         int row = -1;
+        CAmount totalAmount = 0;
         for(QModelIndex rowIndex: selection) {
             row = rowIndex.row();
             //unlock contract
             walletModel->unlockCoin(activeContractsOutpoints[activeContractsOutpoints.size() - 1 - row]);
             ctrl.Select(activeContractsOutpoints[activeContractsOutpoints.size() - 1 - row]);
+            totalAmount += activeContractsAmounts[activeContractsAmounts.size() - 1 - row];
+
         }
-        CAmount totalAmount = activeContractsAmounts[activeContractsAmounts.size() - 1 - row];
 
         WalletModel::UnlockContext ctx(walletModel->requestUnlock());
         if(!ctx.isValid())

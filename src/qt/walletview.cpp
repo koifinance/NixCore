@@ -40,8 +40,6 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     walletModel(0),
     platformStyle(_platformStyle)
 {
-    // Create tabs
-    overviewPage = new OverviewPage(platformStyle);
 
     transactionsPage = new QWidget(this);
     QVBoxLayout *vbox = new QVBoxLayout();
@@ -68,6 +66,8 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     delegatedStakingPage = new DelegatedStaking(platformStyle);
     ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
 
+    // Create tabs
+    overviewPage = new OverviewPage(platformStyle);
     overviewPage->ghostVaultPage = ghostVaultPage;
     overviewPage->lposPage = delegatedStakingPage;
 
@@ -138,11 +138,11 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     transactionView->setModel(_walletModel);
     ghostVaultPage->setModel(_walletModel->getAddressTableModel());
     ghostVaultPage->setWalletModel(_walletModel);
+    delegatedStakingPage->setWalletModel(_walletModel);
     overviewPage->setWalletModel(_walletModel);
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
     ghostnodePage->setWalletModel(_walletModel);
-    delegatedStakingPage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
     usedReceivingAddressesPage->setWalletModel(_walletModel);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);

@@ -228,7 +228,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
 
     ghostVaultPage->setVaultBalance(ghostBalance, ghostBalanceUnconfirmed);
     ghostVaultPage->setKeyList();
-    //lposPage->updateContractList();
+    lposPage->updateContractList();
 }
 
 // show/hide watch-only labels
