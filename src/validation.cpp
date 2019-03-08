@@ -2276,9 +2276,9 @@ bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
             }
         }
 
-        CAmount f = totalFees/totalActiveNodes;
+        CAmount feePayout = totalFees/totalActiveNodes;
         int totalNodesPaid = 0;
-        if(f == 0){
+        if(feePayout == 0){
             return true;
         }
 
