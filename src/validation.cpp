@@ -2256,7 +2256,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
 //Be careful of using this check, if a clients list is not similar to to others, it could cause a fork
 bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
     //If current node is synced with node list, check honesty of payouts
-    if(ghostnodeSync.IsSynced(chainActive.Height())){
+    if(ghostnodeSync.IsSynced(chainActive.Height()) && totalFees != 0){
 
         vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
         vector<CScript> ghostnodeVectorWinners;
@@ -2276,8 +2276,12 @@ bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
             }
         }
 
-        CAmount feePayout = totalFees/totalActiveNodes;
+        CAmount f = totalFees/totalActiveNodes;
         int totalNodesPaid = 0;
+        if(f == 0){
+            return true;
+        }
+
         for(CTxOut out: pBlock.vtx[0]->vout){
             if((std::find(ghostnodeVectorWinners.begin(), ghostnodeVectorWinners.end(), out.scriptPubKey) != ghostnodeVectorWinners.end()) && out.nValue == feePayout) {
                 //erase this check to prevent duplicate payouts
