@@ -2290,8 +2290,10 @@ bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
             }
         }
 
-        if(totalNodesPaid != totalActiveNodes)
+        if(totalNodesPaid != totalActiveNodes){
+            LogPrintf("\nCheckGhostProtocolFeePayouts(): Paid out incorrect amount of nodes: actual: %i, estimate: %i \n", totalNodesPaid, totalActiveNodes);
             return false;
+        }
     }
 
     return true;
@@ -2745,8 +2747,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
         //Payout fees for ghostnode fee cycle
         else{
-            if(!CheckGhostProtocolFeePayouts(block, returnFee))
-                return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
+            //Causing issues, revert to later update
+            //if(!CheckGhostProtocolFeePayouts(block, returnFee))
+                //return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
 
             blockReward = blockReward + returnFee;
         }
