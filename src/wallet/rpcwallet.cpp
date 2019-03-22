@@ -4027,12 +4027,20 @@ UniValue ghostamount(const JSONRPCRequest& request)
 {
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    if (request.fHelp || request.params.size() > 1)
-        throw runtime_error("ghostamount <amount>(whole numbers only)\n" + HelpRequiringPassphrase(pwalletMain));
+    if (request.fHelp || request.params.size() > 2)
+        throw runtime_error("ghostamount <amount>(whole numbers only) <commitment key pack>\n" + HelpRequiringPassphrase(pwalletMain));
 
     int64_t nAmount = request.params[0].get_int64();
 
-    bool strError = pwalletMain->GhostModeMintTrigger(std::to_string(nAmount));
+    std::vector<CScript> keypack;
+    keypack.clear();
+    if(!request.params[1].isNull()){
+        CommitmentKeyPack keys(request.params[1].get_str());
+        if(!keys.IsValidPack())
+            throw JSONRPCError(RPC_WALLET_ERROR, "invalid commitment key pack");
+        keypack = keys.GetPubCoinPackScript();
+    }
+    bool strError = pwalletMain->GhostModeMintTrigger(std::to_string(nAmount), keypack);
 
     if (!strError)
         throw JSONRPCError(RPC_WALLET_ERROR, "ghostamount");
@@ -4045,27 +4053,32 @@ UniValue unghostamount(const JSONRPCRequest& request)
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
     if (request.fHelp || request.params.size() == 0 || request.params.size() > 2)
-        throw runtime_error("unghostamount <amount>(whole numbers only) <addresstosend>\n" + HelpRequiringPassphrase(pwalletMain));
+        throw runtime_error("unghostamount <amount>(whole numbers only) <addresstosend>(either address or commitment key pack)\n" + HelpRequiringPassphrase(pwalletMain));
 
     int64_t nAmount = request.params[0].get_int64();
 
-    CBitcoinAddress address;
-    string toKey = "";
+    CTxDestination dest;
+    std::string toKey = "";
+    std::vector <CScript> keyList;
+    keyList.clear();
     if (request.params.size() > 1){
         // Address
         toKey = request.params[1].get_str();
-        address = CBitcoinAddress(request.params[1].get_str());
-
-        if(!IsGhostAddress(toKey))
-            if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "rpcwallet unghostamount(): Invalid toKey address");
+        CommitmentKeyPack keypack(toKey);
+        dest = DecodeDestination(toKey);
+        if(keypack.IsValidPack()){
+            keyList = keypack.GetPubCoinPackScript();
+            toKey = "";
+        }
+        else if(!IsValidDestination(dest))
+            throw JSONRPCError(RPC_WALLET_ERROR, "invalid key");
     }
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
                            "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-    std::string strError = pwalletMain->GhostModeSpendTrigger(std::to_string(nAmount), toKey);
+    std::string strError = pwalletMain->GhostModeSpendTrigger(std::to_string(nAmount), toKey, keyList);
 
 
     return strError;
