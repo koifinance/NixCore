@@ -787,7 +787,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
     // Generate a new key that is added to wallet
     CPubKey newKey;
     if (!pwallet->GetKeyFromPool(newKey)) {
-        return;
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot get key from pool");
     }
 
     pwallet->LearnRelatedScripts(newKey, outType);
@@ -4035,7 +4035,8 @@ UniValue ghostamount(const JSONRPCRequest& request)
     std::vector<CScript> keypack;
     keypack.clear();
     if(!request.params[1].isNull()){
-        CommitmentKeyPack keys(request.params[1].get_str());
+        std::string k = request.params[1].get_str();
+        CommitmentKeyPack keys(k);
         if(!keys.IsValidPack())
             throw JSONRPCError(RPC_WALLET_ERROR, "invalid commitment key pack");
         keypack = keys.GetPubCoinPackScript();
