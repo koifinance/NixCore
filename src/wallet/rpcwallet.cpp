@@ -674,19 +674,20 @@ UniValue leasestaking(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. \"lease address\"                    (string, required) The nix address to lease stakes to.\n"
             "2. \"amount\"                              (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
-            "3. \"fee percent\"                         (numeric, optional) The percentage to allow delegator to take. eg 11.9 (11.9%)\n"
-            "4. \"lease percent reward address\"     (string, optional) The nix address to force lease fee stakes to.\n"
+            "3. \"label\"                              (string, optional) The contract label\n"
+            "4. \"fee percent\"                         (numeric, optional) The percentage to allow delegator to take. eg 11.9 (11.9%)\n"
+            "5. \"lease percent reward address\"     (string, optional) The nix address to force lease fee stakes to.\n"
 
-            "5. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
+            "6. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
-            "6. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
+            "7. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
             "                             to which you're sending the transaction. This is not part of the \n"
             "                             transaction, just kept in your wallet.\n"
-            "7. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "8. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
             "                             The recipient will receive less nix than you enter in the amount field.\n"
-            "8. replaceable            (boolean, optional) Allow this transaction to be replaced by a transaction with higher fees via BIP 125\n"
-            "9. conf_target            (numeric, optional) Confirmation target (in blocks)\n"
-            "10. \"estimate_mode\"      (string, optional, default=UNSET) The fee estimate mode, must be one of:\n"
+            "9. replaceable            (boolean, optional) Allow this transaction to be replaced by a transaction with higher fees via BIP 125\n"
+            "10. conf_target            (numeric, optional) Confirmation target (in blocks)\n"
+            "11. \"estimate_mode\"      (string, optional, default=UNSET) The fee estimate mode, must be one of:\n"
             "       \"UNSET\"\n"
             "       \"ECONOMICAL\"\n"
             "       \"CONSERVATIVE\"\n"
@@ -772,17 +773,27 @@ UniValue leasestaking(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid lease key");
 
 
-    std::shared_ptr<CReserveScript> coinbaseScript;
-    pwallet->GetScriptForMining(coinbaseScript);
-    if (!coinbaseScript) {
-        return error("%s: Error: Keypool ran out, please call keypoolrefill first.", __func__);
-    }
-    if (coinbaseScript->reserveScript.empty()) {
-        return error("%s: No coinbase script available.", __func__);
+    OutputType outType = OUTPUT_TYPE_DEFAULT;
+
+    if(delegateScript.IsPayToScriptHash())
+        outType = OUTPUT_TYPE_P2SH_SEGWIT;
+    else if(delegateScript.IsPayToWitnessKeyHash())
+        outType = OUTPUT_TYPE_BECH32;
+    else{
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid lease key");
     }
 
-    // Generate new key for local wallet, remove coins from existing address
-    CScript scriptPubKeyKernel = coinbaseScript->reserveScript;
+
+    // Generate a new key that is added to wallet
+    CPubKey newKey;
+    if (!pwallet->GetKeyFromPool(newKey)) {
+        return;
+    }
+
+    pwallet->LearnRelatedScripts(newKey, outType);
+    CTxDestination returnAddr = GetDestinationForKey(newKey, outType);
+
+    CScript scriptPubKeyKernel = GetScriptForDestination(returnAddr);
     //set up contract
     CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
     //cold stake address
@@ -794,7 +805,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
 
     // Fee
     int64_t nFeePercent = 0;
-    if (!request.params[2].isNull()){
+    if (!request.params[3].isNull()){
         nFeePercent = int64_t(AmountFromValue(request.params[2])/1000000);
         if(nFeePercent > 10000 || nFeePercent < 0){
             throw JSONRPCError(RPC_INVALID_PARAMETER, "nFeePercent too large. Must be between 0 and 100");;
@@ -803,12 +814,12 @@ UniValue leasestaking(const JSONRPCRequest& request)
         script << OP_DROP;
     }
     // Reward address
-    if (!request.params[3].isNull() && !request.params[3].get_str().empty()){
-        if(!IsValidDestination(DecodeDestination(request.params[3].get_str())))
+    if (!request.params[3].isNull() && !request.params[4].get_str().empty()){
+        if(!IsValidDestination(DecodeDestination(request.params[4].get_str())))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid reward address");
         // Parse coldstaking fee reward address
         // Take only txdestination, leave out hash160 and equal when including in script
-        CScript delegateScriptRewardTemp = GetScriptForDestination(DecodeDestination(request.params[3].get_str()));
+        CScript delegateScriptRewardTemp = GetScriptForDestination(DecodeDestination(request.params[5].get_str()));
         if (delegateScriptRewardTemp.IsPayToPublicKeyHash())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid delagate key");
 
@@ -827,7 +838,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
 
     scriptPubKeyKernel = script;
 
-
+    /*
     // Check if contract allows fee payouts
     int64_t feeOut = 0;
     CAmount feeAmount = 0;
@@ -856,7 +867,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
 
     LogPrintf("\nRunning Test: feeAmount=%llf, nReward=%llf, amount=%llf, destination=%s", feeAmount, nReward, amount, btcTest.ToString());
     return "null";
-
+    */
 
     // Create and send the transaction
     CReserveKey reservekey(pwallet);
@@ -878,6 +889,10 @@ UniValue leasestaking(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
+    // label the address at the end to ensure tx went ok
+    if(!request.params[2].isNull()){
+        pwallet->SetAddressBook(dest, request.params[3].get_str(), "receive");
+    }
     return wtx.GetHash().GetHex();
 }
 

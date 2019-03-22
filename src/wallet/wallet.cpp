@@ -8241,10 +8241,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
             {
                 const auto &txout = tx->vout[i];
 
-                COutPoint kernel(wtxid, i);
-                if (!CheckStakeUnused(kernel) ||
-                        IsSpent(wtxid, i)
-                        || IsLockedCoin(wtxid, i))
+                if (IsSpent(wtxid, i)|| IsLockedCoin(wtxid, i))
                     continue;
 
                 const CScript pscriptPubKey = txout.scriptPubKey;
