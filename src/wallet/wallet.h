@@ -448,6 +448,31 @@ public:
     }
 };
 
+class CGovernanceEntry
+{
+public:
+    CAmount voteWeight;
+    std::string voteID;
+
+    CGovernanceEntry()
+    {
+        SetNull();
+    }
+
+    void SetNull()
+    {
+        voteWeight = 0;
+        voteID.clear();
+    }
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(voteWeight);
+        READWRITE(voteID);
+    }
+};
+
 bool CompHeight(const CZerocoinEntry & a, const CZerocoinEntry & b);
 bool CompID(const CZerocoinEntry & a, const CZerocoinEntry & b);
 

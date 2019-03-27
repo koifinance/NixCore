@@ -1023,6 +1023,50 @@ void CWalletDB::ListCoinSpendSerial(std::list <CZerocoinSpendEntry> &listCoinSpe
     pcursor->close();
 }
 
+bool CWalletDB::WriteGovernanceEntry(const CGovernanceEntry &vote) {
+    return WriteIC(make_pair(string("vote"), vote.voteID), vote);
+}
+
+bool CWalletDB::ReadGovernanceEntry(const CGovernanceEntry &vote) {
+    return EraseIC(make_pair(string("vote"), vote.voteID));
+}
+
+void CWalletDB::ListGovernanceEntries(std::list <CGovernanceEntry> &votes) {
+    Dbc *pcursor = batch.GetCursor();
+    if (!pcursor)
+        throw runtime_error("CWalletDB::ListCoinSpendSerial() : cannot create DB cursor");
+    unsigned int fFlags = DB_SET_RANGE;
+    while (true) {
+        // Read next record
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        if (fFlags == DB_SET_RANGE)
+            ssKey << make_pair(string("vote"), std::string());
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        fFlags = DB_NEXT;
+        if (ret == DB_NOTFOUND)
+            break;
+        else if (ret != 0) {
+            pcursor->close();
+            throw runtime_error("CWalletDB::ListGovernanceEntries() : error scanning DB");
+        }
+
+        // Unserialize
+        string strType;
+        ssKey >> strType;
+        if (strType != "vote")
+            break;
+        std::string voteID;
+        ssKey >> voteID;
+        CGovernanceEntry voteEntry;
+        ssValue >> voteEntry;
+        votes.push_back(voteEntry);
+    }
+
+    pcursor->close();
+}
+
+
 // This should be called carefully:
 // either supply "wallet" (if already loaded) or "strWalletFile" (if wallet wasn't loaded yet)
 bool AutoBackupWallet (CWallet* wallet, std::string strWalletFile, std::string& strBackupWarning, std::string& strBackupError)

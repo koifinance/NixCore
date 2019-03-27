@@ -47,6 +47,7 @@ class uint160;
 class uint256;
 class CZerocoinEntry;
 class CZerocoinSpendEntry;
+class CGovernanceEntry;
 
 /** Error statuses for the wallet database */
 enum DBErrors
@@ -387,6 +388,11 @@ public:
     bool WriteUnloadedZCEntry(const CZerocoinEntry& zerocoin);
     bool EraseUnloadedZCEntry(const CZerocoinEntry& zerocoin);
     void ListUnloadedPubCoin(std::list<CZerocoinEntry>& listUnloadedPubCoin);
+
+    bool WriteGovernanceEntry(const CGovernanceEntry& vote);
+    bool ReadGovernanceEntry(const CGovernanceEntry& vote);
+    bool ListGovernanceEntries(std::list<CGovernanceEntry>& votes);
+
 
 private:
     CDB batch;
