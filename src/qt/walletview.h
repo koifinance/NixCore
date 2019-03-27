@@ -22,6 +22,7 @@ class AddressBookPage;
 class GhostVault;
 class GhostNode;
 class DelegatedStaking;
+class OffChainGovernance;
 
 QT_BEGIN_NAMESPACE
 class QModelIndex;
@@ -70,6 +71,7 @@ private:
     GhostNode *ghostnodePage;
     GhostVault *ghostVaultPage;
     DelegatedStaking *delegatedStakingPage;
+    OffChainGovernance *offchainGovernancePage;
 
 
     TransactionView *transactionView;
@@ -89,6 +91,7 @@ public Q_SLOTS:
     void gotoGhostnodePage();
     void gotoGhostVaultPage();
     void gotoDelegatedStakingPage();
+    void gotoOffChainGovernancePage();
 
     /** Show Sign/Verify Message dialog and switch to sign message tab */
     void gotoSignMessageTab(QString addr = "");

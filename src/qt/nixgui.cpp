@@ -127,6 +127,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
     spinnerFrame(0),
     ghostnodeAction(0),
     ghostVaultAction(0),
+    offchainGovernanceAction(0),
     platformStyle(_platformStyle)
 {
     QSettings settings;
@@ -344,6 +345,13 @@ void BitcoinGUI::createActions()
     delegatedStakingAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
     tabGroup->addAction(delegatedStakingAction);
 
+    offchainGovernanceAction = new QAction(platformStyle->SingleColorIcon(":/icons/governance"), tr("&Governance"), this);
+    offchainGovernanceAction->setStatusTip(tr("Vote for Governance Proposals"));
+    offchainGovernanceAction->setToolTip(offchainGovernanceAction->statusTip());
+    offchainGovernanceAction->setCheckable(true);
+    offchainGovernanceAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+    tabGroup->addAction(offchainGovernanceAction);
+
 #ifdef ENABLE_WALLET
     // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
@@ -364,6 +372,8 @@ void BitcoinGUI::createActions()
     connect(ghostVaultAction, SIGNAL(triggered()), this, SLOT(gotoGhostVaultPage()));
     connect(delegatedStakingAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(delegatedStakingAction, SIGNAL(triggered()), this, SLOT(gotoDelegatedStakingPage()));
+    connect(offchainGovernanceAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(offchainGovernanceAction, SIGNAL(triggered()), this, SLOT(gotoOffChainGovernancePage()));
         // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -525,6 +535,7 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(ghostnodeAction);
         toolbar->addAction(ghostVaultAction);
         toolbar->addAction(delegatedStakingAction);
+        toolbar->addAction(offchainGovernanceAction);
         overviewAction->setChecked(true);
     }
 }
@@ -638,6 +649,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     ghostnodeAction->setEnabled(enabled);
     ghostVaultAction->setEnabled(enabled);
     delegatedStakingAction->setEnabled(enabled);
+    offchainGovernanceAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
 }
 
@@ -797,6 +809,13 @@ void BitcoinGUI::gotoDelegatedStakingPage()
     QSettings settings;
     delegatedStakingAction->setChecked(true);
     if (walletFrame) walletFrame->gotoDelegatedStakingPage();
+}
+
+void BitcoinGUI::gotoOffChainGovernancePage()
+{
+    QSettings settings;
+    offchainGovernanceAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoOffChainGovernancePage();
 }
 
 void BitcoinGUI::gotoVerifyMessageTab(QString addr)

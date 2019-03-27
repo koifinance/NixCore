@@ -96,6 +96,7 @@ public Q_SLOTS:
     void gotoGhostnodePage();
     void gotoGhostVaultPage();
     void gotoDelegatedStakingPage();
+    void gotoOffChainGovernancePage();
 
     void unlockForStaking();
     void lockWallet();

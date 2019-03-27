@@ -54,6 +54,7 @@ void OnRequestCompleted()
     // print contents of data we received back...
     g_data.push_back('\0');
     g_governance.g_data = std::string(g_data.begin(), g_data.end());
+    g_governance.proposals.clear();
     ParseProposals();
     g_data.clear();
     g_governance.ready = true;
@@ -135,8 +136,6 @@ HTTPGetRequest::~HTTPGetRequest()
 
 }
 
-// host should be in format such as "www.google.co.nz"
-// url should be in format such as "/index.html"
 void HTTPGetRequest::sendRequest()
 {
     tcp::resolver::query query(m_host, "http");
@@ -170,8 +169,6 @@ void HTTPGetRequest::sendRequest()
     });
 }
 
-// host should be in format such as "www.google.co.nz"
-// url should be in format such as "/index.html"
 void HTTPGetRequest::postRequest(std::string json)
 {
     tcp::resolver::query query(m_host, "http");
@@ -189,9 +186,9 @@ void HTTPGetRequest::postRequest(std::string json)
                 request_stream << "Host: " << m_host << "\r\n";
                 request_stream << "Accept: */*\r\n";
                 request_stream << "Content-Type: application/json\r\n";
-                request_stream << "Content-Length: " << json.length() << "\r\n";
+                //request_stream << "Content-Length: " << json.length() << "\r\n";
                 request_stream << "Connection: close\r\n\r\n";
-                request_stream << json;
+                //request_stream << json;
 
                 boost::asio::async_write(m_socket, m_request,
                                          [this](boost::system::error_code ec, std::size_t /*length*/)

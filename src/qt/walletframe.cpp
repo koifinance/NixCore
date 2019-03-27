@@ -152,6 +152,13 @@ void WalletFrame::gotoDelegatedStakingPage()
         i.value()->gotoDelegatedStakingPage();
 }
 
+void WalletFrame::gotoOffChainGovernancePage()
+{
+    QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+        i.value()->gotoOffChainGovernancePage();
+}
+
 void WalletFrame::gotoSendCoinsPage(QString addr)
 {
     QMap<QString, WalletView*>::const_iterator i;

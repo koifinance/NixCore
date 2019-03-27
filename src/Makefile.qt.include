@@ -143,6 +143,7 @@ QT_FORMS_UI = \
   qt/forms/ghostvault.ui \
   qt/forms/ghostnode.ui \
   qt/forms/delegatedstaking.ui \
+  qt/forms/offchaingovernance.ui \
   qt/forms/mnemonicdialog.ui
 
 QT_MOC_CPP = \
@@ -153,6 +154,7 @@ QT_MOC_CPP = \
   qt/moc_delegatedstaking.cpp \
   qt/moc_ghostvault.cpp \
   qt/moc_ghostnode.cpp \
+  qt/moc_offchaingovernance.cpp \
   qt/moc_mnemonicdialog.cpp \
   qt/moc_nixaddressvalidator.cpp \
   qt/moc_nixamountfield.cpp \
@@ -275,6 +277,7 @@ NIX_QT_H = \
   qt/mnemonicdialog.h \
   qt/delegatedstaking.h \
   qt/ghostvault.h \
+  qt/offchaingovernance.h \
   qt/ghostnode.h
 
 RES_ICONS = \
@@ -308,6 +311,7 @@ RES_ICONS = \
   qt/res/icons/filesave.png \
   qt/res/icons/fontbigger.png \
   qt/res/icons/fontsmaller.png \
+  qt/res/icons/governance.png \
   qt/res/icons/hd_disabled.png \
   qt/res/icons/hd_enabled.png \
   qt/res/icons/history.png \
@@ -391,6 +395,7 @@ NIX_QT_WALLET_CPP = \
   qt/walletview.cpp \
   qt/delegatedstaking.cpp \
   qt/ghostvault.cpp \
+  qt/offchaingovernance.cpp \
   qt/ghostnode.cpp
 
 NIX_QT_CPP = $(NIX_QT_BASE_CPP)

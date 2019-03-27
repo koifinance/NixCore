@@ -20,6 +20,7 @@
 #include <qt/walletmodel.h>
 #include <qt/ghostnode.h>
 #include <qt/ghostvault.h>
+#include <qt/offchaingovernance.h>
 #include <qt/delegatedstaking.h>
 #include <timedata.h>
 #include <validation.h>
@@ -65,7 +66,7 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     ghostnodePage = new GhostNode(platformStyle);
     delegatedStakingPage = new DelegatedStaking(platformStyle);
     ghostVaultPage = new GhostVault(platformStyle, GhostVault::ForEditing, this);
-
+    offchainGovernancePage = new OffChainGovernance(platformStyle);
     // Create tabs
     overviewPage = new OverviewPage(platformStyle);
     overviewPage->ghostVaultPage = ghostVaultPage;
@@ -78,6 +79,7 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     addWidget(ghostnodePage);
     addWidget(ghostVaultPage);
     addWidget(delegatedStakingPage);
+    addWidget(offchainGovernancePage);
 
     // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
@@ -143,6 +145,7 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
     ghostnodePage->setWalletModel(_walletModel);
+    offchainGovernancePage->setWalletModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
     usedReceivingAddressesPage->setWalletModel(_walletModel);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
@@ -218,6 +221,7 @@ void WalletView::gotoGhostnodePage()
 {
     setCurrentWidget(ghostnodePage);
 }
+
 void WalletView::gotoGhostVaultPage()
 {
     setCurrentWidget(ghostVaultPage);
@@ -226,6 +230,11 @@ void WalletView::gotoGhostVaultPage()
 void WalletView::gotoDelegatedStakingPage()
 {
     setCurrentWidget(delegatedStakingPage);
+}
+
+void WalletView::gotoOffChainGovernancePage()
+{
+    setCurrentWidget(offchainGovernancePage);
 }
 
 void WalletView::gotoSignMessageTab(QString addr)

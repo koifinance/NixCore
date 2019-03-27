@@ -42,7 +42,7 @@ public:
     ~CGovernance();
 
     void GetRequests(RequestTypes rType);
-
+    void PostRequest(RequestTypes rType, std::string json);
     bool ready;
 
     //Get data
