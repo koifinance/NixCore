@@ -17,6 +17,7 @@
 
 class CGovernance;
 
+//static const std::string GOVERNANCE_URL = "www.governance.nixplatform.io";
 static const std::string GOVERNANCE_URL = "134.209.47.211";
 
 extern CGovernance g_governance;
@@ -26,18 +27,30 @@ enum RequestTypes
     SUBMISSIONS = 1,
 };
 
+struct Proposals{
+    std::string name;
+    std::string details;
+    std::string address;
+    std::string amount;
+    std::string txid;
+};
+
 class CGovernance
 {
-    //Get data
-    std::vector<char> g_data;
-    //Post data
-    std::vector<char> p_data;
-
 public:
     CGovernance();
     ~CGovernance();
 
     void GetRequests(RequestTypes rType);
+
+    bool ready;
+
+    //Get data
+    std::string g_data;
+    //Post data
+    std::string p_data;
+
+    std::vector<Proposals> proposals;
 
 };
 
@@ -60,6 +73,7 @@ public:
 
 public:
  void sendRequest();
+ void postRequest(std::string json);
 
 private:
  HTTPRequestDataReceived m_receivedCB;

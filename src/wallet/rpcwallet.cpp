@@ -5736,10 +5736,24 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
 
     g_governance.GetRequests(RequestTypes::SUBMISSIONS);
 
-    UniValue result(UniValue::VOBJ);
-    //result.pushKV("address", EncodeDestination(dest));
-    //result.pushKV("redeemScript", HexStr(inner.begin(), inner.end()));
-    return result;
+    while(!g_governance.ready){}
+
+    g_governance.ready = false;
+
+    UniValue end(UniValue::VOBJ);
+    for(int i = 0; i < g_governance.proposals.size(); i++){
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("name", g_governance.proposals[i].name);
+        result.pushKV("details", g_governance.proposals[i].details);
+        result.pushKV("address", g_governance.proposals[i].address);
+        result.pushKV("amount", g_governance.proposals[i].amount);
+        result.pushKV("txid", g_governance.proposals[i].txid);
+
+        end.pushKV("Proposal " + std::to_string(i), result);
+    }
+
+
+    return end;
 }
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
