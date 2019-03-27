@@ -137,6 +137,7 @@ NIX_CORE_H = \
   pos/miner.h \
   cuckoocache.h \
   fs.h \
+  governance/networking-governance.h \
   ghostnode/activeghostnode.h \
   ghostnode/darksend.h \
   ghostnode/darksend-relay.h \
@@ -335,6 +336,7 @@ endif
 libnix_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(NIX_INCLUDES)
 libnix_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libnix_wallet_a_SOURCES = \
+  governance/networking-governance.cpp \
   ghostnode/activeghostnode.cpp \
   ghostnode/darksend.cpp \
   ghostnode/darksend-relay.cpp \

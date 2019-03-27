@@ -5727,6 +5727,21 @@ UniValue getdatazerocoinacc(const JSONRPCRequest& request)
     return "null";
 }
 
+#include "governance/networking-governance.h"
+
+UniValue getoffchainproposals(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error("getoffchainproposals \n");
+
+    g_governance.GetRequests(RequestTypes::SUBMISSIONS);
+
+    UniValue result(UniValue::VOBJ);
+    //result.pushKV("address", EncodeDestination(dest));
+    //result.pushKV("redeemScript", HexStr(inner.begin(), inner.end()));
+    return result;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -5842,6 +5857,8 @@ static const CRPCCommand commands[] =
     { "NIX TOR",             "torstatus",        &torStatus,        {} },
 
 
+  //NIX Governance functions
+  { "NIX TOR",             "getoffchainproposals",        &getoffchainproposals,        {} },
 
 };
 
