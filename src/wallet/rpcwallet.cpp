@@ -5738,8 +5738,6 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
 
     while(!g_governance.ready){}
 
-    g_governance.ready = false;
-
     UniValue end(UniValue::VOBJ);
     for(int i = 0; i < g_governance.proposals.size(); i++){
         UniValue result(UniValue::VOBJ);

@@ -3,9 +3,11 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "networking-governance.h"
+#include <utiltime.h>
 
 
 CGovernance g_governance;
+uint64_t last_refresh_time = 0;
 
 std::vector<char> g_data;
 
@@ -75,6 +77,12 @@ CGovernance::~CGovernance(){
 void CGovernance::GetRequests(RequestTypes rType){
 
     boost::asio::io_service io_service;
+
+    if(GetTime() < (REFRESH_TIME + last_refresh_time))
+        continue;
+
+    last_refresh_time = GetTime();
+    ready = false;
 
     std::string urlRequest = "";
 

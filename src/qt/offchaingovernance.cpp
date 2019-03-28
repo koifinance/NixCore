@@ -123,8 +123,6 @@ void OffChainGovernance::updateProposalList()
 
     while(!g_governance.ready){}
 
-    g_governance.ready = false;
-
     BOOST_FOREACH(Proposals & prop, g_governance.proposals)
     {
         QTableWidgetItem *nameItem = new QTableWidgetItem(QString::fromStdString(prop.name));
