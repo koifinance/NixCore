@@ -23,3 +23,13 @@ TransactionDescDialog::~TransactionDescDialog()
 {
     delete ui;
 }
+
+void TransactionDescDialog::SetText(QString desc)
+{
+    ui->detailText->setText(desc);
+}
+
+void TransactionDescDialog::SetWindowTitle(QString desc)
+{
+    setWindowTitle(tr("Details for %1").arg(desc));
+}

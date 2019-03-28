@@ -23,6 +23,8 @@ class TransactionDescDialog : public QDialog
 public:
     explicit TransactionDescDialog(const QModelIndex &idx, QWidget *parent = 0);
     ~TransactionDescDialog();
+    void SetText(QString desc);
+    void SetWindowTitle(QString desc);
 
 private:
     Ui::TransactionDescDialog *ui;

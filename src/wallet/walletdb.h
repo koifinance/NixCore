@@ -391,7 +391,7 @@ public:
 
     bool WriteGovernanceEntry(const CGovernanceEntry& vote);
     bool ReadGovernanceEntry(const CGovernanceEntry& vote);
-    bool ListGovernanceEntries(std::list<CGovernanceEntry>& votes);
+    void ListGovernanceEntries(std::list<CGovernanceEntry>& votes);
 
 
 private:

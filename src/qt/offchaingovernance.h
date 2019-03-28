@@ -44,6 +44,7 @@ private:
     QMenu *contextMenu;
     int64_t nTimeFilterUpdated;
     bool fFilterUpdated;
+    QModelIndex selectedRow();
 
 public Q_SLOTS:
     void updateProposalList();
@@ -62,5 +63,15 @@ private:
 
 private Q_SLOTS:
     void on_filterLineEdit_textChanged(const QString &strFilterIn);
+    void on_expandProposalButton_clicked();
+    void on_tableWidgetProposals_doubleClicked(const QModelIndex &index);
+    void on_voteForButton_clicked();
+    void on_voteAgainstButton_clicked();
+    void showMenu(const QPoint &point);
+    void voteFor();
+    void voteAgainst();
+
+
+
 };
 #endif // OFFCHAIN_GOV_H

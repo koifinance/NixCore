@@ -3,9 +3,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 
-#include "offchaingovernance.h"
+#include "qt/offchaingovernance.h"
 #include "governance/networking-governance.h"
 #include "qt/forms/ui_offchaingovernance.h"
+#include "qt/transactiondescdialog.h"
 
 #include "clientmodel.h"
 #include "init.h"
@@ -50,11 +51,22 @@ OffChainGovernance::OffChainGovernance(const PlatformStyle *platformStyle, QWidg
     ui->tableWidgetProposals->setColumnWidth(3, columnActiveWidth);
     ui->tableWidgetProposals->setColumnWidth(4, columnLastSeenWidth);
 
-    QAction *startAliasAction = new QAction(tr("Start alias"), this);
+    // context menu actions
+    QAction *voteForAction = new QAction(tr("Vote For"), this);
+    QAction *voteAgainstAction = new QAction(tr("Vote Against"), this);
+
+    // context menu
+    contextMenu = new QMenu(this);
+    contextMenu->addAction(voteForAction);
+    contextMenu->addAction(voteAgainstAction);
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateProposalList()));
     timer->start(1000);
+    // context menu signals
+    connect(ui->tableWidgetProposals, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
+    connect(voteForAction, SIGNAL(triggered()), this, SLOT(voteFor()));
+    connect(voteAgainstAction, SIGNAL(triggered()), this, SLOT(voteAgainst()));
 
     fFilterUpdated = false;
     nTimeFilterUpdated = GetTime();
@@ -152,4 +164,98 @@ void OffChainGovernance::on_filterLineEdit_textChanged(const QString &strFilterI
     nTimeFilterUpdated = GetTime();
     fFilterUpdated = true;
     ui->countLabel->setText(QString::fromStdString(strprintf("Please wait... %d", FILTER_COOLDOWN_SECONDS)));
+}
+
+void OffChainGovernance::on_tableWidgetProposals_doubleClicked(const QModelIndex &index)
+{
+    QModelIndexList selection = ui->tableWidgetProposals->selectionModel()->selectedRows();
+    if(!selection.isEmpty())
+    {
+        TransactionDescDialog *dlg = new TransactionDescDialog(selection.at(0));
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+        int rowNumber = g_governance.proposals.size() - selection.at(0).row() - 1;
+        QString desc = tr("Name: ") + QString::fromStdString(g_governance.proposals[rowNumber].name) + tr("\n\n") +
+                tr("Details: ") + QString::fromStdString(g_governance.proposals[rowNumber].details) + tr("\n\n") +
+                tr("Address: ") + QString::fromStdString(g_governance.proposals[rowNumber].address) + tr("\n\n") +
+                tr("Amount: ") + QString::fromStdString(g_governance.proposals[rowNumber].amount) + tr("\n\n") +
+                tr("TxID: ") + QString::fromStdString(g_governance.proposals[rowNumber].txid) + tr("\n");
+
+
+        dlg->SetWindowTitle(selection.at(0).data(0).toString());
+        dlg->SetText(desc);
+        dlg->show();
+    }
+}
+
+void OffChainGovernance::on_expandProposalButton_clicked()
+{
+    if(!walletModel || !walletModel->getRecentRequestsTableModel() || !ui->tableWidgetProposals->selectionModel())
+        return;
+
+    QModelIndexList selection = ui->tableWidgetProposals->selectionModel()->selectedRows();
+
+    for (const QModelIndex& index : selection) {
+        on_tableWidgetProposals_doubleClicked(index);
+    }
+}
+
+QModelIndex OffChainGovernance::selectedRow()
+{
+    if(!ui->tableWidgetProposals->selectionModel())
+        return QModelIndex();
+    QModelIndexList selection = ui->tableWidgetProposals->selectionModel()->selectedRows();
+    if(selection.empty())
+        return QModelIndex();
+    // correct for selection mode ContiguousSelection
+    QModelIndex firstIndex = selection.at(0);
+    return firstIndex;
+}
+
+// context menu
+void OffChainGovernance::showMenu(const QPoint &point)
+{
+    if (!selectedRow().isValid()) {
+        return;
+    }
+    contextMenu->exec(QCursor::pos());
+}
+
+void OffChainGovernance::voteFor()
+{
+    QModelIndex sel = selectedRow();
+    if (!sel.isValid()) {
+        return;
+    }
+}
+
+void OffChainGovernance::voteAgainst()
+{
+    QModelIndex sel = selectedRow();
+    if (!sel.isValid()) {
+        return;
+    }
+}
+
+void OffChainGovernance::on_voteForButton_clicked()
+{
+    if(!ui->tableWidgetProposals->selectionModel())
+        return;
+
+    if (!selectedRow().isValid()) {
+        return;
+    }
+
+    voteFor();
+}
+
+void OffChainGovernance::on_voteAgainstButton_clicked()
+{
+    if(!ui->tableWidgetProposals->selectionModel())
+        return;
+
+    if (!selectedRow().isValid()) {
+        return;
+    }
+
+    voteAgainst();
 }

@@ -35,7 +35,7 @@ void ParseProposals(){
         last = propStr.find(",\"txid\"");
         prop.amount = propStr.substr (first,last-first);
         first = propStr.find("\"txid\":") + 8;
-        last = propStr.find("}") - 3;
+        last = propStr.find("}") - 4;
         prop.txid = propStr.substr (first,last-first);
         g_governance.proposals.push_back(prop);
     }

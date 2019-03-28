@@ -1034,7 +1034,7 @@ bool CWalletDB::ReadGovernanceEntry(const CGovernanceEntry &vote) {
 void CWalletDB::ListGovernanceEntries(std::list <CGovernanceEntry> &votes) {
     Dbc *pcursor = batch.GetCursor();
     if (!pcursor)
-        throw runtime_error("CWalletDB::ListCoinSpendSerial() : cannot create DB cursor");
+        throw runtime_error("CWalletDB::ListGovernanceEntries() : cannot create DB cursor");
     unsigned int fFlags = DB_SET_RANGE;
     while (true) {
         // Read next record
