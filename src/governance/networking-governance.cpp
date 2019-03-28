@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "networking-governance.h"
+#include <governance/networking-governance.h>
 #include <utiltime.h>
 
 
@@ -59,7 +59,7 @@ void OnRequestCompleted()
     g_governance.proposals.clear();
     ParseProposals();
     g_data.clear();
-    g_governance.ready = true;
+    g_governance.setReady();
 }
 
 CGovernance::CGovernance():
@@ -87,8 +87,14 @@ void CGovernance::GetRequests(RequestTypes rType){
     std::string urlRequest = "";
 
     switch (rType) {
-        case SUBMISSIONS: urlRequest = "/submissions/?format=json";
-        default: break;
+        case GET_PROPOSALS: {
+            urlRequest = "/submissions/?format=json";
+            break;
+        }
+        default: {
+            urlRequest = "/submissions/?format=json";
+            break;
+        }
     }
 
     HTTPGetRequest req(
@@ -110,9 +116,20 @@ void CGovernance::PostRequest(RequestTypes rType, std::string json){
     std::string urlRequest = "";
 
     switch (rType) {
-        case SUBMISSIONS: urlRequest = "/submissions";
-        default: break;
+        case GET_PROPOSALS: {
+            urlRequest = "/submissions/?format=json";
+            break;
+        }
+        case VOTE: {
+            urlRequest = "/submissions/?format=json";
+            break;
+        }
+        default: {
+            urlRequest = "/submissions/?format=json";
+            break;
+        }
     }
+
 
     HTTPGetRequest req(
      io_service,

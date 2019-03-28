@@ -119,7 +119,7 @@ void OffChainGovernance::updateProposalList()
     ui->tableWidgetProposals->clearContents();
     ui->tableWidgetProposals->setRowCount(0);
 
-    g_governance.GetRequests(RequestTypes::SUBMISSIONS);
+    g_governance.GetRequests(RequestTypes::GET_PROPOSALS);
 
     while(!g_governance.isReady()){}
 
@@ -171,12 +171,19 @@ void OffChainGovernance::on_tableWidgetProposals_doubleClicked(const QModelIndex
     {
         TransactionDescDialog *dlg = new TransactionDescDialog(selection.at(0));
         dlg->setAttribute(Qt::WA_DeleteOnClose);
-        int rowNumber = g_governance.proposals.size() - selection.at(0).row() - 1;
-        QString desc = tr("Name: ") + QString::fromStdString(g_governance.proposals[rowNumber].name) + tr("\n\n") +
-                tr("Details: ") + QString::fromStdString(g_governance.proposals[rowNumber].details) + tr("\n\n") +
-                tr("Address: ") + QString::fromStdString(g_governance.proposals[rowNumber].address) + tr("\n\n") +
-                tr("Amount: ") + QString::fromStdString(g_governance.proposals[rowNumber].amount) + tr("\n\n") +
-                tr("TxID: ") + QString::fromStdString(g_governance.proposals[rowNumber].txid) + tr("\n");
+        std::string name = selection.at(0).data(0).toString().toStdString();
+        Proposals selectedProp;
+        for(Proposals proposals: g_governance.proposals){
+            if(name == proposals.name){
+                selectedProp = proposals;
+                break;
+            }
+        }
+        QString desc = tr("Name: ") + QString::fromStdString(selectedProp.name) + tr("\n\n") +
+                tr("Details: ") + QString::fromStdString(selectedProp.details) + tr("\n\n") +
+                tr("Address: ") + QString::fromStdString(selectedProp.address) + tr("\n\n") +
+                tr("Amount: ") + QString::fromStdString(selectedProp.amount) + tr("\n\n") +
+                tr("TxID: ") + QString::fromStdString(selectedProp.txid) + tr("\n");
 
 
         dlg->SetWindowTitle(selection.at(0).data(0).toString());

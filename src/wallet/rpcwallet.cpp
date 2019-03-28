@@ -5734,7 +5734,7 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 0)
         throw runtime_error("getoffchainproposals \n");
 
-    g_governance.GetRequests(RequestTypes::SUBMISSIONS);
+    g_governance.GetRequests(RequestTypes::GET_PROPOSALS);
 
     while(!g_governance.isReady()){}
 

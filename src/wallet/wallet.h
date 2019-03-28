@@ -18,6 +18,7 @@
 #include <wallet/crypter.h>
 #include <wallet/walletdb.h>
 #include <wallet/rpcwallet.h>
+#include <governance/networking-governance.h>
 
 #include <algorithm>
 #include <atomic>
@@ -445,31 +446,6 @@ public:
         READWRITE(pubCoin);
         READWRITE(denomination);
         READWRITE(id);
-    }
-};
-
-class CGovernanceEntry
-{
-public:
-    CAmount voteWeight;
-    std::string voteID;
-
-    CGovernanceEntry()
-    {
-        SetNull();
-    }
-
-    void SetNull()
-    {
-        voteWeight = 0;
-        voteID.clear();
-    }
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(voteWeight);
-        READWRITE(voteID);
     }
 };
 

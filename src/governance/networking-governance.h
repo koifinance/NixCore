@@ -7,6 +7,7 @@
 
 #include <serialize.h>
 #include <uint256.h>
+#include <amount.h>
 
 #include <stdexcept>
 #include <vector>
@@ -28,7 +29,8 @@ extern uint64_t last_refresh_time;
 
 enum RequestTypes
 {
-    SUBMISSIONS = 1,
+    GET_PROPOSALS = 1,
+    VOTE = 2,
 };
 
 struct Proposals{
@@ -57,6 +59,7 @@ public:
 
     std::vector<Proposals> proposals;
     bool isReady(){return ready;}
+    void setReady(){ready = true;}
 
 };
 
@@ -96,6 +99,31 @@ private:
  boost::asio::streambuf m_response;
 
  void ReadData();
+};
+
+class CGovernanceEntry
+{
+public:
+    CAmount voteWeight;
+    std::string voteID;
+
+    CGovernanceEntry()
+    {
+        SetNull();
+    }
+
+    void SetNull()
+    {
+        voteWeight = 0;
+        voteID.clear();
+    }
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(voteWeight);
+        READWRITE(voteID);
+    }
 };
 
 #endif // NIX_GOV_H
