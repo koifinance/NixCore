@@ -5736,7 +5736,7 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
 
     g_governance.GetRequests(RequestTypes::SUBMISSIONS);
 
-    while(!g_governance.ready){}
+    while(!g_governance.isReady()){}
 
     UniValue end(UniValue::VOBJ);
     for(int i = 0; i < g_governance.proposals.size(); i++){

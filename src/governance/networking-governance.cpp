@@ -79,7 +79,7 @@ void CGovernance::GetRequests(RequestTypes rType){
     boost::asio::io_service io_service;
 
     if(GetTime() < (REFRESH_TIME + last_refresh_time))
-        continue;
+        return;
 
     last_refresh_time = GetTime();
     ready = false;

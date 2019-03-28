@@ -41,20 +41,22 @@ struct Proposals{
 
 class CGovernance
 {
+private:
+    bool ready;
+
 public:
     CGovernance();
     ~CGovernance();
 
     void GetRequests(RequestTypes rType);
     void PostRequest(RequestTypes rType, std::string json);
-    bool ready;
-
     //Get data
     std::string g_data;
     //Post data
     std::string p_data;
 
     std::vector<Proposals> proposals;
+    bool isReady(){return ready;}
 
 };
 

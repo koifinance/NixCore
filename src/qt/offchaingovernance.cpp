@@ -121,7 +121,7 @@ void OffChainGovernance::updateProposalList()
 
     g_governance.GetRequests(RequestTypes::SUBMISSIONS);
 
-    while(!g_governance.ready){}
+    while(!g_governance.isReady()){}
 
     BOOST_FOREACH(Proposals & prop, g_governance.proposals)
     {
