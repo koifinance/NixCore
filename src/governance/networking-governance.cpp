@@ -24,9 +24,18 @@ void ParseProposals(){
 
         //  parse proposal and place into proposal list
         Proposals prop;
+        first = propStr.find("\"voteid\":") + 10;
+        last = propStr.find(",\"name\"") - 1;
+        prop.vote_id = propStr.substr (first,last-first);
         first = propStr.find("\"name\":") + 8;
-        last = propStr.find(",\"details\"") - 1;
+        last = propStr.find(",\"date\"") - 1;
         prop.name = propStr.substr (first,last-first);
+        first = propStr.find("\"date\":") + 8;
+        last = propStr.find(",\"expiration\"") - 1;
+        prop.start_time = propStr.substr (first,last-first);
+        first = propStr.find("\"expiration\":") + 14;
+        last = propStr.find(",\"details\"") - 1;
+        prop.end_time = propStr.substr (first,last-first);
         first = propStr.find("\"details\":") + 11;
         last = propStr.find(",\"address\"") - 1;
         prop.details = propStr.substr (first,last-first);
@@ -37,8 +46,14 @@ void ParseProposals(){
         last = propStr.find(",\"txid\"");
         prop.amount = propStr.substr (first,last-first);
         first = propStr.find("\"txid\":") + 8;
-        last = propStr.find("}") - 4;
+        last = propStr.find(",\"affirm\"") - 1;
         prop.txid = propStr.substr (first,last-first);
+        first = propStr.find("\"affirm\":") + 10;
+        last = propStr.find(",\"oppose\"") - 1;
+        prop.votes_affirm = propStr.substr (first,last-first);
+        first = propStr.find("\"oppose\":") + 10;
+        last = propStr.find("}") - 4;
+        prop.votes_oppose = propStr.substr (first,last-first);
         g_governance.proposals.push_back(prop);
     }
 
@@ -88,11 +103,11 @@ void CGovernance::GetRequests(RequestTypes rType){
 
     switch (rType) {
         case GET_PROPOSALS: {
-            urlRequest = "/submissions/?format=json";
+            urlRequest = "/votes";
             break;
         }
         default: {
-            urlRequest = "/submissions/?format=json";
+            urlRequest = "/votes";
             break;
         }
     }
@@ -116,16 +131,12 @@ void CGovernance::PostRequest(RequestTypes rType, std::string json){
     std::string urlRequest = "";
 
     switch (rType) {
-        case GET_PROPOSALS: {
-            urlRequest = "/submissions/?format=json";
-            break;
-        }
-        case VOTE: {
-            urlRequest = "/submissions/?format=json";
+        case CAST_VOTE: {
+            urlRequest = "/cast";
             break;
         }
         default: {
-            urlRequest = "/submissions/?format=json";
+            urlRequest = "/cast";
             break;
         }
     }

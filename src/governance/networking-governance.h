@@ -30,15 +30,34 @@ extern uint64_t last_refresh_time;
 enum RequestTypes
 {
     GET_PROPOSALS = 1,
-    VOTE = 2,
+    CAST_VOTE = 2,
 };
 
 struct Proposals{
+    std::string vote_id;
     std::string name;
     std::string details;
     std::string address;
     std::string amount;
     std::string txid;
+    std::string start_time;
+    std::string end_time;
+    std::string votes_affirm;
+    std::string votes_oppose;
+
+    std::string toString()
+     {
+       return "Vote ID = "          + vote_id + "\n" +
+               "Name = "            + name + "\n" +
+               "Details = "         + details + "\n" +
+               "Address = "         + address + "\n" +
+               "Amount = "          + amount + "\n" +
+               "TxID = "            + txid + "\n" +
+               "Start Time = "      + start_time + "\n" +
+               "End Time = "        + end_time + "\n" +
+               "Votes Affirm = "    + votes_affirm + "\n" +
+               "Votes Oppose = "    + votes_oppose;
+     }
 };
 
 class CGovernance
