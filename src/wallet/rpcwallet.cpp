@@ -5777,7 +5777,7 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         //do something with address here
     }
 
-    std::string strAddress = "";
+    std::string strAddress = "GfA5nh7GaJXssm4YxZ6WVf4rPQX8kF5Hc3";
     std::string strMessage = vote_id;
 
     CTxDestination dest = DecodeDestination(strAddress);

@@ -121,8 +121,6 @@ void OffChainGovernance::updateProposalList()
 
     g_governance.GetRequests(RequestTypes::GET_PROPOSALS);
 
-    while(!g_governance.isReady()){}
-
     BOOST_FOREACH(Proposals & prop, g_governance.proposals)
     {
         QTableWidgetItem *nameItem = new QTableWidgetItem(QString::fromStdString(prop.name));
