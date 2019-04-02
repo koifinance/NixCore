@@ -722,32 +722,14 @@ UniValue leasestaking(const JSONRPCRequest& request)
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-    // Wallet comments
     CWalletTx wtx;
-    if (!request.params[4].isNull() && !request.params[4].get_str().empty())
-        wtx.mapValue["comment"] = request.params[4].get_str();
-    if (!request.params[5].isNull() && !request.params[5].get_str().empty())
-        wtx.mapValue["to"]      = request.params[5].get_str();
 
     bool fSubtractFeeFromAmount = false;
-    if (!request.params[6].isNull()) {
-        fSubtractFeeFromAmount = request.params[6].get_bool();
+    if (!request.params[5].isNull()) {
+        fSubtractFeeFromAmount = request.params[5].get_bool();
     }
 
-    CCoinControl coin_control;
-    if (!request.params[7].isNull()) {
-        coin_control.signalRbf = request.params[7].get_bool();
-    }
 
-    if (!request.params[8].isNull()) {
-        coin_control.m_confirm_target = ParseConfirmTarget(request.params[8]);
-    }
-
-    if (!request.params[9].isNull()) {
-        if (!FeeModeFromString(request.params[9].get_str(), coin_control.m_fee_mode)) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid estimate_mode parameter");
-        }
-    }
 
 
     EnsureWalletIsUnlocked(pwallet);
@@ -806,7 +788,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
     // Fee
     int64_t nFeePercent = 0;
     if (!request.params[3].isNull()){
-        nFeePercent = int64_t(AmountFromValue(request.params[2])/1000000);
+        nFeePercent = int64_t(AmountFromValue(request.params[3])/1000000);
         if(nFeePercent > 10000 || nFeePercent < 0){
             throw JSONRPCError(RPC_INVALID_PARAMETER, "nFeePercent too large. Must be between 0 and 100");;
         }
@@ -819,7 +801,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid reward address");
         // Parse coldstaking fee reward address
         // Take only txdestination, leave out hash160 and equal when including in script
-        CScript delegateScriptRewardTemp = GetScriptForDestination(DecodeDestination(request.params[5].get_str()));
+        CScript delegateScriptRewardTemp = GetScriptForDestination(DecodeDestination(request.params[4].get_str()));
         if (delegateScriptRewardTemp.IsPayToPublicKeyHash())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid delagate key");
 
@@ -878,6 +860,8 @@ UniValue leasestaking(const JSONRPCRequest& request)
     CRecipient recipient = {scriptPubKeyKernel, nAmount, fSubtractFeeFromAmount};
     vecSend.push_back(recipient);
 
+    CCoinControl coin_control;
+
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
         if (!fSubtractFeeFromAmount && nAmount + nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
@@ -891,7 +875,7 @@ UniValue leasestaking(const JSONRPCRequest& request)
 
     // label the address at the end to ensure tx went ok
     if(!request.params[2].isNull()){
-        pwallet->SetAddressBook(dest, request.params[3].get_str(), "receive");
+        pwallet->SetAddressBook(returnAddr, request.params[2].get_str(), "receive");
     }
 
     // lock the output
@@ -936,7 +920,7 @@ UniValue getleasestakinglist(const JSONRPCRequest& request)
     UniValue lposContracts(UniValue::VOBJ);
 
     // unlock all previous contracts
-    for(int i = 0; i < pwallet->activeContracts; i++){
+    for(int i = 0; i < pwallet->activeContracts.size(); i++){
         COutPoint point = pwallet->activeContracts[i];
         pwallet->UnlockCoin(point);
     }
@@ -1040,7 +1024,7 @@ UniValue cancelstakingcontract(const JSONRPCRequest& request){
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() != 2)
+    if (request.fHelp || request.params.size() != 3)
         throw std::runtime_error(
             "cancelleaststakingcontract tx_hash tx_index\n"
             "\nCancel a contract in this wallet using the tx hash and tx index indentifiers.\n"
@@ -1048,16 +1032,16 @@ UniValue cancelstakingcontract(const JSONRPCRequest& request){
             "\nArguments:\n"
             "1. \"tx_hash\"                    (string, required) The transaction hash of the contract you are trying to cancel.\n"
             "2. \"tx_index\"                   (numeric or string, required) The index of the transaction. eg 1\n"
+            "3. \"amount\"                     (numeric or string, required) The amount of the transaction. eg 10\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id of the canceled contract.\n"
             "\nExamples:\n"
-            + HelpExampleCli("cancelleaststakingcontract", "98c74c91d69511167de6c07f21b1c6449786a53e8df2892772ba0355abd01b6d 0")
+            + HelpExampleCli("cancelleaststakingcontract", "98c74c91d69511167de6c07f21b1c6449786a53e8df2892772ba0355abd01b6d 0 10")
         );
 
     std::string hashStr = request.params[0].get_str();
-    vector<unsigned char> txhash(hashStr.begin(), hashStr.end());
 
-    const uint256 hash = uint256(txhash);
+    const uint256 hash = uint256S(hashStr);
     std::string txIndexStr = request.params[1].get_str();
     stringstream convert(txIndexStr);
     int x = 0;
@@ -1067,7 +1051,7 @@ UniValue cancelstakingcontract(const JSONRPCRequest& request){
     ctrl.UnSelectAll();
     COutPoint point(hash, index);
     ctrl.Select(point);
-    CAmount totalAmount = 0;
+    CAmount totalAmount = AmountFromValue(request.params[2]);
     pwallet->UnlockCoin(point);
 
     if (!pwallet->IsLocked()) {
@@ -6118,7 +6102,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getstakingaverage",        &getstakingaverage,        {} },
     { "wallet",             "leasestaking",             &leasestaking,             {"lease address","amount", "fee percent","lease percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
     { "wallet",             "getleasestakinglist",      &getleasestakinglist,      {} },
-    { "wallet",             "cancelstakingcontract",    &cancelstakingcontract,    {"tx_hash","tx_index"} },
+    { "wallet",             "cancelstakingcontract",    &cancelstakingcontract,    {"tx_hash","tx_index", "amount"} },
     // NIX Ghost functions (experimental)
     { "NIX Privacy",        "listunspentghostednix",    &listunspentmintzerocoins, {} },
     { "NIX Privacy",        "ghostamount",              &ghostamount,              {"amount"} },
