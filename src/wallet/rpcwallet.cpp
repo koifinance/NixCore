@@ -893,6 +893,227 @@ UniValue leasestaking(const JSONRPCRequest& request)
     if(!request.params[2].isNull()){
         pwallet->SetAddressBook(dest, request.params[3].get_str(), "receive");
     }
+
+    // lock the output
+    int out_index = 0;
+    for(auto &tx :wtx.tx->vout){
+        if(tx.scriptPubKey.IsPayToScriptHash_CS() || tx.scriptPubKey.IsPayToWitnessKeyHash_CS()){
+            COutPoint lposOut(wtx.GetHash(), out_index);
+            pwallet->LockCoin(lposOut);
+        }
+        out_index++;
+    }
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue getleasestakinglist(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() > 0 )
+        throw std::runtime_error(
+            "getleasestakinglist \n"
+            "\nGet list of current LPoS contracts in wallet.\n"
+            + HelpRequiringPassphrase(pwallet));
+
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    std::map<std::string, std::vector<COutput> > mapCoins;
+
+    // push all coins from all addresses into mapping
+    for (auto& group : pwallet->ListCoins()) {
+        auto& resultGroup = mapCoins[EncodeDestination(group.first)];
+        for (auto& coin : group.second) {
+            resultGroup.emplace_back(std::move(coin));
+        }
+    }
+
+    UniValue lposContracts(UniValue::VOBJ);
+
+    // unlock all previous contracts
+    for(int i = 0; i < pwallet->activeContracts; i++){
+        COutPoint point = pwallet->activeContracts[i];
+        pwallet->UnlockCoin(point);
+    }
+
+    pwallet->activeContracts.clear();
+
+    int contractAmount = 0;
+    for (const std::pair<std::string, std::vector<COutput>>& coins : mapCoins) {
+        CAmount nSum = 0;
+        for (const COutput& out : coins.second) {
+            nSum = out.tx->tx->vout[out.i].nValue;
+            //skip spent coins
+            if(pwallet->IsSpent(out.tx->tx->vout[out.i].GetHash(), out.i)) continue;
+
+            // address
+            CTxDestination ownerDest;
+            if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToScriptHash_CS()
+                    || out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
+                if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, ownerDest))
+                {
+                    CScript ownerScript;
+                    CScript delegateScript;
+                    int64_t feeAmount;
+                    CScript feeRewardScript;
+                    CScriptID hash;
+
+                    if (out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
+                        //p2wkh
+                        GetNonCoinstakeScriptPath(out.tx->tx->vout[out.i].scriptPubKey, ownerScript);
+                        hash =  CScriptID(ownerScript);
+                    }
+                    else
+                        hash = boost::get<CScriptID>(ownerDest);
+
+                    if(pwallet->HaveCScript(hash)){
+                        GetCoinstakeScriptPath(out.tx->tx->vout[out.i].scriptPubKey, delegateScript);
+                        bool hasFee = GetCoinstakeScriptFee(out.tx->tx->vout[out.i].scriptPubKey, feeAmount);
+                        GetCoinstakeScriptFeeRewardAddress(out.tx->tx->vout[out.i].scriptPubKey, feeRewardScript);
+
+                        CBitcoinAddress addr1(ownerDest);
+
+                        CTxDestination delegateDest;
+                        ExtractDestination(delegateScript, delegateDest);
+                        CBitcoinAddress addr2(delegateDest);
+
+                        CTxDestination rewardFeeDest;
+                        ExtractDestination(feeRewardScript, rewardFeeDest);
+                        CBitcoinAddress addr3(rewardFeeDest);
+
+                        if(!hasFee)
+                            feeAmount = 0;
+
+                        std::string ownerAddrString = addr1.ToString();
+                        std::string leaseAddress = addr2.ToString();
+                        std::string rewardAddress = addr3.ToString();
+
+                        if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToWitnessKeyHash_CS()){
+                            ownerAddrString = EncodeDestination(ownerDest, true);
+                            leaseAddress = EncodeDestination(delegateDest, true);
+                            rewardAddress = EncodeDestination(rewardFeeDest, true);
+                        }
+
+                        if(pwallet->mapAddressBook.find(ownerDest) != pwallet->mapAddressBook.end())
+                        {
+                            if(pwallet->mapAddressBook[ownerDest].name != "")
+                                ownerAddrString = pwallet->mapAddressBook[ownerDest].name;
+                        }
+
+                        if(!hasFee)
+                            rewardAddress = "N/A";
+
+                        UniValue contract(UniValue::VOBJ);
+                        contract.pushKV("my_addres", ownerAddrString);
+                        contract.pushKV("lease_address", leaseAddress);
+                        contract.pushKV("fee", std::to_string((double)feeAmount/100.00));
+                        contract.pushKV("reward_fee_address", rewardAddress);
+                        contract.pushKV("amount", std::to_string(nSum));
+                        contract.pushKV("tx_hash", out.tx->tx->GetHash().GetHex());
+                        contract.pushKV("tx_index", std::to_string(out.i));
+
+                        lposContracts.pushKV("contract " + std::to_string(contractAmount), contract);
+                        contractAmount++;
+
+                        COutPoint point(out.tx->GetHash(), out.i);
+                        pwallet->LockCoin(point);
+                        pwallet->activeContracts.push_back(point);
+
+                    }
+                }
+            }
+        }
+    }
+
+    return lposContracts;
+}
+
+UniValue cancelstakingcontract(const JSONRPCRequest& request){
+
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "cancelleaststakingcontract tx_hash tx_index\n"
+            "\nCancel a contract in this wallet using the tx hash and tx index indentifiers.\n"
+            + HelpRequiringPassphrase(pwallet) +
+            "\nArguments:\n"
+            "1. \"tx_hash\"                    (string, required) The transaction hash of the contract you are trying to cancel.\n"
+            "2. \"tx_index\"                   (numeric or string, required) The index of the transaction. eg 1\n"
+            "\nResult:\n"
+            "\"txid\"                  (string) The transaction id of the canceled contract.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("cancelleaststakingcontract", "98c74c91d69511167de6c07f21b1c6449786a53e8df2892772ba0355abd01b6d 0")
+        );
+
+    std::string hashStr = request.params[0].get_str();
+    vector<unsigned char> txhash(hashStr.begin(), hashStr.end());
+
+    const uint256 hash = uint256(txhash);
+    std::string txIndexStr = request.params[1].get_str();
+    stringstream convert(txIndexStr);
+    int x = 0;
+    convert >> x;
+    const int index = x;
+    CCoinControl ctrl;
+    ctrl.UnSelectAll();
+    COutPoint point(hash, index);
+    ctrl.Select(point);
+    CAmount totalAmount = 0;
+    pwallet->UnlockCoin(point);
+
+    if (!pwallet->IsLocked()) {
+        pwallet->TopUpKeyPool();
+    }
+
+    std::string strError;
+    // Generate a new key that is added to wallet
+    CPubKey newKey;
+    if (!pwallet->GetKeyFromPool(newKey)) {
+        strError = strprintf("Error: GetKeyFromPool\n");
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);    }
+
+    pwallet->LearnRelatedScripts(newKey, g_address_type);
+    CTxDestination dest = GetDestinationForKey(newKey, g_address_type);
+
+    CScript scriptPubKey = GetScriptForDestination(dest);
+
+
+    // Create and send the transaction
+    CReserveKey reservekey(pwallet);
+    CAmount nFeeRequired;
+    std::vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, totalAmount, true};
+    vecSend.push_back(recipient);
+
+    CWalletTx wtx;
+
+    if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, ctrl)) {
+        strError = strprintf("Error: Create transaction was rejected! Reason given: %s", strError);
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+
+    /**************************************************************************************************************
+         **************************************************************************************************************
+         **************************************************************************************************************
+         *  End send dialog  */
+
+    CValidationState state;
+    if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+        strError = strprintf("Error: Commit Transaction was rejected! Reason given: %s", state.GetRejectReason());
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
     return wtx.GetHash().GetHex();
 }
 
@@ -5793,7 +6014,7 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
     }
 
     CKey key;
-    if (!pwallet->GetKey(*keyID, key)) {
+    if (!pwallet->GetKey(keyID, key)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
     }
 
@@ -5896,6 +6117,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "manageaddressbook",        &manageaddressbook,        {"action","address","label","purpose"} },
     { "wallet",             "getstakingaverage",        &getstakingaverage,        {} },
     { "wallet",             "leasestaking",             &leasestaking,             {"lease address","amount", "fee percent","lease percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
+    { "wallet",             "getleasestakinglist",      &getleasestakinglist,      {} },
+    { "wallet",             "cancelstakingcontract",    &cancelstakingcontract,    {"tx_hash","tx_index"} },
     // NIX Ghost functions (experimental)
     { "NIX Privacy",        "listunspentghostednix",    &listunspentmintzerocoins, {} },
     { "NIX Privacy",        "ghostamount",              &ghostamount,              {"amount"} },

@@ -1223,6 +1223,7 @@ public:
         fAbortRescan = false;
         fScanningWallet = false;
         walletVersion = 0;
+        activeContracts.clear();
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -1243,6 +1244,8 @@ public:
     std::map<CTxDestination, CAddressBookData> mapAddressBook;
 
     std::set<COutPoint> setLockedCoins;
+    std::vector <COutPoint> activeContracts;
+
 
     const CWalletTx* GetWalletTx(const uint256& hash) const;
 

@@ -2054,6 +2054,7 @@ bool AppInitMain()
         }
         #endif
     }
+
     // ********************************************************* Step 12: finished
 
     SetRPCWarmupFinished();

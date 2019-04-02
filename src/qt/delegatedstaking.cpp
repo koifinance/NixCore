@@ -415,7 +415,13 @@ void DelegatedStaking::updateContractList() {
     if (!walletModel)
         return;
 
+    ui->activeContractsView->clear();
     ui->activeContractsView->setRowCount(0);
+    //unlock previous coins
+    for(int i = 0; i < activeContractsOutpoints.size(); i++){
+        COutPoint pt = activeContractsOutpoints[i];
+        walletModel->getWallet()->UnlockCoin(pt);
+    }
     activeContractsOutpoints.clear();
     activeContractsAmounts.clear();
     std::map<QString, std::vector<COutput> > mapCoins;
