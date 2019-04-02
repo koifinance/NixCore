@@ -426,6 +426,9 @@ void DelegatedStaking::updateContractList() {
         for (const COutput& out : coins.second) {
             nSum = out.tx->tx->vout[out.i].nValue;
 
+            //skip spent coins
+            if(walletModel->getWallet()->IsSpent(out.tx->tx->vout[out.i].GetHash(), out.i)) continue;
+
             // address
             CTxDestination ownerDest;
             if(out.tx->tx->vout[out.i].scriptPubKey.IsPayToScriptHash_CS()

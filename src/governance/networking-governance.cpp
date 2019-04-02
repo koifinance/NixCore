@@ -4,6 +4,8 @@
 
 #include <governance/networking-governance.h>
 #include <utiltime.h>
+#include <ostream>
+#include <string>
 
 
 CGovernance g_governance;
@@ -30,11 +32,11 @@ void ParseProposals(){
         first = propStr.find("\"name\":") + 8;
         last = propStr.find(",\"date\"") - 1;
         prop.name = propStr.substr (first,last-first);
-        first = propStr.find("\"date\":") + 8;
-        last = propStr.find(",\"expiration\"") - 1;
+        first = propStr.find("\"date\":") + 7;
+        last = propStr.find(",\"expiration\"");
         prop.start_time = propStr.substr (first,last-first);
-        first = propStr.find("\"expiration\":") + 14;
-        last = propStr.find(",\"details\"") - 1;
+        first = propStr.find("\"expiration\":") + 13;
+        last = propStr.find(",\"details\"");
         prop.end_time = propStr.substr (first,last-first);
         first = propStr.find("\"details\":") + 11;
         last = propStr.find(",\"address\"") - 1;
@@ -48,11 +50,11 @@ void ParseProposals(){
         first = propStr.find("\"txid\":") + 8;
         last = propStr.find(",\"affirm\"") - 1;
         prop.txid = propStr.substr (first,last-first);
-        first = propStr.find("\"affirm\":") + 10;
-        last = propStr.find(",\"oppose\"") - 1;
+        first = propStr.find("\"affirm\":") + 9;
+        last = propStr.find(",\"oppose\"");
         prop.votes_affirm = propStr.substr (first,last-first);
-        first = propStr.find("\"oppose\":") + 10;
-        last = propStr.find("}") - 4;
+        first = propStr.find("\"oppose\":") + 9;
+        last = propStr.find("}") - 3;
         prop.votes_oppose = propStr.substr (first,last-first);
         g_governance.proposals.push_back(prop);
     }
@@ -73,6 +75,14 @@ void OnRequestCompleted()
     g_governance.g_data = std::string(g_data.begin(), g_data.end());
     g_governance.proposals.clear();
     ParseProposals();
+    g_data.clear();
+    g_governance.setReady();
+}
+
+void OnRequestCompletedPost()
+{
+    g_data.push_back('\0');
+    g_governance.p_data = std::string(g_data.begin(), g_data.end());
     g_data.clear();
     g_governance.setReady();
 }
@@ -103,7 +113,7 @@ void CGovernance::GetRequests(RequestTypes rType){
 
     switch (rType) {
         case GET_PROPOSALS: {
-            urlRequest = "/votes";
+            urlRequest = "/votes/?format=json";
             break;
         }
         default: {
@@ -141,28 +151,31 @@ void CGovernance::PostRequest(RequestTypes rType, std::string json){
         }
     }
 
+    ready = false;
 
     HTTPGetRequest req(
      io_service,
      GOVERNANCE_URL.c_str(),
      urlRequest.c_str(),
      OnDataReceived,
-     OnRequestCompleted);
+     OnRequestCompletedPost,
+     json);
 
 
-    req.postRequest(json);
+    req.postRequest();
 
     io_service.run();
 }
 
-HTTPGetRequest::HTTPGetRequest(boost::asio::io_service& io_service, std::string host, std::string clipURL, HTTPRequestDataReceived receivedCB, HTTPRequestComplete completeCB) :
+HTTPGetRequest::HTTPGetRequest(boost::asio::io_service& io_service, std::string host, std::string clipURL, HTTPRequestDataReceived receivedCB, HTTPRequestComplete completeCB, std::string jsonPost) :
     m_host(host),
     m_relativeURL(clipURL),
     m_io_service(io_service),
     m_socket(io_service),
     m_resolver(m_io_service),
     m_receivedCB(receivedCB),
-    m_completeCB(completeCB)
+    m_completeCB(completeCB),
+    m_postURL(jsonPost)
 {
 
 }
@@ -205,7 +218,7 @@ void HTTPGetRequest::sendRequest()
     });
 }
 
-void HTTPGetRequest::postRequest(std::string json)
+void HTTPGetRequest::postRequest()
 {
     tcp::resolver::query query(m_host, "http");
 
@@ -222,9 +235,9 @@ void HTTPGetRequest::postRequest(std::string json)
                 request_stream << "Host: " << m_host << "\r\n";
                 request_stream << "Accept: */*\r\n";
                 request_stream << "Content-Type: application/json\r\n";
-                //request_stream << "Content-Length: " << json.length() << "\r\n";
+                request_stream << "Content-Length: " << m_postURL.length() << "\r\n";
                 request_stream << "Connection: close\r\n\r\n";
-                //request_stream << json;
+                request_stream << m_postURL;
 
                 boost::asio::async_write(m_socket, m_request,
                                          [this](boost::system::error_code ec, std::size_t /*length*/)

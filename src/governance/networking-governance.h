@@ -8,6 +8,7 @@
 #include <serialize.h>
 #include <uint256.h>
 #include <amount.h>
+#include <univalue.h>
 
 #include <stdexcept>
 #include <vector>
@@ -46,18 +47,37 @@ struct Proposals{
     std::string votes_oppose;
 
     std::string toString()
-     {
-       return "Vote ID = "          + vote_id + "\n" +
-               "Name = "            + name + "\n" +
-               "Details = "         + details + "\n" +
-               "Address = "         + address + "\n" +
-               "Amount = "          + amount + "\n" +
-               "TxID = "            + txid + "\n" +
-               "Start Time = "      + start_time + "\n" +
-               "End Time = "        + end_time + "\n" +
-               "Votes Affirm = "    + votes_affirm + "\n" +
-               "Votes Oppose = "    + votes_oppose;
-     }
+    {
+       return "Vote ID: "          + vote_id + " \n\n" +
+               "Name: "            + name + " \n\n" +
+               "Details: "         + details + " \n\n" +
+               "Address: "         + address + " \n\n" +
+               "Amount: "          + amount + " \n\n" +
+               "TxID: "            + txid + " \n\n" +
+               "Start Time: "      + start_time + " \n\n" +
+               "End Time: "        + end_time + " \n\n" +
+               "Votes Affirm: "    + votes_affirm + " \n\n" +
+               "Votes Oppose: "    + votes_oppose;
+    }
+
+    UniValue toJSONString()
+    {
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("vote_id", vote_id);
+        result.pushKV("name", name);
+        result.pushKV("details", details);
+        result.pushKV("address", address);
+        result.pushKV("amount", amount);
+        result.pushKV("txid", txid);
+        result.pushKV("start_time",start_time);
+        result.pushKV("end_time", end_time);
+        result.pushKV("votes_affirm", votes_affirm);
+        result.pushKV("votes_oppose", votes_oppose);
+
+        return result;
+    }
+
+
 };
 
 class CGovernance
@@ -95,13 +115,14 @@ public:
   std::string host,
   std::string relativeURL,
   HTTPRequestDataReceived receivedCB,
-  HTTPRequestComplete completeCB);
+  HTTPRequestComplete completeCB,
+  std::string jsonPost = "");
 
  ~HTTPGetRequest();
 
 public:
  void sendRequest();
- void postRequest(std::string json);
+ void postRequest();
 
 private:
  HTTPRequestDataReceived m_receivedCB;
@@ -109,6 +130,7 @@ private:
 
  std::string m_host;
  std::string m_relativeURL;
+ std::string m_postURL;
 
  tcp::socket m_socket;
  boost::asio::io_service &m_io_service;

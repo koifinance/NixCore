@@ -991,22 +991,19 @@ UniValue signmessage(const JSONRPCRequest& request)
     std::string strMessage = request.params[1].get_str();
 
     CTxDestination dest = DecodeDestination(strAddress);
-    CommitmentKeyPack commitment(strAddress);
 
-    if(commitment.IsValidPack()){
-        return true;
-    }
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
     }
 
-    const CKeyID *keyID = boost::get<CKeyID>(&dest);
-    if (!keyID) {
+    const CKeyID keyID = GetKeyForDestination(*pwallet, dest);
+    //const CKeyID *keyID = boost::get<CKeyID>(&dest);
+    if (keyID.IsNull()) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
     }
 
     CKey key;
-    if (!pwallet->GetKey(*keyID, key)) {
+    if (!pwallet->GetKey(keyID, key)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
     }
 
@@ -5740,18 +5737,87 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
 
     UniValue end(UniValue::VOBJ);
     for(int i = 0; i < g_governance.proposals.size(); i++){
-        UniValue result(UniValue::VOBJ);
-        result.pushKV("name", g_governance.proposals[i].name);
-        result.pushKV("details", g_governance.proposals[i].details);
-        result.pushKV("address", g_governance.proposals[i].address);
-        result.pushKV("amount", g_governance.proposals[i].amount);
-        result.pushKV("txid", g_governance.proposals[i].txid);
-
-        end.pushKV("Proposal " + std::to_string(i), result);
+        end.pushKV("Proposal " + std::to_string(i), g_governance.proposals[i].toJSONString());
     }
 
 
     return end;
+}
+
+/* Example post:
+ * {"voteid":"test123","address":"GNqLhRRh3eVBBDrWsGJNgX8nWQt1zciJPu",
+ * "signature":"IE+oq0+L4+JAcOMztJLebEp7xR8hs/v2rXCW/slNcYQsH0ElchOI1xnPIANNWAg01KmqbAcfUjjHPotjyjuSkXU=",
+ * "ballot":0}
+ */
+UniValue postoffchainproposals(const JSONRPCRequest& request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() != 2)
+        throw runtime_error("getoffchainproposals vote_id decision(0/1)\n"
+                            + HelpRequiringPassphrase(pwallet) + "\n"
+                            "\nArguments:\n"
+                            "1. \"vote_id\"         (string, required) The vote ID of the proposal this wallet is voting for \"\".\n"
+                            "2. \"decision\"        (string, required) The decision of this wallet's vote. Binary value, 0 = against, 1 = in favor.\n");
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    std::string postMessage;
+    std::string vote_id = request.params[0].get_str();
+    std::string decision = request.params[1].get_str();
+
+    for (auto& addr : pwallet->mapAddressBook) {
+        CTxDestination dest = addr.first;
+
+        //COutput coin = group.second;
+        //if(pwallet->IsSpent(coin.tx->GetHash(), coin.i)) continue;
+
+        //do something with address here
+    }
+
+    std::string strAddress = "";
+    std::string strMessage = vote_id;
+
+    CTxDestination dest = DecodeDestination(strAddress);
+
+    if (!IsValidDestination(dest)) {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+    }
+
+    const CKeyID keyID = GetKeyForDestination(*pwallet, dest);
+    //const CKeyID *keyID = boost::get<CKeyID>(&dest);
+    if (keyID.IsNull()) {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+    }
+
+    CKey key;
+    if (!pwallet->GetKey(*keyID, key)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+    }
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << strMessageMagic;
+    ss << strMessage;
+
+    std::vector<unsigned char> vchSig;
+    if (!key.SignCompact(ss.GetHash(), vchSig))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed");
+
+    postMessage = "[{\"voteid\":\"" + vote_id +
+                    "\",\"address\":\"" + strAddress +
+                    "\",\"signature\":\"" + EncodeBase64(vchSig.data(), vchSig.size()) +
+                    "\",\"ballot\":" + decision + "}]";
+
+    g_governance.PostRequest(RequestTypes::CAST_VOTE, postMessage);
+
+    while(!g_governance.isReady()){}
+
+    UniValue end(UniValue::VOBJ);
+    end.pushKV("response", g_governance.p_data);
+
+    return g_governance.p_data;
 }
 
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
@@ -5821,56 +5887,47 @@ static const CRPCCommand commands[] =
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        {"txid"} },
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
     { "wallet",             "getfeeforamount",          &getfeeforamount,          {"amount", "address"} },
-
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
-
     // NIX Staking functions
-    { "wallet",             "getstakinginfo",                   &getstakinginfo,                {} },
-    { "wallet",             "getcoldstakinginfo",               &getcoldstakinginfo,            {} },
-    { "wallet",             "reservebalance",                   &reservebalance,                {"enabled","amount"} },
-    { "wallet",             "getalladdresses",                  &getalladdresses,               {} },
-    { "wallet",             "manageaddressbook",                &manageaddressbook,             {"action","address","label","purpose"} },
-    { "wallet",             "getstakingaverage",                &getstakingaverage,             {} },
-    { "wallet",             "leasestaking",                     &leasestaking,                  {"lease address","amount", "fee percent","lease percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
-
-
-
+    { "wallet",             "getstakinginfo",           &getstakinginfo,           {} },
+    { "wallet",             "getcoldstakinginfo",       &getcoldstakinginfo,       {} },
+    { "wallet",             "reservebalance",           &reservebalance,           {"enabled","amount"} },
+    { "wallet",             "getalladdresses",          &getalladdresses,          {} },
+    { "wallet",             "manageaddressbook",        &manageaddressbook,        {"action","address","label","purpose"} },
+    { "wallet",             "getstakingaverage",        &getstakingaverage,        {} },
+    { "wallet",             "leasestaking",             &leasestaking,             {"lease address","amount", "fee percent","lease percent reward address", "comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
     // NIX Ghost functions (experimental)
-    { "NIX Ghost Protocol",             "listunspentghostednix",    &listunspentmintzerocoins,  {} },
-    { "NIX Ghost Protocol",             "ghostamount",              &ghostamount,               {"amount"} },
-    { "NIX Ghost Protocol",             "unghostamount",            &unghostamount,             {"amount"} },
-    { "NIX Ghost Protocol",             "resetghostednix",          &resetmintzerocoin,         {} },
-    { "NIX Ghost Protocol",             "setghostednixstatus",      &setmintzerocoinstatus,     {} },
-    { "NIX Ghost Protocol",             "listghostednix",           &listmintzerocoins,         {"all"} },
-    { "NIX Ghost Protocol",             "listpubcoins",             &listpubcoins,              {} },
-    { "NIX Ghost Protocol",             "refillghostkeys",          &refillghostkeys,           {"amount"} },
-    { "NIX Ghost Protocol",             "listunloadedpubcoins",     &listunloadedpubcoins,      {"amount"} },
-    { "NIX Ghost Protocol",             "payunloadedpubcoins",      &payunloadedpubcoins,       {"amount", "address"} },
-    { "NIX Ghost Protocol",             "getpubcoinpack",           &getpubcoinpack,            {"amount"} },
-    { "NIX Ghost Protocol",             "resetzerocoinamounts",     &resetzerocoinamounts,      {} },
-    { "NIX Ghost Protocol",             "resetzerocoinunconfirmed", &resetzerocoinunconfirmed,  {} },
-    { "NIX Ghost Protocol",             "listallserials",           &listallserials,            {"height"} },
-    { "NIX Ghost Protocol",             "eraseusedzerocoindata",    &eraseusedzerocoindata,     {""} },
-    { "NIX Ghost Protocol",             "encryptallzerocoins",      &encryptallzerocoins,       {""} },
-    { "NIX Ghost Protocol",             "decryptallzerocoins",      &decryptallzerocoins,       {""} },
-    { "NIX Ghost Protocol",             "ghostfeepayouttotal",      &ghostfeepayouttotal,       {""} },
-    { "NIX Ghost Protocol",             "ghostprivacysets",         &ghostprivacysets,       {""} },
-
-    { "NIX Ghost Protocol",             "mintghostdata",         &mintghostdata,       {""} },
-    { "NIX Ghost Protocol",             "spendghostdata",         &spendghostdata,       {""} },
-
+    { "NIX Privacy",        "listunspentghostednix",    &listunspentmintzerocoins, {} },
+    { "NIX Privacy",        "ghostamount",              &ghostamount,              {"amount"} },
+    { "NIX Privacy",        "unghostamount",            &unghostamount,            {"amount"} },
+    { "NIX Privacy",        "resetghostednix",          &resetmintzerocoin,        {} },
+    { "NIX Privacy",        "setghostednixstatus",      &setmintzerocoinstatus,    {} },
+    { "NIX Privacy",        "listghostednix",           &listmintzerocoins,        {"all"} },
+    { "NIX Privacy",        "listpubcoins",             &listpubcoins,             {} },
+    { "NIX Privacy",        "refillghostkeys",          &refillghostkeys,          {"amount"} },
+    { "NIX Privacy",        "listunloadedpubcoins",     &listunloadedpubcoins,     {"amount"} },
+    { "NIX Privacy",        "payunloadedpubcoins",      &payunloadedpubcoins,      {"amount", "address"} },
+    { "NIX Privacy",        "getpubcoinpack",           &getpubcoinpack,           {"amount"} },
+    { "NIX Privacy",        "resetzerocoinamounts",     &resetzerocoinamounts,     {} },
+    { "NIX Privacy",        "resetzerocoinunconfirmed", &resetzerocoinunconfirmed, {} },
+    { "NIX Privacy",        "listallserials",           &listallserials,           {"height"} },
+    { "NIX Privacy",        "eraseusedzerocoindata",    &eraseusedzerocoindata,    {""} },
+    { "NIX Privacy",        "encryptallzerocoins",      &encryptallzerocoins,      {""} },
+    { "NIX Privacy",        "decryptallzerocoins",      &decryptallzerocoins,      {""} },
+    { "NIX Privacy",        "ghostfeepayouttotal",      &ghostfeepayouttotal,      {""} },
+    { "NIX Privacy",        "ghostprivacysets",         &ghostprivacysets,         {""} },
+    { "NIX Privacy",        "mintghostdata",            &mintghostdata,            {""} },
+    { "NIX Privacy",        "spendghostdata",           &spendghostdata,           {""} },
     // NIX Lite Zerocoin
-    { "NIX Ghost Protocol",             "getzerocoinacc",         &getzerocoinacc,       {""} },
-    { "NIX Ghost Protocol",             "getdatazerocoinacc",         &getdatazerocoinacc,       {""} },
-
-
+    { "NIX Privacy",        "getzerocoinacc",           &getzerocoinacc,           {""} },
+    { "NIX Privacy",        "getdatazerocoinacc",       &getdatazerocoinacc,       {""} },
     //NIX TOR routing functions
-    { "NIX TOR",             "enabletor",        &enableTor,        {"set"} },
-    { "NIX TOR",             "torstatus",        &torStatus,        {} },
-
-
+    { "NIX Privacy",        "enabletor",                &enableTor,                {"set"} },
+    { "NIX Privacy",        "torstatus",                &torStatus,                {} },
   //NIX Governance functions
-  { "NIX TOR",             "getoffchainproposals",        &getoffchainproposals,        {} },
+    { "NIX Governance",     "getoffchainproposals",     &getoffchainproposals,     {} },
+    { "NIX Governance",     "postoffchainproposals",    &postoffchainproposals,    {"vote_id", "decision"} },
+
 
 };
 

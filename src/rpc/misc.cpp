@@ -454,10 +454,27 @@ UniValue verifymessage(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
     }
 
+    CKeyID *tempKey;
+    if (auto id = boost::get<CKeyID>(&destination)) {
+        tempKey = id;
+    }
+    else if (auto witness_id = boost::get<WitnessV0KeyHash>(&destination)) {
+        tempKey = new CKeyID;
+        *tempKey = CKeyID(*witness_id);
+    }
+    else
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+
+    const CKeyID *keyID = tempKey;
+    if (!keyID) {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+    }
+    /*
     const CKeyID *keyID = boost::get<CKeyID>(&destination);
     if (!keyID) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
     }
+    */
 
     bool fInvalid = false;
     std::vector<unsigned char> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
