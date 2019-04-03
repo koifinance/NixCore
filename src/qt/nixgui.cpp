@@ -1008,7 +1008,7 @@ void BitcoinGUI::setAdditionalDataSyncProgress(int count, double nSyncProgress)
         QString strSyncStatus;
         tooltip = tr("Up to date") + QString(".<br>") + tooltip;
 
-        if(ghostnodeSync.IsSynced(count)) {
+        if(ghostnodeSync.IsSynced()) {
             progressBarLabel->setVisible(false);
             progressBar->setVisible(false);
             labelBlocksIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/synced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));

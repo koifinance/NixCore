@@ -457,7 +457,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     if (IsInitialBlockDownload())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "NIX Core is downloading blocks...");
 
-    if (!ghostnodeSync.IsSynced(chainActive.Height()))
+    if (!ghostnodeSync.IsSynced())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "NIX Core is syncing with network...");
 
 

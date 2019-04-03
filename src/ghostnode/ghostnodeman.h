@@ -308,6 +308,8 @@ public:
     void DoFullVerificationStep();
     void CheckSameAddr();
     bool SendVerifyRequest(const CAddress& addr, const std::vector<CGhostnode*>& vSortedByAddr);
+    bool CheckVerifyRequestAddr(const CAddress& addr, CConnman& connman);
+    void PrepareVerifyRequest(const CAddress& addr, CConnman& connman);
     void SendVerifyReply(CNode* pnode, CGhostnodeVerification& mnv);
     void ProcessVerifyReply(CNode* pnode, CGhostnodeVerification& mnv);
     void ProcessVerifyBroadcast(CNode* pnode, const CGhostnodeVerification& mnv);

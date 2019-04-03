@@ -230,7 +230,7 @@ UniValue ghostnodesync(const JSONRPCRequest& req)
         objStatus.push_back(Pair("IsBlockchainSynced", ghostnodeSync.IsBlockchainSynced()));
         objStatus.push_back(Pair("IsGhostnodeListSynced", ghostnodeSync.IsGhostnodeListSynced()));
         objStatus.push_back(Pair("IsWinnersListSynced", ghostnodeSync.IsWinnersListSynced()));
-        objStatus.push_back(Pair("IsSynced", ghostnodeSync.IsSynced(chainActive.Height())));
+        objStatus.push_back(Pair("IsSynced", ghostnodeSync.IsSynced()));
         objStatus.push_back(Pair("IsFailed", ghostnodeSync.IsFailed()));
         return objStatus;
     }

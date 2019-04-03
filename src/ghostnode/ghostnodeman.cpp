@@ -212,7 +212,7 @@ void CGhostnodeMan::CheckAndRemove()
             } else {
                 bool fAsk = pCurrentBlockIndex &&
                             (nAskForMnbRecovery > 0) &&
-                            ghostnodeSync.IsSynced(chainActive.Height()) &&
+                            ghostnodeSync.IsSynced() &&
                             it->IsNewStartRequired() &&
                             !IsMnbRecoveryRequested(hash);
                 if(fAsk) {
@@ -922,14 +922,10 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
         // Ignore such requests until we are fully synced.
         // We could start processing this after ghostnode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!ghostnodeSync.IsSynced(chainActive.Height())) return;
+        if (!ghostnodeSync.IsSynced()) return;
 
         CTxIn vin;
         vRecv >> vin;
-
-        //LogPrint("ghostnode", "DSEG -- Ghostnode list, ghostnode=%s\n", vin.prevout.ToStringShort());
-
-        LOCK(cs);
 
         if(vin == CTxIn()) { //only should ask for this once
             //local network
@@ -1005,11 +1001,11 @@ void CGhostnodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 }
 
 // Verification of ghostnodes via unique direct requests.
-
+/*
 void CGhostnodeMan::DoFullVerificationStep()
 {
     if(activeGhostnode.vin == CTxIn()) return;
-    if(!ghostnodeSync.IsSynced(chainActive.Height())) return;
+    if(!ghostnodeSync.IsSynced()) return;
 
     std::vector<std::pair<int, CGhostnode> > vecGhostnodeRanks = GetGhostnodeRanks(pCurrentBlockIndex->nHeight - 1, MIN_POSE_PROTO_VERSION);
 
@@ -1078,6 +1074,89 @@ void CGhostnodeMan::DoFullVerificationStep()
     }
     }
     //LogPrint("ghostnode", "CGhostnodeMan::DoFullVerificationStep -- Sent verification requests to %d ghostnodes\n", nCount);
+}*/
+
+bool CGhostnodeMan::CheckVerifyRequestAddr(const CAddress& addr, CConnman& connman)
+{
+    if(netfulfilledman.HasFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request")) {
+        // we already asked for verification, not a good idea to do this too often, skip it
+        return false;
+    }
+
+    return true;
+}
+
+void CGhostnodeMan::PrepareVerifyRequest(const CAddress& addr, CConnman& connman)
+{
+    CNode* pnode = connman.ConnectNode(addr, NULL, false, true);
+    if(pnode == NULL) {
+        return;
+    }
+
+    netfulfilledman.AddFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request");
+    CGhostnodeVerification mnv(addr, GetRandInt(999999), pCurrentBlockIndex->nHeight - 1);
+    mWeAskedForVerification[addr] = mnv;
+    const CNetMsgMaker msgMaker(pnode->GetSendVersion());
+    connman.PushMessage(pnode, msgMaker.Make(NetMsgType::MNVERIFY, mnv));
+}
+
+// Verification of masternodes via unique direct requests.
+
+void CGhostnodeMan::DoFullVerificationStep()
+{
+
+    if(activeGhostnode.vin == CTxIn()) return;
+    if(!ghostnodeSync.IsSynced()) return;
+
+    std::vector<std::pair<int, CGhostnode> > vecGhostnodeRanks = GetGhostnodeRanks(pCurrentBlockIndex->nHeight - 1, MIN_POSE_PROTO_VERSION);
+
+    std::vector<CAddress> vAddr;
+    {
+    LOCK(cs);
+
+    int nMyRank = -1;
+
+    // send verify requests only if we are in top MAX_POSE_RANK
+    for (auto& rankPair : vecGhostnodeRanks) {
+        if(rankPair.first > MAX_POSE_RANK) {
+            return;
+        }
+        if(rankPair.second.vin == activeGhostnode.vin) {
+            nMyRank = rankPair.first;
+            break;
+        }
+    }
+
+    // edge case: list is too short and this masternode is not enabled
+    if(nMyRank == -1) return;
+
+    // send verify requests to up to MAX_POSE_CONNECTIONS masternodes
+    // starting from MAX_POSE_RANK + nMyRank and using MAX_POSE_CONNECTIONS as a step
+    int nOffset = MAX_POSE_RANK + nMyRank - 1;
+    if(nOffset >= (int)vecGhostnodeRanks.size()) return;
+
+    auto it = vecGhostnodeRanks.begin() + nOffset;
+    while(it != vecGhostnodeRanks.end()) {
+        if(it->second.IsPoSeVerified() || it->second.IsPoSeBanned()) {
+            nOffset += MAX_POSE_CONNECTIONS;
+            if(nOffset >= (int)vecGhostnodeRanks.size()) break;
+            it += MAX_POSE_CONNECTIONS;
+            continue;
+        }
+        CAddress addr = CAddress(it->second.addr, NODE_NETWORK);
+        if(CheckVerifyRequestAddr(addr, *g_connman.get())) {
+            vAddr.push_back(addr);
+            if((int)vAddr.size() >= MAX_POSE_CONNECTIONS) break;
+        }
+        nOffset += MAX_POSE_CONNECTIONS;
+        if(nOffset >= (int)vecGhostnodeRanks.size()) break;
+        it += MAX_POSE_CONNECTIONS;
+    }
+    } // cs
+
+    for (const auto& addr : vAddr) {
+        PrepareVerifyRequest(addr, *g_connman.get());
+    }
 }
 
 // This function tries to find ghostnodes with the same addr,
@@ -1087,7 +1166,7 @@ void CGhostnodeMan::DoFullVerificationStep()
 
 void CGhostnodeMan::CheckSameAddr()
 {
-    if(!ghostnodeSync.IsSynced(chainActive.Height()) || vGhostnodes.empty()) return;
+    if(!ghostnodeSync.IsSynced() || vGhostnodes.empty()) return;
 
     std::vector<CGhostnode*> vBan;
     std::vector<CGhostnode*> vSortedByAddr;

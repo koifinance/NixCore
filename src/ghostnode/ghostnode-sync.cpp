@@ -66,7 +66,7 @@ bool CGhostnodeSync::IsBlockchainSynced(bool fBlockAccepted) {
 
     if (fBlockAccepted) {
         // this should be only triggered while we are still syncing
-        if (!IsSynced(chainActive.Height())) {
+        if (!IsSynced()) {
             // we are trying to download smth, reset blockchain sync status
             fFirstBlockAccepted = true;
             fBlockchainSynced = false;
@@ -221,7 +221,7 @@ void CGhostnodeSync::ProcessMessage(CNode *pfrom, std::string &strCommand, CData
     if (strCommand == NetMsgType::SYNCSTATUSCOUNT) { //Sync status count
 
         //do not care about stats if sync process finished or failed
-        if (IsSynced(chainActive.Height())|| IsFailed()) return;
+        if (IsSynced()|| IsFailed()) return;
 
         int nItemID;
         int nCount;
@@ -261,7 +261,7 @@ void CGhostnodeSync::ProcessTick() {
 
     // RESET SYNCING INCASE OF FAILURE
     {
-        if (IsSynced(chainActive.Height())) {
+        if (IsSynced()) {
             /*
                 Resync if we lost all ghostnodes from sleep/wake or failed to sync originally
             */

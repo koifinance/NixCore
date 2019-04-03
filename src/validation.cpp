@@ -2256,7 +2256,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
 //Be careful of using this check, if a clients list is not similar to to others, it could cause a fork
 bool CheckGhostProtocolFeePayouts(const CBlock &pBlock, int64_t &totalFees){
     //If current node is synced with node list, check honesty of payouts
-    if(ghostnodeSync.IsSynced(chainActive.Height()) && totalFees != 0){
+    if(ghostnodeSync.IsSynced() && totalFees != 0){
 
         vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
         vector<CScript> ghostnodeVectorWinners;
@@ -2383,7 +2383,7 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
 
     //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
     //enforce proper ghostnode list payout
-    if(ghostnodeSync.IsSynced(100) && (nHeight >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight)){
+    if(ghostnodeSync.IsSynced() && (nHeight >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight)){
         found_gn = false;
         CTransaction ghostnodeTransaction = *txCoinstake;
         found_gn = mnpayments.IsTransactionValid(ghostnodeTransaction, nHeight);
@@ -5902,7 +5902,7 @@ double GuessVerificationProgress(const ChainTxData& data, const CBlockIndex *pin
     if (pindex == nullptr)
         return 0.0;
 
-    if(ghostnodeSync.IsSynced(chainActive.Height()))
+    if(ghostnodeSync.IsSynced())
         return 1.0;
 
     int64_t nNow = time(nullptr);
