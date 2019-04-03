@@ -694,7 +694,7 @@ bool CGhostnodePaymentVote::CheckSignature(const CPubKey &pubKeyGhostnode, int n
         if (ghostnodeSync.IsGhostnodeListSynced() && nBlockHeight > nValidationHeight) {
             nDos = 20;
         }
-        return error("CGhostnodePaymentVote::CheckSignature -- Got bad Ghostnode payment signature, ghostnode=%s, error: %s", vinGhostnode.prevout.ToStringShort().c_str(), strError);
+        return false;
     }
 
     return true;
