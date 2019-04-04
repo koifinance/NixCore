@@ -1198,6 +1198,135 @@ UniValue getaddresstxids(const JSONRPCRequest& request)
 
 }
 
+UniValue getaddressvoteweight(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1 || !request.params[0].isObject())
+        throw runtime_error(
+                "getaddressvoteweight\n"
+                        "\nReturns vote weight for an address (requires addressindex to be enabled).\n"
+                        "\nArguments:\n"
+                        "{\n"
+                        "  \"addresses\"\n"
+                        "    [\n"
+                        "      \"address\"  (string) The base58check encoded address\n"
+                        "      ,...\n"
+                        "    ]\n"
+                        "  \"start\" (number) The start time of the vote weight period\n"
+                        "  \"end\" (number) The end time of the vote weight period\n"
+                        "}\n"
+                        "\nResult:\n"
+                        "[\n"
+                        "  {\n"
+                        "    \"voteweight\"  (number) The vote weight of the address\n"
+                        "  }\n"
+                        "]\n"
+                        "\nExamples:\n"
+                + HelpExampleCli("getaddressvoteweight", "'{\"addresses\": [\"NwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\"], \"start\": 10, \"end\": 20}'")
+                + HelpExampleRpc("getaddressvoteweight", "'{\"addresses\": [\"NwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\"]}'")
+        );
+
+    // using chainactive
+
+
+    LOCK(cs_main);
+
+    UniValue result(UniValue::VOBJ);
+    UniValue startValue = find_value(request.params[0].get_obj(), "start");
+    UniValue endValue = find_value(request.params[0].get_obj(), "end");
+
+    int start = 0;
+    int end = 0;
+
+    if (startValue.isNum() && endValue.isNum()) {
+        start = startValue.get_int();
+        end = endValue.get_int();
+        if (end < start) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "End value is expected to be greater than start");
+        }
+    }
+
+    int start_block = -1;
+    int end_block = -1;
+    CBlockIndex *activeTip = chainActive.Tip();
+    CBlockIndex *lastBlock = activeTip->pprev;
+
+    // find start and end blocks
+    while(lastBlock){
+        // match end block
+        if(activeTip->GetBlockTime() >= end && lastBlock->GetBlockTime() < end && end_block == -1)
+            end_block = activeTip->nHeight;
+        else if(activeTip->GetBlockTime() >= end && lastBlock->GetBlockTime() <= end && end_block == -1)
+            end_block = lastBlock->nHeight;
+
+        // match start block
+        if(activeTip->GetBlockTime() >= start && lastBlock->GetBlockTime() < start && start_block == -1)
+            start_block = activeTip->nHeight;
+        if(activeTip->GetBlockTime() >= start && lastBlock->GetBlockTime() <= start && start_block == -1)
+            start_block = lastBlock->nHeight;
+
+        activeTip = lastBlock;
+        lastBlock = lastBlock->pprev;
+
+        if(start_block != -1 && end_block != -1)
+            break;
+    }
+
+    start = start_block;
+    end = end_block;
+
+    std::vector<std::pair<uint256, int> > addresses;
+
+    if (!getAddressesFromParams(request.params, addresses)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+
+    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+
+    for (std::vector<std::pair<uint256, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+        if (start > 0 && end > 0) {
+            if (!GetAddressIndex((*it).first, (*it).second, addressIndex, start, end)) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+            }
+        } else {
+            if (!GetAddressIndex((*it).first, (*it).second, addressIndex)) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+            }
+        }
+    }
+
+    CAmount totalWeight = 0;
+    for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
+        std::string address;
+        if (!getAddressFromIndex(it->first.type, it->first.hashBytes, address)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+        }
+
+        std::string strHash = it->first.txhash.GetHex();
+        uint256 hash(uint256S(strHash));
+        int n = it->first.index;
+        COutPoint out(hash, n);
+
+        Coin coin;
+        if (!pcoinsTip->GetCoin(out, coin)) {
+            continue;
+        }
+
+        if(!(bool)coin.IsCoinBase() || (coin.nHeight == MEMPOOL_HEIGHT)) continue;
+
+        totalWeight += coin.out.nValue;
+    }
+
+    LogPrintf("\naddress_weight=%llf \n", totalWeight);
+
+    result.pushKV("address_weight", ValueFromAmount(totalWeight));
+    result.pushKV("block_start", std::to_string(start));
+    result.pushKV("block_end", std::to_string(end));
+
+
+
+    return result;
+}
+
 UniValue getspentinfo(const JSONRPCRequest& request)
 {
 
@@ -1245,6 +1374,7 @@ UniValue getspentinfo(const JSONRPCRequest& request)
 
     return obj;
 }
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         argNames
   //  --------------------- ------------------------  -----------------------  ----------
@@ -1262,6 +1392,8 @@ static const CRPCCommand commands[] =
   { "addressindex",       "getaddressdeltas",       &getaddressdeltas,       {"addresses"} },
   { "addressindex",       "getaddresstxids",        &getaddresstxids,        {"addresses"} },
   { "addressindex",       "getaddressbalance",      &getaddressbalance,      {"addresses"} },
+
+  { "NIX Governance",     "getaddressvoteweight",   &getaddressvoteweight,   {"address", "start_time", "end_time"} },
 
     /* Not shown in help */
     { "hidden",             "setmocktime",            &setmocktime,            {"timestamp"}},

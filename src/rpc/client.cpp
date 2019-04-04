@@ -189,7 +189,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     {"listghostednix", 0, "all"},
     {"listallserials", 0, "height"},
 
-
+    { "getaddressvoteweight", 0},
 };
 
 class CRPCConvertTable

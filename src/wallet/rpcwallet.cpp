@@ -6137,7 +6137,6 @@ static const CRPCCommand commands[] =
     { "NIX Governance",     "getoffchainproposals",     &getoffchainproposals,     {} },
     { "NIX Governance",     "postoffchainproposals",    &postoffchainproposals,    {"vote_id", "decision"} },
 
-
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)
