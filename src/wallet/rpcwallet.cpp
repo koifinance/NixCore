@@ -5232,9 +5232,11 @@ UniValue getpubcoinpack(const JSONRPCRequest& request) {
 
     CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
 
+    /*
     if (pwalletMain->IsLocked()) {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     }
+    */
 
     list <CZerocoinEntry> listUnloadedPubcoin;
     CWalletDB walletdb(pwalletMain->GetDBHandle());
