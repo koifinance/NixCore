@@ -1304,16 +1304,14 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
         std::string strHash = it->first.txhash.GetHex();
         uint256 hash(uint256S(strHash));
         int n = it->first.index;
-        COutPoint out(hash, n);
 
-        Coin coin;
-        if (!pcoinsTip->GetCoin(out, coin)) {
-            continue;
-        }
+        CTransactionRef txRef;
+        CBlock block;
+        GetTransaction(hash, txRef, Params().GetConsensus(), block);
 
-        if(!(bool)coin.IsCoinBase() || (coin.nHeight == MEMPOOL_HEIGHT)) continue;
+        if(!txRef->IsCoinStake()) continue;
 
-        totalWeight += coin.out.nValue;
+        totalWeight += txRef->vout[n].nValue;
     }
 
     LogPrintf("\naddress_weight=%llf \n", totalWeight);
