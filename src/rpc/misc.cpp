@@ -1301,25 +1301,15 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
         }
 
-        std::string strHash = it->first.txhash.GetHex();
-        uint256 hash(uint256S(strHash));
-        int n = it->first.index;
+        // check for coinstake
+        if(it->first.txindex != 0) continue;
 
-        CTransactionRef txRef;
-        CBlock block;
-        GetTransaction(hash, txRef, Params().GetConsensus(), block);
-
-        if(!txRef->IsCoinStake()) continue;
-
-        totalWeight += txRef->vout[n].nValue;
+        totalWeight += it->second;
     }
-
-    LogPrintf("\naddress_weight=%llf \n", totalWeight);
 
     result.pushKV("address_weight", ValueFromAmount(totalWeight));
     result.pushKV("block_start", std::to_string(start));
     result.pushKV("block_end", std::to_string(end));
-
 
 
     return result;
