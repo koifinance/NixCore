@@ -5975,48 +5975,77 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
     std::string vote_id = request.params[0].get_str();
     std::string decision = request.params[1].get_str();
 
-    for (auto& addr : pwallet->mapAddressBook) {
-        CTxDestination dest = addr.first;
 
-        //COutput coin = group.second;
-        //if(pwallet->IsSpent(coin.tx->GetHash(), coin.i)) continue;
 
-        //do something with address here
+    // Cycle through all transactions and log all addresses
+    std::vector<CScript> votingAddresses;
+    votingAddresses.clear();
+    for (auto& mapping: pwallet->mapWallet){
+        CWalletTx wtx = mapping.second;
+
+        if(!wtx.IsCoinStake())
+            continue;
+
+
+        // check for multiple outputs
+        for(auto& vout: wtx.tx->vout){
+
+            if (!::IsMine(pwallet, vout.scriptPubKey)) continue;
+
+            if (std::find(votingAddresses.begin(), votingAddresses.end(), vout.scriptPubKey) != votingAddresses.end())
+                continue;
+
+            // store unique values
+            votingAddresses.push_back(vout.scriptPubKey);
+        }
+
     }
 
-    std::string strAddress = "GfA5nh7GaJXssm4YxZ6WVf4rPQX8kF5Hc3";
-    std::string strMessage = vote_id;
+    postMessage = "[";
 
-    CTxDestination dest = DecodeDestination(strAddress);
+    int id = 0;
+    for(auto &addrScript: votingAddresses){
 
-    if (!IsValidDestination(dest)) {
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+        CTxDestination dest;
+        ExtractDestination(addrScript, dest);
+
+        std::string strMessage = vote_id;
+
+        if (!IsValidDestination(dest)) {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+        }
+
+        const CKeyID keyID = GetKeyForDestination(*pwallet, dest);
+        if (keyID.IsNull()) {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+        }
+
+        CKey key;
+        if (!pwallet->GetKey(keyID, key)) {
+            throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+        }
+
+        CHashWriter ss(SER_GETHASH, 0);
+        ss << strMessageMagic;
+        ss << strMessage;
+
+        std::vector<unsigned char> vchSig;
+        if (!key.SignCompact(ss.GetHash(), vchSig))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed");
+
+        if(id != 0)
+            postMessage += ",";
+
+        postMessage += "{\"voteid\":\"" + vote_id +
+                        "\",\"address\":\"" + strAddress +
+                        "\",\"signature\":\"" + EncodeBase64(vchSig.data(), vchSig.size()) +
+                        "\",\"ballot\":" + decision + "}";
+
+        id++;
+
     }
 
-    const CKeyID keyID = GetKeyForDestination(*pwallet, dest);
-    //const CKeyID *keyID = boost::get<CKeyID>(&dest);
-    if (keyID.IsNull()) {
-        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
-    }
-
-    CKey key;
-    if (!pwallet->GetKey(keyID, key)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
-    }
-
-    CHashWriter ss(SER_GETHASH, 0);
-    ss << strMessageMagic;
-    ss << strMessage;
-
-    std::vector<unsigned char> vchSig;
-    if (!key.SignCompact(ss.GetHash(), vchSig))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed");
-
-    postMessage = "[{\"voteid\":\"" + vote_id +
-                    "\",\"address\":\"" + strAddress +
-                    "\",\"signature\":\"" + EncodeBase64(vchSig.data(), vchSig.size()) +
-                    "\",\"ballot\":" + decision + "}]";
-
+    postMessage += "]";
     g_governance.PostRequest(RequestTypes::CAST_VOTE, postMessage);
 
     while(!g_governance.isReady()){}
