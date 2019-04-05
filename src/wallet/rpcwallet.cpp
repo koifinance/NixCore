@@ -993,7 +993,7 @@ UniValue getleasestakinglist(const JSONRPCRequest& request)
                             rewardAddress = "N/A";
 
                         UniValue contract(UniValue::VOBJ);
-                        contract.pushKV("my_addres", ownerAddrString);
+                        contract.pushKV("my_address", ownerAddrString);
                         contract.pushKV("lease_address", leaseAddress);
                         contract.pushKV("fee", std::to_string((double)feeAmount/100.00));
                         contract.pushKV("reward_fee_address", rewardAddress);
