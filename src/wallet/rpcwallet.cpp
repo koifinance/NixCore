@@ -5990,7 +5990,7 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         // check for multiple outputs
         for(auto& vout: wtx.tx->vout){
 
-            if (!::IsMine(pwallet, vout.scriptPubKey)) continue;
+            if (!::IsMine(*pwallet, vout.scriptPubKey)) continue;
 
             if (std::find(votingAddresses.begin(), votingAddresses.end(), vout.scriptPubKey) != votingAddresses.end())
                 continue;
@@ -6009,6 +6009,7 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         CTxDestination dest;
         ExtractDestination(addrScript, dest);
 
+        std::string strAddress = EncodeDestination(dest);
         std::string strMessage = vote_id;
 
         if (!IsValidDestination(dest)) {

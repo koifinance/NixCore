@@ -55,7 +55,7 @@ bool IsDust(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
     return (txout.nValue < GetDustThreshold(txout, dustRelayFeeIn));
 }
 
-bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled)
+bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled, const bool isCoinstake)
 {
 
     if (chainActive.Height() >= Params().GetConsensus().nStartGhostFeeDistribution) {
@@ -64,12 +64,12 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool w
             if (!SplitConditionalCoinstakeScript(scriptPubKey, scriptA, scriptB)) {
                 return false;
             }
-            return IsStandard(scriptA, whichType) && IsStandard(scriptB, whichType);
+            return IsStandard(scriptA, whichType, witnessEnabled) && IsStandard(scriptB, whichType, witnessEnabled);
         }
     }
 
     std::vector<std::vector<unsigned char> > vSolutions;
-    if (!Solver(scriptPubKey, whichType, vSolutions, false))
+    if (!Solver(scriptPubKey, whichType, vSolutions, isCoinstake))
         return false;
 
     if (whichType == TX_MULTISIG)
@@ -193,7 +193,7 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
         const CScript& prevScript = prev.scriptPubKey;
 
         if (HasIsCoinstakeOp(prevScript)) {
-            if (!::IsStandard(prevScript, whichType))
+            if (!::IsStandard(prevScript, whichType, true, tx.IsCoinStake()))
                 return false;
         }
         else{
