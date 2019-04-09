@@ -5992,6 +5992,10 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
 
             if (!::IsMine(*pwallet, vout.scriptPubKey)) continue;
 
+            // skip p2sh, only bech32/legacy allowed
+            if(vout.scriptPubKey.IsPayToScriptHashAny())
+                continue;
+
             if (std::find(votingAddresses.begin(), votingAddresses.end(), vout.scriptPubKey) != votingAddresses.end())
                 continue;
 
@@ -6004,6 +6008,8 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
     postMessage = "[";
 
     int id = 0;
+    UniValue addList(UniValue::VOBJ);
+
     for(auto &addrScript: votingAddresses){
 
         CTxDestination dest;
@@ -6011,6 +6017,10 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
 
         std::string strAddress = EncodeDestination(dest);
         std::string strMessage = vote_id;
+
+        UniValue addListT(UniValue::VOBJ);
+        addListT.pushKV("addr", strAddress);
+        addList.push_back(addListT);
 
         if (!IsValidDestination(dest)) {
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
@@ -6045,6 +6055,8 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         id++;
 
     }
+
+    //return addList;
 
     postMessage += "]";
     g_governance.PostRequest(RequestTypes::CAST_VOTE, postMessage);
