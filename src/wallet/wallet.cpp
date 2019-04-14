@@ -8273,19 +8273,19 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput> &vCoins, int64_t nTi
                         else if(!nDelegateRewardAddresses.empty()){
                             bool found = false;
                             for(std::string addressString: nDelegateRewardAddresses){
-                                CBitcoinAddress rewardAddress(addressString);
-                                if(!rewardAddress.IsValid() || !rewardAddress.IsScript())
-                                    continue;
-
                                 CScriptID delegateRewardID;
                                 WitnessV0KeyHash wit_script_dest;
                                 ExtractStakingKeyID(scriptOut, delegateRewardID, wit_script_dest);
-
-                                CTxDestination rewardDest = rewardAddress.Get();
-                                CScriptID rewardID = boost::get<CScriptID>(rewardDest);
-
-                                if(rewardID == delegateRewardID)
-                                    found = true;
+                                if(!wit_script_dest.IsNull()){
+                                    std::string rewardStr = EncodeDestination(wit_script_dest, true);
+                                    if(rewardStr == addressString)
+                                        found = true;
+                                }
+                                else{
+                                    std::string rewardStr = EncodeDestination(delegateRewardID);
+                                    if(rewardStr == addressString)
+                                        found = true;
+                                }
                             }
                             if(!found)
                                 continue;
