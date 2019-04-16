@@ -2291,7 +2291,7 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
             //entry.push_back(Pair("account", strSentAccount));
             MaybePushAddress(entry, s.destination);
             if (s.destStake.type() != typeid(CNoDestination))
-                entry.push_back(Pair("coldstake_address", CBitcoinAddress(s.destStake).ToString()));
+                entry.push_back(Pair("coldstake_address", EncodeDestination(s.destStake)));
 
             if (wtx.GetDepthInMainChain() < 1)
                 entry.push_back(Pair("category", "orphaned_stake"));
