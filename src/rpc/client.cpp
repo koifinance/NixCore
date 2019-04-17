@@ -190,6 +190,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     {"listallserials", 0, "height"},
 
     { "getaddressvoteweight", 0},
+    { "getvoteweight", 0, "start_time" },
+    { "getvoteweight", 1, "end_time" },
+
+
 };
 
 class CRPCConvertTable

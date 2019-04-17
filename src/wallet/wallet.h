@@ -1528,6 +1528,7 @@ public:
     CAmount nWalletDonationPercent;
     std::string nWalletDonationAddress;
     int nStakeLimitHeight = 0; // for regtest, don't stake above nStakeLimitHeight
+    bool nGenerateNewStakingAddress;
 
     bool fUnlockForStakingOnly = false; // Use coldstaking instead
 

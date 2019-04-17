@@ -5638,9 +5638,10 @@ UniValue ghostprivacysets(const JSONRPCRequest& request)
                 "ghostprivacysets\n"
                         "\Get the total ghosted denomination amounts in the network.\n");
 
-    UniValue entry(UniValue::VOBJ);
     if(IsInitialBlockDownload())
         return "Wait until node is fully synced.";
+
+    UniValue entry(UniValue::VOBJ);
 
     int mintVector[8] = {0,0,0,0,0,0,0,0};
 
@@ -6069,6 +6070,58 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
     return g_governance.p_data;
 }
 
+UniValue getvoteweight(const JSONRPCRequest& request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() != 2)
+        throw runtime_error("getvoteweight start_time end_time\n"
+                            + HelpRequiringPassphrase(pwallet) + "\n"
+                            "\nArguments:\n"
+                            "1. \"start_time\"         (int, required) The starting time (unix) for the weight calculation.\n"
+                            "2. \"end_time\"        (int, required) The ending time (unix) for the weight calculation.\n");
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    UniValue end(UniValue::VOBJ);
+
+    int64_t start_time = request.params[0].get_int64();
+    int64_t end_time = request.params[1].get_int64();
+
+
+
+    // Cycle through all transactions and log all addresses
+    std::vector<CScript> votingAddresses;
+    votingAddresses.clear();
+
+    CAmount nVoteWeight = 0;
+    for (auto& mapping: pwallet->mapWallet){
+        CWalletTx wtx = mapping.second;
+
+        if(!(wtx.IsCoinStake() && wtx.IsInMainChain()
+             && wtx.GetTxTime() >= start_time && wtx.GetTxTime() <= end_time))
+            continue;
+
+        // check for multiple outputs
+        for(auto& vout: wtx.tx->vout){
+
+            if (!::IsMine(*pwallet, vout.scriptPubKey)) continue;
+
+            // skip p2sh, only bech32/legacy allowed
+            if(vout.scriptPubKey.IsPayToScriptHashAny())
+                continue;
+
+            nVoteWeight += vout.nValue;
+        }
+
+    }
+
+    end.pushKV("vote_weight", (nVoteWeight/COIN));
+    return end;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -6178,6 +6231,8 @@ static const CRPCCommand commands[] =
   //NIX Governance functions
     { "NIX Governance",     "getoffchainproposals",     &getoffchainproposals,     {} },
     { "NIX Governance",     "postoffchainproposals",    &postoffchainproposals,    {"vote_id", "decision"} },
+    { "NIX Governance",     "getvoteweight",            &getvoteweight,            {"start_time", "end_time"} },
+
 
 };
 

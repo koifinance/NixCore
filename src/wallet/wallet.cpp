@@ -8465,59 +8465,28 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
             if (fConditionalStake)
             {
                 scriptPubKeyKernel = kernelOut.scriptPubKey;
+            }
+            //send rewards to new bech32 addresses
+            else if (nGenerateNewStakingAddress)
+            {
+                TopUpKeyPool();
+                // Generate a new key that is added to wallet
+                CPubKey newKey;
+                if (!GetKeyFromPool(newKey)) {
+                    LogPrintf("\nCreateCoinStake(): KeyPool ran out!.\n");
+                    break;
+                }
+                LearnRelatedScripts(newKey, OUTPUT_TYPE_BECH32);
+                CTxDestination dest = GetDestinationForKey(newKey, OUTPUT_TYPE_BECH32);
+
+                scriptPubKeyKernel << OP_0 << ToByteVector(dest);
             } else
             {
-                //payment to scripthash only
+                //payment to scripthash and witness keyhash only
                 if(whichType == TX_SCRIPTHASH)
                     scriptPubKeyKernel << OP_HASH160 << ToByteVector(idScript) << OP_EQUAL;
                 if(whichType == TX_WITNESS_V0_KEYHASH)
                     scriptPubKeyKernel << OP_0 << ToByteVector(idWitness);
-
-                // If the wallet has a coldstaking-change-address loaded, send the output to a coldstaking-script.
-                std::string coldStakeAddress = gArgs.GetArg("-coldstakeaddress", "");
-
-                //set up coldstake script
-                if (coldStakeAddress  != "")
-                {
-                    LogPrintf("%s: Sending output to coldstakingscript %s.\n", __func__, coldStakeAddress);
-
-                    CBitcoinAddress addrColdStaking(coldStakeAddress);
-                    if (!addrColdStaking.IsValid())
-                        return error("%s: coldstaking address IsValid() failed.", __func__);
-
-                    CScript scriptStaking;
-                    if (!GetScriptForAddress(scriptStaking, addrColdStaking, true))
-                        return error("%s: GetScriptForAddress failed.", __func__);
-
-                    std::shared_ptr<CReserveScript> coinbaseScript;
-                    GetScriptForMining(coinbaseScript);
-                    if (!coinbaseScript) {
-                        return error("%s: Error: Keypool ran out, please call keypoolrefill first.", __func__);
-                    }
-                    if (coinbaseScript->reserveScript.empty()) {
-                        return error("%s: No coinbase script available.", __func__);
-                    }
-
-                    // Generate new key for local wallet, remove coins from existing address
-                    scriptPubKeyKernel = coinbaseScript->reserveScript;
-
-                    //payout to script
-                    if (scriptStaking.IsPayToScriptHash())
-                    {
-                        CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;
-                        //cold stake address
-                        script += scriptStaking;
-                        script << OP_ELSE;
-                        //local wallet address
-                        script += scriptPubKeyKernel;
-                        script << OP_ENDIF;
-
-                        scriptPubKeyKernel = script;
-                    } else
-                    {
-                        return error("%s: Unknown scriptStaking type, must be pay-to-script-hash.", __func__);
-                    };
-                };
             };
 
             // Ensure txn is empty
@@ -8927,10 +8896,12 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
     nMinimumDelagatePercentage = gArgs.GetArg("-minimumleasepercentage", 0);
     std::string delegateAddressesString = gArgs.GetArg("-leaserewardaddresses", "");
     nDelegateRewardToMe = gArgs.GetArg("-leaserewardtome", false);
+    nGenerateNewStakingAddress = gArgs.GetArg("-generatenewstakingaddress", false);
+
     nDelegateRewardAddresses.clear();
 
-    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, coldstake address: %s, min lease percent: %llf, lease reward to me: %d \n",
-              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine, gArgs.GetArg("-coldstakeaddress", ""), nMinimumDelagatePercentage, nDelegateRewardToMe);
+    LogPrintf("\nProcessStakingSettings: split %lf, combine %lf, combine amount %d, min lease percent: %llf, lease reward to me: %d, gennewaddress=%d \n",
+              nStakeSplitThreshold/COIN, nStakeCombineThreshold/COIN, nMaxStakeCombine, nMinimumDelagatePercentage, nDelegateRewardToMe, nGenerateNewStakingAddress);
     LogPrintf("LeaseRewardAddresses: ");
 
     char sep = ',';
