@@ -5958,7 +5958,6 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
     postMessage = "[";
 
     int id = 0;
-    UniValue addList(UniValue::VOBJ);
 
     for(auto &addrScript: votingAddresses){
 
@@ -5967,10 +5966,6 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
 
         std::string strAddress = EncodeDestination(dest);
         std::string strMessage = vote_id;
-
-        UniValue addListT(UniValue::VOBJ);
-        addListT.pushKV("addr", strAddress);
-        addList.push_back(addListT);
 
         if (!IsValidDestination(dest)) {
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
@@ -5997,24 +5992,22 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         if(id != 0)
             postMessage += ",";
 
-        postMessage += "{\"voteid\":\"" + vote_id +
+        postMessage += "{"
+                       "\"voteid\":\"" + vote_id +
                         "\",\"address\":\"" + strAddress +
                         "\",\"signature\":\"" + EncodeBase64(vchSig.data(), vchSig.size()) +
-                        "\",\"ballot\":" + decision + "}";
+                        "\",\"ballot\":\"" + decision + "\"}";
 
         id++;
 
     }
 
-    //return addList;
 
     postMessage += "]";
+
     g_governance.PostRequest(RequestTypes::CAST_VOTE, postMessage);
 
     while(!g_governance.isReady()){}
-
-    UniValue end(UniValue::VOBJ);
-    end.pushKV("response", g_governance.p_data);
 
     return g_governance.p_data;
 }

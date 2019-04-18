@@ -509,10 +509,10 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
                 if(sortedEntries[i]->GetFee() < feeReq)
                     continue;
 
-                AddToBlock(sortedEntries[i]);
+                //AddToBlock(sortedEntries[i]);
             }
             else if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
-                AddToBlock(sortedEntries[i]);
+                //AddToBlock(sortedEntries[i]);
             }
             else{
                 if (packageFees < blockMinFeeRate.GetFee(packageSize)) {

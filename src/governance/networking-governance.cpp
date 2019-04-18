@@ -6,7 +6,7 @@
 #include <utiltime.h>
 #include <ostream>
 #include <string>
-
+#include <util.h>
 
 CGovernance g_governance;
 uint64_t last_refresh_time = 0;
@@ -82,8 +82,12 @@ void OnRequestCompleted()
 void OnRequestCompletedPost()
 {
     g_data.push_back('\0');
-    g_governance.p_data = std::string(g_data.begin(), g_data.end());
+    std::string st = std::string(g_data.begin(), g_data.end());
     g_data.clear();
+    //int p = st.find("HTTP/1.1 ") + 9;
+    //std::string d = st.substr(p, 3);
+    g_governance.p_data = st;
+    //LogPrintf("\nOnRequestCompletedPost(): %s \n", d);
     g_governance.setReady();
 }
 
@@ -142,11 +146,11 @@ void CGovernance::PostRequest(RequestTypes rType, std::string json){
 
     switch (rType) {
         case CAST_VOTE: {
-            urlRequest = "/cast";
+            urlRequest = "/cast/";
             break;
         }
         default: {
-            urlRequest = "/cast";
+            urlRequest = "/cast/";
             break;
         }
     }
@@ -160,7 +164,6 @@ void CGovernance::PostRequest(RequestTypes rType, std::string json){
      OnDataReceived,
      OnRequestCompletedPost,
      json);
-
 
     req.postRequest();
 
@@ -233,10 +236,8 @@ void HTTPGetRequest::postRequest()
                 std::ostream request_stream(&m_request);
                 request_stream << "POST " << m_relativeURL << " HTTP/1.1\r\n";
                 request_stream << "Host: " << m_host << "\r\n";
-                request_stream << "Accept: */*\r\n";
                 request_stream << "Content-Type: application/json\r\n";
-                request_stream << "Content-Length: " << m_postURL.length() << "\r\n";
-                request_stream << "Connection: close\r\n\r\n";
+                request_stream << "Content-Length: " << std::to_string(m_postURL.length()) << "\r\n\r\n";
                 request_stream << m_postURL;
 
                 boost::asio::async_write(m_socket, m_request,
