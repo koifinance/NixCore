@@ -53,10 +53,10 @@ std::string GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-stakesplitthreshold=<n>", _("Maximum amount of coins to stake before splitting into two outputs. (default: 20000)"));
     strUsage += HelpMessageOpt("-stakecombinethreshold=<n>", _("Minimum amount of NIX to combine into one stake if wallet has multiple outputs to stake. (default: 5000)"));
     strUsage += HelpMessageOpt("-maxstakecombine=<n>", _("Maximim of outputs to combine when achieving stakecombinethreshold. (default: 3)"));
-    strUsage += HelpMessageOpt("-ngeneratenewstakingaddress=<n>", _("Create new bech32 addresses on successful stakes. <true/false> (default: false"));
+    strUsage += HelpMessageOpt("-ngeneratenewstakingaddress>", _("Create new bech32 addresses on successful stakes. (default: false"));
     strUsage += HelpMessageOpt("-minimumleasepercentage=<n>", _("Minimum lease percentage required for a contract to stake if you are leasing stakes. Value can be between 0 and 10000 e.g. 1191 (11.91%) (default: 0"));
     strUsage += HelpMessageOpt("-leaserewardaddresses=<n>", _("Stake only LPoS contracts with reward fee addresses specified by this command. e.g. x1,x2,x3 (default: \"\""));
-    strUsage += HelpMessageOpt("-leaserewardtome=<n>", _("Stake only LPoS contracts with reward fee addresses that this local wallet owns <true/false> (default: false)"));
+    strUsage += HelpMessageOpt("-leaserewardtome", _("Stake only LPoS contracts with reward fee addresses that this local wallet owns <true/false> (default: false)"));
 
     strUsage += HelpMessageOpt("-dxmode", _("Set wallet change and default addressing to legacy for third-party dx support (default: false)"));
 

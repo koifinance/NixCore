@@ -562,58 +562,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CTxDestination dest;
-    /*
-    CScript ghostKey;
-
-    if (IsGhostAddress(request.params[0].get_str()))
-    {
-        CGhostAddress sxAddr;
-        if (sxAddr.SetEncoded(request.params[0].get_str()))
-        {
-            ec_secret ephem_secret;
-            ec_secret secretShared;
-            ec_point pkSendTo;
-            ec_point ephem_pubkey;
-
-
-            if (GenerateRandomSecret(ephem_secret) != 0)
-            {
-                LogPrintf("GenerateRandomSecret failed.\n");
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-            };
-
-            if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
-            {
-                LogPrintf("Could not generate receiving public key.\n");
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-            };
-
-            CPubKey cpkTo(pkSendTo);
-            if (!cpkTo.IsValid())
-            {
-                LogPrintf("Invalid public key generated.\n");
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-            };
-
-            CKeyID ckidTo = cpkTo.GetID();
-
-            CBitcoinAddress addrTo(ckidTo);
-
-            if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
-            {
-                LogPrintf("Could not generate ephem public key.\n");
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-            };
-
-            ghostKey = CScript() << OP_RETURN << ephem_pubkey;
-
-            dest = addrTo.Get();
-        }
-    }
-    else
-    */
-         dest = DecodeDestination(request.params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
 
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
@@ -6083,14 +6032,10 @@ UniValue getvoteweight(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked(pwallet);
-
     UniValue end(UniValue::VOBJ);
 
     int64_t start_time = request.params[0].get_int64();
     int64_t end_time = request.params[1].get_int64();
-
-
 
     // Cycle through all transactions and log all addresses
     std::vector<CScript> votingAddresses;
@@ -6113,12 +6058,19 @@ UniValue getvoteweight(const JSONRPCRequest& request)
             if(vout.scriptPubKey.IsPayToScriptHashAny())
                 continue;
 
-            nVoteWeight += vout.nValue;
+            // check roughly how much staking rewards have been earned
+            // verification requres 'getaddressvoteweight'
+            if(vout.scriptPubKey.IsPayToWitnessKeyHash_CS() || vout.scriptPubKey.IsPayToWitnessKeyHash()){
+                int height = wtx.fHeightCached ? wtx.nCachedHeight : chainActive.Height();
+                CBlockIndex *pindexPrev = chainActive[height];
+                nVoteWeight += Params().GetProofOfStakeReward(pindexPrev, 0);
+            }
+            else
+                nVoteWeight += vout.nValue;
         }
-
     }
 
-    end.pushKV("vote_weight", (nVoteWeight/COIN));
+    end.pushKV("vote_weight", ((double)nVoteWeight/COIN));
     return end;
 }
 

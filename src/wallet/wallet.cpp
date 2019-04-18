@@ -8467,7 +8467,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 scriptPubKeyKernel = kernelOut.scriptPubKey;
             }
             //send rewards to new bech32 addresses
-            else if (nGenerateNewStakingAddress)
+            else if (nGenerateNewStakingAddress && whichType == TX_SCRIPTHASH)
             {
                 TopUpKeyPool();
                 // Generate a new key that is added to wallet
@@ -8479,7 +8479,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
                 LearnRelatedScripts(newKey, OUTPUT_TYPE_BECH32);
                 CTxDestination dest = GetDestinationForKey(newKey, OUTPUT_TYPE_BECH32);
 
-                scriptPubKeyKernel << OP_0 << ToByteVector(dest);
+                scriptPubKeyKernel = GetScriptForDestination(dest);
             } else
             {
                 //payment to scripthash and witness keyhash only
@@ -8895,8 +8895,8 @@ bool CWallet::ProcessStakingSettings(std::string &sError)
     nMaxStakeCombine = gArgs.GetArg("-maxstakecombine", 3);
     nMinimumDelagatePercentage = gArgs.GetArg("-minimumleasepercentage", 0);
     std::string delegateAddressesString = gArgs.GetArg("-leaserewardaddresses", "");
-    nDelegateRewardToMe = gArgs.GetArg("-leaserewardtome", false);
-    nGenerateNewStakingAddress = gArgs.GetArg("-generatenewstakingaddress", false);
+    nDelegateRewardToMe = gArgs.GetBoolArg("-leaserewardtome", false);
+    nGenerateNewStakingAddress = gArgs.GetBoolArg("-generatenewstakingaddress", false);
 
     nDelegateRewardAddresses.clear();
 
