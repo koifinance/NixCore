@@ -61,7 +61,7 @@ void ParseProposals(){
             g_governance.proposals.push_back(prop);
         }
         else{
-            Proposals prop;
+            Votes prop;
             first = propStr.find("\"voteid\":") + 10;
             last = propStr.find(",\"address\"") - 1;
             prop.vote_id = propStr.substr (first,last-first);
@@ -221,7 +221,7 @@ void HTTPGetRequest::HandleResolve(const boost::system::error_code& err,
 {
     if (!err)
     {
-        LogPrintf("HTTPGetRequest::HandleResolve(): Resolve OK \n");
+        //LogPrintf("HTTPGetRequest::HandleResolve(): Resolve OK \n");
         m_ssl_socket.set_verify_mode(boost::asio::ssl::verify_peer);
         m_ssl_socket.set_verify_callback(
                     boost::bind(&HTTPGetRequest::VerifyCertificate, this, _1, _2));
@@ -250,7 +250,7 @@ bool HTTPGetRequest::VerifyCertificate(bool preverified,
     char subject_name[256];
     X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
     X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
-    LogPrintf("HTTPGetRequest::VerifyCertificate(): Verifying: %s \n", std::string(subject_name));
+    //LogPrintf("HTTPGetRequest::VerifyCertificate(): Verifying: %s \n", std::string(subject_name));
 
     return preverified;
 }
@@ -259,7 +259,7 @@ void HTTPGetRequest::HandleConnect(const boost::system::error_code& err)
 {
     if (!err)
     {
-        LogPrintf("HTTPGetRequest::HandleConnect(): Connect OK \n");
+        //LogPrintf("HTTPGetRequest::HandleConnect(): Connect OK \n");
         m_ssl_socket.async_handshake(boost::asio::ssl::stream_base::client,
                                 boost::bind(&HTTPGetRequest::HandleHandshake, this,
                                             boost::asio::placeholders::error));
@@ -276,7 +276,7 @@ void HTTPGetRequest::HandleHandshake(const boost::system::error_code& error)
     {
         const char* header=boost::asio::buffer_cast<const char*>(m_request.data());
 
-        LogPrintf("HTTPGetRequest::HandleHandshake(): Handshake OK. Request = \n%s \n", std::string(header));
+        //LogPrintf("HTTPGetRequest::HandleHandshake(): Handshake OK. Request = \n%s \n", std::string(header));
 
         // The handshake was successful. Send the request.
         boost::asio::async_write(m_ssl_socket, m_request,
@@ -293,7 +293,7 @@ void HTTPGetRequest::HandleWriteRequest(const boost::system::error_code& err)
 {
     if (!err)
     {
-        LogPrintf("HTTPGetRequest::HandleWriteRequest() \n");
+        //LogPrintf("HTTPGetRequest::HandleWriteRequest() \n");
         // Read the response status line. The response_ streambuf will
         // automatically grow to accommodate the entire line. The growth may be
         // limited by passing a maximum size to the streambuf constructor.
@@ -332,7 +332,7 @@ void HTTPGetRequest::HandleReadStatus(const boost::system::error_code& err)
             g_governance.isReady();
         }
 
-        LogPrintf("HTTPGetRequest::HandleReadStatus(): status code: %d \n", status_code);
+        //LogPrintf("HTTPGetRequest::HandleReadStatus(): status code: %d \n", status_code);
 
         g_governance.statusOK = true;
 
@@ -354,10 +354,10 @@ void HTTPGetRequest::HandleReadHeaders(const boost::system::error_code& err)
         // Process the response headers.
         std::istream response_stream(&m_response);
         std::string header;
-        LogPrintf("HTTPGetRequest::HandleReadHeaders(): \n");
+        //LogPrintf("HTTPGetRequest::HandleReadHeaders(): \n");
         while (std::getline(response_stream, header) && header != "\r")
             LogPrintf(" - %s \n", header);
-        LogPrintf("\n");
+        //LogPrintf("\n");
 
         // Start reading remaining data until EOF.
         boost::asio::async_read(m_ssl_socket, m_response,
@@ -384,7 +384,7 @@ void HTTPGetRequest::HandleReadContext(const boost::system::error_code& err)
             OnDataReceived(buf.get(), size);
         }
 
-        LogPrintf("HTTPGetRequest::HandleReadContext(): reading context\n");
+        //LogPrintf("HTTPGetRequest::HandleReadContext(): reading context\n");
 
         // Continue reading remaining data until EOF.
         boost::asio::async_read(m_ssl_socket, m_response,
@@ -398,7 +398,7 @@ void HTTPGetRequest::HandleReadContext(const boost::system::error_code& err)
     }
     // final loop
     else{
-        LogPrintf("HTTPGetRequest::HandleReadContext(): finished! \n");
+        //LogPrintf("HTTPGetRequest::HandleReadContext(): finished! \n");
         OnRequestCompleted();
     }
 }
