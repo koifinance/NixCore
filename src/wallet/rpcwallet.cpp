@@ -5888,13 +5888,18 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 0)
         throw runtime_error("getoffchainproposals \n");
 
-    g_governance.GetRequests(RequestTypes::GET_PROPOSALS);
+    g_governance.SendRequests(RequestTypes::GET_PROPOSALS);
 
     while(!g_governance.isReady()){}
 
+    // store vote only on successfull request
+    if(!g_governance.statusOK){
+        return "error, cannot get proposal list";
+    }
+
     UniValue end(UniValue::VOBJ);
     for(int i = 0; i < g_governance.proposals.size(); i++){
-        end.pushKV("Proposal " + std::to_string(i), g_governance.proposals[i].toJSONString());
+        end.pushKV("Proposal " + std::to_string(i), g_governance.proposals[i].proposalToJSONString());
     }
 
 
@@ -6005,11 +6010,25 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
 
     postMessage += "]";
 
-    g_governance.PostRequest(RequestTypes::CAST_VOTE, postMessage);
+    g_governance.SendRequests(RequestTypes::CAST_VOTE, postMessage);
 
     while(!g_governance.isReady()){}
 
-    return g_governance.p_data;
+    // store vote only on successfull request
+    if(!g_governance.statusOK){
+        return "error, vote not casted";
+    }
+
+    CWalletDB walletdb(pwallet->GetDBHandle());
+    CGovernanceEntry govVote;
+    govVote.voteID = vote_id;
+
+    UniValue end(UniValue::VOBJ);
+    for(int i = 0; i < g_governance.votes.size(); i++){
+        end.pushKV("Proposal " + std::to_string(i), g_governance.votes[i].voteToJSONString());
+    }
+
+    return end;
 }
 
 UniValue getvoteweight(const JSONRPCRequest& request)

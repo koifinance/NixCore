@@ -108,7 +108,7 @@ void OffChainGovernance::updateProposalList()
     ui->tableWidgetProposals->clearContents();
     ui->tableWidgetProposals->setRowCount(0);
 
-    g_governance.GetRequests(RequestTypes::GET_PROPOSALS);
+    g_governance.SendRequests(RequestTypes::GET_PROPOSALS);
 
     BOOST_FOREACH(Proposals & prop, g_governance.proposals)
     {

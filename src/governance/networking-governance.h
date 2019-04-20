@@ -16,11 +16,11 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/asio/ssl.hpp>
 
 class CGovernance;
 
-//static const std::string GOVERNANCE_URL = "www.governance.nixplatform.io";
-static const std::string GOVERNANCE_URL = "134.209.47.211";
+static const std::string GOVERNANCE_URL = "gov.nixplatform.io";
 
 // amount of time in second for how often to refresh proposals
 static const uint64_t REFRESH_TIME = 60;
@@ -31,7 +31,8 @@ extern uint64_t last_refresh_time;
 enum RequestTypes
 {
     GET_PROPOSALS = 1,
-    CAST_VOTE = 2,
+    GET_VOTES = 2,
+    CAST_VOTE = 3
 };
 
 struct Proposals{
@@ -45,20 +46,9 @@ struct Proposals{
     std::string end_time;
     std::string votes_affirm;
     std::string votes_oppose;
-
-    std::string toString()
-    {
-       return "Vote ID: "          + vote_id + " \n\n" +
-               "Name: "            + name + " \n\n" +
-               "Details: "         + details + " \n\n" +
-               "Address: "         + address + " \n\n" +
-               "Amount: "          + amount + " \n\n" +
-               "TxID: "            + txid + " \n\n" +
-               "Start Time: "      + start_time + " \n\n" +
-               "End Time: "        + end_time + " \n\n" +
-               "Votes Affirm: "    + votes_affirm + " \n\n" +
-               "Votes Oppose: "    + votes_oppose;
-    }
+    std::string weight;
+    std::string signature;
+    std::string vote;
 
     UniValue toJSONString()
     {
@@ -76,8 +66,26 @@ struct Proposals{
 
         return result;
     }
+};
 
+struct Votes{
+    std::string vote_id;
+    std::string address;
+    std::string signature;
+    std::string vote;
+    std::string weight;
 
+    UniValue toJSONString()
+    {
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("vote_id", vote_id);
+        result.pushKV("address", address);
+        result.pushKV("signature", signature);
+        result.pushKV("vote", vote);
+        result.pushKV("weight", weight);
+
+        return result;
+    }
 };
 
 class CGovernance
@@ -89,14 +97,15 @@ public:
     CGovernance();
     ~CGovernance();
 
-    void GetRequests(RequestTypes rType);
-    void PostRequest(RequestTypes rType, std::string json);
-    //Get data
+    void SendRequests(RequestTypes rType, std::string json = "");
+    //data
     std::string g_data;
-    //Post data
-    std::string p_data;
+    bool statusOK;
+    bool isPost;
 
     std::vector<Proposals> proposals;
+    std::vector<Votes> votes;
+
     bool isReady(){return ready;}
     void setReady(){ready = true;}
 
@@ -116,13 +125,13 @@ public:
   std::string relativeURL,
   HTTPRequestDataReceived receivedCB,
   HTTPRequestComplete completeCB,
+  boost::asio::ssl::context& context,
   std::string jsonPost = "");
 
  ~HTTPGetRequest();
 
 public:
- void sendRequest();
- void postRequest();
+ void sendRequest(bool isGet);
 
 private:
  HTTPRequestDataReceived m_receivedCB;
@@ -133,13 +142,25 @@ private:
  std::string m_postURL;
 
  tcp::socket m_socket;
+ boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_socket;
  boost::asio::io_service &m_io_service;
  tcp::resolver m_resolver;
 
  boost::asio::streambuf m_request;
  boost::asio::streambuf m_response;
 
- void ReadData();
+ void HandleResolve(const boost::system::error_code& err,
+                     tcp::resolver::iterator endpoint_iterator);
+ bool VerifyCertificate(bool preverified,
+                        boost::asio::ssl::verify_context& ctx);
+ void HandleConnect(const boost::system::error_code& err);
+ void HandleHandshake(const boost::system::error_code& error);
+ void HandleWriteRequest(const boost::system::error_code& err);
+ void HandleReadStatus(const boost::system::error_code& err);
+ void HandleReadHeaders(const boost::system::error_code& err);
+ void HandleReadContext(const boost::system::error_code& err);
+
+
 };
 
 class CGovernanceEntry
