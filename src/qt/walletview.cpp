@@ -97,6 +97,8 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     connect(transactionView, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
     // Pass through messages from delegatedStakingPage
     connect(delegatedStakingPage, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+    // Pass through messages from delegatedStakingPage
+    connect(offchainGovernancePage, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
 }
 
 WalletView::~WalletView()

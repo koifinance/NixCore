@@ -3,18 +3,19 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 
-#include "qt/offchaingovernance.h"
-#include "governance/networking-governance.h"
-#include "qt/forms/ui_offchaingovernance.h"
-#include "qt/transactiondescdialog.h"
-#include "qt/sendcoinsdialog.h"
+#include <qt/offchaingovernance.h>
+#include <governance/networking-governance.h>
+#include <qt/forms/ui_offchaingovernance.h>
+#include <qt/transactiondescdialog.h>
+#include <qt/sendcoinsdialog.h>
 
-#include "clientmodel.h"
-#include "init.h"
-#include "guiutil.h"
-#include "sync.h"
-#include "wallet/wallet.h"
-#include "walletmodel.h"
+#include <qt/clientmodel.h>
+#include <ui_interface.h>
+#include <init.h>
+#include <qt/guiutil.h>
+#include <sync.h>
+#include <wallet/wallet.h>
+#include <qt/walletmodel.h>
 #include <boost/foreach.hpp>
 
 #include <QTimer>
@@ -41,22 +42,16 @@ OffChainGovernance::OffChainGovernance(const PlatformStyle *platformStyle, QWidg
     ui->tableWidgetProposals->setColumnWidth(3, columnActiveWidth);
     ui->tableWidgetProposals->setColumnWidth(4, columnLastSeenWidth);
 
-    // context menu actions
-    QAction *voteForAction = new QAction(tr("Vote For"), this);
-    QAction *voteAgainstAction = new QAction(tr("Vote Against"), this);
-
     // context menu
-    contextMenu = new QMenu(this);
-    contextMenu->addAction(voteForAction);
-    contextMenu->addAction(voteAgainstAction);
+    //contextMenu = new QMenu(this);
+    //contextMenu->addAction(voteForAction);
+    //contextMenu->addAction(voteAgainstAction);
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateProposalList()));
     timer->start(1000);
     // context menu signals
     connect(ui->tableWidgetProposals, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
-    connect(voteForAction, SIGNAL(triggered()), this, SLOT(voteFor()));
-    connect(voteAgainstAction, SIGNAL(triggered()), this, SLOT(voteAgainst()));
 
     fFilterUpdated = false;
     nTimeFilterUpdated = GetTime();
@@ -72,7 +67,7 @@ void OffChainGovernance::setClientModel(ClientModel *model)
 {
     this->clientModel = model;
     if(model) {
-        // try to update list when Ghostnode count changes
+        // try to update list when count changes
         connect(clientModel, SIGNAL(strGhostnodesChanged(QString)), this, SLOT(updateProposalList()));
     }
 }
@@ -220,6 +215,19 @@ void OffChainGovernance::vote(std::string decision)
         return;
     }
 
+    CWallet *pwallet = walletModel->getWallet();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    CWalletDB walletdb(pwallet->GetDBHandle());
+
+
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet was cancelled
+        return;
+    }
 
     std::string name = sel.data(0).toString().toStdString();
     Proposals selectedProp;
@@ -230,18 +238,18 @@ void OffChainGovernance::vote(std::string decision)
         }
     }
 
-    CWallet *pwallet = walletModel->getWallet();
-
-    LOCK2(cs_main, pwallet->cs_wallet);
-
     std::string postMessage;
     std::string vote_id = selectedProp.vote_id;
 
-    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
-    if(!ctx.isValid())
-    {
-        // Unlock wallet was cancelled
-        return;
+    std::list<CGovernanceEntry> govEntries;
+    walletdb.ListGovernanceEntries(govEntries);
+
+    for(auto entry: govEntries){
+        // make sure we are not voting for a proposal we have voted for already
+        if(vote_id == entry.voteID){
+            Q_EMIT message(tr("Cast Vote"), tr("You have already voted for this proposal!\nYour vote weight: ") + tr(std::to_string(entry.voteWeight).c_str()), CClientUIInterface::MSG_ERROR);
+            return;
+        }
     }
 
     QString textOption;
@@ -304,16 +312,19 @@ void OffChainGovernance::vote(std::string decision)
         std::string strMessage = vote_id;
 
         if (!IsValidDestination(dest)) {
+            Q_EMIT message(tr("Cast Vote"), tr("Address decoding issue."), CClientUIInterface::MSG_ERROR);
             return;
         }
 
         const CKeyID keyID = GetKeyForDestination(*pwallet, dest);
         if (keyID.IsNull()) {
+            Q_EMIT message(tr("Cast Vote"), tr("Cannot extract address key ID's."), CClientUIInterface::MSG_ERROR);
             return;
         }
 
         CKey key;
         if (!pwallet->GetKey(keyID, key)) {
+            Q_EMIT message(tr("Cast Vote"), tr("Cannot get wallet key."), CClientUIInterface::MSG_ERROR);
             return;
         }
 
@@ -322,8 +333,10 @@ void OffChainGovernance::vote(std::string decision)
         ss << strMessage;
 
         std::vector<unsigned char> vchSig;
-        if (!key.SignCompact(ss.GetHash(), vchSig))
+        if (!key.SignCompact(ss.GetHash(), vchSig)){
+            Q_EMIT message(tr("Cast Vote"), tr("Cannot create signature."), CClientUIInterface::MSG_ERROR);
             return;
+        }
 
         if(id != 0)
             postMessage += ",";
@@ -341,27 +354,31 @@ void OffChainGovernance::vote(std::string decision)
 
     postMessage += "]";
 
-    // store vote only on successfull request
-    if(!g_governance.statusOK){
-        return;
-    }
-
     g_governance.SendRequests(RequestTypes::CAST_VOTE, postMessage);
 
     while(!g_governance.isReady()){}
 
-    UniValue end(UniValue::VOBJ);
-    for(int i = 0; i < g_governance.votes.size(); i++){
-        end.pushKV("Vote " + std::to_string(i), g_governance.votes[i].toJSONString());
-
-        // place vote into wallet db for future reference
-        CWalletDB walletdb(pwallet->GetDBHandle());
-        CGovernanceEntry govVote;
-        govVote.voteID = vote_id;
-        govVote.voteWeight = std::stoi(g_governance.votes[i].weight);
-        walletdb.WriteGovernanceEntry(govVote);
+    // store vote only on successfull request
+    if(!g_governance.statusOK){
+        Q_EMIT message(tr("Cast Vote"), tr("Vote not successful."), CClientUIInterface::MSG_ERROR);
+        return;
     }
 
+    CAmount voteWeight = 0;
+    for(int i = 0; i < g_governance.votes.size(); i++){
+        if(g_governance.votes[i].vote_id != vote_id)
+            continue;
+
+        voteWeight += g_governance.votes[i].weight;
+    }
+
+    if(voteWeight != 0){
+        // place vote into wallet db for future reference
+        CGovernanceEntry govVote;
+        govVote.voteID = vote_id;
+        govVote.voteWeight = std::stoi(voteWeight);
+        walletdb.WriteGovernanceEntry(govVote);
+    }
     return;
 }
 

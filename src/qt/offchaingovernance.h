@@ -50,6 +50,8 @@ public Q_SLOTS:
     void updateProposalList();
 
 Q_SIGNALS:
+    // Fired when a message should be reported to the user
+    void message(const QString &title, const QString &message, unsigned int style);
 
 private:
     QTimer *timer;
@@ -60,6 +62,7 @@ private:
     CCriticalSection cs_mnlist;
 
     QString strCurrentFilter;
+    void vote(std::string decision);
 
 private Q_SLOTS:
     void on_filterLineEdit_textChanged(const QString &strFilterIn);
@@ -68,8 +71,6 @@ private Q_SLOTS:
     void on_voteForButton_clicked();
     void on_voteAgainstButton_clicked();
     void showMenu(const QPoint &point);
-    void vote(std::string decision);
-
 
 };
 #endif // OFFCHAIN_GOV_H

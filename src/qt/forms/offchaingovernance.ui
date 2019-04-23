@@ -103,7 +103,7 @@
        <item>
         <widget class="QTableWidget" name="tableWidgetProposals">
          <property name="editTriggers">
-          <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+          <set>QAbstractItemView::NoEditTriggers</set>
          </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
