@@ -17,6 +17,7 @@
 #include <wallet/wallet.h>
 #include <qt/walletmodel.h>
 #include <boost/foreach.hpp>
+#include <string>
 
 #include <QTimer>
 #include <QMessageBox>
@@ -369,16 +370,17 @@ void OffChainGovernance::vote(std::string decision)
         if(g_governance.votes[i].vote_id != vote_id)
             continue;
 
-        voteWeight += g_governance.votes[i].weight;
+        voteWeight += std::stoi(g_governance.votes[i].weight);
     }
 
     if(voteWeight != 0){
         // place vote into wallet db for future reference
         CGovernanceEntry govVote;
         govVote.voteID = vote_id;
-        govVote.voteWeight = std::stoi(voteWeight);
+        govVote.voteWeight = voteWeight;
         walletdb.WriteGovernanceEntry(govVote);
     }
+
     return;
 }
 

@@ -5926,11 +5926,22 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
 
     EnsureWalletIsUnlocked(pwallet);
 
+    CWalletDB walletdb(pwallet->GetDBHandle());
+
     std::string postMessage;
     std::string vote_id = request.params[0].get_str();
     std::string decision = request.params[1].get_str();
 
 
+    std::list<CGovernanceEntry> govEntries;
+    walletdb.ListGovernanceEntries(govEntries);
+
+    for(auto entry: govEntries){
+        // make sure we are not voting for a proposal we have voted for already
+        if(vote_id == entry.voteID){
+            throw JSONRPCError(RPC_TYPE_ERROR, "You have already voted for this proposal!\nYour vote weight: " + std::to_string(entry.voteWeight));
+        }
+    }
 
     // Cycle through all transactions and log all addresses
     std::vector<CScript> votingAddresses;
@@ -6020,14 +6031,22 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
     }
 
     UniValue end(UniValue::VOBJ);
+
+    CAmount voteWeight = 0;
     for(int i = 0; i < g_governance.votes.size(); i++){
+        if(g_governance.votes[i].vote_id != vote_id)
+            continue;
+
         end.pushKV("Vote " + std::to_string(i), g_governance.votes[i].toJSONString());
 
+        voteWeight += std::stoi(g_governance.votes[i].weight);
+    }
+
+    if(voteWeight != 0){
         // place vote into wallet db for future reference
-        CWalletDB walletdb(pwallet->GetDBHandle());
         CGovernanceEntry govVote;
         govVote.voteID = vote_id;
-        govVote.voteWeight = std::stoi(g_governance.votes[i].weight);
+        govVote.voteWeight = voteWeight;
         walletdb.WriteGovernanceEntry(govVote);
     }
 
