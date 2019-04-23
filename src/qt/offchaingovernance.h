@@ -68,9 +68,7 @@ private Q_SLOTS:
     void on_voteForButton_clicked();
     void on_voteAgainstButton_clicked();
     void showMenu(const QPoint &point);
-    void voteFor();
-    void voteAgainst();
-
+    void vote(std::string decision);
 
 
 };

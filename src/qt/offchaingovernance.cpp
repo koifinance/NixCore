@@ -7,6 +7,7 @@
 #include "governance/networking-governance.h"
 #include "qt/forms/ui_offchaingovernance.h"
 #include "qt/transactiondescdialog.h"
+#include "qt/sendcoinsdialog.h"
 
 #include "clientmodel.h"
 #include "init.h"
@@ -212,20 +213,156 @@ void OffChainGovernance::showMenu(const QPoint &point)
     contextMenu->exec(QCursor::pos());
 }
 
-void OffChainGovernance::voteFor()
+void OffChainGovernance::vote(std::string decision)
 {
     QModelIndex sel = selectedRow();
     if (!sel.isValid()) {
         return;
     }
-}
 
-void OffChainGovernance::voteAgainst()
-{
-    QModelIndex sel = selectedRow();
-    if (!sel.isValid()) {
+
+    std::string name = sel.data(0).toString().toStdString();
+    Proposals selectedProp;
+    for(Proposals proposals: g_governance.proposals){
+        if(name == proposals.name){
+            selectedProp = proposals;
+            break;
+        }
+    }
+
+    CWallet *pwallet = walletModel->getWallet();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    std::string postMessage;
+    std::string vote_id = selectedProp.vote_id;
+
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet was cancelled
         return;
     }
+
+    QString textOption;
+    if(decision == "0")
+        textOption = "against ";
+    else
+        textOption = "for ";
+
+    QString detail = "<span style='font-family: monospace;'>Are you sure you want to vote " + textOption + QString::fromStdString(name) + "? This action cannot be reversed.";
+    detail.append("</span>");
+
+    SendConfirmationDialog confirmationDialog(tr("Cast vote for ") + QString::fromStdString(selectedProp.name),
+        detail, SEND_CONFIRM_DELAY, this);
+    confirmationDialog.exec();
+    QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
+
+    if(retval != QMessageBox::Yes)
+    {
+        return;
+    }
+
+    // Cycle through all transactions and log all addresses
+    std::vector<CScript> votingAddresses;
+    votingAddresses.clear();
+    for (auto& mapping: pwallet->mapWallet){
+        CWalletTx wtx = mapping.second;
+
+        if(!wtx.IsCoinStake())
+            continue;
+
+
+        // check for multiple outputs
+        for(auto& vout: wtx.tx->vout){
+
+            if (!::IsMine(*pwallet, vout.scriptPubKey)) continue;
+
+            // skip p2sh, only bech32/legacy allowed
+            if(vout.scriptPubKey.IsPayToScriptHashAny())
+                continue;
+
+            if (std::find(votingAddresses.begin(), votingAddresses.end(), vout.scriptPubKey) != votingAddresses.end())
+                continue;
+
+            // store unique values
+            votingAddresses.push_back(vout.scriptPubKey);
+        }
+
+    }
+
+    postMessage = "[";
+
+    int id = 0;
+
+    for(auto &addrScript: votingAddresses){
+
+        CTxDestination dest;
+        ExtractDestination(addrScript, dest);
+
+        std::string strAddress = EncodeDestination(dest);
+        std::string strMessage = vote_id;
+
+        if (!IsValidDestination(dest)) {
+            return;
+        }
+
+        const CKeyID keyID = GetKeyForDestination(*pwallet, dest);
+        if (keyID.IsNull()) {
+            return;
+        }
+
+        CKey key;
+        if (!pwallet->GetKey(keyID, key)) {
+            return;
+        }
+
+        CHashWriter ss(SER_GETHASH, 0);
+        ss << strMessageMagic;
+        ss << strMessage;
+
+        std::vector<unsigned char> vchSig;
+        if (!key.SignCompact(ss.GetHash(), vchSig))
+            return;
+
+        if(id != 0)
+            postMessage += ",";
+
+        postMessage += "{"
+                       "\"voteid\":\"" + vote_id +
+                        "\",\"address\":\"" + strAddress +
+                        "\",\"signature\":\"" + EncodeBase64(vchSig.data(), vchSig.size()) +
+                        "\",\"ballot\":\"" + decision + "\"}";
+
+        id++;
+
+    }
+
+
+    postMessage += "]";
+
+    // store vote only on successfull request
+    if(!g_governance.statusOK){
+        return;
+    }
+
+    g_governance.SendRequests(RequestTypes::CAST_VOTE, postMessage);
+
+    while(!g_governance.isReady()){}
+
+    UniValue end(UniValue::VOBJ);
+    for(int i = 0; i < g_governance.votes.size(); i++){
+        end.pushKV("Vote " + std::to_string(i), g_governance.votes[i].toJSONString());
+
+        // place vote into wallet db for future reference
+        CWalletDB walletdb(pwallet->GetDBHandle());
+        CGovernanceEntry govVote;
+        govVote.voteID = vote_id;
+        govVote.voteWeight = std::stoi(g_governance.votes[i].weight);
+        walletdb.WriteGovernanceEntry(govVote);
+    }
+
+    return;
 }
 
 void OffChainGovernance::on_voteForButton_clicked()
@@ -237,7 +374,7 @@ void OffChainGovernance::on_voteForButton_clicked()
         return;
     }
 
-    voteFor();
+    vote("1");
 }
 
 void OffChainGovernance::on_voteAgainstButton_clicked()
@@ -249,5 +386,5 @@ void OffChainGovernance::on_voteAgainstButton_clicked()
         return;
     }
 
-    voteAgainst();
+    vote("0");
 }

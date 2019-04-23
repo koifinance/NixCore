@@ -71,10 +71,10 @@ void ParseProposals(){
             first = propStr.find("\"signature\":") + 13;
             last = propStr.find(",\"ballot\"") - 1;
             prop.signature = propStr.substr (first,last-first);
-            first = propStr.find("\"vote\":") + 8;
-            last = propStr.find(",\"weight\"") - 1;
+            first = propStr.find("\"ballot\":") + 8;
+            last = propStr.find(",\"weight\"");
             prop.vote = propStr.substr (first,last-first);
-            first = propStr.find("\"weight\":") + 10;
+            first = propStr.find("\"weight\":") + 9;
             last = propStr.find("}") - 3;
             prop.weight = propStr.substr (first,last-first);
             g_governance.votes.push_back(prop);

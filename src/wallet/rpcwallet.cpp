@@ -5899,7 +5899,7 @@ UniValue getoffchainproposals(const JSONRPCRequest& request)
 
     UniValue end(UniValue::VOBJ);
     for(int i = 0; i < g_governance.proposals.size(); i++){
-        end.pushKV("Proposal " + std::to_string(i), g_governance.proposals[i].proposalToJSONString());
+        end.pushKV("Proposal " + std::to_string(i), g_governance.proposals[i].toJSONString());
     }
 
 
@@ -6019,13 +6019,16 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         return "error, vote not casted";
     }
 
-    CWalletDB walletdb(pwallet->GetDBHandle());
-    CGovernanceEntry govVote;
-    govVote.voteID = vote_id;
-
     UniValue end(UniValue::VOBJ);
     for(int i = 0; i < g_governance.votes.size(); i++){
-        end.pushKV("Proposal " + std::to_string(i), g_governance.votes[i].voteToJSONString());
+        end.pushKV("Vote " + std::to_string(i), g_governance.votes[i].toJSONString());
+
+        // place vote into wallet db for future reference
+        CWalletDB walletdb(pwallet->GetDBHandle());
+        CGovernanceEntry govVote;
+        govVote.voteID = vote_id;
+        govVote.voteWeight = std::stoi(g_governance.votes[i].weight);
+        walletdb.WriteGovernanceEntry(govVote);
     }
 
     return end;
