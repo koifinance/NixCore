@@ -124,22 +124,17 @@
          </column>
          <column>
           <property name="text">
-           <string>Details</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Address</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
            <string>Amount</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Txid</string>
+           <string>Affirm</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Oppose</string>
           </property>
          </column>
         </widget>

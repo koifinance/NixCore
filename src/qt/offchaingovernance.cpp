@@ -30,18 +30,16 @@ OffChainGovernance::OffChainGovernance(const PlatformStyle *platformStyle, QWidg
 {
     ui->setupUi(this);
 
-    int columnAliasWidth = 100;
-    int columnAddressWidth = 200;
-    int columnProtocolWidth = 60;
-    int columnStatusWidth = 80;
-    int columnActiveWidth = 130;
-    int columnLastSeenWidth = 130;
+    ui->tableWidgetProposals->setColumnWidth(0, 200);
+    ui->tableWidgetProposals->setColumnWidth(1, 140);
+    ui->tableWidgetProposals->setColumnWidth(2, 80);
+    ui->tableWidgetProposals->setColumnWidth(3, 80);
+    ui->tableWidgetProposals->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tableWidgetProposals->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+    ui->tableWidgetProposals->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
+    ui->tableWidgetProposals->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
+    ui->tableWidgetProposals->horizontalHeader()->setStretchLastSection(false);
 
-    ui->tableWidgetProposals->setColumnWidth(0, columnAddressWidth);
-    ui->tableWidgetProposals->setColumnWidth(1, columnProtocolWidth);
-    ui->tableWidgetProposals->setColumnWidth(2, columnStatusWidth);
-    ui->tableWidgetProposals->setColumnWidth(3, columnActiveWidth);
-    ui->tableWidgetProposals->setColumnWidth(4, columnLastSeenWidth);
 
     // context menu
     //contextMenu = new QMenu(this);
@@ -110,10 +108,9 @@ void OffChainGovernance::updateProposalList()
     BOOST_FOREACH(Proposals & prop, g_governance.proposals)
     {
         QTableWidgetItem *nameItem = new QTableWidgetItem(QString::fromStdString(prop.name));
-        QTableWidgetItem *detailsItem = new QTableWidgetItem(QString::fromStdString(prop.details));
-        QTableWidgetItem *addressItem = new QTableWidgetItem(QString::fromStdString(prop.address));
         QTableWidgetItem *amountItem = new QTableWidgetItem(QString::fromStdString(prop.amount));
-        QTableWidgetItem *txidItem = new QTableWidgetItem(QString::fromStdString(prop.txid));
+        QTableWidgetItem *affirmItem = new QTableWidgetItem(QString::fromStdString(prop.votes_affirm));
+        QTableWidgetItem *opposeItem = new QTableWidgetItem(QString::fromStdString(prop.votes_oppose));
 
         //QTableWidgetItem *amountItem = new QTableWidgetItem(QString::fromStdString(DurationToDHMS(mn.lastPing.sigTime - mn.sigTime)));
         //QTableWidgetItem *txidItem = new QTableWidgetItem(QString::fromStdString(DateTimeStrFormat("%Y-%m-%d %H:%M", mn.lastPing.sigTime + offsetFromUtc)));
@@ -121,19 +118,17 @@ void OffChainGovernance::updateProposalList()
         if (strCurrentFilter != "")
         {
             strToFilter =   nameItem->text() + " " +
-                            detailsItem->text() + " " +
-                            addressItem->text() + " " +
                             amountItem->text() + " " +
-                            txidItem->text();
+                            affirmItem->text() + " " +
+                            opposeItem->text();
             if (!strToFilter.contains(strCurrentFilter)) continue;
         }
 
         ui->tableWidgetProposals->insertRow(0);
         ui->tableWidgetProposals->setItem(0, 0, nameItem);
-        ui->tableWidgetProposals->setItem(0, 1, detailsItem);
-        ui->tableWidgetProposals->setItem(0, 2, addressItem);
-        ui->tableWidgetProposals->setItem(0, 3, amountItem);
-        ui->tableWidgetProposals->setItem(0, 4, txidItem);
+        ui->tableWidgetProposals->setItem(0, 1, amountItem);
+        ui->tableWidgetProposals->setItem(0, 2, affirmItem);
+        ui->tableWidgetProposals->setItem(0, 3, opposeItem);
     }
 
     ui->countLabel->setText(QString::number(ui->tableWidgetProposals->rowCount()));
@@ -167,7 +162,9 @@ void OffChainGovernance::on_tableWidgetProposals_doubleClicked(const QModelIndex
                 tr("Details: ") + QString::fromStdString(selectedProp.details) + tr("\n\n") +
                 tr("Address: ") + QString::fromStdString(selectedProp.address) + tr("\n\n") +
                 tr("Amount: ") + QString::fromStdString(selectedProp.amount) + tr("\n\n") +
-                tr("TxID: ") + QString::fromStdString(selectedProp.txid) + tr("\n");
+                tr("TxID: ") + QString::fromStdString(selectedProp.txid) + tr("\n\n") +
+                tr("Votes Affirm: ") + QString::fromStdString(selectedProp.votes_affirm) + tr("\n\n") +
+                tr("Votes Oppose: ") + QString::fromStdString(selectedProp.votes_oppose) + tr("\n");
 
 
         dlg->SetWindowTitle(selection.at(0).data(0).toString());
