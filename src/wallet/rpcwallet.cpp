@@ -6108,6 +6108,37 @@ UniValue getvoteweight(const JSONRPCRequest& request)
     return end;
 }
 
+UniValue erasegoventries(const JSONRPCRequest& request)
+{
+    CWallet *pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error("eraseallgoventires \n"
+                            "Erase all wallet database voting entries for the current local wallet. \n"
+                            + HelpRequiringPassphrase(pwallet));
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    CWalletDB walletdb(pwallet->GetDBHandle());
+
+    std::list<CGovernanceEntry> govEntries;
+    walletdb.ListGovernanceEntries(govEntries);
+    int i = 0;
+    for(auto &entry: govEntries){
+        // make sure we are not voting for a proposal we have voted for already
+        if(!walletdb.EraseGovernanceEntry(entry)){
+            throw JSONRPCError(RPC_TYPE_ERROR, "You have already voted for this proposal!\nYour vote weight: " + std::to_string(entry.voteWeight));
+        }
+        i++;
+    }
+
+    UniValue end(UniValue::VOBJ);
+    end.pushKV("entries_erased", i);
+    return end;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -6218,7 +6249,7 @@ static const CRPCCommand commands[] =
     { "NIX Governance",     "getoffchainproposals",     &getoffchainproposals,     {} },
     { "NIX Governance",     "postoffchainproposals",    &postoffchainproposals,    {"vote_id", "decision"} },
     { "NIX Governance",     "getvoteweight",            &getvoteweight,            {"start_time", "end_time"} },
-
+    { "NIX Governance",     "erasegoventries",          &erasegoventries,          {""} },
 
 };
 

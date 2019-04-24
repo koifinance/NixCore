@@ -390,7 +390,7 @@ public:
     void ListUnloadedPubCoin(std::list<CZerocoinEntry>& listUnloadedPubCoin);
 
     bool WriteGovernanceEntry(const CGovernanceEntry& vote);
-    bool ReadGovernanceEntry(const CGovernanceEntry& vote);
+    bool EraseGovernanceEntry(const CGovernanceEntry& vote);
     void ListGovernanceEntries(std::list<CGovernanceEntry>& votes);
 
 

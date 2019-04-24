@@ -1027,7 +1027,7 @@ bool CWalletDB::WriteGovernanceEntry(const CGovernanceEntry &vote) {
     return WriteIC(make_pair(string("vote"), vote.voteID), vote);
 }
 
-bool CWalletDB::ReadGovernanceEntry(const CGovernanceEntry &vote) {
+bool CWalletDB::EraseGovernanceEntry(const CGovernanceEntry &vote) {
     return EraseIC(make_pair(string("vote"), vote.voteID));
 }
 
