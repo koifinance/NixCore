@@ -129,6 +129,11 @@
          </column>
          <column>
           <property name="text">
+           <string>Expiration</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
            <string>Affirm</string>
           </property>
          </column>

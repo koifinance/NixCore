@@ -1271,6 +1271,9 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
             break;
     }
 
+    if(end_block == -1)
+        end_block = chainActive.Height();
+
     start = start_block;
     end = end_block;
 

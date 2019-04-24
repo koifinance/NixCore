@@ -6129,7 +6129,7 @@ UniValue erasegoventries(const JSONRPCRequest& request)
     for(auto &entry: govEntries){
         // make sure we are not voting for a proposal we have voted for already
         if(!walletdb.EraseGovernanceEntry(entry)){
-            throw JSONRPCError(RPC_TYPE_ERROR, "You have already voted for this proposal!\nYour vote weight: " + std::to_string(entry.voteWeight));
+            throw JSONRPCError(RPC_TYPE_ERROR, "WalletDB::EraseGovernanceEntry failed!");
         }
         i++;
     }
