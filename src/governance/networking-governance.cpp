@@ -355,9 +355,7 @@ void HTTPGetRequest::HandleReadHeaders(const boost::system::error_code& err)
         std::istream response_stream(&m_response);
         std::string header;
         //LogPrintf("HTTPGetRequest::HandleReadHeaders(): \n");
-        while (std::getline(response_stream, header) && header != "\r")
-            LogPrintf(" - %s \n", header);
-        //LogPrintf("\n");
+        while (std::getline(response_stream, header) && header != "\r") {}
 
         // Start reading remaining data until EOF.
         boost::asio::async_read(m_ssl_socket, m_response,

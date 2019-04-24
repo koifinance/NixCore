@@ -343,6 +343,7 @@ bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
 bool fAddressIndex = false;
 bool fSpentIndex = false;
 bool fTimestampIndex = false;
+bool fDisableZerocoinTransactions = false;
 
 /*****NIX Data Index*******/
 bool fDataIndex = false;
@@ -692,6 +693,10 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     // Coinstake is only valid in a block, not as a loose transaction
     if (tx.IsCoinStake())
         return state.DoS(100, false, REJECT_INVALID, "coinstake");
+
+    // ignore zerocoin transactions if flag is set
+    if((tx.IsZerocoinMint() || tx.IsZerocoinSpend()) && fDisableZerocoinTransactions)
+        return state.DoS(100, false, REJECT_INVALID, "not accepting zerocoin transactions");
 
     // Reject transactions with witness before segregated witness activates (override with -prematurewitness)
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
@@ -5401,8 +5406,11 @@ bool LoadBlockIndex(const CChainParams& chainparams)
         fDataIndex = gArgs.GetBoolArg("-dataindex", DEFAULT_DATAINDEX);
         pblocktree->WriteFlag("dataindex", fDataIndex);
         LogPrintf("%s: data index %s\n", __func__, fDataIndex ? "enabled" : "disabled");
-
     }
+
+    fDisableZerocoinTransactions = gArgs.GetBoolArg("-disablezerocointransactions", false);
+    LogPrintf("%s: disable zerocoin transactions %s\n", __func__, fDisableZerocoinTransactions ? "enabled" : "disabled");
+
     return true;
 }
 
