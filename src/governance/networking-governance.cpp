@@ -105,6 +105,14 @@ void OnRequestCompleted()
     g_governance.setReady();
 }
 
+
+void OnRequestFailed()
+{
+    g_data.clear();
+    g_governance.statusOK = false;
+    g_governance.setReady();
+}
+
 CGovernance::CGovernance():
     proposals(),
     g_data()
@@ -232,6 +240,7 @@ void HTTPGetRequest::HandleResolve(const boost::system::error_code& err,
     }
     else
     {
+        OnRequestFailed();
         LogPrintf("HTTPGetRequest::HandleResolve(): Error resolve: %s \n", err.message());
     }
 }
@@ -266,6 +275,7 @@ void HTTPGetRequest::HandleConnect(const boost::system::error_code& err)
     }
     else
     {
+        OnRequestFailed();
         LogPrintf("HTTPGetRequest::HandleConnect(): Connect failed: %s \n", err.message());
     }
 }
@@ -285,6 +295,7 @@ void HTTPGetRequest::HandleHandshake(const boost::system::error_code& error)
     }
     else
     {
+        OnRequestFailed();
         LogPrintf("HTTPGetRequest::HandleHandshake(): Handshake failed: %s \n", error.message());
     }
 }
@@ -303,6 +314,7 @@ void HTTPGetRequest::HandleWriteRequest(const boost::system::error_code& err)
     }
     else
     {
+        OnRequestFailed();
         LogPrintf("HTTPGetRequest::HandleWriteRequest(): Error write req: %s \n", err.message());
     }
 }
@@ -322,14 +334,12 @@ void HTTPGetRequest::HandleReadStatus(const boost::system::error_code& err)
         if (!response_stream || http_version.substr(0, 5) != "HTTP/")
         {
             LogPrintf("HTTPGetRequest::HandleReadStatus(): Invalid response \n");
-            g_governance.statusOK = false;
-            g_governance.isReady();
+            OnRequestFailed();
         }
         if (status_code != 200 && status_code != 201 && status_code != 202 && status_code != 400)
         {
             LogPrintf("HTTPGetRequest::HandleReadStatus(): status code error: %d \n", status_code);
-            g_governance.statusOK = false;
-            g_governance.isReady();
+            OnRequestFailed();
         }
 
         //LogPrintf("HTTPGetRequest::HandleReadStatus(): status code: %d \n", status_code);
@@ -343,6 +353,7 @@ void HTTPGetRequest::HandleReadStatus(const boost::system::error_code& err)
     }
     else
     {
+        OnRequestFailed();
         LogPrintf("HTTPGetRequest::HandleReadStatus(): Error: %s \n", err.message());
     }
 }
@@ -365,6 +376,7 @@ void HTTPGetRequest::HandleReadHeaders(const boost::system::error_code& err)
     }
     else
     {
+        OnRequestFailed();
         LogPrintf("HTTPGetRequest::HandleReadHeaders(): Error: %s \n", err.message());
     }
 }
@@ -393,6 +405,7 @@ void HTTPGetRequest::HandleReadContext(const boost::system::error_code& err)
     else if (err != boost::asio::error::eof)
     {
         LogPrintf("HTTPGetRequest::HandleReadContext(): Error: %s \n", err.message());
+        OnRequestFailed();
     }
     // final loop
     else{
