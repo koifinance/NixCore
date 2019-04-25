@@ -505,12 +505,12 @@ UniValue importwallet(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "importwallet \"filename\"\n"
-            "\nImports keys from a wallet dump file (see dumpwallet). Requires a new wallet backup to include imported keys.\n"
+            "\nImports keys from a wallet dump file (see dumpwalletprivatekeys). Requires a new wallet backup to include imported keys.\n"
             "\nArguments:\n"
             "1. \"filename\"    (string, required) The wallet file\n"
             "\nExamples:\n"
             "\nDump the wallet\n"
-            + HelpExampleCli("dumpwallet", "\"test\"") +
+            + HelpExampleCli("dumpwalletprivatekeys", "\"test\"") +
             "\nImport the wallet\n"
             + HelpExampleCli("importwallet", "\"test\"") +
             "\nImport using the json rpc call\n"
@@ -663,7 +663,7 @@ UniValue dumpprivkey(const JSONRPCRequest& request)
 }
 
 
-UniValue dumpwallet(const JSONRPCRequest& request)
+UniValue dumpwalletprivatekeys(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
@@ -672,7 +672,7 @@ UniValue dumpwallet(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
-            "dumpwallet \"filename\"\n"
+            "dumpwalletprivatekeys \"filename\"\n"
             "\nDumps all wallet keys in a human-readable format to a server-side file. This does not allow overwriting existing files.\n"
             "Imported scripts are included in the dumpfile, but corresponding BIP173 addresses, etc. may not be added automatically by importwallet.\n"
             "Note that if your wallet contains keys which are not derived from your HD seed (e.g. imported keys), these are not covered by\n"
@@ -684,8 +684,8 @@ UniValue dumpwallet(const JSONRPCRequest& request)
             "  \"filename\" : {        (string) The filename with full absolute path\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("dumpwallet", "\"test\"")
-            + HelpExampleRpc("dumpwallet", "\"test\"")
+            + HelpExampleCli("dumpwalletprivatekeys", "\"test\"")
+            + HelpExampleRpc("dumpwalletprivatekeys", "\"test\"")
         );
 
     LOCK2(cs_main, pwallet->cs_wallet);
