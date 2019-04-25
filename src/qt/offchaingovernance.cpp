@@ -221,6 +221,11 @@ void OffChainGovernance::vote(std::string decision)
         return;
     }
 
+    if(IsInitialBlockDownload()){
+        Q_EMIT message(tr("Cast Vote"), tr("You cannot cast a vote until you are fully sycned!"), CClientUIInterface::MSG_ERROR);
+        return;
+    }
+
     CWallet *pwallet = walletModel->getWallet();
 
     LOCK2(cs_main, pwallet->cs_wallet);
@@ -366,7 +371,7 @@ void OffChainGovernance::vote(std::string decision)
 
     // store vote only on successfull request
     if(!g_governance.statusOK){
-        Q_EMIT message(tr("Cast Vote"), tr("Vote not successful."), CClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Cast Vote"), tr("Vote not successful. Please try again at a later time."), CClientUIInterface::MSG_ERROR);
         return;
     }
 
@@ -385,6 +390,8 @@ void OffChainGovernance::vote(std::string decision)
         govVote.voteWeight = voteWeight;
         walletdb.WriteGovernanceEntry(govVote);
     }
+
+    Q_EMIT message(tr("Cast Vote"), tr("Successfully casted vote. Vote weight added: ") + tr(std::to_string(voteWeight).c_str()), (CClientUIInterface::MSG_INFORMATION | CClientUIInterface::BTN_OK | CClientUIInterface::MODAL));
 
     return;
 }

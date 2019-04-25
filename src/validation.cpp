@@ -1511,11 +1511,6 @@ int GetNumBlocksOfPeers()
 
 bool IsInitialBlockDownload()
 {
-
-    if (GetNumPeers() < 1
-        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
-        return true;
-
     // Once this function has returned false, it must remain false.
     static std::atomic<bool> latchToFalse{false};
     // Optimization: pre-test latch before taking the lock.
@@ -1523,6 +1518,11 @@ bool IsInitialBlockDownload()
         return false;
 
     LOCK(cs_main);
+
+    if (GetNumPeers() < 1
+        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
+        return true;
+
     if (latchToFalse.load(std::memory_order_relaxed))
         return false;
     if (fImporting || fReindex)
