@@ -256,7 +256,7 @@ bool CheckMintZerocoinTransaction(const CTxOut &txout,
 bool CheckDevFundInputs(const CTransaction &tx, CValidationState &state, int nHeight, bool fTestNet) {
 
     //checks blocks on startup, no need to verify
-    if(nHeight == INT_MAX)
+    if((nHeight == (INT_MAX - 1)) || (nHeight == INT_MAX))
         return true;
 
     // To airdrop
@@ -363,6 +363,10 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               bool isCheckWallet,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
+
+    if((tx.IsZerocoinSpend() || tx.IsZerocoinMint()) && (nHeight < (INT_MAX - 1)) && nHeight > 205200)
+        return state.DoS(5, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
+
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
         if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsZerocoinMint()) {
@@ -391,7 +395,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                             return false;
                     break;
                 default:
-                    return state.DoS(100, error("CheckZerocoinTransaction : invalid spending txout value"));
+                    return state.DoS(100, error("CheckZerocoinTransaction(): invalid spending txout value"));
                 }
             }
             i++;

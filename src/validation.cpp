@@ -343,7 +343,7 @@ bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
 bool fAddressIndex = false;
 bool fSpentIndex = false;
 bool fTimestampIndex = false;
-bool fDisableZerocoinTransactions = false;
+bool fDisableZerocoinTransactions = true;
 
 /*****NIX Data Index*******/
 bool fDataIndex = false;
@@ -5408,7 +5408,7 @@ bool LoadBlockIndex(const CChainParams& chainparams)
         LogPrintf("%s: data index %s\n", __func__, fDataIndex ? "enabled" : "disabled");
     }
 
-    fDisableZerocoinTransactions = gArgs.GetBoolArg("-disablezerocointransactions", false);
+    fDisableZerocoinTransactions = gArgs.GetBoolArg("-disablezerocointransactions", true);
     LogPrintf("%s: disable zerocoin transactions %s\n", __func__, fDisableZerocoinTransactions ? "enabled" : "disabled");
 
     return true;

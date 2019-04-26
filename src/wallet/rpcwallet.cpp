@@ -4181,6 +4181,9 @@ UniValue ghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 2)
         throw runtime_error("ghostamount <amount>(whole numbers only) <commitment key pack>\n" + HelpRequiringPassphrase(pwalletMain));
 
+    if(fDisableZerocoinTransactions)
+        throw JSONRPCError(RPC_WALLET_ERROR, "ghosted tranasactions are not currently being accepted");
+
     int64_t nAmount = request.params[0].get_int64();
 
     std::vector<CScript> keypack;
@@ -4206,6 +4209,9 @@ UniValue unghostamount(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() == 0 || request.params.size() > 2)
         throw runtime_error("unghostamount <amount>(whole numbers only) <addresstosend>(either address or commitment key pack)\n" + HelpRequiringPassphrase(pwalletMain));
+
+    if(fDisableZerocoinTransactions)
+        throw JSONRPCError(RPC_WALLET_ERROR, "ghosted tranasactions are not currently being accepted");
 
     int64_t nAmount = request.params[0].get_int64();
 

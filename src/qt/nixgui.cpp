@@ -328,9 +328,9 @@ void BitcoinGUI::createActions()
     tabGroup->addAction(historyAction);
 
     ghostVaultAction = new QAction(platformStyle->SingleColorIcon(":/icons/eye"), tr("&Ghost Vault"), this);
-    ghostVaultAction->setStatusTip(tr("Your personal vault of privatized funds"));
+    ghostVaultAction->setStatusTip(tr("Your personal vault of privatized funds (temporarily disabled)"));
     ghostVaultAction->setToolTip(ghostVaultAction->statusTip());
-    ghostVaultAction->setCheckable(true);
+    ghostVaultAction->setCheckable(false);
     ghostVaultAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
     tabGroup->addAction(ghostVaultAction);
 
@@ -647,7 +647,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedSendingAddressesAction->setEnabled(enabled);
     usedReceivingAddressesAction->setEnabled(enabled);
     ghostnodeAction->setEnabled(enabled);
-    ghostVaultAction->setEnabled(enabled);
+    ghostVaultAction->setEnabled(false);
     delegatedStakingAction->setEnabled(enabled);
     offchainGovernanceAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
