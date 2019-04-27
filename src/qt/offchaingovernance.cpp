@@ -320,7 +320,7 @@ void OffChainGovernance::vote(std::string decision)
         ExtractDestination(addrScript, dest);
 
         std::string strAddress = EncodeDestination(dest);
-        std::string strMessage = vote_id;
+        std::string strMessage = vote_id + "_" + decision;
 
         if (!IsValidDestination(dest)) {
             Q_EMIT message(tr("Cast Vote"), tr("Address decoding issue."), CClientUIInterface::MSG_ERROR);

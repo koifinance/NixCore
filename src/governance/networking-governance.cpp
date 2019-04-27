@@ -117,7 +117,7 @@ CGovernance::CGovernance():
     proposals(),
     g_data()
 {
-    ready = false;
+    ready = true;
     isPost = false;
 }
 
@@ -127,6 +127,7 @@ CGovernance::~CGovernance(){
 
 void CGovernance::SendRequests(RequestTypes rType, std::string json){
 
+    while(!ready){}
     std::string urlRequest = "";
     bool isGet = true;
 
@@ -186,12 +187,15 @@ HTTPGetRequest::HTTPGetRequest(boost::asio::io_service& io_service, std::string 
     m_host(host),
     m_relativeURL(clipURL),
     m_io_service(io_service),
+    #ifdef USING_SSL
+    m_socket(io_service, context),
+    #else
     m_socket(io_service),
+    #endif
     m_resolver(m_io_service),
     m_receivedCB(receivedCB),
     m_completeCB(completeCB),
-    m_postURL(jsonPost),
-    m_ssl_socket(io_service, context)
+    m_postURL(jsonPost)
 {
 }
 
@@ -216,7 +220,11 @@ void HTTPGetRequest::sendRequest(bool isGet)
         request_stream << m_postURL;
     }
 
+    #ifdef USING_SSL
     tcp::resolver::query query(m_host, "https");
+    #else
+    tcp::resolver::query query(m_host, "http");
+    #endif
 
     m_resolver.async_resolve(query,
                             boost::bind(&HTTPGetRequest::HandleResolve, this,
@@ -230,13 +238,22 @@ void HTTPGetRequest::HandleResolve(const boost::system::error_code& err,
     if (!err)
     {
         //LogPrintf("HTTPGetRequest::HandleResolve(): Resolve OK \n");
-        m_ssl_socket.set_verify_mode(boost::asio::ssl::verify_peer);
-        m_ssl_socket.set_verify_callback(
+
+
+    #ifdef USING_SSL
+        m_socket.set_verify_mode(boost::asio::ssl::verify_peer);
+        m_socket.set_verify_callback(
                     boost::bind(&HTTPGetRequest::VerifyCertificate, this, _1, _2));
 
-        boost::asio::async_connect(m_ssl_socket.lowest_layer(), endpoint_iterator,
+        boost::asio::async_connect(m_socket.lowest_layer(), endpoint_iterator,
                                    boost::bind(&HTTPGetRequest::HandleConnect, this,
                                                boost::asio::placeholders::error));
+    #else
+        boost::asio::async_connect(m_socket, endpoint_iterator,
+                                   boost::bind(&HTTPGetRequest::HandleConnect, this,
+                                               boost::asio::placeholders::error));
+    #endif
+
     }
     else
     {
@@ -269,9 +286,13 @@ void HTTPGetRequest::HandleConnect(const boost::system::error_code& err)
     if (!err)
     {
         //LogPrintf("HTTPGetRequest::HandleConnect(): Connect OK \n");
-        m_ssl_socket.async_handshake(boost::asio::ssl::stream_base::client,
+        #ifdef USING_SSL
+        m_socket.async_handshake(boost::asio::ssl::stream_base::client,
                                 boost::bind(&HTTPGetRequest::HandleHandshake, this,
                                             boost::asio::placeholders::error));
+        #else
+            HandleHandshake(err);
+        #endif
     }
     else
     {
@@ -289,9 +310,15 @@ void HTTPGetRequest::HandleHandshake(const boost::system::error_code& error)
         //LogPrintf("HTTPGetRequest::HandleHandshake(): Handshake OK. Request = \n%s \n", std::string(header));
 
         // The handshake was successful. Send the request.
-        boost::asio::async_write(m_ssl_socket, m_request,
+        #ifdef USING_SSL
+        boost::asio::async_write(m_socket.lowest_layer(), m_request,
                                  boost::bind(&HTTPGetRequest::HandleWriteRequest, this,
                                              boost::asio::placeholders::error));
+        #else
+        boost::asio::async_write(m_socket, m_request,
+                                 boost::bind(&HTTPGetRequest::HandleWriteRequest, this,
+                                             boost::asio::placeholders::error));
+        #endif
     }
     else
     {
@@ -308,9 +335,16 @@ void HTTPGetRequest::HandleWriteRequest(const boost::system::error_code& err)
         // Read the response status line. The response_ streambuf will
         // automatically grow to accommodate the entire line. The growth may be
         // limited by passing a maximum size to the streambuf constructor.
-        boost::asio::async_read_until(m_ssl_socket, m_response, "\r\n",
+
+    #ifdef USING_SSL
+        boost::asio::async_read_until(m_socket.lowest_layer(), m_response, "\r\n",
                                       boost::bind(&HTTPGetRequest::HandleReadStatus, this,
                                                   boost::asio::placeholders::error));
+    #else
+        boost::asio::async_read_until(m_socket, m_response, "\r\n",
+                                      boost::bind(&HTTPGetRequest::HandleReadStatus, this,
+                                                  boost::asio::placeholders::error));
+    #endif
     }
     else
     {
@@ -346,10 +380,16 @@ void HTTPGetRequest::HandleReadStatus(const boost::system::error_code& err)
 
         g_governance.statusOK = true;
 
-        // Read the response headers, which are terminated by a blank line.
-        boost::asio::async_read_until(m_ssl_socket, m_response, "\r\n\r\n",
-                                      boost::bind(&HTTPGetRequest::HandleReadHeaders, this,
+        // Read the response headers, which are terminated by a blank line.  
+        #ifdef USING_SSL
+            boost::asio::async_read_until(m_socket.lowest_layer(), m_response, "\r\n\r\n",
+                                    boost::bind(&HTTPGetRequest::HandleReadHeaders, this,
                                                   boost::asio::placeholders::error));
+        #else
+            boost::asio::async_read_until(m_socket, m_response, "\r\n\r\n",
+                                    boost::bind(&HTTPGetRequest::HandleReadHeaders, this,
+                                                boost::asio::placeholders::error));
+        #endif
     }
     else
     {
@@ -369,10 +409,17 @@ void HTTPGetRequest::HandleReadHeaders(const boost::system::error_code& err)
         while (std::getline(response_stream, header) && header != "\r") {}
 
         // Start reading remaining data until EOF.
-        boost::asio::async_read(m_ssl_socket, m_response,
-                                boost::asio::transfer_at_least(1),
-                                boost::bind(&HTTPGetRequest::HandleReadContext, this,
-                                            boost::asio::placeholders::error));
+        #ifdef USING_SSL
+            boost::asio::async_read(m_socket.lowest_layer(), m_response,
+                                    boost::asio::transfer_at_least(1),
+                                    boost::bind(&HTTPGetRequest::HandleReadContext, this,
+                                                boost::asio::placeholders::error));
+        #else
+            boost::asio::async_read(m_socket, m_response,
+                                    boost::asio::transfer_at_least(1),
+                                    boost::bind(&HTTPGetRequest::HandleReadContext, this,
+                                                boost::asio::placeholders::error));
+        #endif
     }
     else
     {
@@ -396,11 +443,18 @@ void HTTPGetRequest::HandleReadContext(const boost::system::error_code& err)
 
         //LogPrintf("HTTPGetRequest::HandleReadContext(): reading context\n");
 
-        // Continue reading remaining data until EOF.
-        boost::asio::async_read(m_ssl_socket, m_response,
+        // Continue reading remaining data until EOF.         
+        #ifdef USING_SSL
+            boost::asio::async_read(m_socket.lowest_layer(), m_response,
                                 boost::asio::transfer_at_least(1),
                                 boost::bind(&HTTPGetRequest::HandleReadContext, this,
                                             boost::asio::placeholders::error));
+        #else
+            boost::asio::async_read(m_socket, m_response,
+                                boost::asio::transfer_at_least(1),
+                                boost::bind(&HTTPGetRequest::HandleReadContext, this,
+                                            boost::asio::placeholders::error));
+        #endif
     }
     else if (err != boost::asio::error::eof)
     {

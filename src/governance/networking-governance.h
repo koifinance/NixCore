@@ -18,6 +18,8 @@
 #include <boost/bind.hpp>
 #include <boost/asio/ssl.hpp>
 
+//#define USING_SSL
+
 class CGovernance;
 
 static const std::string GOVERNANCE_URL = "gov.nixplatform.io";
@@ -140,9 +142,11 @@ private:
  std::string m_host;
  std::string m_relativeURL;
  std::string m_postURL;
-
+#ifdef USING_SSL
+ boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket;
+#else
  tcp::socket m_socket;
- boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_socket;
+#endif
  boost::asio::io_service &m_io_service;
  tcp::resolver m_resolver;
 
