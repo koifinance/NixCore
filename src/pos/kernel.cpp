@@ -310,9 +310,14 @@ bool CheckProofOfStake(const CBlockIndex *pindexPrev, const CTransaction &tx, in
             return state.DoS(100, error("%s: verify-amount-script-failed, txn %s", __func__, tx.GetHash().ToString()),
                 REJECT_INVALID, "verify-amount-script-failed");
 
-        if (!foundFeeAddress)
+        if (!foundFeeAddress){
+            for (const auto &txout : tx.vout)
+                LogPrintf("\n FeeAddress(): Scriptout=%s, pOutpub=%s, amount=%llf, outVal=%llf", HexStr(scriptOut),
+                          HexStr(txout.scriptPubKey), feeAmount, txout.nValue);
+
             return state.DoS(100, error("%s: foundFeeAddress-failed, txn %s", __func__, tx.GetHash().ToString()),
                 REJECT_INVALID, "foundFeeAddress-failed");
+        }
     }
 
     return true;
