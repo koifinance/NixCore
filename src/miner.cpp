@@ -401,9 +401,6 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
 
-    unsigned int COUNT_SPEND_ZC_TX = 0;
-    unsigned int MAX_SPEND_ZC_TX_PER_BLOCK = 5;
-
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty())
     {
         // First try to find a new transaction in mapTx to evaluate.
@@ -497,11 +494,15 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         SortForBlock(ancestors, iter, sortedEntries);
 
         for (size_t i=0; i<sortedEntries.size(); ++i) {
+            bool isMint = sortedEntries[i]->GetTx().IsZerocoinMint() || sortedEntries[i]->GetTx().IsSigmaMint();
+            bool isSpend = sortedEntries[i]->GetTx().IsZerocoinSpend() || sortedEntries[i]->GetTx().IsSigmaSpend();
+
             //require 0.25% tx fee for new zerocoin mints
-            if(sortedEntries[i]->GetTx().IsZerocoinMint() && !sortedEntries[i]->GetTx().IsZerocoinSpend()){
+            if(isMint && !isSpend){
                 CAmount mintAmount = 0;
                 for(int k = 0; k < sortedEntries[i]->GetTx().vout.size(); k++){
-                    if(sortedEntries[i]->GetTx().vout[k].scriptPubKey.IsZerocoinMint())
+                    if(sortedEntries[i]->GetTx().vout[k].scriptPubKey.IsZerocoinMint()
+                            || sortedEntries[i]->GetTx().vout[k].scriptPubKey.IsSigmaSpend())
                         mintAmount += sortedEntries[i]->GetTx().vout[k].nValue;
                 }
                 CAmount feeReq = mintAmount * 0.0025;
@@ -509,10 +510,16 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
                 if(sortedEntries[i]->GetFee() < feeReq)
                     continue;
 
-                //AddToBlock(sortedEntries[i]);
+                AddToBlock(sortedEntries[i]);
             }
-            else if(sortedEntries[i]->GetTx().IsZerocoinSpend()){
-                //AddToBlock(sortedEntries[i]);
+            else if(isMint && isSpend){
+                // fee of fixed 0.1 denom for ckp payments
+                if(sortedEntries[i]->GetFee() < (COIN/10))
+                    continue;
+                AddToBlock(sortedEntries[i]);
+            }
+            else if(isSpend){
+                AddToBlock(sortedEntries[i]);
             }
             else{
                 if (packageFees < blockMinFeeRate.GetFee(packageSize)) {

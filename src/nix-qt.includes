@@ -80,3 +80,6 @@ tor/src/tools
 pos
 qt/res
 governance
+sigma/test
+secp256k1/src/cpp
+sigma

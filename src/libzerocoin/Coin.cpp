@@ -12,7 +12,7 @@
 
 #include <stdexcept>
 #include <openssl/rand.h>
-#include "Zerocoin.h"
+#include "libzerocoin/Zerocoin.h"
 #include "../../amount.h"
 
 namespace libzerocoin {

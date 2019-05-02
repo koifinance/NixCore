@@ -23,6 +23,8 @@
 #include <boost/type_traits/is_fundamental.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <prevector.h>
+#include <unordered_set>
+
 
 static const unsigned int MAX_SIZE = 0x02000000;
 
@@ -542,6 +544,13 @@ template<typename Stream, typename K, typename Pred, typename A> void Serialize(
 template<typename Stream, typename K, typename Pred, typename A> void Unserialize(Stream& is, std::set<K, Pred, A>& m);
 
 /**
+ * unordered_set
+ */
+template<typename K, typename H, typename E, typename A> unsigned int GetSerializeSize(const std::unordered_set<K, H, E, A>& s);
+template<typename Stream, typename K, typename H, typename E, typename A> void Serialize(Stream& os, const std::unordered_set<K, H, E, A>& s);
+template<typename Stream, typename K, typename H, typename E, typename A> void Unserialize(Stream& is, std::unordered_set<K, H, E, A>& s);
+
+/**
  * shared_ptr
  */
 template<typename Stream, typename T> void Serialize(Stream& os, const std::shared_ptr<const T>& p);
@@ -887,7 +896,49 @@ void Unserialize(Stream& is, std::set<K, Pred, A>& m)
     }
 }
 
+/**
+ * unordered_set
+ */
 
+template<typename K, typename H, typename E, typename A>
+unsigned int GetSerializeSize(const std::unordered_set<K, H, E, A>& s)
+{
+    unsigned size = GetSizeOfCompactSize(s.size());
+
+    for (auto& i : s) {
+        size += GetSerializeSize(i);
+    }
+
+    return size;
+}
+
+template<typename Stream, typename K, typename H, typename E, typename A>
+void Serialize(Stream& os, const std::unordered_set<K, H, E, A>& s)
+{
+    WriteCompactSize(os, s.size());
+
+    for (auto& i : s) {
+        Serialize(os, i);
+    }
+}
+
+template<typename Stream, typename K, typename H, typename E, typename A>
+void Unserialize(Stream& is, std::unordered_set<K, H, E, A>& s)
+{
+    unsigned size = ReadCompactSize(is);
+
+    s.clear();
+
+    for (unsigned i = 0; i < size; i++) {
+        K key;
+
+        Unserialize(is, key);
+
+        if (!s.insert(key).second) {
+            throw std::ios_base::failure("Duplicated item at " + std::to_string(i));
+        }
+    }
+}
 
 /**
  * unique_ptr

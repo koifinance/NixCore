@@ -11,7 +11,13 @@
 #include <pow.h>
 #include <tinyformat.h>
 #include <uint256.h>
+#include <chainparams.h>
 #include "libzerocoin/Zerocoin.h"
+#include <secp256k1/include/Scalar.h>
+#include <secp256k1/include/GroupElement.h>
+#include <sigma/coin.h>
+#include <unordered_set>
+
 
 #include <vector>
 
@@ -248,6 +254,12 @@ public:
     //! Values of coin serials spent in this block
     set<CBigNum> spentSerials;
 
+    map<pair<int,int>, pair<CBigNum,int>> accumulatorChangesV2;
+
+    std::map<pair<sigma::CoinDenomination, int>, vector<sigma::PublicCoin>> mintedPubCoinsV2;
+
+    unordered_set<secp_primitives::Scalar, sigma::CScalarHash> spentSerialsV2;
+
     void SetNull()
     {
         phashBlock = nullptr;
@@ -279,6 +291,10 @@ public:
         mintedPubCoins.clear();
         accumulatorChanges.clear();
         spentSerials.clear();
+
+        mintedPubCoinsV2.clear();
+        spentSerialsV2.clear();
+        accumulatorChangesV2.clear();
     }
 
     CBlockIndex()
@@ -372,6 +388,10 @@ public:
     }
 
     bool IsProofOfStakeHeightActive(int Height){
+        return nHeight >= Height;
+    }
+
+    bool IsSigmaHeightActive(int Height){
         return nHeight >= Height;
     }
 
@@ -483,11 +503,18 @@ public:
         READWRITE(spentSerials);
 
         //POS params
-        if(IsProofOfStakeHeightActive(53000)){
+        if(IsProofOfStakeHeightActive(Params().GetConsensus().nPosHeightActivate)){
             READWRITE(nFlags);
             READWRITE(bnStakeModifier);
             READWRITE(prevoutStake);
             READWRITE(nMoneySupply);
+        }
+
+        // sigma params
+        if(IsSigmaHeightActive(Params().GetConsensus().nSigmaStartBlock)){
+            READWRITE(mintedPubCoinsV2);
+            READWRITE(accumulatorChangesV2);
+            READWRITE(spentSerialsV2);
         }
 
     }

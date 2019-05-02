@@ -12,6 +12,7 @@
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
 #include <wallet/walletutil.h>
+#include <wallet/ghostwallet.h>
 
 std::string GetWalletHelpString(bool showDebug)
 {
@@ -313,6 +314,8 @@ bool OpenWallets()
         vpwallets.push_back(pwallet);
         std::string sError;
         pwallet->ProcessStakingSettings(sError);
+        CGhostWallet *ghostWalletMain = new CGhostWallet(pwallet);
+        pwallet->setGhostWallet(ghostWalletMain);
     }
 
     return true;
@@ -327,6 +330,8 @@ void StartWallets(CScheduler& scheduler) {
 void FlushWallets() {
     for (CWalletRef pwallet : vpwallets) {
         pwallet->Flush(false);
+        delete pwallet->GetGhostWallet();
+
     }
 }
 

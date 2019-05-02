@@ -8,13 +8,14 @@
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
 #include <consensus/validation.h>
-// TODO remove the following dependencies
 #include <chain.h>
 #include <coins.h>
 #include <utilmoneystr.h>
 #include <util.h>
 #include <base58.h>
 #include <chainparams.h>
+#include <zerocoin/sigma.h>
+#include <zerocoin/zerocoin.h>
 
 bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
@@ -122,7 +123,7 @@ unsigned int GetLegacySigOpCount(const CTransaction& tx)
 
 unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& inputs)
 {
-    if (tx.IsCoinBase() || tx.IsZerocoinSpend())
+    if (tx.IsCoinBase() || tx.IsZerocoinSpend() || tx.IsSigmaSpend())
         return 0;
 
     unsigned int nSigOps = 0;
@@ -141,7 +142,7 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
 {
     int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
 
-    if (tx.IsCoinBase() || tx.IsZerocoinSpend())
+    if (tx.IsCoinBase() || tx.IsZerocoinSpend() || tx.IsSigmaSpend())
         return nSigOps;
 
     if (flags & SCRIPT_VERIFY_P2SH) {
@@ -158,7 +159,8 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
     return nSigOps;
 }
 
-bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 hashTx, bool isVerifyDB, bool fCheckDuplicateInputs, int nHeight, bool isCheckWallet, CZerocoinTxInfo *zerocoinTxInfo)
+bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 hashTx, bool isVerifyDB, bool fCheckDuplicateInputs, int nHeight,
+                      bool isCheckWallet, CZerocoinTxInfo *zerocoinTxInfo, CSigmaTxInfo *sigmaTxInfo)
 {
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
@@ -183,7 +185,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
     }
 
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
-    if (fCheckDuplicateInputs && !tx.IsZerocoinSpend()) {
+    if (fCheckDuplicateInputs && !tx.IsZerocoinSpend() && !tx.IsSigmaSpend()) {
         std::set<COutPoint> vInOutPoints;
         for (const auto& txin : tx.vin)
         {
@@ -203,9 +205,40 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
     else
     {
         for (const auto& txin : tx.vin)
-            if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend())
+            if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend() && !txin.scriptSig.IsSigmaSpend())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
-        if (!tx.IsCoinStake() && !CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo))
+	if(tx.IsSigmaSpend() || tx.IsZerocoinSpend()){
+            CAmount totalOut = tx.GetValueOut();
+            CAmount totalIn = 0;
+            if(tx.IsZerocoinSpend()){
+                for(const CTxIn &txin: tx.vin){
+                    if(!txin.scriptSig.IsZerocoinSpend()) {
+                        return false;
+                    }
+                    CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 4),
+                                                    (const char *)&*txin.scriptSig.end(),
+                                                    SER_NETWORK, PROTOCOL_VERSION);
+                    libzerocoin::CoinSpend newSpend(ZCParams, serializedCoinSpend);
+                    totalIn += (int64_t)newSpend.getDenomination();
+                }
+            }
+            else if(tx.IsSigmaSpend()){
+                for(const CTxIn &txin: tx.vin){
+                    if(!txin.scriptSig.IsSigmaSpend()) {
+                        return false;
+                    }
+                    CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 1),
+                                                    (const char *)&*txin.scriptSig.end(),
+                                                    SER_NETWORK, PROTOCOL_VERSION);
+                    sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                    totalIn += newSpend.getIntDenomination();
+                }
+            }
+            if(totalOut > totalIn)
+                return false;
+        }
+        if (!tx.IsCoinStake() && (!CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo) ||
+                !CheckSigmaTransaction(tx, state,  hashTx, isVerifyDB, nHeight, isCheckWallet, sigmaTxInfo)))
                     return false;
     }
 

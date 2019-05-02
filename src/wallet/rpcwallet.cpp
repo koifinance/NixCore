@@ -3370,8 +3370,9 @@ UniValue getwalletinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("walletname", pwallet->GetName()));
     obj.push_back(Pair("walletversion", pwallet->GetVersion()));
     obj.push_back(Pair("balance",       ValueFromAmount(pwallet->GetBalance())));
-    obj.push_back(Pair("ghost_vault",       ValueFromAmount(pwallet->GetGhostBalance())));
-    obj.push_back(Pair("ghost_vault_unconfirmed",       ValueFromAmount(pwallet->GetGhostBalanceUnconfirmed())));
+    obj.push_back(Pair("ghost_vault_legacy",       ValueFromAmount(pwallet->GetGhostBalance(false))));
+    obj.push_back(Pair("ghost_vault",       ValueFromAmount(pwallet->GetGhostBalance(true))));
+    obj.push_back(Pair("ghost_vault_unconfirmed",       ValueFromAmount(pwallet->GetGhostBalanceUnconfirmed(true))));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwallet->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwallet->GetImmatureBalance())));
     obj.push_back(Pair("coldstake_outputs",    ValueFromAmount(pwallet->CountColdstakeOutputs())));
@@ -5223,6 +5224,7 @@ UniValue getpubcoinpack(const JSONRPCRequest& request) {
 
     return results;
 }
+
 UniValue payunloadedpubcoins(const JSONRPCRequest& request) {
 
     if (request.fHelp || request.params.size() > 2)
@@ -6145,6 +6147,246 @@ UniValue erasegoventries(const JSONRPCRequest& request)
     return end;
 }
 
+#include <zerocoin/sigma.h>
+
+UniValue getpubcoinpackv2(const JSONRPCRequest& request) {
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "getpubcoinpackv2 amount(default=10)\n"
+                "\nResults a Commitment Key Pack\n");
+
+
+    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    EnsureWalletIsUnlocked(pwalletMain);
+
+    UniValue results(UniValue::VARR);
+
+
+    int keyAmount = 10;
+    if(request.params.size() > 0)
+        keyAmount = request.params[0].get_int();
+
+    sigma::Params *sParam = SParams;
+    // get latest unused mints
+    vector<sigma::PrivateCoin> privCoins;
+    int i = pwalletMain->GetGhostWallet()->GetCount();
+    int original = keyAmount + i;
+    for(i = i; i < original; i++){
+        // Regenerate the mint
+        CSigmaMint dMint;
+        sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_1);
+        pwalletMain->GetGhostWallet()->GenerateHDMint(sigma::CoinDenomination::SIGMA_0_1, coin, dMint);
+        if(!coin.getPublicCoin().validate())
+            continue;
+        LogPrintf("getpubcoinpackv2(): sigma mint index=%d\n", i);
+        privCoins.push_back(coin);
+        pwalletMain->GetGhostWallet()->UpdateCountLocal();
+    }
+    //reset count
+    pwalletMain->GetGhostWallet()->SetCount(original - keyAmount);
+
+    std::vector< std::vector <unsigned char>> keyList = std::vector< std::vector <unsigned char>>();
+    keyList.clear();
+    for(const sigma::PrivateCoin &pCoin: privCoins) {
+        std::vector<unsigned char> commitmentKey = pCoin.getPublicCoin().getValue().getvch();
+        keyList.push_back(commitmentKey);
+    }
+
+    CommitmentKeyPack pubCoinPack(keyList);
+
+    results.push_back(pubCoinPack.GetPubCoinPackDataBase58());
+
+    return results;
+}
+
+UniValue ghostamountv2(const JSONRPCRequest& request)
+{
+
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() > 2)
+        throw runtime_error("ghostamountv2 <amount>(whole numbers only) <commitment_key_pack>(optional)\n" + HelpRequiringPassphrase(pwalletMain));
+
+
+    if (!IsSigmaAllowed()) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Sigma is not activated yet");
+    }
+
+
+    CAmount nAmount = AmountFromValue(request.params[0]);
+    LogPrintf("RPCWallet::ghostamountv2(): denomination = %s, nAmount = %d \n", request.params[0].getValStr(), nAmount);
+
+    std::vector<sigma::PrivateCoin> privCoins;
+    privCoins.clear();
+    std::string strError;
+    if(!pwalletMain->CreateSigmaMints(nAmount, privCoins, strError))
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+
+    std::vector<CScript> keypack;
+    keypack.clear();
+    if(!request.params[1].isNull()){
+        std::string k = request.params[1].get_str();
+        CommitmentKeyPack keys(k);
+        if(!keys.IsValidPack())
+            throw JSONRPCError(RPC_WALLET_ERROR, "invalid commitment key pack");
+        keypack = keys.GetPubCoinPackScript();
+        if(privCoins.size() > keypack.size())
+            throw JSONRPCError(RPC_WALLET_ERROR, "pubcoin pack too small, need at least: " +
+                               std::to_string(privCoins.size()) + ", have only: " + std::to_string(keypack.size()));
+    }
+
+    vector<CSigmaMint> vDMints;
+    auto vecSend = pwalletMain->CreateSigmaMintRecipients(privCoins, vDMints, keypack);
+
+    CWalletTx wtx;
+    strError = pwalletMain->MintAndStoreSigma(vecSend, privCoins, vDMints, wtx, false);
+
+    if (strError != "")
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue unghostamountv2(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if (request.fHelp || request.params.size() == 0 || request.params.size() > 2)
+        throw runtime_error("unghostamountv2 <amount>(whole numbers only) <addresstosend>(either address or commitment key pack)\n" + HelpRequiringPassphrase(pwalletMain));
+
+    if (!IsSigmaAllowed()) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Sigma is not activated yet");
+    }
+
+    std::string nAmount = request.params[0].get_str();
+
+    CTxDestination dest;
+    std::string toKey = "";
+    std::vector <CScript> keyList;
+    keyList.clear();
+    if (request.params.size() > 1){
+        // Address
+        toKey = request.params[1].get_str();
+        CommitmentKeyPack keypack(toKey);
+        dest = DecodeDestination(toKey);
+        if(keypack.IsValidPack()){
+            keyList = keypack.GetPubCoinPackScript();
+            toKey = "";
+        }
+        else if(!IsValidDestination(dest))
+            throw JSONRPCError(RPC_WALLET_ERROR, "invalid key");
+    }
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED,
+                           "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    std::string strError = pwalletMain->GhostModeSpendSigma(nAmount, toKey, keyList);
+
+
+    return strError;
+}
+
+UniValue listghostednixv2(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+                "listghostednixv2 <all>(false/true)\n"
+                        "\nArguments:\n"
+                        "1. <all> (boolean, optional) false (default) to return unspent minted sigma coins, true to return every minted sigma coin.\n"
+                        "\nResults are an array of Objects, each of which has:\n"
+                        "{id, IsUsed, denomination, value, serialNumber, nHeight, randomness}");
+
+    bool fAllStatus = false;
+    if (request.params.size() > 0) {
+        fAllStatus = request.params[0].get_bool();
+    }
+
+    CWallet * const pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    std::list<CMintMeta> mintMetas = pwalletMain->sigmaTracker->GetMints(true);
+
+    UniValue results(UniValue::VARR);
+
+    for(const CMintMeta &mintItem: mintMetas) {
+        UniValue entry(UniValue::VOBJ);
+        CAmount nVal = 0;
+        sigma::DenominationToInteger(mintItem.denom, nVal);
+        entry.push_back(Pair("deterministic", mintItem.isDeterministic));
+        entry.push_back(Pair("isUsed", mintItem.isUsed));
+        entry.push_back(Pair("denomination", std::to_string(nVal)));
+        entry.push_back(Pair("pubcoinValue", mintItem.pubCoinValue.tostring()));
+        results.push_back(entry);
+    }
+
+    return results;
+}
+
+UniValue getsigmaseed(const JSONRPCRequest& request)
+{
+
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if(request.fHelp || !request.params.empty())
+        throw runtime_error(
+            "getsigmaseed\n"
+            "\nDump the deterministic sigma seed for all sigma coins\n" +
+            HelpRequiringPassphrase(pwalletMain) + "\n"
+
+            "\nResult\n"
+            "\"seed\" : s,  (string) The deterministic zPIV seed.\n"
+
+            "\nExamples\n" +
+            HelpExampleCli("getsigmaseed", "") + HelpExampleRpc("getsigmaseed", ""));
+
+    EnsureWalletIsUnlocked(pwalletMain);
+
+    CGhostWallet* ghostWallet = pwalletMain->GetGhostWallet();
+    uint256 seed = ghostWallet->GetMasterSeed();
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("seed", seed.GetHex()));
+
+    return ret;
+}
+
+UniValue setsigmaseed(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if(request.fHelp || request.params.empty() != 1)
+        throw runtime_error(
+            "setsigmaseed \"seed\"\n"
+            "\nSet the wallet's deterministic sigma seed to a specific value.\n" +
+            HelpRequiringPassphrase(pwalletMain) + "\n"
+
+            "\nArguments:\n"
+            "1. \"seed\"        (string, required) The deterministic sigma seed.\n"
+
+            "\nResult\n"
+            "\"success\" : b,  (boolean) Whether the seed was successfully set.\n"
+
+            "\nExamples\n" +
+            HelpExampleCli("setsigmaseed", "63f793e7895dd30d99187b35fbfb314a5f91af0add9e0a4e5877036d1e392dd5") +
+            HelpExampleRpc("setsigmaseed", "63f793e7895dd30d99187b35fbfb314a5f91af0add9e0a4e5877036d1e392dd5"));
+
+    EnsureWalletIsUnlocked(pwalletMain);
+
+    uint256 seed;
+    seed.SetHex(request.params[0].get_str());
+
+    CGhostWallet* ghostWallet = pwalletMain->GetGhostWallet();
+    bool fSuccess = ghostWallet->SetMasterSeed(seed, true);
+    if (fSuccess)
+        ghostWallet->SyncWithChain();
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("success", fSuccess));
+
+    return ret;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -6248,6 +6490,12 @@ static const CRPCCommand commands[] =
     // NIX Lite Zerocoin
     { "NIX Privacy",        "getzerocoinacc",           &getzerocoinacc,           {""} },
     { "NIX Privacy",        "getdatazerocoinacc",       &getdatazerocoinacc,       {""} },
+    // Sigma functions
+    { "NIX Privacy",        "getpubcoinpackv2",         &getpubcoinpackv2,         {"amount"} },
+    { "NIX Privacy",        "ghostamountv2",            &ghostamountv2,            {"amount", "commitment_key_pack"} },
+    { "NIX Privacy",        "unghostamountv2",          &unghostamountv2,          {"amount", "to_key"} },
+    { "NIX Privacy",        "getsigmaseed",             &getsigmaseed,             {} },
+    { "NIX Privacy",        "setsigmaseed",             &setsigmaseed,             {"seed"} },
     //NIX TOR routing functions
     { "NIX Privacy",        "enabletor",                &enableTor,                {"set"} },
     { "NIX Privacy",        "torstatus",                &torStatus,                {} },

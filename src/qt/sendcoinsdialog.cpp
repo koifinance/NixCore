@@ -150,7 +150,7 @@ void SendCoinsDialog::setModel(WalletModel *_model)
         }
 
         setBalance(_model->getBalance(), _model->getUnconfirmedBalance(), _model->getImmatureBalance(),
-                   _model->getWatchBalance(), _model->getWatchUnconfirmedBalance(), _model->getWatchImmatureBalance(),_model->getGhostBalance(), _model->getGhostBalanceUnconfirmed(), _model->getStakeBalance(), _model->getUnconfirmedBalance());
+                   _model->getWatchBalance(), _model->getWatchUnconfirmedBalance(), _model->getWatchImmatureBalance(),_model->getGhostBalance(true), _model->getGhostBalanceUnconfirmed(true), _model->getStakeBalance(), _model->getUnconfirmedBalance());
         connect(_model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
         connect(_model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();

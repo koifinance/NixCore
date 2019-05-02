@@ -840,6 +840,16 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
         LoadMempool();
         fDumpMempoolLater = !fRequestShutdown;
     }
+
+    // With Sigma data up to date, initialize Sigma wallet
+    uiInterface.InitMessage(_("Syncing Sigma wallet..."));
+
+#ifdef ENABLE_WALLET
+    //Load sigma mint hashes to memory
+    vpwallets[0]->sigmaTracker->Init();
+    vpwallets[0]->GetGhostWallet()->LoadMintPoolFromDB();
+    vpwallets[0]->GetGhostWallet()->SyncWithChain();
+#endif
 }
 
 /** Sanity checks

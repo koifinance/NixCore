@@ -54,6 +54,8 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_TIMELOCKED_MULTISIG: return "timelocked_multisig";
     case TX_ZEROCOINMINT: return "zerocoinmint";
     case TX_CONDITIONAL_STAKE: return "conditional_stake";
+    case TX_SIGMAMINT: return "sigmamint";
+
 
     }
     return nullptr;
@@ -89,6 +91,15 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
         return true;
     }
 
+    // Sigma
+    if (scriptPubKey.IsSigmaMint())
+    {
+        typeRet = TX_SIGMAMINT;
+        if(scriptPubKey.size() > 37) return false;
+        std::vector<unsigned char> hashBytes(scriptPubKey.begin()+1, scriptPubKey.end());
+        vSolutionsRet.push_back(hashBytes);
+        return true;
+    }
     opcodetype opcode;
     std::vector<unsigned char> vch1;
     CScript::const_iterator pc1 = scriptPubKey.begin();

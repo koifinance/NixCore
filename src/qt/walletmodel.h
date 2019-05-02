@@ -138,8 +138,8 @@ public:
     CAmount getBalance(const CCoinControl *coinControl = nullptr) const;
     CAmount getUnconfirmedBalance() const;
     CAmount getImmatureBalance() const;
-    CAmount getGhostBalance() const;
-    CAmount getGhostBalanceUnconfirmed() const;
+    CAmount getGhostBalance(bool isV2) const;
+    CAmount getGhostBalanceUnconfirmed(bool isV2) const;
     CAmount getStakeBalance() const;
     CAmount getReservedBalance() const;
     bool haveWatchOnly() const;
@@ -237,7 +237,7 @@ public:
     void lockWallet();
     void checkBalanceChanged();
 
-    bool getKeyPackList(vector<CommitmentKeyPack> &keyPackList, int packSize);
+    bool getKeyPackList(std::vector<CommitmentKeyPack> &keyPackList, bool isV2, int packSize);
 
 private:
     CWallet *wallet;

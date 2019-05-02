@@ -446,6 +446,10 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
                 pindexNew->mintedPubCoins     = diskindex.mintedPubCoins;
                 pindexNew->spentSerials       = diskindex.spentSerials;
 
+                pindexNew->accumulatorChangesV2 = diskindex.accumulatorChangesV2;
+                pindexNew->mintedPubCoinsV2     = diskindex.mintedPubCoinsV2;
+                pindexNew->spentSerialsV2       = diskindex.spentSerialsV2;
+
                 //PoS
                 if(diskindex.IsProofOfStake() || diskindex.nHeight >= Params().GetConsensus().nPosHeightActivate){
                     pindexNew->nFlags                   = diskindex.nFlags;

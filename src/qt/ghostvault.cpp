@@ -20,6 +20,9 @@
 #include "qt/recentrequeststablemodel.h"
 #include <ghost-address/commitmentkey.h>
 #include <qt/coincontroldialog.h>
+#include <qt/nixunits.h>
+#include <qt/optionsmodel.h>
+#include <qt/receiverequestdialog.h>
 
 #include <QIcon>
 #include <QMenu>
@@ -50,7 +53,8 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
             setWindowTitle(tr("Ghost Vault"));
     }
 
-    ui->ghostAmount->setValidator( new QIntValidator(1, 9999999, this) );
+    ui->ghostAmount->setValidator(new QDoubleValidator(0.1, 9999999.0, 1, this));
+    ui->convertNIXAmount->setValidator(new QDoubleValidator(0.1, 9999999.0, 1, this) );
     ui->labelExplanation->setTextFormat(Qt::RichText);
     ui->labelExplanation->setText(
             tr("<b>WARNING:</b> The Ghostvault is an experimental add-on, use with caution.<br><br>These are your private coins from ghosting NIX. You can convert ghosted NIX to public coins. The longer your coins are here, the more private they become."));
@@ -60,8 +64,12 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
 
     ui->convertNIXAmount->clear();
 
-    ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
-    ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
+    int unit = BitcoinUnits::BTC;
+    CAmount balance = vpwallets.front()->GetGhostBalance(true);
+    ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+
+    CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
+    ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
 
     // Build context menu
     contextMenu = new QMenu(this);
@@ -86,7 +94,7 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
     ui->keyPackAmount->addItem("10");
     //set to default pack size
     ui->keyPackAmount->setCurrentIndex(ui->keyPackAmount->findText("10"));
-    connect(ui->keyPackAmount, SIGNAL(currentIndexChanged(int)), this, SLOT(setKeyListTrigger(int)));
+    //connect(ui->keyPackAmount, SIGNAL(currentIndexChanged(int)), this, SLOT(setKeyListTrigger(int)));
 
 }
 
@@ -121,6 +129,7 @@ void GhostVault::setWalletModel(WalletModel *walletmodel) {
 
     if(walletmodel && walletmodel->getOptionsModel())
     {
+        /*
         tableView = ui->keyPackList;
 
         tableView->verticalHeader()->show();
@@ -132,11 +141,12 @@ void GhostVault::setWalletModel(WalletModel *walletmodel) {
         connect(tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
 
         vector <CommitmentKeyPack> keyPackList;
-        if (!walletmodel->getKeyPackList(keyPackList, ui->keyPackAmount->currentIndex() + 1))
+        if (!walletmodel->getKeyPackList(keyPackList, true, ui->keyPackAmount->currentIndex() + 1))
             return;
         //Initialize table with keypacks
         for (auto r=0; r<10; r++)
             tableView->setItem(r, 0, new QTableWidgetItem(QString::fromStdString(keyPackList[r].GetPubCoinPackDataBase58())));
+        */
     }
 }
 
@@ -152,7 +162,7 @@ void GhostVault::on_ghostNIXButton_clicked() {
     vector<CScript> pubCoinScripts;
     pubCoinScripts.clear();
 
-    if(amount.toInt() < 1)
+    if(amount.toDouble() < 0.1)
         QMessageBox::critical(this, tr("Error"),
                                       tr("You must ghost more than 0 coins."),
                                       QMessageBox::Ok, QMessageBox::Ok);
@@ -177,7 +187,7 @@ void GhostVault::on_ghostNIXButton_clicked() {
             return;
         }
 
-        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount,pubCoinScripts)){
+        if(!walletModel->getWallet()->GhostModeMintSigma(denomAmount,pubCoinScripts)){
 
             QMessageBox::critical(this, tr("Error"),
                                   tr("You cannot ghost NIX at the moment. Please check the debug.log for errors."),
@@ -188,15 +198,20 @@ void GhostVault::on_ghostNIXButton_clicked() {
                                           tr("You have successfully ghosted NIX from your wallet"),
                                           QMessageBox::Ok, QMessageBox::Ok);
 
-            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
-            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+            int unit = walletModel->getOptionsModel()->getDisplayUnit();
+            CAmount balance = vpwallets.front()->GetGhostBalance(true);
+            ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+
+            CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
+            ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
+
 
             ui->convertNIXAmount->clear();
             ui->ghostAmount->clear();
         }
     }
     else{
-        if(!walletModel->getWallet()->GhostModeMintTrigger(denomAmount, pubCoinScripts)){
+        if(!walletModel->getWallet()->GhostModeMintSigma(denomAmount, pubCoinScripts)){
 
             QMessageBox::critical(this, tr("Error"),
                                   tr("You cannot ghost NIX at the moment. Please check the debug.log for errors."),
@@ -207,9 +222,12 @@ void GhostVault::on_ghostNIXButton_clicked() {
                                           tr("You have successfully ghosted NIX from your wallet"),
                                           QMessageBox::Ok, QMessageBox::Ok);
 
+            int unit = walletModel->getOptionsModel()->getDisplayUnit();
+            CAmount balance = vpwallets.front()->GetGhostBalance(true);
+            ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
 
-            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
-            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
+            CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
+            ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
 
             ui->convertNIXAmount->clear();
             ui->ghostAmount->clear();
@@ -225,15 +243,15 @@ void GhostVault::on_convertGhostButton_clicked() {
     std::string thirdPartyAddress = address.toStdString();
     std::string stringError;
 
-    CBitcoinAddress nixAddress;
+    CTxDestination nixAddr;
     CommitmentKeyPack keyPack;
 
     // Address
-    nixAddress = CBitcoinAddress(thirdPartyAddress);
+    nixAddr = DecodeDestination(thirdPartyAddress);
     vector<CScript> pubCoinScripts = vector<CScript>();
     pubCoinScripts.clear();
 
-    if(ui->convertGhostToMeCheckBox->isChecked() == false && !nixAddress.IsValid()){
+    if(ui->convertGhostToMeCheckBox->isChecked() == false && !IsValidDestination(nixAddr)){
         keyPack = CommitmentKeyPack(thirdPartyAddress);
         if(!keyPack.IsValidPack()){
             QMessageBox::critical(this, tr("Error"),
@@ -252,9 +270,9 @@ void GhostVault::on_convertGhostButton_clicked() {
         return;
     }else{
 
-        if(amount.toInt() < 1){
+        if(amount.toDouble() < 0.1){
             QMessageBox::critical(this, tr("Error"),
-                                          tr("You must ghost more than 0 coins."),
+                                          tr("You must unghost more than 0 coins."),
                                           QMessageBox::Ok, QMessageBox::Ok);
             return;
         }
@@ -268,10 +286,10 @@ void GhostVault::on_convertGhostButton_clicked() {
                 return;
             }
 
-            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress, pubCoinScripts);
+            stringError = walletModel->getWallet()->GhostModeSpendSigma(denomAmount, thirdPartyAddress, pubCoinScripts);
 
         } else{
-            stringError = walletModel->getWallet()->GhostModeSpendTrigger(denomAmount, thirdPartyAddress, pubCoinScripts);
+            stringError = walletModel->getWallet()->GhostModeSpendSigma(denomAmount, thirdPartyAddress, pubCoinScripts);
         }
 
         if(stringError != successfulString){
@@ -285,9 +303,13 @@ void GhostVault::on_convertGhostButton_clicked() {
                                           tr("You have successfully converted your ghosted NIX from your wallet"),
                                           QMessageBox::Ok, QMessageBox::Ok);
 
-            ui->unconfirmed_label->setText(QString::number(vpwallets.front()->GetGhostBalanceUnconfirmed()/COIN) + tr(" Unconfirmed NIX"));
 
-            ui->total->setText(QString::number(vpwallets.front()->GetGhostBalance()/COIN) + tr(" Ghosted NIX"));
+            int unit = walletModel->getOptionsModel()->getDisplayUnit();
+            CAmount balance = vpwallets.front()->GetGhostBalance(true);
+            ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+
+            CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
+            ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
         }
 
         ui->convertGhostToThirdPartyAddress->clear();
@@ -350,29 +372,25 @@ void GhostVault::selectNewAddress(const QModelIndex &parent, int begin, int /*en
 }
 
 void GhostVault::setVaultBalance(CAmount confirmed, CAmount unconfirmed){
-    ui->total->setText(QString::number(confirmed/COIN) + tr(" Ghosted NIX"));
-    ui->unconfirmed_label->setText(QString::number(unconfirmed/COIN) + tr(" Unconfirmed NIX"));
+    int unit = walletModel->getOptionsModel()->getDisplayUnit();
+    ui->total->setText(BitcoinUnits::formatWithUnit(unit, confirmed, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+    ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmed, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
 }
 
 void GhostVault::setKeyList(){
-    if(!walletModel || !tableView)
-        return;
-    vector <CommitmentKeyPack> keyPackList;
-    if (!this->walletModel->getKeyPackList(keyPackList, ui->keyPackAmount->currentIndex() + 1))
-        return;
-    //Initialize table with keypacks
-    for (auto r=0; r<10; r++)
-        tableView->setItem(r, 0, new QTableWidgetItem(QString::fromStdString(keyPackList[r].GetPubCoinPackDataBase58())));
+
 }
 
 QModelIndex GhostVault::selectedRow()
 {
+    /*
     QModelIndexList selection = ui->keyPackList->selectionModel()->selectedRows();
     if(selection.empty())
         return QModelIndex();
     // correct for selection mode ContiguousSelection
     QModelIndex firstIndex = selection.at(0);
     return firstIndex;
+    */
 }
 // context menu
 void GhostVault::showMenu(const QPoint &point)
@@ -390,9 +408,55 @@ void GhostVault::copyKey()
     if (!sel.isValid()) {
         return;
     }
-    GUIUtil::setClipboard(ui->keyPackList->item(sel.row(),0)->text());
+    //GUIUtil::setClipboard(ui->keyPackList->item(sel.row(),0)->text());
 }
 
 void GhostVault::setKeyListTrigger(int state){
     setKeyList();
+}
+
+void GhostVault::on_generateGhostKey_clicked()
+{
+    if(!walletModel || !walletModel->getRecentRequestsTableModel())
+        return;
+
+    const RecentRequestsTableModel *submodel = walletModel->getRecentRequestsTableModel();
+    ReceiveRequestDialog *dialog = new ReceiveRequestDialog(this);
+    dialog->setModel(walletModel->getOptionsModel());
+    SendCoinsRecipient printKey;
+    printKey.authenticatedMerchant = "";
+
+    /************************************/
+    CWallet * const pwallet = walletModel->getWallet();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    if (!EnsureWalletIsAvailable(pwallet, false)) {
+        return;
+    }
+
+    WalletModel::UnlockContext ctx(walletModel->requestUnlock());
+    if(!ctx.isValid())
+    {
+        // Unlock wallet was cancelled
+        return;
+    }
+
+    std::string keyPack;
+    std::vector <CommitmentKeyPack> keyList;
+    int keyAmount = ui->keyPackAmount->currentIndex() + 1;
+    if(!walletModel->getKeyPackList(keyList, true, keyAmount))
+        return;
+    keyPack = keyList[0].GetPubCoinPackDataBase58();
+    printKey.address = QString::fromStdString(keyPack);
+    /************************************/
+
+    //printKey.message = submodel->entry(index.row()).recipient.message;
+    //printKey.amount = submodel->entry(index.row()).recipient.amount;
+    printKey.label = tr("Ghost Key");
+    dialog->setInfo(printKey);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->show();
+
+
 }

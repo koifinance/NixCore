@@ -6,7 +6,7 @@
 
 #define BOOST_THREAD_PROVIDES_FUTURE
 
-#include "Zerocoin.h"
+#include "libzerocoin/Zerocoin.h"
 #include <boost/thread/future.hpp>
 #include <boost/thread.hpp>
 

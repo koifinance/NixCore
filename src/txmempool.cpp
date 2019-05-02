@@ -345,6 +345,16 @@ bool CTxMemPool::isSpent(const COutPoint& outpoint)
     return mapNextTx.count(outpoint);
 }
 
+void CTxMemPool::getTransactions(std::set<uint256>& setTxid)
+{
+    setTxid.clear();
+
+     LOCK(cs);
+    for (indexed_transaction_set::const_iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi){
+        setTxid.insert((*mi).GetTx().GetHash());
+    }
+}
+
 unsigned int CTxMemPool::GetTransactionsUpdated() const
 {
     LOCK(cs);
@@ -383,7 +393,7 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     // further updated.)
     cachedInnerUsage += entry.DynamicMemoryUsage();
 
-    if (!entry.GetTx().IsZerocoinSpend()) {
+    if (!entry.GetTx().IsZerocoinSpend() && !entry.GetTx().IsSigmaSpend()) {
 
         const CTransaction &tx = newit->GetTx();
         std::set <uint256> setParentTransactions;
@@ -424,7 +434,7 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     NotifyEntryRemoved(it->GetSharedTx(), reason);
     const uint256 hash = it->GetTx().GetHash();
 
-    if (!it->GetTx().IsZerocoinSpend()) {
+    if (!it->GetTx().IsZerocoinSpend() && !it->GetTx().IsSigmaSpend()) {
         for (const CTxIn& txin : it->GetTx().vin)
             mapNextTx.erase(txin.prevout);
         if (vTxHashes.size() > 1) {
@@ -759,7 +769,7 @@ static void CheckInputsAndUpdateCoins(const CTransaction& tx, CCoinsViewCache& m
 {
     CValidationState state;
     CAmount txfee = 0;
-    bool fCheckResult = tx.IsCoinBase() || tx.IsZerocoinSpend() || Consensus::CheckTxInputs(tx, state, mempoolDuplicate, spendheight, txfee);
+    bool fCheckResult = tx.IsCoinBase() || tx.IsZerocoinSpend() || tx.IsSigmaSpend() || Consensus::CheckTxInputs(tx, state, mempoolDuplicate, spendheight, txfee);
     assert(fCheckResult);
     UpdateCoins(tx, mempoolDuplicate, 1000000);
 }
@@ -790,14 +800,14 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
         txlinksMap::const_iterator linksiter = mapLinks.find(it);
         assert(linksiter != mapLinks.end());
         const TxLinks &links = linksiter->second;
-        if (!tx.IsZerocoinSpend())
+        if (!tx.IsZerocoinSpend() && !tx.IsSigmaSpend())
             innerUsage += memusage::DynamicUsage(links.parents) + memusage::DynamicUsage(links.children);
         bool fDependsWait = false;
         setEntries setParentCheck;
         int64_t parentSizes = 0;
         int64_t parentSigOpCost = 0;
 
-        if (!tx.IsZerocoinSpend()) {
+        if (!tx.IsZerocoinSpend() && !tx.IsSigmaSpend()) {
             for (const CTxIn &txin : tx.vin) {
                 // Check that every mempool transaction's inputs refer to available coins, or other mempool tx's.
                 indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
