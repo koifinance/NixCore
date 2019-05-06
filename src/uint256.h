@@ -29,6 +29,9 @@ public:
 
     explicit base_blob(const std::vector<unsigned char>& vch);
     explicit base_blob(const uint8_t *p, size_t l);
+    explicit base_blob(const uint64_t b);
+    explicit base_blob(const std::string& str);
+
 
     bool IsNull() const
     {
@@ -45,6 +48,13 @@ public:
 
     inline int Compare(const base_blob& other) const { return memcmp(data, other.data, sizeof(data)); }
 
+    base_blob& operator=(const base_blob& b)
+    {
+        for (int i = 0; i < WIDTH; i++)
+            data[i] = b.data[i];
+        return *this;
+    }
+
     friend inline bool operator==(const base_blob& a, const base_blob& b) { return a.Compare(b) == 0; }
     friend inline bool operator!=(const base_blob& a, const base_blob& b) { return a.Compare(b) != 0; }
     friend inline bool operator<(const base_blob& a, const base_blob& b) { return a.Compare(b) < 0; }
@@ -53,6 +63,8 @@ public:
     void SetHex(const char* psz);
     void SetHex(const std::string& str);
     std::string ToString() const;
+    base_blob<BITS> uintS(const char *str) const;
+    base_blob<BITS> uintS(const std::string& str) const;
 
     unsigned char* begin()
     {
@@ -124,6 +136,7 @@ public:
 class uint256 : public base_blob<256> {
 public:
     uint256() {}
+    uint256(const base_blob<256>& b) : base_blob<256>(b) {}
     explicit uint256(const std::vector<unsigned char>& vch) : base_blob<256>(vch) {}
     explicit uint256(const uint8_t *p, size_t l) : base_blob<256>(p, l) {}
 
@@ -155,6 +168,29 @@ inline uint256 uint256S(const char *str)
 inline uint256 uint256S(const std::string& str)
 {
     uint256 rv;
+    rv.SetHex(str);
+    return rv;
+}
+
+/** 512-bit unsigned big integer. */
+class uint512 : public base_blob<512>
+{
+public:
+    uint512() {}
+    uint512(const base_blob<512>& b) : base_blob<512>(b) {}
+    explicit uint512(const std::vector<unsigned char>& vch) : base_blob<512>(vch) {}
+
+    uint256 trim256() const
+    {
+        uint256 ret;
+        memcpy(ret.begin(), (*this).begin(), ret.size());
+        return ret;
+    }
+};
+
+inline uint512 uint512S(const std::string& str)
+{
+    uint512 rv;
     rv.SetHex(str);
     return rv;
 }

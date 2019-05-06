@@ -29,9 +29,9 @@ private:
     std::string pubCoinDataCompressed;
     int compressedSize;
 public:
-    CommitmentKey(std::vector<unsigned char>& _pubCoinData);
+    CommitmentKey(std::vector<unsigned char>& _pubCoinData, bool isV2=true);
 
-    void Init();
+    void Init(bool isV2);
     //int Compress();
     //int Decompress();
 

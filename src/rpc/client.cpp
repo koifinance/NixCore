@@ -173,6 +173,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "mintghostdata", 0, "amount"},
     { "spendghostdata", 0, "amount"},
 
+    { "getpubcoinpack", 0, "amount"},
+    { "getpubcoinpackv2", 0, "amount"},
+
 
     //NIX Staking functions
     { "walletsettings", 1, "json" },

@@ -177,6 +177,14 @@ CPrivKey CKey::GetPrivKey() const {
     return privkey;
 }
 
+uint256 CKey::GetPrivKey_256()
+{
+    void* key = keydata.data();
+    uint256* key_256 = (uint256*)key;
+
+    return *key_256;
+}
+
 CPubKey CKey::GetPubKey() const {
     assert(fValid);
     secp256k1_pubkey pubkey;

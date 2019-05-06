@@ -212,7 +212,7 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
         };
 
         //test pos on regtest
-        if(Params().NetworkIDString() != CBaseChainParams::REGTEST){
+        if(Params().NetworkIDString() != CBaseChainParams::REGTEST && Params().NetworkIDString() != CBaseChainParams::TESTNET){
             if (g_connman->vNodes.empty() || IsInitialBlockDownload())
             {
                 fIsStaking = false;

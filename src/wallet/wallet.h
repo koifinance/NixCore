@@ -18,6 +18,10 @@
 #include <wallet/crypter.h>
 #include <wallet/walletdb.h>
 #include <wallet/rpcwallet.h>
+#include <wallet/ghostwallet.h>
+#include <wallet/sigmatracker.h>
+#include <wallet/sigmamint.h>
+
 #include <governance/networking-governance.h>
 
 #include <algorithm>
@@ -30,8 +34,6 @@
 #include <utility>
 #include <vector>
 #include "zerocoin/zerocoin.h"
-#include <ghost-address/extkey.h>
-#include <ghost-address/stealth.h>
 #include <crypto/sha512.h>
 #include "../base58.h"
 #include <crypto/hmac_sha256.h>
@@ -447,6 +449,158 @@ public:
         READWRITE(denomination);
         READWRITE(id);
     }
+};
+
+class CSigmaEntry
+{
+public:
+    void set_denomination(sigma::CoinDenomination denom) {
+        sigma::DenominationToInteger(denom, denomination);
+    }
+    void set_denomination_value(int64_t new_denomination) {
+        denomination = new_denomination;
+    }
+    int64_t get_denomination_value() const {
+        return denomination;
+    }
+    sigma::CoinDenomination get_denomination() const {
+        sigma::CoinDenomination result;
+        sigma::IntegerToDenomination(denomination, result);
+        return result;
+    }
+
+    //public
+    GroupElement value;
+
+    //private
+    Scalar randomness;
+    Scalar serialNumber;
+
+    // Signature over partial transaction
+    // to make sure the outputs are not changed by attacker.
+    std::vector<unsigned char> ecdsaSecretKey;
+
+    bool IsUsed;
+    int nHeight;
+    int id;
+
+private:
+    // CAmount
+    int64_t denomination;
+
+public:
+
+    CSigmaEntry()
+    {
+        SetNull();
+    }
+
+    void SetNull()
+    {
+        IsUsed = false;
+        randomness = Scalar(uint64_t(0));
+        serialNumber = Scalar(uint64_t(0));
+        value = GroupElement();
+        denomination = -1;
+        nHeight = -1;
+        id = -1;
+    }
+
+    bool IsCorrectSigmaMint() const {
+        return randomness.isMember() && serialNumber.isMember();
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(IsUsed);
+        READWRITE(randomness);
+        READWRITE(serialNumber);
+        READWRITE(value);
+        READWRITE(denomination);
+        READWRITE(nHeight);
+        READWRITE(id);
+        if (ser_action.ForRead()) {
+            if (!is_eof(s)) {
+                int nStoredVersion = 0;
+                READWRITE(nStoredVersion);
+                READWRITE(ecdsaSecretKey);
+            }
+        }
+        else {
+            READWRITE(ecdsaSecretKey);
+        }
+    }
+private:
+    template <typename Stream>
+    auto is_eof_helper(Stream &s, bool) -> decltype(s.eof()) {
+        return s.eof();
+    }
+
+    template <typename Stream>
+    bool is_eof_helper(Stream &s, int) {
+        return false;
+    }
+
+    template<typename Stream>
+    bool is_eof(Stream &s) {
+        return is_eof_helper(s, true);
+    }
+};
+
+class CSigmaSpendEntry
+{
+public:
+    Scalar coinSerial;
+    uint256 hashTx;
+    GroupElement pubCoin;
+    int id;
+
+    void set_denomination(sigma::CoinDenomination denom) {
+        sigma::DenominationToInteger(denom, denomination);
+    }
+
+    void set_denomination_value(int64_t new_denomination) {
+        denomination = new_denomination;
+    }
+
+    int64_t get_denomination_value() const {
+        return denomination;
+    }
+
+    sigma::CoinDenomination get_denomination() const {
+        sigma::CoinDenomination result;
+        sigma::IntegerToDenomination(denomination, result);
+        return result;
+    }
+
+    CSigmaSpendEntry()
+    {
+        SetNull();
+    }
+
+    void SetNull()
+    {
+        coinSerial = Scalar(uint64_t(0));
+        hashTx.SetNull();
+        pubCoin = GroupElement();
+        denomination = 0;
+        id = 0;
+    }
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(coinSerial);
+        READWRITE(hashTx);
+        READWRITE(pubCoin);
+        READWRITE(denomination);
+        READWRITE(id);
+    }
+private:
+    // CAmount
+    int64_t denomination;
 };
 
 bool CompHeight(const CZerocoinEntry & a, const CZerocoinEntry & b);
@@ -1110,6 +1264,9 @@ private:
     /* HD derive new child key (on internal or external chain) */
     void DeriveNewChildKey(CWalletDB &walletdb, CKeyMetadata& metadata, CKey& secret, bool internal = false);
 
+    /* Det sigma wallet */
+    CGhostWallet *ghostWalletMain;
+
     std::set<int64_t> setInternalKeyPool;
     std::set<int64_t> setExternalKeyPool;
     int64_t m_max_keypool_index;
@@ -1150,6 +1307,9 @@ public:
     mutable CCriticalSection cs_wallet;
 
     int walletVersion;
+
+    CGhostWallet * GetGhostWallet() {return ghostWalletMain;}
+    std::unique_ptr<CSigmaTracker> sigmaTracker;
 
     /** Get database handle used by this wallet. Ideally this function would
      * not be necessary.
@@ -1225,6 +1385,14 @@ public:
         walletVersion = 0;
         activeContracts.clear();
     }
+
+    void setGhostWallet(CGhostWallet* ghostWallet)
+    {
+        ghostWalletMain = ghostWallet;
+        sigmaTracker = std::unique_ptr<CSigmaTracker>(new CSigmaTracker(this));
+    }
+
+    CGhostWallet* getGhostWallet() { return ghostWalletMain; }
 
     std::map<uint256, CWalletTx> mapWallet;
     std::list<CAccountingEntry> laccentries;
@@ -1387,8 +1555,8 @@ public:
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
     CAmount GetWatchOnlyBalance() const;
-    CAmount GetGhostBalance() const;
-    CAmount GetGhostBalanceUnconfirmed() const;
+    CAmount GetGhostBalance(bool isV2) const;
+    CAmount GetGhostBalanceUnconfirmed(bool isV2) const;
     CAmount GetUnconfirmedWatchOnlyBalance() const;
     CAmount GetImmatureWatchOnlyBalance() const;
     CAmount GetLegacyBalance(const isminefilter& filter, int minDepth, const std::string* account) const;
@@ -1456,7 +1624,7 @@ public:
 
     bool FindUnloadedGhostTransactions(const CTransaction& tx);
     bool TopUpUnloadedCommitments(int kpSize = 101);
-    bool GetKeyPackList(vector <CommitmentKeyPack> &keyPackList, int packSize = 10);
+    bool GetKeyPackList(vector <CommitmentKeyPack> &keyPackList, bool isV2, int packSize = 10);
 
     bool EncryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintPlain);
     bool DecryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintSecret);
@@ -1472,6 +1640,40 @@ public:
     bool GhostModeMintTrigger(string totalAmount, vector<CScript> pubCoinScripts = vector<CScript>());
     std::string GhostModeSpendTrigger(string denomination, string toKey = "", vector<CScript> pubCoinScripts = vector<CScript>());
     bool SpendAllZerocoins();
+
+    /* ****************** */
+    /* ****************** */
+
+    /* Sigma functionality */
+
+    bool GetMint(const uint256& hashSerial, CSigmaEntry& sigma);
+    bool CreateSigmaMints(CAmount nAmount, std::vector<sigma::PrivateCoin> &privCoins, std::string &strError);
+    std::vector<CRecipient> CreateSigmaMintRecipients(std::vector<sigma::PrivateCoin>& coins, vector<CSigmaMint>& vDMints, std::vector<CScript> &keypack);
+    static CAmount SelectMintCoinsForAmount(const CAmount& required, const std::vector<sigma::CoinDenomination>& denominations,
+                                    std::vector<sigma::CoinDenomination>& coinsOut);
+    bool CreateSigmaMintTransaction(vector <CRecipient> vecSend, CWalletTx &wtxNew, CReserveKey &reservekey,
+                                    int64_t &nFeeRet, std::string &strFailReason,
+                                    const CCoinControl &coinControl);
+    std::string MintAndStoreSigma(vector<CRecipient> vecSend, vector<sigma::PrivateCoin> privCoins,
+                                    vector<CSigmaMint> vDMints, CWalletTx &wtxNew, bool fAskFee) ;
+
+    string SpendSigma(std::string &toKey, vector <CScript> pubCoinScripts, vector<sigma::CoinDenomination> denomination, CWalletTx &wtxNew,
+                               vector<Scalar> &coinSerial, vector<uint256> &txHash, vector<GroupElement> &sSelectedValue, bool &sSelectedIsUsed,
+                               bool forceUsed = false, bool fAskFee = false);
+
+    void ListAvailableSigmaMintCoins(vector <COutput> &vCoins, bool fOnlyConfirmed=true) const;
+    std::string GhostModeSpendSigma(string totalAmount, string toKey = "", vector<CScript> pubCoinScripts = vector<CScript>());
+    bool GhostModeMintSigma(string totalAmount, vector<CScript> pubCoinScripts = vector<CScript>());
+
+    bool CreateSigmaSpendModel(string &stringError, vector <string> denomAmountBatch, string toAddr, vector <CScript> pubCoinScripts);
+    bool CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> pubCoinScripts, vector <sigma::CoinDenomination> denominationBatch,
+                                                 CWalletTx &wtxNew, CReserveKey &reservekey, vector <Scalar> &coinSerialBatch,
+                                                 vector <uint256> &txHashBatch, vector <GroupElement> &sSelectedValueBatch, bool &sSelectedIsUsed,
+                                                 std::string &strFailReason);
+
+    bool CommitSigmaSpendTransaction(CWalletTx& wtxNew);
+    /* ****************** */
+    /* ****************** */
 
     /* POS functionality */
 
@@ -1563,10 +1765,6 @@ public:
     void KeepKey(int64_t nIndex);
     void ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey);
     bool GetKeyFromPool(CPubKey &key, bool internal = false);
-    isminetype HaveStealthAddress(const CStealthAddress &sxAddr) const;
-    bool GetStealthAddressScanKey(CStealthAddress &sxAddr) const;
-
-    bool ImportStealthAddress(const CStealthAddress &sxAddr, const CKey &skSpend);
 
     int64_t GetOldestKeyPoolTime();
     /**

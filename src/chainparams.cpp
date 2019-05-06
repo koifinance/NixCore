@@ -15,6 +15,7 @@
 #include <utilmoneystr.h>
 
 #include <chainparamsseeds.h>
+#include <chain.h>
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
@@ -192,6 +193,9 @@ public:
         consensus.nStartGhostFeeDistribution = 115921;
         consensus.nGhostFeeDistributionCycle = 720;
 
+        consensus.nZerocoinDisableBlock = 205200;
+        consensus.nSigmaStartBlock = 220200;
+
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
 
@@ -317,18 +321,14 @@ public:
         consensus.nMinerConfirmationWindow = 2; // nPowTargetTimespan / nPowTargetSpacing
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
-        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1475020800; // January 1, 2008
-        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1544865861; // December 31, 2008
-
-        // Deployment of BIP68, BIP112, and BIP113.
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 0;
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 1462060800; // May 1st, 2016
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1544865861; // May 1st, 2017
-
-        // Deployment of SegWit (BIP141, BIP143, and BIP147)
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 0;
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1479168000; // November 15th, 2016.
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1544865861; // November 15th, 2017.
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = Consensus::BIP9Deployment::ALWAYS_ACTIVE;
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000000100010");
@@ -337,20 +337,29 @@ public:
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //1135275
 
         // ghostnode params
-        consensus.nGhostnodeMinimumConfirmations = 1;
-        consensus.nGhostnodePaymentsStartBlock = 50;
-        consensus.nGhostnodeInitialize = 20;
+        consensus.nGhostnodeMinimumConfirmations = 999999;
+        consensus.nGhostnodePaymentsStartBlock = 999999;
+        consensus.nGhostnodeInitialize = 999999;
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
-        consensus.nPosHeightActivate = 6;
+        consensus.nPosHeightActivate = 5;
         nModifierInterval = 10 * 60;    // 10 minutes
         nTargetSpacing = 120;           // 2 minutes
         nTargetTimespan = 24 * 60;      // 24 mins
 
-        consensus.nCoinMaturityReductionHeight = 2;
-        consensus.nStartGhostFeeDistribution = 1000;
-        consensus.nGhostFeeDistributionCycle = 20;
+        consensus.nCoinMaturityReductionHeight = 5;
+        consensus.nStartGhostFeeDistribution = 999999;
+        consensus.nGhostFeeDistributionCycle = 999999;
+
+        consensus.nStartWitnessLposContracts = 1;
+        consensus.nNewDevelopmentPayoutCycleStartHeight = 1;
+        consensus.nNewDevelopmentPayoutCycle = 999999999;
+
+
+        consensus.nZerocoinDisableBlock = 1;
+        consensus.nSigmaStartBlock = 100;
+
 
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
 
@@ -485,6 +494,10 @@ public:
         consensus.nStartWitnessLposContracts = 1;
         consensus.nNewDevelopmentPayoutCycleStartHeight = 241;
         consensus.nNewDevelopmentPayoutCycle = 20;
+
+        consensus.nZerocoinDisableBlock = 230;
+        consensus.nSigmaStartBlock = 225;
+
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");

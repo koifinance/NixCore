@@ -59,6 +59,7 @@ LIBNIX_UTIL=libnix_util.a
 LIBNIX_CRYPTO=crypto/libnix_crypto.a
 LIBNIXQT=qt/libnixqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
+LIBNIX_SIGMA=libsigma.a
 
 if ENABLE_ZMQ
 LIBNIX_ZMQ=libnix_zmq.a
@@ -68,9 +69,6 @@ LIBNIXCONSENSUS=libnixconsensus.la
 endif
 if ENABLE_WALLET
 LIBNIX_WALLET=libnix_wallet.a
-endif
-if ENABLE_USBDEVICE
-LIBPARTICL_USBDEVICE=libnix_usbdevice.a
 endif
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -86,8 +84,8 @@ EXTRA_LIBRARIES += \
   $(LIBNIX_SERVER) \
   $(LIBNIX_CLI) \
   $(LIBNIX_WALLET) \
-  $(LIBNIX_USBDEVICE) \
-  $(LIBNIX_ZMQ)
+  $(LIBNIX_ZMQ) \
+  $(LIBNIX_SIGMA)
 
 lib_LTLIBRARIES = $(LIBNIXCONSENSUS)
 
@@ -235,15 +233,17 @@ NIX_CORE_H = \
   wallet/init.h \
   wallet/rpcwallet.h \
   wallet/wallet.h \
+  wallet/ghostwallet.h \
+  wallet/sigmatracker.h \
+  wallet/sigmamint.h \
   wallet/walletdb.h \
   wallet/walletutil.h \
   warnings.h \
   zerocoin/zerocoin.h \
+  zerocoin/sigma.h \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
-  usbdevice/usbdevice.h \
-  usbdevice/rpcusbdevice.h \
   zmq/zmqpublishnotifier.h
 
 
@@ -301,6 +301,7 @@ libnix_server_a_SOURCES = \
   validationinterface.cpp \
   versionbits.cpp \
   zerocoin/zerocoin.cpp \
+  zerocoin/sigma.cpp \
   $(NIX_CORE_H)
 
 if ENABLE_ZMQ
@@ -311,25 +312,6 @@ libnix_zmq_a_SOURCES = \
   zmq/zmqnotificationinterface.cpp \
   zmq/zmqpublishnotifier.cpp
 endif
-
-if ENABLE_USBDEVICE
-libnix_usbdevice_a_CPPFLAGS = $(NIX_INCLUDES) $(AM_CPPFLAGS)
-libnix_usbdevice_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libnix_usbdevice_a_CFLAGS = -DHAVE_HIDAPI $(AM_CFLAGS)
-libnix_usbdevice_a_SOURCES = \
-  usbdevice/ledger/btchipApdu.h \
-  usbdevice/ledger/ledgerLayer.h \
-  usbdevice/ledger/ledgerLayer.c \
-  usbdevice/ledger/dongleCommHidHidapi.h \
-  usbdevice/ledger/dongleCommHidHidapi.c \
-  usbdevice/usbdevice.cpp \
-  usbdevice/debugdevice.h \
-  usbdevice/debugdevice.cpp \
-  usbdevice/ledgerdevice.h \
-  usbdevice/ledgerdevice.cpp \
-  usbdevice/rpcusbdevice.cpp
-endif
-
 
 # wallet: shared between nixd and nix-qt, but only linked
 # when wallet enabled
@@ -356,6 +338,9 @@ libnix_wallet_a_SOURCES = \
   wallet/rpcdump.cpp \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
+  wallet/ghostwallet.cpp \
+  wallet/sigmatracker.cpp \
+  wallet/sigmamint.cpp \
   wallet/walletdb.cpp \
   wallet/walletutil.cpp \
   $(NIX_CORE_H)
@@ -394,7 +379,7 @@ crypto_libnix_crypto_a_SOURCES = \
   crypto/Lyra2RE/skein.c \
   crypto/Lyra2RE/cubehash.c \
   crypto/Lyra2RE/bmw.c \
-  crypto/Lyra2RE/sph_blake.h \	
+  crypto/Lyra2RE/sph_blake.h \
   crypto/Lyra2RE/sph_bmw.h \
   crypto/Lyra2RE/sph_cubehash.h \
   crypto/Lyra2RE/sph_groestl.h \
@@ -523,6 +508,30 @@ libnix_util_a_SOURCES = \
   utiltime.cpp \
   $(NIX_CORE_H)
 
+libsigma_a_CPPFLAGS = $(AM_CPPFLAGS) $(NIX_INCLUDES) -Werror
+libsigma_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -Werror
+libsigma_a_SOURCES = \
+  sigma/r1_proof.h \
+  sigma/r1_proof_generator.h \
+  sigma/r1_proof_generator.hpp \
+  sigma/r1_proof_verifier.h \
+  sigma/r1_proof_verifier.hpp \
+  sigma/sigmaplus_proof.h \
+  sigma/sigmaplus_prover.h \
+  sigma/sigmaplus_prover.hpp \
+  sigma/sigmaplus_verifier.h \
+  sigma/sigmaplus_verifier.hpp \
+  sigma/sigma_primitives.h \
+  sigma/sigma_primitives.hpp \
+  sigma/coin.h \
+  sigma/coin.cpp \
+  sigma/coinspend.cpp \
+  sigma/coinspend.h \
+  sigma/spend_metadata.cpp \
+  sigma/spend_metadata.h \
+  sigma/params.h \
+  sigma/params.cpp \
+  sigma/openssl_context.h
 
 if GLIBC_BACK_COMPAT
 libnix_util_a_SOURCES += compat/glibc_compat.cpp
@@ -560,10 +569,9 @@ nixd_LDADD = \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
-  $(LIBSECP256K1) \
-  $(LIBNIX_USBDEVICE)
+  $(LIBSECP256K1)
 
-nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(USB_LIBS) -lz
+nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(LIBNIX_SIGMA) -lz
 
 # nix-cli binary #
 nix_cli_SOURCES = nix-cli.cpp

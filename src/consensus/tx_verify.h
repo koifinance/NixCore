@@ -9,17 +9,20 @@
 
 #include <stdint.h>
 #include <vector>
-#include "zerocoin/zerocoin.h"
+#include <uint256.h>
 
 class CBlockIndex;
 class CCoinsViewCache;
 class CTransaction;
 class CValidationState;
+class CZerocoinTxInfo;
+class CSigmaTxInfo;
 
 /** Transaction validation functions */
 
 /** Context-independent validity checks */
-bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 hashTx, bool isVerifyDB, bool fCheckDuplicateInputs=true, int nHeight = INT_MAX, bool isCheckWallet = false, CZerocoinTxInfo *zerocoinTxInfo = NULL);
+bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 hashTx, bool isVerifyDB, bool fCheckDuplicateInputs=true, int nHeight = INT_MAX,
+                      bool isCheckWallet = false, CZerocoinTxInfo *zerocoinTxInfo = NULL, CSigmaTxInfo *sigmaTxInfo = NULL);
 
 namespace Consensus {
 /**

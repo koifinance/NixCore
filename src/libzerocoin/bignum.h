@@ -9,7 +9,7 @@
 #include <vector>
 #include <openssl/bn.h>
 
-#include "Zerocoin.h"
+#include "libzerocoin/Zerocoin.h"
 #include "../arith_uint256.h"
 #include "../uint256.h"
 #include "../version.h"

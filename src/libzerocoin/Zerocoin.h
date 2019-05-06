@@ -58,14 +58,14 @@ namespace libzerocoin {
 }
 
 #include "../serialize.h"
-#include "bignum.h"
+#include "libzerocoin/bignum.h"
 #include "../hash.h"
-#include "Params.h"
-#include "Coin.h"
-#include "Commitment.h"
-#include "Accumulator.h"
-#include "AccumulatorProofOfKnowledge.h"
-#include "CoinSpend.h"
-#include "SerialNumberSignatureOfKnowledge.h"
-#include "ParamGeneration.h"
+#include "libzerocoin/Params.h"
+#include "libzerocoin/Coin.h"
+#include "libzerocoin/Commitment.h"
+#include "libzerocoin/Accumulator.h"
+#include "libzerocoin/AccumulatorProofOfKnowledge.h"
+#include "libzerocoin/CoinSpend.h"
+#include "libzerocoin/SerialNumberSignatureOfKnowledge.h"
+#include "libzerocoin/ParamGeneration.h"
 #endif /* ZEROCOIN_H_ */

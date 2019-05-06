@@ -102,6 +102,9 @@ struct Params {
 
     // height to enable lpos witness contracts
     int nStartWitnessLposContracts;
+
+    int nZerocoinDisableBlock;
+    int nSigmaStartBlock;
 };
 } // namespace Consensus
 

@@ -93,14 +93,14 @@ CAmount WalletModel::getImmatureBalance() const
     return wallet->GetImmatureBalance();
 }
 
-CAmount WalletModel::getGhostBalance() const
+CAmount WalletModel::getGhostBalance(bool isV2) const
 {
-    return wallet->GetGhostBalance();
+    return wallet->GetGhostBalance(isV2);
 }
 
-CAmount WalletModel::getGhostBalanceUnconfirmed() const
+CAmount WalletModel::getGhostBalanceUnconfirmed(bool isV2) const
 {
-    return wallet->GetGhostBalanceUnconfirmed();
+    return wallet->GetGhostBalanceUnconfirmed(isV2);
 }
 
 CAmount WalletModel::getStakeBalance() const
@@ -171,8 +171,8 @@ void WalletModel::checkBalanceChanged()
     CAmount newBalance = getBalance();
     CAmount newUnconfirmedBalance = getUnconfirmedBalance();
     CAmount newImmatureBalance = getImmatureBalance();
-    CAmount newGhostBalance = getGhostBalance();
-    CAmount newGhostBalanceUnconfirmed = getGhostBalanceUnconfirmed();
+    CAmount newGhostBalance = getGhostBalance(true);
+    CAmount newGhostBalanceUnconfirmed = getGhostBalanceUnconfirmed(true);
     CAmount newWatchOnlyBalance = 0;
     CAmount newWatchUnconfBalance = 0;
     CAmount newWatchImmatureBalance = 0;
@@ -961,10 +961,10 @@ void WalletModel::lockWallet()
     }
 }
 
-bool WalletModel::getKeyPackList(vector<CommitmentKeyPack> &keyPackList, int packSize){
+bool WalletModel::getKeyPackList(vector<CommitmentKeyPack> &keyPackList, bool isV2, int packSize){
     try{
         if(wallet){
-            return wallet->GetKeyPackList(keyPackList, packSize);
+            return wallet->GetKeyPackList(keyPackList, isV2, packSize);
         }
     }
     catch(...){

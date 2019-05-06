@@ -17,7 +17,7 @@ using namespace std;
 #include <fstream>
 #include <curses.h>
 #include <exception>
-#include "Zerocoin.h"
+#include "libzerocoin/Zerocoin.h"
 
 // "Zerocoin.h" includes ../util.h, which redefines printf
 #undef printf

@@ -12,7 +12,7 @@
 #ifndef PARAMS_H_
 #define PARAMS_H_
 
-#include "Zerocoin.h"
+#include "libzerocoin/Zerocoin.h"
 
 namespace libzerocoin {
 

@@ -364,7 +364,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
 
-    if((tx.IsZerocoinSpend() || tx.IsZerocoinMint()) && (nHeight < (INT_MAX - 1)) && nHeight > 205200)
+    if((tx.IsZerocoinSpend() || tx.IsZerocoinMint()) && (nHeight < (INT_MAX - 1)) && nHeight > Params().GetConsensus().nZerocoinDisableBlock)
         return state.DoS(5, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
 
     // Check Mint Zerocoin Transaction

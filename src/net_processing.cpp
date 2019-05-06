@@ -2528,7 +2528,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
         std::list<CTransactionRef> lRemovedTxn;
 
-        if (!AlreadyHave(inv) && !tx.IsZerocoinSpend() &&
+        if (!AlreadyHave(inv) && !tx.IsZerocoinSpend() && !tx.IsSigmaSpend() &&
             AcceptToMemoryPool(mempool, state, ptx, &fMissingInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
             mempool.check(pcoinsTip.get());
             RelayTransaction(tx, connman);
@@ -2604,7 +2604,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
         }
-        else if (!AlreadyHave(inv) && tx.IsZerocoinSpend() && AcceptToMemoryPool(mempool, state, ptx, &fMissingZerocoinInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
+        else if (!AlreadyHave(inv) && tx.IsZerocoinSpend() && tx.IsSigmaSpend() && AcceptToMemoryPool(mempool, state, ptx, &fMissingZerocoinInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
             RelayTransaction(tx, connman);
 
         }
@@ -3950,7 +3950,7 @@ bool PeerLogicValidation::SendMessages(CNode* pto, std::atomic<bool>& interruptM
                         continue;
                     }
                     //LogPrintf("\nFEERATE: %llf, *** %llf \n", txinfo.feeRate.GetFeePerK(), filterrate);
-                    if(!txinfo.tx->IsZerocoinSpend())
+                    if(!txinfo.tx->IsZerocoinSpend() && !txinfo.tx->IsSigmaSpend())
                         if (filterrate && txinfo.feeRate.GetFeePerK() < filterrate) {
                             continue;
                         }

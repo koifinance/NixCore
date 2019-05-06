@@ -21,6 +21,13 @@
 
 secp256k1_context *secp256k1_ctx_stealth = nullptr;
 
+enum StealthTypes
+{
+    DO_STEALTH            = 0,
+    DO_STEALTH_PREFIX     = 1,
+
+};
+
 bool CStealthAddress::SetEncoded(const std::string &encodedAddress)
 {
     std::vector<uint8_t> raw;

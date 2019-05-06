@@ -13,14 +13,14 @@
 #ifndef COINSPEND_H_
 #define COINSPEND_H_
 
-#include "Params.h"
-#include "Coin.h"
-#include "Commitment.h"
-#include "bignum.h"
-#include "Accumulator.h"
-#include "AccumulatorProofOfKnowledge.h"
-#include "SerialNumberSignatureOfKnowledge.h"
-#include "SpendMetaData.h"
+#include "libzerocoin/Params.h"
+#include "libzerocoin/Coin.h"
+#include "libzerocoin/Commitment.h"
+#include "libzerocoin/bignum.h"
+#include "libzerocoin/Accumulator.h"
+#include "libzerocoin/AccumulatorProofOfKnowledge.h"
+#include "libzerocoin/SerialNumberSignatureOfKnowledge.h"
+#include "libzerocoin/SpendMetaData.h"
 #include "../serialize.h"
 
 namespace libzerocoin {

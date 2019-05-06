@@ -50,7 +50,6 @@ public:
 
 //public Q_SLOTS:
 //    void done(int retval);
-    QTableWidget* tableView;
 
 private:
     Ui::GhostVault *ui;
@@ -85,6 +84,8 @@ private Q_SLOTS:
     void showMenu(const QPoint &point);
     void copyKey();
     void setKeyListTrigger(int);
+
+    void on_generateGhostKey_clicked();
 
 Q_SIGNALS:
     void sendCoins(QString addr);
