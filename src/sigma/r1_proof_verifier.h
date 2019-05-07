@@ -1,6 +1,10 @@
 #ifndef SIGMA_R1_PROOF_VERIFIER_H
 #define SIGMA_R1_PROOF_VERIFIER_H
 
+#include <secp256k1/include/Scalar.h>
+#include <secp256k1/include/GroupElement.h>
+#include <sigma/r1_proof.h>
+
 namespace sigma {
 
 template <class Exponent, class GroupElement>

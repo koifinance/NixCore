@@ -4,7 +4,7 @@
 #include <vector>
 #include <secp256k1/include/Scalar.h>
 #include <secp256k1/include/GroupElement.h>
-#include <../serialize.h>
+#include <serialize.h>
 
 namespace sigma {
 
