@@ -49,6 +49,7 @@ $(TOR_LIBS): tor.timestamp
 NIX_INCLUDES=-I$(builddir) $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
 NIX_INCLUDES += -I$(srcdir)/secp256k1/include
+NIX_INCLUDES += -I$(srcdir)/secp256k1/src
 NIX_INCLUDES += $(UNIVALUE_CFLAGS)
 
 LIBNIX_SERVER=libnix_server.a
