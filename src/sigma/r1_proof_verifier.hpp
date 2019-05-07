@@ -1,4 +1,5 @@
 #include <sigma/r1_proof_verifier.h>
+#include <sigma/sigma_primitives.h>
 
 namespace sigma {
 
