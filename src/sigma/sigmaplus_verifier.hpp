@@ -1,5 +1,3 @@
-#include <sigma/sigmaplus_verifier.h>
-
 namespace sigma{
 template<class Exponent, class GroupElement>
 SigmaPlusVerifier<Exponent, GroupElement>::SigmaPlusVerifier(
