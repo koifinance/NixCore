@@ -4,11 +4,11 @@
 
 #include "../include/Scalar.h"
 
-#include "../include/secp256k1.h"
-#include "../scalar.h"
-#include "../scalar_impl.h"
-#include "../hash_impl.h"
-#include "../hash.h"
+#include "secp256k1.h"
+#include "scalar.h"
+#include "scalar_impl.h"
+#include "hash_impl.h"
+#include "hash.h"
 #include <sstream>
 #include <iostream>
 #include <openssl/rand.h>
