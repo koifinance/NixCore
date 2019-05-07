@@ -27,6 +27,6 @@ private:
 
 } // namespace sigma
 
-#include "sigmaplus_verifier.hpp"
+#include <sigma/sigmaplus_verifier.hpp>
 
 #endif // SIGMA_SIGMAPLUS_VERIFIER_H
