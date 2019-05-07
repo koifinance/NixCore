@@ -10242,7 +10242,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
               {0}, //100
               {0}, //1000
             };
-            for(int j = 0; j < 7; j++)
+            for(int j = 0; j < 4; j++)
                 denomTemp[j][0] = demoniationListCopy[j][0];
 
             bool success = false;
