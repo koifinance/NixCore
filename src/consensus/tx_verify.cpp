@@ -219,7 +219,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
                                                     (const char *)&*txin.scriptSig.end(),
                                                     SER_NETWORK, PROTOCOL_VERSION);
                     libzerocoin::CoinSpend newSpend(ZCParams, serializedCoinSpend);
-                    totalIn += (int64_t)newSpend.getDenomination();
+                    totalIn += ((int64_t)newSpend.getDenomination() * COIN);
                 }
             }
             else if(tx.IsSigmaSpend()){
