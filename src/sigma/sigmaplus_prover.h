@@ -3,6 +3,7 @@
 
 #include <sigma/r1_proof_generator.h>
 #include <sigma/sigmaplus_proof.h>
+#include <secp256k1/include/MultiExponent.h>
 
 #include <cstddef>
 
