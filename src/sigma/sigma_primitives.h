@@ -1,9 +1,9 @@
 #ifndef SIGMA_SIGMA_PRIMITIVES_H
 #define SIGMA_SIGMA_PRIMITIVES_H
 
-#include <../secp256k1/include/MultiExponent.h>
-#include <../secp256k1/include/GroupElement.h>
-#include <../secp256k1/include/Scalar.h>
+#include <secp256k1/include/MultiExponent.h>
+#include <secp256k1/include/GroupElement.h>
+#include <secp256k1/include/Scalar.h>
 
 #include <algorithm>
 #include <vector>

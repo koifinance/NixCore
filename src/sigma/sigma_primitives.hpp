@@ -1,4 +1,5 @@
-#include <../crypto/sha256.h>
+#include <crypto/sha256.h>
+#include <sigma/sigma_primitives.h>
 
 namespace sigma{
 

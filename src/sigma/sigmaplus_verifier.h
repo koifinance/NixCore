@@ -2,6 +2,8 @@
 #define SIGMA_SIGMAPLUS_VERIFIER_H
 
 #include <sigma/r1_proof_verifier.h>
+#include <sigma/sigmaplus_proof.h>
+#include <sigma/sigma_primitives.h>
 
 namespace sigma {
 template<class Exponent, class GroupElement>
