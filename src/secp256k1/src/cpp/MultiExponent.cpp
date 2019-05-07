@@ -1,16 +1,16 @@
 #include "../include/MultiExponent.h"
 
-#include "../include/secp256k1.h"
-#include "../field.h"
-#include "../field_impl.h"
-#include "../group.h"
-#include "../group_impl.h"
-#include "../scalar.h"
-#include "../scalar_impl.h"
-#include "../ecmult.h"
-#include "../ecmult_impl.h"
-#include "../src/scratch_impl.h"
-#include "../src/ecmult_impl.h"
+#include "secp256k1.h"
+#include "field.h"
+#include "field_impl.h"
+#include "group.h"
+#include "group_impl.h"
+#include "scalar.h"
+#include "scalar_impl.h"
+#include "ecmult.h"
+#include "ecmult_impl.h"
+#include "scratch_impl.h"
+#include "ecmult_impl.h"
 
 
 typedef struct {
