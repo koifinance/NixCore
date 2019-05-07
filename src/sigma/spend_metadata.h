@@ -1,9 +1,9 @@
 #ifndef SPENDMETADATA__H_
 #define SPENDMETADATA__H_
 
-#include <../arith_uint256.h>
-#include <../uint256.h>
-#include <../serialize.h>
+#include <arith_uint256.h>
+#include <uint256.h>
+#include <serialize.h>
 
 namespace sigma {
 
