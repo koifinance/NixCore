@@ -7,7 +7,7 @@
 
 namespace secp_primitives {
 
-class MultiExponent {
+class MultiExponent final {
 public:
     MultiExponent(const MultiExponent& other);
     MultiExponent(const std::vector<GroupElement>& generators, const std::vector<Scalar>& powers);

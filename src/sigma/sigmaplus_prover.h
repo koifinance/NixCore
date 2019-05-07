@@ -29,6 +29,6 @@ private:
 
 } // namespace sigma
 
-#include "sigmaplus_prover.hpp"
+#include <sigma/sigmaplus_prover.hpp>
 
 #endif // SIGMA_SIGMAPLUS_PROVER_H
