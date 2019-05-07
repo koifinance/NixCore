@@ -4,8 +4,8 @@
 #include <sigma/params.h>
 #include <sigma/sigma_primitives.h>
 
-#include <../consensus/validation.h>
-#include <../libzerocoin/Zerocoin.h>
+#include <consensus/validation.h>
+#include <libzerocoin/Zerocoin.h>
 
 #include <cinttypes>
 

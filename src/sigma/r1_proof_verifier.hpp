@@ -1,3 +1,5 @@
+#include <sigma/r1_proof_verifier.h>
+
 namespace sigma {
 
 template<class Exponent, class GroupElement>

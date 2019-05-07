@@ -1,3 +1,5 @@
+#include <sigma/sigmaplus_prover.h>
+
 namespace sigma {
 
 template<class Exponent, class GroupElement>
