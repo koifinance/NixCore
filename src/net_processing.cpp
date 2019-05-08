@@ -2604,7 +2604,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
         }
-        else if (!AlreadyHave(inv) && tx.IsZerocoinSpend() && tx.IsSigmaSpend() && AcceptToMemoryPool(mempool, state, ptx, &fMissingZerocoinInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
+        else if (!AlreadyHave(inv) && (tx.IsZerocoinSpend() || tx.IsSigmaSpend()) && AcceptToMemoryPool(mempool, state, ptx, &fMissingZerocoinInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
             RelayTransaction(tx, connman);
 
         }
