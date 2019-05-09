@@ -295,6 +295,13 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
                 nWaitFor = std::min(nWaitFor, (size_t)30000);
                 continue;
             }
+            // makesure wallets do not stake if they are unencrypted
+            if (!pwallet->IsCrypted())
+            {
+                pwallet->nIsStaking = CWallet::NOT_STAKING_DISABLED;
+                nWaitFor = std::min(nWaitFor, (size_t)30000);
+                continue;
+            }
 
             if (pwallet->GetStakeableBalance() <= pwallet->nReserveBalance)
             {

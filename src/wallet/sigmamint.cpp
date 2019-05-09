@@ -4,6 +4,7 @@
 
 #include <tinyformat.h>
 #include <wallet/sigmamint.h>
+#include <limits.h>
 
 CSigmaMint::CSigmaMint()
 {
@@ -25,7 +26,7 @@ void CSigmaMint::SetNull()
     hashSeed.SetNull();
     hashSerial.SetNull();
     txid.SetNull();
-    nHeight = -1;
+    nHeight = INT_MAX;
     nId = 0;
     denom = (int)sigma::CoinDenomination::SIGMA_ERROR;
     isUsed = false;
