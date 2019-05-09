@@ -611,10 +611,12 @@ void CSigmaState::RemoveBlock(CBlockIndex *index) {
             mintedPubCoins.erase(coinIt);
         }
     }
+    index->mintedPubCoinsV2.clear();
     // roll back spends
     for(const Scalar &serial: index->spentSerialsV2) {
         usedCoinSerials.erase(serial);
     }
+    index->spentSerialsV2.clear();
 }
 
 bool CSigmaState::GetCoinGroupInfo(
