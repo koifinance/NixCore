@@ -226,7 +226,7 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
             }
             vpwallets[0]->GetGhostWallet()->SetMasterSeed(nSeed, false);
         } else {
-            // First time this wallet has been unlocked with dzPIV
+            // First time this wallet has been unlocked
             // Borrow random generator from the key class so that we don't have to worry about randomness
             CKey key;
             key.MakeNewKey(true);
