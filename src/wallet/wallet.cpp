@@ -9921,19 +9921,19 @@ bool CWallet::CreateSigmaSpendModel(string &stringError, vector <string> denomAm
         int64_t nAmount = 0;
         if (denomAmount == "10000000") {
             denomination = sigma::CoinDenomination::SIGMA_0_1;
-            nAmount = roundint64(0.1 * COIN);
+            nAmount = 0.1 * COIN;
         } else if (denomAmount == "100000000") {
             denomination = sigma::CoinDenomination::SIGMA_1;
-            nAmount = roundint64(1 * COIN);
+            nAmount = 1 * COIN;
         } else if (denomAmount == "1000000000") {
             denomination = sigma::CoinDenomination::SIGMA_10;
-            nAmount = roundint64(10 * COIN);
+            nAmount = (10 * COIN);
         } else if (denomAmount == "10000000000") {
             denomination = sigma::CoinDenomination::SIGMA_100;
-            nAmount = roundint64(100 * COIN);
+            nAmount = (100 * COIN);
         } else if (denomAmount == "100000000000") {
             denomination = sigma::CoinDenomination::SIGMA_1000;
-            nAmount = roundint64(1000 * COIN);
+            nAmount = (1000 * COIN);
         } else {
             return false;
         }

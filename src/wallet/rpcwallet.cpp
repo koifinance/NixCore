@@ -6387,6 +6387,39 @@ UniValue setsigmaseed(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue listsigmaentries(const JSONRPCRequest& request)
+{
+    CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
+
+    if(request.fHelp)
+        throw runtime_error(
+            "listsigmaentries <true/false>(default = false)\n"
+            "\nList sigma entries in wallet.\n" +
+            HelpRequiringPassphrase(pwalletMain) + "\n"
+
+            "\nArguments:\n"
+            "1. <true/false>   (string, required) Whether to list all entries including spent.\n");
+
+    EnsureWalletIsUnlocked(pwalletMain);
+
+    CWalletDB db(pwalletMain->GetDBHandle());
+    std::list<CSigmaMint> listMintsDB = db.ListSigmaMints();
+
+
+    UniValue final(UniValue::VARR);
+
+    for(auto& mint: listMintsDB){
+        UniValue ret(UniValue::VOBJ);
+        ret.push_back(Pair("isUsed",  mint.IsUsed()));
+        ret.push_back(Pair("denom",  mint.GetDenominationValue()));
+        ret.push_back(Pair("height",  mint.GetHeight()));
+        final.push_back(ret);
+    }
+    final.pushKV("final_size", std::to_string(listMintsDB.size()));
+
+    return final;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue importprivkey(const JSONRPCRequest& request);
@@ -6496,6 +6529,7 @@ static const CRPCCommand commands[] =
     { "NIX Privacy",        "unghostamountv2",          &unghostamountv2,          {"amount", "to_key"} },
     { "NIX Privacy",        "getsigmaseed",             &getsigmaseed,             {} },
     { "NIX Privacy",        "setsigmaseed",             &setsigmaseed,             {"seed"} },
+    { "NIX Privacy",        "listsigmaentries",         &listsigmaentries,         {"all"} },
     //NIX TOR routing functions
     { "NIX Privacy",        "enabletor",                &enableTor,                {"set"} },
     { "NIX Privacy",        "torstatus",                &torStatus,                {} },
