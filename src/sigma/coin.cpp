@@ -22,8 +22,6 @@ bool DenominationToInteger(CoinDenomination denom, int64_t& denom_out) {
 
 bool DenominationToInteger(CoinDenomination denom, int64_t& denom_out, CValidationState &state) {
     switch (denom) {
-        default:
-            return state.DoS(100, error("DenominationToInteger() : invalid denomination value, unable to convert to integer"));
         case CoinDenomination::SIGMA_0_1:
             denom_out = COIN / 10;
             break;
@@ -39,6 +37,8 @@ bool DenominationToInteger(CoinDenomination denom, int64_t& denom_out, CValidati
         case CoinDenomination::SIGMA_1000:
             denom_out = 1000 * COIN;
             break;
+        default:
+            return state.DoS(100, error("DenominationToInteger() : invalid denomination value, unable to convert to integer"));
     }
 return true;
 }
@@ -78,8 +78,6 @@ bool IntegerToDenomination(int64_t value, CoinDenomination& denom_out) {
 
 bool IntegerToDenomination(int64_t value, CoinDenomination& denom_out, CValidationState &state) {
     switch (value) {
-        default:
-            return state.DoS(100, error("IntegerToDenomination(): invalid denomination value, unable to convert to enum"));
         case COIN / 10:
             denom_out = CoinDenomination::SIGMA_0_1;
             break;
@@ -95,6 +93,9 @@ bool IntegerToDenomination(int64_t value, CoinDenomination& denom_out, CValidati
         case 1000 * COIN:
             denom_out = CoinDenomination::SIGMA_1000;
             break;
+        default:
+            denom_out = CoinDenomination::SIGMA_ERROR;
+            return state.DoS(100, error("IntegerToDenomination(): invalid denomination value, unable to convert to enum"));
     }
 return true;
 }

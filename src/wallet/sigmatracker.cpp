@@ -516,6 +516,7 @@ std::vector<CMintMeta> CSigmaTracker::ListMints(bool fUnusedOnly, bool fMatureOn
 
         CGhostWallet* ghostWallet = new CGhostWallet(pwalletMain);
         for (auto& dMint : listDeterministicDB) {
+            LogPrintf("\nAdding mint, denomVal=%d, denom=%d, height=%d", dMint.GetDenominationValue(), dMint.GetDenomination(), dMint.GetHeight());
             Add(dMint, false, false, ghostWallet);
         }
         delete ghostWallet;
