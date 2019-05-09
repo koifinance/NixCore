@@ -138,7 +138,7 @@ CAmount CSigmaTracker::GetBalance(bool fConfirmedOnly, bool fUnconfirmedOnly) co
             CMintMeta meta = it.second;
             if (meta.isUsed || meta.isArchived)
                 continue;
-            bool fConfirmed = ((meta.nHeight < chainActive.Height()) && !(meta.nHeight == 0));
+            bool fConfirmed = ((meta.nHeight < chainActive.Height()) && (meta.nHeight != INT_MAX));
             if (fConfirmedOnly && !fConfirmed)
                 continue;
             if (fUnconfirmedOnly && fConfirmed)
@@ -168,7 +168,7 @@ std::list<CMintMeta> CSigmaTracker::GetMints(bool fConfirmedOnly, bool fInactive
         CMintMeta mint = it.second;
         if ((mint.isArchived || mint.isUsed) && fInactive)
             continue;
-        bool fConfirmed = (mint.nHeight < chainActive.Height());
+        bool fConfirmed = ((mint.nHeight != INT_MAX) && (mint.nHeight < chainActive.Height()));
         if (fConfirmedOnly && !fConfirmed)
             continue;
         vMints.push_back(mint);
@@ -385,7 +385,7 @@ bool CSigmaTracker::UpdateStatusInternal(const std::set<uint256>& setMempool, CM
 
     bool isUsed = isPendingSpend || isConfirmedSpend;
 
-    if ((mint.nHeight==-1) || (mint.nId<=0) || !isMintInChain || isUsed != mint.isUsed) {
+    if ((mint.nHeight == INT_MAX) || (mint.nId<=0) || !isMintInChain || isUsed != mint.isUsed) {
         CTransactionRef tx;
         uint256 hashBlock;
 
@@ -421,7 +421,7 @@ bool CSigmaTracker::UpdateStatusInternal(const std::set<uint256>& setMempool, CM
                 mint.nHeight = 0;
 
                 return true;
-            }else if((mint.nHeight==-1) || (mint.nId<=0)){ // assign nHeight if not present
+            }else if((mint.nHeight== INT_MAX) || (mint.nId<=0)){ // assign nHeight if not present
                 sigma::PublicCoin pubcoin(mint.pubCoinValue, mint.denom);
                 auto MintedCoinHeightAndId = sigmaState->GetMintedCoinHeightAndId(pubcoin);
                 mint.nHeight = MintedCoinHeightAndId.first;
@@ -466,7 +466,7 @@ bool CSigmaTracker::UpdateMints(std::set<uint256> serialHashes, bool fReset, boo
     walletdb.ListSigmaEntries(listMintsDB);
     for (auto& mint : listMintsDB){
         if(fReset){
-            mint.nHeight = -1;
+            mint.nHeight = INT_MAX;
             mint.IsUsed = false;
         }
         else if(fUpdateStatus){
@@ -483,7 +483,7 @@ bool CSigmaTracker::UpdateMints(std::set<uint256> serialHashes, bool fReset, boo
     CGhostWallet* zerocoinWallet = new CGhostWallet(pwalletMain);
     for (auto& dMint : listDeterministicDB) {
         if(fReset){
-            dMint.SetHeight(-1);
+            dMint.SetHeight(INT_MAX);
             dMint.SetUsed(false);
         }
         else if(fUpdateStatus){

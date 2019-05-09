@@ -9325,11 +9325,9 @@ bool CWallet::GetMint(const uint256& hashSerial, CSigmaEntry& sigma)
 
          return true;
     }
-    else if (!walletdb.ReadSigmaEntry(meta.pubCoinValue, sigma)) {
-         return error("%s: failed to read sigma entry from database", __func__);
-    }
 
-     return true;
+    // only allow deterministic sigma mints
+    return false;
 }
 
 CAmount CWallet::SelectMintCoinsForAmount(
