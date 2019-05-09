@@ -9195,7 +9195,6 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
                 GetGhostWallet()->GenerateHDMint(sigma::CoinDenomination::SIGMA_0_1, coin, dMint);
                 if(!coin.getPublicCoin().validate())
                     continue;
-                LogPrintf("GetKeyPackList(): sigma mint index=%d\n", i);
                 privCoins.push_back(coin);
                 GetGhostWallet()->UpdateCountLocal();
             }
@@ -9205,6 +9204,8 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
             std::vector< std::vector <unsigned char>> keyList = std::vector< std::vector <unsigned char>>();
             keyList.clear();
             for(const sigma::PrivateCoin &pCoin: privCoins) {
+                if(!pCoin.getPublicCoin().validate())
+                    continue;
                 std::vector<unsigned char> commitmentKey = pCoin.getPublicCoin().getValue().getvch();
                 keyList.push_back(commitmentKey);
             }
@@ -9212,6 +9213,13 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
             CommitmentKeyPack pubCoinPack(keyList);
 
             keyPackList.push_back(pubCoinPack);
+
+            for(auto scriptK: pubCoinPack.GetPubCoinPackScript()){
+                secp_primitives::GroupElement pubCoinValue = ParseSigmaMintScript(scriptK);
+                sigma::PublicCoin pubCoin(pubCoinValue, sigma::CoinDenomination::SIGMA_0_1);
+                if(!pubCoin.validate())
+                    LogPrintf("\nIssue validating pubcoin!\n");
+            }
         }
 
     }
@@ -9427,6 +9435,7 @@ std::vector<CRecipient> CWallet::CreateSigmaMintRecipients(std::vector<sigma::Pr
             sigma::DenominationToInteger(c.getPublicCoin().getDenomination(), v);
             CRecipient recp = {keypack[i], v, false};
             vecSend.push_back(recp);
+            i++;
         }
     }
 

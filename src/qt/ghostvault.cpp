@@ -176,6 +176,16 @@ void GhostVault::on_ghostNIXButton_clicked() {
             return;
         }
         pubCoinScripts = keyPack.GetPubCoinPackScript();
+        for(auto scriptK: pubCoinScripts){
+            secp_primitives::GroupElement pubCoinValue = ParseSigmaMintScript(scriptK);
+            sigma::PublicCoin pubCoin(pubCoinValue, sigma::CoinDenomination::SIGMA_0_1);
+            if(!pubCoin.validate()){
+                QMessageBox::critical(this, tr("Error"),
+                                      tr("Cannot validate pubcoin!"),
+                                      QMessageBox::Ok, QMessageBox::Ok);
+                return;
+            }
+        }
     }
 
 
