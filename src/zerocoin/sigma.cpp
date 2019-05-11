@@ -448,7 +448,7 @@ bool ConnectBlockSigma(
             sigma::CoinDenomination denomination = mint.getDenomination();
             int mintId = sigmaState.AddMint(pindexNew,	mint);
             
-            LogPrintf("ConnectTipSigma: mint added denomination=%d, id=%d\n", denomination, mintId);
+            //LogPrintf("ConnectTipSigma: mint added denomination=%d, id=%d\n", denomination, mintId);
             pair<sigma::CoinDenomination, int> denomAndId = make_pair(denomination, mintId);
             pindexNew->mintedPubCoinsV2[denomAndId].push_back(mint);
         }
