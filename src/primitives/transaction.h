@@ -403,7 +403,7 @@ public:
 
     bool IsSigmaSpend() const
     {
-        return (vin.size() >= 1 && vin[0].prevout.hash.IsNull() && vin[0].prevout.n >= 1 && (vin[0].scriptSig[0] == OP_SIGMASPEND) && (vout.size() == vin.size()) );
+        return (vin.size() >= 1 && vin[0].prevout.hash.IsNull() && vin[0].prevout.n >= 1 && (vin[0].scriptSig[0] == OP_SIGMASPEND));
     }
 
     bool IsSigmaMint() const
