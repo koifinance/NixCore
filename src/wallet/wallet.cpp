@@ -9598,13 +9598,6 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
         txNewTemp.vout.push_back(newTxOut);
     }
 
-    // fee is included, need to delete from tx output
-    if(!pubCoinScripts.empty()){
-        txNew.vout.pop_back();
-        txNewTemp.vout.pop_back();
-    }
-
-
     //empty vins
     vector <int> coinIdBatch;
     vector <CSigmaEntry> coinToUseBatch;
