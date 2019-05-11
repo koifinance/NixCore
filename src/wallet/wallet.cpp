@@ -9583,13 +9583,27 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
             scriptChange = GetScriptForDestination(DecodeDestination(toKey));
         }
     }
+    bool payFee = !pubCoinScripts.empty();
+    bool feePaid = false;
     for(int i = 0; i < nValueBatch.size(); i++){
+        // skip paying 0.1 denom if this is a ckp payment
+        if(payFee && !feePaid && nValueBatch[i] == (COIN/10)){
+            feePaid = true;
+            continue;
+        }
         if(!pubCoinScripts.empty())
             scriptChange = pubCoinScripts[i];
         CTxOut newTxOut(nValueBatch[i], scriptChange);
         txNew.vout.push_back(newTxOut);
         txNewTemp.vout.push_back(newTxOut);
     }
+
+    // fee is included, need to delete from tx output
+    if(!pubCoinScripts.empty()){
+        txNew.vout.pop_back();
+        txNewTemp.vout.pop_back();
+    }
+
 
     //empty vins
     vector <int> coinIdBatch;
@@ -10031,7 +10045,13 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
     if (!MoneyRange(amount))
         return "GhostModeSpendTrigger(): Error: Amount out of range.";
 
+    bool payCKPFee = !pubCoinScripts.empty();
     amount = amount;
+
+    // add 0.1 static fee
+    if(payCKPFee)
+        amount += (COIN/10);
+
     CAmount finalTotal = amount;
 
     /*                          *
@@ -10053,7 +10073,6 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
       {0}, //100
       {0}, //1000
     };
-
 
     int totalZerocoins = 0 ;
     int totalZerocoinAmount = 0;
@@ -10284,7 +10303,12 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             }
         }
 
-        return "Closest amount you can send: " + std::to_string(actualMin) + ", " + std::to_string(actualMax);
+        std::string returnStr = "Closest amount you can send: " + std::to_string(actualMin) + ", " + std::to_string(actualMax);
+
+        if(payCKPFee)
+            returnStr += ". CKP payment requires a 0.1 denomination as a fee.";
+
+        return returnStr;
 
     }
     return "error";
