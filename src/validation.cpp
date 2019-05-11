@@ -731,6 +731,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     std::set<uint256> setConflicts;
     if (tx.IsZerocoinMint()) {
         for(int i = 0; i < tx.vout.size(); i++){
+            if(!tx.vout[i].scriptPubKey.IsZerocoinMint())
+                continue;
             CBigNum pubCoin(vector<unsigned char>(tx.vout[i].scriptPubKey.begin()+6, tx.vout[i].scriptPubKey.end()));
             zcMintSerialBatch.push_back(pubCoin);
             if (!zcState->CanAddMintToMempool(zcMintSerialBatch[i])) {
@@ -753,6 +755,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     }
     if (tx.IsSigmaMint()) {
         for(int i = 0; i < tx.vout.size(); i++){
+            if(!tx.vout[i].scriptPubKey.IsSigmaMint())
+                continue;
             GroupElement ge = ParseSigmaMintScript(tx.vout[i].scriptPubKey);
             sigma::PublicCoin pubCoin(ge, sigma::CoinDenomination::SIGMA_0_1);
             sMintSerialBatch.push_back(pubCoin);

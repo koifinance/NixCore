@@ -1178,32 +1178,32 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                     range.first++;
                 }
             }
+        }
 
-            // find all mints in this block and update
-            if(ghostWalletMain != nullptr && sigmaTracker != nullptr && ){
-                for(const CTxOut &txOut: tx.vout){
-                    if(!txOut.scriptPubKey.IsSigmaMint())
-                        continue;
-                    secp_primitives::GroupElement pubcoin = ParseSigmaMintScript(txOut.scriptPubKey);
-                    uint256 hashValue = GetPubCoinValueHash(pubcoin);
+        // find all mints in this block and update
+        if(ghostWalletMain != nullptr && sigmaTracker != nullptr){
+            for(const CTxOut &txOut: tx.vout){
+                if(!txOut.scriptPubKey.IsSigmaMint())
+                    continue;
+                secp_primitives::GroupElement pubcoin = ParseSigmaMintScript(txOut.scriptPubKey);
+                uint256 hashValue = GetPubCoinValueHash(pubcoin);
 
-                    if(sigmaTracker->HasPubcoinHash(hashValue)){
-                        foundSigma = true;
-                        LogPrintf("AddToWalletIfInvolvingMe(): writing sigma mint into tracker\n");
-                        CMintMeta meta = sigmaTracker->GetMetaFromPubcoin(hashValue);
-                        meta.nHeight = pIndex->nHeight;
-                        meta.txid = tx.GetHash();
-                        sigmaTracker->UpdateState(meta);
-                    }
-                    if(ghostWalletMain->IsInMintPool(pubcoin)){
-                        foundSigma = true;
-                        //Check if this mint is one that is in our mintpool (a potential future mint from our deterministic generation)
-                        LogPrintf("AddToWalletIfInvolvingMe(): setting sigma mint to seen\n");
-                        sigma::CoinDenomination denom = sigma::CoinDenomination::SIGMA_ERROR;
-                        CAmount nVal = txOut.nValue;
-                        sigma::IntegerToDenomination(nVal,  denom);
-                        ghostWalletMain->SetMintSeen(pubcoin, pIndex->nHeight, tx.GetHash(), denom);
-                    }
+                if(sigmaTracker->HasPubcoinHash(hashValue)){
+                    foundSigma = true;
+                    LogPrintf("AddToWalletIfInvolvingMe(): writing sigma mint into tracker\n");
+                    CMintMeta meta = sigmaTracker->GetMetaFromPubcoin(hashValue);
+                    meta.nHeight = (pIndex == nullptr) ? INT_MAX : pIndex->nHeight;
+                    meta.txid = tx.GetHash();
+                    sigmaTracker->UpdateState(meta);
+                }
+                if(ghostWalletMain->IsInMintPool(pubcoin)){
+                    foundSigma = true;
+                    //Check if this mint is one that is in our mintpool (a potential future mint from our deterministic generation)
+                    LogPrintf("AddToWalletIfInvolvingMe(): setting sigma mint to seen\n");
+                    sigma::CoinDenomination denom = sigma::CoinDenomination::SIGMA_ERROR;
+                    CAmount nVal = txOut.nValue;
+                    sigma::IntegerToDenomination(nVal,  denom);
+                    ghostWalletMain->SetMintSeen(pubcoin, (pIndex == nullptr) ? INT_MAX : pIndex->nHeight, tx.GetHash(), denom);
                 }
             }
         }

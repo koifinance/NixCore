@@ -168,7 +168,7 @@ std::list<CMintMeta> CSigmaTracker::GetMints(bool fConfirmedOnly, bool fInactive
         CMintMeta mint = it.second;
         if ((mint.isArchived || mint.isUsed) && fInactive)
             continue;
-        bool fConfirmed = ((mint.nHeight != INT_MAX) && (mint.nHeight < chainActive.Height()));
+        bool fConfirmed = ((mint.nHeight != INT_MAX) && (mint.nHeight <= chainActive.Height()));
         if (fConfirmedOnly && !fConfirmed)
             continue;
         vMints.push_back(mint);
