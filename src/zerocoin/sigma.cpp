@@ -307,11 +307,14 @@ bool CheckSigmaTransaction(
         CSigmaTxInfo *sigmaTxInfo)
 {
 
-    bool sigmaIsEnabled;
+    bool sigmaIsEnabled = false;;
 
     {
         LOCK(cs_main);
-        sigmaIsEnabled = (chainActive.Height() >= Params().GetConsensus().nSigmaStartBlock);
+        if(nHeight == INT_MAX)
+            sigmaIsEnabled = (chainActive.Height() >= Params().GetConsensus().nSigmaStartBlock);
+        else
+            sigmaIsEnabled = nHeight >= Params().GetConsensus().nSigmaStartBlock;
     }
 
     // Check Mint Sigma Transaction
