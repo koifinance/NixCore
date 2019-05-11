@@ -1155,7 +1155,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
     const CTransaction& tx = *ptx;
     {
         AssertLockHeld(cs_wallet);
-
+        bool foundSigma = false;
         if (pIndex != nullptr) {
             for (const CTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
@@ -1178,14 +1178,44 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                     range.first++;
                 }
             }
+
+            // find all mints in this block and update
+            if(ghostWalletMain != nullptr && sigmaTracker != nullptr && ){
+                for(const CTxOut &txOut: tx.vout){
+                    if(!txOut.scriptPubKey.IsSigmaMint())
+                        continue;
+                    secp_primitives::GroupElement pubcoin = ParseSigmaMintScript(txOut.scriptPubKey);
+                    uint256 hashValue = GetPubCoinValueHash(pubcoin);
+
+                    if(sigmaTracker->HasPubcoinHash(hashValue)){
+                        foundSigma = true;
+                        LogPrintf("AddToWalletIfInvolvingMe(): writing sigma mint into tracker\n");
+                        CMintMeta meta = sigmaTracker->GetMetaFromPubcoin(hashValue);
+                        meta.nHeight = pIndex->nHeight;
+                        meta.txid = tx.GetHash();
+                        sigmaTracker->UpdateState(meta);
+                    }
+                    if(ghostWalletMain->IsInMintPool(pubcoin)){
+                        foundSigma = true;
+                        //Check if this mint is one that is in our mintpool (a potential future mint from our deterministic generation)
+                        LogPrintf("AddToWalletIfInvolvingMe(): setting sigma mint to seen\n");
+                        sigma::CoinDenomination denom = sigma::CoinDenomination::SIGMA_ERROR;
+                        CAmount nVal = txOut.nValue;
+                        sigma::IntegerToDenomination(nVal,  denom);
+                        ghostWalletMain->SetMintSeen(pubcoin, pIndex->nHeight, tx.GetHash(), denom);
+                    }
+                }
+            }
         }
+
+        bool foundZerocoin = FindUnloadedGhostTransactions(tx);
 
         bool fExisted = mapWallet.count(tx.GetHash()) != 0;
         if (fExisted && !fUpdate) return false;
 
-        bool foundZerocoin = FindUnloadedGhostTransactions(tx);
+
         TopUpUnloadedCommitments();
-        if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin)
+        if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin || foundSigma)
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
              * have appeared in a new transaction. If so, remove those keys from the keypool.
@@ -9213,13 +9243,6 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
             CommitmentKeyPack pubCoinPack(keyList);
 
             keyPackList.push_back(pubCoinPack);
-
-            for(auto scriptK: pubCoinPack.GetPubCoinPackScript()){
-                secp_primitives::GroupElement pubCoinValue = ParseSigmaMintScript(scriptK);
-                sigma::PublicCoin pubCoin(pubCoinValue, sigma::CoinDenomination::SIGMA_0_1);
-                if(!pubCoin.validate())
-                    LogPrintf("\nIssue validating pubcoin!\n");
-            }
         }
 
     }

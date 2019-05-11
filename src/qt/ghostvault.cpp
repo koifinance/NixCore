@@ -177,6 +177,7 @@ void GhostVault::on_ghostNIXButton_clicked() {
         }
         pubCoinScripts = keyPack.GetPubCoinPackScript();
         for(auto scriptK: pubCoinScripts){
+            LogPrintf("\npubcoin script = %s\n", HexStr(scriptK.begin(), scriptK.end()));
             secp_primitives::GroupElement pubCoinValue = ParseSigmaMintScript(scriptK);
             sigma::PublicCoin pubCoin(pubCoinValue, sigma::CoinDenomination::SIGMA_0_1);
             if(!pubCoin.validate()){

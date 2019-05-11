@@ -14,7 +14,7 @@
 #include <QTimer>
 #include <QWidget>
 
-#define UPDATE_SECONDS                    15
+#define UPDATE_SECONDS                    60
 #define FILTER_COOLDOWN_SECONDS            3
 
 namespace Ui {
@@ -70,6 +70,7 @@ private Q_SLOTS:
     void on_tableWidgetProposals_doubleClicked(const QModelIndex &index);
     void on_voteForButton_clicked();
     void on_voteAgainstButton_clicked();
+    void on_refreshListButton_clicked();
     void showMenu(const QPoint &point);
 
 };
