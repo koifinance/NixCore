@@ -704,7 +704,7 @@ void CWallet::AddToSpends(const uint256& wtxid)
     auto it = mapWallet.find(wtxid);
     assert(it != mapWallet.end());
     CWalletTx& thisTx = it->second;
-    if (thisTx.IsCoinBase() || thisTx.tx->IsZerocoinSpend()) // Coinbases and zerocoin spends don't spend anything!
+    if (thisTx.IsCoinBase() || thisTx.tx->IsZerocoinSpend() || thisTx.tx->IsSigmaSpend()) // Coinbases and zerocoin spends don't spend anything!
         return;
     for (const CTxIn& txin : thisTx.tx->vin)
         AddToSpends(txin.prevout, wtxid);
@@ -2035,7 +2035,7 @@ void CWallet::ReacceptWalletTransactions()
 
         int nDepth = wtx.GetDepthInMainChain();
 
-        if ((!wtx.IsCoinBase() && !wtx.tx->IsZerocoinSpend()) && !wtx.IsCoinStake() && (nDepth == 0 && !wtx.isAbandoned())) {
+        if ((!wtx.IsCoinBase() && !wtx.tx->IsZerocoinSpend()) && !wtx.tx->IsSigmaSpend() && !wtx.IsCoinStake() && (nDepth == 0 && !wtx.isAbandoned())) {
             mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
         }
     }
