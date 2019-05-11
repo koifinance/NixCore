@@ -163,7 +163,11 @@ void CommitmentKey::Init(bool isV2)
     }
     else{
         pubCoinDataBase58 = EncodeBase61(pubCoinData);
-        pubCoinScript = CScript() << OP_SIGMAMINT << pubCoinData;
+        // opcode is inserted as 1 byte according to file script/script.h
+        pubCoinScript.clear();
+        pubCoinScript << OP_SIGMAMINT;
+        std::vector<unsigned char> vch = pubCoinData;
+        pubCoinScript.insert(pubCoinScript.end(), vch.begin(), vch.end());
     }
 }
 

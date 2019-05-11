@@ -25,7 +25,7 @@ class CGovernance;
 static const std::string GOVERNANCE_URL = "gov.nixplatform.io";
 
 // amount of time in second for how often to refresh proposals
-static const uint64_t REFRESH_TIME = 60;
+static const uint64_t REFRESH_TIME = 300;
 
 extern CGovernance g_governance;
 extern uint64_t last_refresh_time;
