@@ -1161,19 +1161,8 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
                     if (range.first->second != tx.GetHash()) {
-
-                        const CWalletTx *wtxConflicted = GetWalletTx(range.first->second); // coinstakes will only be in mapwallet
-                        if (wtxConflicted && wtxConflicted->isAbandoned() && wtxConflicted->IsCoinStake())
-                        {
-                            // Respending input from orphaned coinstake, leave abandoned
-                            LogPrintf("Reusing kernel from orphaned stake %s, new tx %s, \n    (kernel %s:%i).\n",
-                                      range.first->second.ToString(), tx.GetHash().ToString(), range.first->first.hash.ToString(), range.first->first.n);
-                        } else
-                        {
-                            LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
-                            MarkConflicted(pIndex->GetBlockHash(), range.first->second);
-                        }
-
+                        LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
+                        MarkConflicted(pIndex->GetBlockHash(), range.first->second);
                     }
                     range.first++;
                 }
@@ -1226,6 +1215,8 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
             // loop though all outputs
             if(!foundZerocoin){
                 for (const CTxOut& txout: tx.vout) {
+                    if(txout.scriptPubKey.IsSigmaMint())
+                        continue;
                     // extract addresses and check if they match with an unused keypool key
                     std::vector<CKeyID> vAffected;
                     CAffectedKeysVisitor(*this, vAffected).Process(txout.scriptPubKey);
