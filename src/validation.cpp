@@ -735,7 +735,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 continue;
             CBigNum pubCoin(vector<unsigned char>(tx.vout[i].scriptPubKey.begin()+6, tx.vout[i].scriptPubKey.end()));
             zcMintSerialBatch.push_back(pubCoin);
-            if (!zcState->CanAddMintToMempool(zcMintSerialBatch[i])) {
+            if (!zcState->CanAddMintToMempool(pubCoin)) {
                 LogPrintf("AcceptToMemoryPool(): mint pubcoin number %s has been used\n", zcMintSerialBatch[i].ToString());
                 return state.Invalid(false, REJECT_INVALID, "txn-mempool-conflict");
             }
@@ -760,7 +760,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             GroupElement ge = ParseSigmaMintScript(tx.vout[i].scriptPubKey);
             sigma::PublicCoin pubCoin(ge, sigma::CoinDenomination::SIGMA_0_1);
             sMintSerialBatch.push_back(pubCoin);
-            if (!sigmaState->CanAddMintToMempool(sMintSerialBatch[i])) {
+            if (!sigmaState->CanAddMintToMempool(pubCoin)) {
                 LogPrintf("AcceptToMemoryPool(): sigma mint number %s has been used\n", sMintSerialBatch[i].getValue().GetHex());
                 return state.Invalid(false, REJECT_INVALID, "txn-mempool-conflict");
             }
