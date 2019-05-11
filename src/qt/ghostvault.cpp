@@ -23,6 +23,7 @@
 #include <qt/nixunits.h>
 #include <qt/optionsmodel.h>
 #include <qt/receiverequestdialog.h>
+#include <qt/sendcoinsdialog.h>
 
 #include <QIcon>
 #include <QMenu>
@@ -126,28 +127,6 @@ void GhostVault::setWalletModel(WalletModel *walletmodel) {
         return;
 
     this->walletModel = walletmodel;
-
-    if(walletmodel && walletmodel->getOptionsModel())
-    {
-        /*
-        tableView = ui->keyPackList;
-
-        tableView->verticalHeader()->show();
-        //tableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        tableView->setAlternatingRowColors(false);
-        tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-        tableView->setSelectionMode(QAbstractItemView::ContiguousSelection);
-        tableView->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
-
-        vector <CommitmentKeyPack> keyPackList;
-        if (!walletmodel->getKeyPackList(keyPackList, true, ui->keyPackAmount->currentIndex() + 1))
-            return;
-        //Initialize table with keypacks
-        for (auto r=0; r<10; r++)
-            tableView->setItem(r, 0, new QTableWidgetItem(QString::fromStdString(keyPackList[r].GetPubCoinPackDataBase58())));
-        */
-    }
 }
 
 void GhostVault::on_ghostNIXButton_clicked() { 
@@ -189,11 +168,56 @@ void GhostVault::on_ghostNIXButton_clicked() {
         }
     }
 
+    QString questionString = tr("Are you sure you want to ghost coins?");
 
+    CAmount txFee = 0;
+    CAmount totalAmount;
+    if (!ParseFixedPoint(denomAmount, 8, &totalAmount))
+        return;
+    if (!MoneyRange(totalAmount))
+        return;
+
+    txFee = totalAmount * 0.0025;
+
+    if(txFee > 0)
+    {
+        // append fee string if a fee is required
+        questionString.append("<hr /><span style='color:#aa0000;'>");
+        questionString.append(BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), txFee));
+        questionString.append("</span> ");
+        questionString.append(tr("added as transaction fee (0.25%)"));
+    }
+
+    // add total amount in all subdivision units
+    questionString.append("<hr />");
+    totalAmount = totalAmount + txFee;
+    QStringList alternativeUnits;
+    for (BitcoinUnits::Unit u : BitcoinUnits::availableUnits())
+    {
+        if(u != walletModel->getOptionsModel()->getDisplayUnit())
+            alternativeUnits.append(BitcoinUnits::formatHtmlWithUnit(u, totalAmount));
+    }
+    questionString.append(tr("Total Amount %1")
+        .arg(BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), totalAmount)));
+    questionString.append(QString("<span style='font-size:10pt;font-weight:normal;'><br />(=%1)</span>")
+        .arg(alternativeUnits.join(" " + tr("or") + "<br />")));
+
+    questionString.append("<hr /><span>");
+    questionString.append("</span>");
 
     if(walletModel->getWallet()->IsLocked()){
         WalletModel::UnlockContext ctx(walletModel->requestUnlock());
         if(!ctx.isValid())
+        {
+            return;
+        }
+
+        SendConfirmationDialog confirmationDialog(tr("Confirm lease coins"),
+            questionString, SEND_CONFIRM_DELAY, this);
+        confirmationDialog.exec();
+        QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
+
+        if(retval != QMessageBox::Yes)
         {
             return;
         }
@@ -222,6 +246,17 @@ void GhostVault::on_ghostNIXButton_clicked() {
         }
     }
     else{
+
+        SendConfirmationDialog confirmationDialog(tr("Confirm lease coins"),
+            questionString, SEND_CONFIRM_DELAY, this);
+        confirmationDialog.exec();
+        QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
+
+        if(retval != QMessageBox::Yes)
+        {
+            return;
+        }
+
         if(!walletModel->getWallet()->GhostModeMintSigma(denomAmount, pubCoinScripts)){
 
             QMessageBox::critical(this, tr("Error"),
@@ -290,6 +325,44 @@ void GhostVault::on_convertGhostButton_clicked() {
 
         std::string successfulString = "Sucessfully sent " + denomAmount + " ghosted NIX";
 
+        QString questionString = tr("Are you sure you want to unghost coins?");
+
+        CAmount txFee = 0;
+        CAmount totalAmount;
+        if (!ParseFixedPoint(denomAmount, 8, &totalAmount))
+            return;
+        if (!MoneyRange(totalAmount))
+            return;
+
+        if(!pubCoinScripts.empty())
+            txFee = COIN/10;
+
+        if(txFee > 0)
+        {
+            // append fee string if a fee is required
+            questionString.append("<hr /><span style='color:#aa0000;'>");
+            questionString.append(BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), txFee));
+            questionString.append("</span> ");
+            questionString.append(tr("added as transaction fee for 2-way ghosting payment"));
+        }
+
+        // add total amount in all subdivision units
+        questionString.append("<hr />");
+        totalAmount = totalAmount + txFee;
+        QStringList alternativeUnits;
+        for (BitcoinUnits::Unit u : BitcoinUnits::availableUnits())
+        {
+            if(u != walletModel->getOptionsModel()->getDisplayUnit())
+                alternativeUnits.append(BitcoinUnits::formatHtmlWithUnit(u, totalAmount));
+        }
+        questionString.append(tr("Total Amount %1")
+            .arg(BitcoinUnits::formatHtmlWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), totalAmount)));
+        questionString.append(QString("<span style='font-size:10pt;font-weight:normal;'><br />(=%1)</span>")
+            .arg(alternativeUnits.join(" " + tr("or") + "<br />")));
+
+        questionString.append("<hr /><span>");
+        questionString.append("</span>");
+
         if(walletModel->getWallet()->IsLocked()){
             WalletModel::UnlockContext ctx(walletModel->requestUnlock());
             if(!ctx.isValid())
@@ -297,9 +370,30 @@ void GhostVault::on_convertGhostButton_clicked() {
                 return;
             }
 
+            SendConfirmationDialog confirmationDialog(tr("Confirm lease coins"),
+                questionString, SEND_CONFIRM_DELAY, this);
+            confirmationDialog.exec();
+            QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
+
+            if(retval != QMessageBox::Yes)
+            {
+                return;
+            }
+
             stringError = walletModel->getWallet()->GhostModeSpendSigma(denomAmount, thirdPartyAddress, pubCoinScripts);
 
         } else{
+
+            SendConfirmationDialog confirmationDialog(tr("Confirm lease coins"),
+                questionString, SEND_CONFIRM_DELAY, this);
+            confirmationDialog.exec();
+            QMessageBox::StandardButton retval = (QMessageBox::StandardButton)confirmationDialog.result();
+
+            if(retval != QMessageBox::Yes)
+            {
+                return;
+            }
+
             stringError = walletModel->getWallet()->GhostModeSpendSigma(denomAmount, thirdPartyAddress, pubCoinScripts);
         }
 
