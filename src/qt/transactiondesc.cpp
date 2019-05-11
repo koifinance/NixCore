@@ -76,7 +76,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     //
     // From
     //
-    if (wtx.IsCoinBase() ||  wtx.tx->IsZerocoinSpend() || wtx.IsCoinStake())
+    if (wtx.IsCoinBase() ||  wtx.tx->IsZerocoinSpend() || wtx.tx->IsSigmaSpend() || wtx.IsCoinStake())
     {
         strHTML += "<b>" + tr("Source") + ":</b> " + tr("Generated") + "<br>";
     }
@@ -126,7 +126,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     //
     // Amount
     //
-    if ((wtx.IsCoinBase() ||  wtx.tx->IsZerocoinSpend() || wtx.IsCoinStake()) && nCredit == 0)
+    if ((wtx.IsCoinBase() ||  wtx.tx->IsZerocoinSpend() || wtx.tx->IsSigmaSpend() || wtx.IsCoinStake()) && nCredit == 0)
     {
         //
         // Coinbase
