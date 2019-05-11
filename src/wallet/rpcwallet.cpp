@@ -6315,6 +6315,7 @@ UniValue listghostednixv2(const JSONRPCRequest& request) {
         sigma::DenominationToInteger(mintItem.denom, nVal);
         entry.push_back(Pair("deterministic", mintItem.isDeterministic));
         entry.push_back(Pair("isUsed", mintItem.isUsed));
+        entry.push_back(Pair("height", mintItem.nHeight));
         entry.push_back(Pair("denomination", std::to_string(nVal)));
         entry.push_back(Pair("pubcoinValue", mintItem.pubCoinValue.tostring()));
         results.push_back(entry);
