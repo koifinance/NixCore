@@ -9776,26 +9776,24 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
     for(int i = 0; i < nValueBatch.size(); i++){
         {
             LOCK2(cs_main, cs_wallet);
-            {
-                LogPrintf("txHash:\n%s", wtxNew.GetHash().ToString());
-                sSelectedValueBatch.push_back(coinToUseBatch[i].value);
-                sSelectedIsUsed = coinToUseBatch[i].IsUsed;
+            LogPrintf("txHash:\n%s", wtxNew.GetHash().ToString());
+            sSelectedValueBatch.push_back(coinToUseBatch[i].value);
+            sSelectedIsUsed = coinToUseBatch[i].IsUsed;
 
-                CSigmaSpendEntry entry;
-                entry.coinSerial = coinSerialBatch[i];
-                entry.hashTx = wtxNew.GetHash();
-                entry.pubCoin = coinToUseBatch[i].value;
-                entry.id = serializedId[i];
-                entry.set_denomination_value(coinToUseBatch[i].get_denomination_value());
-                LogPrintf("WriteSigmaEntry(): serialNumber=%s\n", coinSerialBatch[i].tostring());
-                if (!CWalletDB(*dbw).WriteSigmaSpendEntry(entry)) {
-                    strFailReason = _("it cannot write coin serial number into wallet");
-                }
+            CSigmaSpendEntry entry;
+            entry.coinSerial = coinSerialBatch[i];
+            entry.hashTx = wtxNew.GetHash();
+            entry.pubCoin = coinToUseBatch[i].value;
+            entry.id = serializedId[i];
+            entry.set_denomination_value(coinToUseBatch[i].get_denomination_value());
+            LogPrintf("WriteSigmaEntry(): serialNumber=%s\n", coinSerialBatch[i].tostring());
+            if (!CWalletDB(*dbw).WriteSigmaSpendEntry(entry)) {
+                LogPrintf("WriteSigmaEntry(): cannot write coin serial number into wallet\n");
+                return false;
             }
         }
-
-        return true;
     }
+    return true;
 }
 
 string CWallet::SpendSigma(std::string &toKey, std::vector <CScript> pubCoinScripts, std::vector<sigma::CoinDenomination> denomination, CWalletTx &wtxNew,
