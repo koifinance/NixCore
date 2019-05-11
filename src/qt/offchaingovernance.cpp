@@ -393,6 +393,11 @@ void OffChainGovernance::vote(std::string decision)
 
     Q_EMIT message(tr("Cast Vote"), tr("Successfully casted vote. Vote weight added: ") + tr(std::to_string(voteWeight).c_str()), (CClientUIInterface::MSG_INFORMATION | CClientUIInterface::BTN_OK | CClientUIInterface::MODAL));
 
+    // display results
+    last_refresh_time = 0;
+    g_governance.SendRequests(RequestTypes::GET_PROPOSALS);
+    while(!g_governance.isReady()){}
+
     return;
 }
 
@@ -418,4 +423,13 @@ void OffChainGovernance::on_voteAgainstButton_clicked()
     }
 
     vote("0");
+}
+
+void OffChainGovernance::on_refreshListButton_clicked()
+{
+    // display results
+    last_refresh_time = 0;
+    g_governance.SendRequests(RequestTypes::GET_PROPOSALS);
+    while(!g_governance.isReady()){}
+    updateProposalList();
 }
