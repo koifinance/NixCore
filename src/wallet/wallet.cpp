@@ -10084,7 +10084,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
     };
 
     int totalZerocoins = 0 ;
-    double totalZerocoinAmount = 0;
+    CAmount totalZerocoinAmount = 0;
     for(CMintMeta n: mintMetas){
             CAmount denomOut = 0;
             sigma::DenominationToInteger(n.denom, denomOut);
@@ -10092,32 +10092,32 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             case CAmount(COIN/10):
                 demoniationList[0][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount += 0.1;
+                totalZerocoinAmount += 0.1 * COIN;
                 break;
             case CAmount(COIN):
                 demoniationList[1][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount++;
+                totalZerocoinAmount += COIN;
                 break;
             case CAmount(10 * COIN):
                 demoniationList[2][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=10;
+                totalZerocoinAmount+=10 * COIN;
                 break;
             case CAmount(100 * COIN):
                 demoniationList[3][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=100;
+                totalZerocoinAmount+=100 * COIN;
                 break;
             case CAmount(1000 * COIN):
                 demoniationList[4][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=1000;
+                totalZerocoinAmount+=1000 * COIN;
                 break;
             case CAmount(10000 * COIN):
                 demoniationList[5][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=10000;
+                totalZerocoinAmount+=10000 * COIN;
                 break;
             default:
                 break;
@@ -10271,9 +10271,9 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
         CAmount actualMin = -1;
         CAmount actualMax = -1;
 
-        for(int i = 1; i < totalZerocoinAmount; i++){
+        for(CAmount i = 0.1 * COIN; i < totalZerocoinAmount; i+= 0.1 * COIN){
 
-            if(finalTotal - i < 1)
+            if(finalTotal - i < (0.1 * COIN))
                 break;
 
             CAmount denomTemp[6][1] = {
