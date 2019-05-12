@@ -2251,12 +2251,34 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
             int startHeight = chainActive.Height() + 1 - sample;
             //Grab fee from current block being checked
             for(auto ctx: pBlock.vtx){
+                bool isSpend = ctx->IsZerocoinSpend() || ctx->IsSigmaSpend();
+                bool isMint = ctx->IsZerocoinMint() || ctx->IsSigmaMint();
                 //Found ghost fee transaction
-                if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                if(!isSpend && isMint){
                     for(auto mintTx: ctx->vout){
-                        if(mintTx.scriptPubKey.IsZerocoinMint())
+                        if(mintTx.scriptPubKey.IsZerocoinMint() || mintTx.scriptPubKey.IsSigmaMint())
                             mintVector.push_back(mintTx.nValue);
                     }
+                }
+                //ckp tx requires 0.1 fee, but calculate the fee on a dynamic basis
+                if(isSpend && isMint){
+                    CAmount inVal = 0;
+                    CAmount outVal = 0;
+                    for(int i = 0; i < ctx->vout.size(); i++){
+                        if(!ctx->vout[i].scriptPubKey.IsSigmaMint())
+                            continue;
+                        outVal += ctx->vout[i].nValue;
+                    }
+                    // add input denoms
+                    for(int i = 0; i < ctx->vin.size(); i++){
+                        CDataStream serializedCoinSpend((const char *)&*(ctx->vin[i].scriptSig.begin() + 1),
+                                                        (const char *)&*ctx->vin[i].scriptSig.end(),
+                                                        SER_NETWORK, PROTOCOL_VERSION);
+                        sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                        inVal += newSpend.getIntDenomination();
+                    }
+                    CAmount neededForFee = (inVal - outVal)/0.0025;
+                    mintVector.push_back(neededForFee);
                 }
             }
             //Grab fee from other blocks
@@ -2266,12 +2288,34 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                 // Now get fees from past 719 blocks
                 if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
                     for(auto ctx: block.vtx){
+                        bool isSpend = ctx->IsZerocoinSpend() || ctx->IsSigmaSpend();
+                        bool isMint = ctx->IsZerocoinMint() || ctx->IsSigmaMint();
                         //Found ghost fee transaction
-                        if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                        if(!isSpend && isMint){
                             for(auto mintTx: ctx->vout){
-                                if(mintTx.scriptPubKey.IsZerocoinMint())
+                                if(mintTx.scriptPubKey.IsZerocoinMint() || mintTx.scriptPubKey.IsSigmaMint())
                                     mintVector.push_back(mintTx.nValue);
                             }
+                        }
+                        //ckp tx requires 0.1 fee, but calculate the fee on a dynamic basis
+                        if(isSpend && isMint){
+                            CAmount inVal = 0;
+                            CAmount outVal = 0;
+                            for(int i = 0; i < ctx->vout.size(); i++){
+                                if(!ctx->vout[i].scriptPubKey.IsSigmaMint())
+                                    continue;
+                                outVal += ctx->vout[i].nValue;
+                            }
+                            // add input denoms
+                            for(int i = 0; i < ctx->vin.size(); i++){
+                                CDataStream serializedCoinSpend((const char *)&*(ctx->vin[i].scriptSig.begin() + 1),
+                                                                (const char *)&*ctx->vin[i].scriptSig.end(),
+                                                                SER_NETWORK, PROTOCOL_VERSION);
+                                sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                                inVal += newSpend.getIntDenomination();
+                            }
+                            CAmount neededForFee = (inVal - outVal)/0.0025;
+                            mintVector.push_back(neededForFee);
                         }
                     }
                 }
@@ -2288,12 +2332,34 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
         //Make sure all ghost fees in this block are not paid out
         else{
             for(auto ctx: pBlock.vtx){
+                bool isSpend = ctx->IsZerocoinSpend() || ctx->IsSigmaSpend();
+                bool isMint = ctx->IsZerocoinMint() || ctx->IsSigmaMint();
                 //Found ghost fee transaction
-                if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                if(!isSpend && isMint){
                     for(auto mintTx: ctx->vout){
-                        if(mintTx.scriptPubKey.IsZerocoinMint())
+                        if(mintTx.scriptPubKey.IsZerocoinMint() || mintTx.scriptPubKey.IsSigmaMint())
                             mintVector.push_back(mintTx.nValue);
                     }
+                }
+                //ckp tx requires 0.1 fee, but calculate the fee on a dynamic basis
+                if(isSpend && isMint){
+                    CAmount inVal = 0;
+                    CAmount outVal = 0;
+                    for(int i = 0; i < ctx->vout.size(); i++){
+                        if(!ctx->vout[i].scriptPubKey.IsSigmaMint())
+                            continue;
+                        outVal += ctx->vout[i].nValue;
+                    }
+                    // add input denoms
+                    for(int i = 0; i < ctx->vin.size(); i++){
+                        CDataStream serializedCoinSpend((const char *)&*(ctx->vin[i].scriptSig.begin() + 1),
+                                                        (const char *)&*ctx->vin[i].scriptSig.end(),
+                                                        SER_NETWORK, PROTOCOL_VERSION);
+                        sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                        inVal += newSpend.getIntDenomination();
+                    }
+                    CAmount neededForFee = (inVal - outVal)/0.0025;
+                    mintVector.push_back(neededForFee);
                 }
             }
 
@@ -2625,6 +2691,25 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
         nInputs += tx.vin.size();
 
+        if(tx.IsSigmaMint() && tx.IsSigmaSpend()){
+            // add ckp fee
+            CAmount inVal = 0;
+            CAmount outVal = 0;
+            for(int i = 0; i < tx.vout.size(); i++){
+                if(!tx.vout[i].scriptPubKey.IsSigmaMint())
+                    continue;
+                outVal += tx.vout[i].nValue;
+            }
+            // add input denoms
+            for(int i = 0; i < tx.vin.size(); i++){
+                CDataStream serializedCoinSpend((const char *)&*(tx.vin[i].scriptSig.begin() + 1),
+                                                (const char *)&*tx.vin[i].scriptSig.end(),
+                                                SER_NETWORK, PROTOCOL_VERSION);
+                sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                inVal += newSpend.getIntDenomination();
+            }
+            nFees += (inVal - outVal);
+        }
         if (!tx.IsCoinBase() && !tx.IsZerocoinSpend() && !tx.IsSigmaSpend())
         {
             CAmount txfee = 0;
