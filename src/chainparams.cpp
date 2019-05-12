@@ -338,9 +338,9 @@ public:
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //1135275
 
         // ghostnode params
-        consensus.nGhostnodeMinimumConfirmations = 999999;
-        consensus.nGhostnodePaymentsStartBlock = 999999;
-        consensus.nGhostnodeInitialize = 999999;
+        consensus.nGhostnodeMinimumConfirmations = 1;
+        consensus.nGhostnodePaymentsStartBlock = 1000;
+        consensus.nGhostnodeInitialize = 950;
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
@@ -350,8 +350,8 @@ public:
         nTargetTimespan = 24 * 60;      // 24 mins
 
         consensus.nCoinMaturityReductionHeight = 5;
-        consensus.nStartGhostFeeDistribution = 999999;
-        consensus.nGhostFeeDistributionCycle = 999999;
+        consensus.nStartGhostFeeDistribution = 1000;
+        consensus.nGhostFeeDistributionCycle = 20;
 
         consensus.nStartWitnessLposContracts = 1;
         consensus.nNewDevelopmentPayoutCycleStartHeight = 1;
