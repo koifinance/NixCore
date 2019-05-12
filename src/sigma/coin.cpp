@@ -37,6 +37,9 @@ bool DenominationToInteger(CoinDenomination denom, int64_t& denom_out, CValidati
         case CoinDenomination::SIGMA_1000:
             denom_out = 1000 * COIN;
             break;
+        case CoinDenomination::SIGMA_10000:
+            denom_out = 10000 * COIN;
+            break;
         default:
             return state.DoS(100, error("DenominationToInteger() : invalid denomination value, unable to convert to integer"));
     }
@@ -68,6 +71,10 @@ bool StringToDenomination(const std::string& str, CoinDenomination& denom_out) {
         denom_out = CoinDenomination::SIGMA_1000;
         return true;
     }
+    if (str == "10000") {
+        denom_out = CoinDenomination::SIGMA_10000;
+        return true;
+    }
     return false;
 }
 
@@ -93,6 +100,9 @@ bool IntegerToDenomination(int64_t value, CoinDenomination& denom_out, CValidati
         case 1000 * COIN:
             denom_out = CoinDenomination::SIGMA_1000;
             break;
+        case 10000 * COIN:
+            denom_out = CoinDenomination::SIGMA_10000;
+            break;
         default:
             denom_out = CoinDenomination::SIGMA_ERROR;
             return state.DoS(100, error("IntegerToDenomination(): invalid denomination value, unable to convert to enum"));
@@ -101,6 +111,7 @@ return true;
 }
 
 void GetAllDenoms(std::vector<sigma::CoinDenomination>& denominations_out) {
+    denominations_out.push_back(CoinDenomination::SIGMA_10000);
     denominations_out.push_back(CoinDenomination::SIGMA_1000);
     denominations_out.push_back(CoinDenomination::SIGMA_100);
     denominations_out.push_back(CoinDenomination::SIGMA_10);
@@ -330,6 +341,8 @@ string to_string(::sigma::CoinDenomination denom)
         return "100";
     case ::sigma::CoinDenomination::SIGMA_1000:
         return "1000";
+    case ::sigma::CoinDenomination::SIGMA_10000:
+        return "10000";
     default:
         throw invalid_argument("the specified denomination is not valid");
     }
