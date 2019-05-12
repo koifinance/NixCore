@@ -18,7 +18,8 @@ enum class CoinDenomination : std::uint8_t {
     SIGMA_10 = 2,
     SIGMA_100 = 3,
     SIGMA_1000 = 4,
-    SIGMA_ERROR = 5,
+    SIGMA_10000 = 5,
+    SIGMA_ERROR = 6,
 };
 
 static const int SIGMA_VERSION_1 = 1;

@@ -9903,6 +9903,8 @@ int GhostSigmaDenom(CAmount amount){
         return 3;
     case CAmount(1000 * COIN):
         return 4;
+    case CAmount(10000 * COIN):
+        return 5;
     default:
         return -1;
         break;
@@ -9911,7 +9913,7 @@ int GhostSigmaDenom(CAmount amount){
 
 bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[5][1]){
 
-    CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN};
+    CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
     int currentDenominationIndex = 4;
 
     for (int i = 0; i < totalZerocoins; i++) {
@@ -9980,6 +9982,9 @@ bool CWallet::CreateSigmaSpendModel(string &stringError, vector <string> denomAm
         } else if (denomAmount == "100000000000") {
             denomination = sigma::CoinDenomination::SIGMA_1000;
             nAmount = (1000 * COIN);
+        } else if (denomAmount == "1000000000000") {
+            denomination = sigma::CoinDenomination::SIGMA_10000;
+            nAmount = (10000 * COIN);
         } else {
             return false;
         }
@@ -10060,24 +10065,26 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
      *  Find all denominations  *
      *                          */
     std::list<CMintMeta> mintMetas = sigmaTracker->GetMints(true);
-    CAmount demoniationList[5][1] = {
+    CAmount demoniationList[6][1] = {
       {0}, //0.1
       {0}, //1
       {0}, //10
       {0}, //100
       {0}, //1000
+      {0}, //10000
     };
 
-    CAmount demoniationListCopy[5][1] = {
+    CAmount demoniationListCopy[6][1] = {
       {0}, //0.1
       {0}, //1
       {0}, //100
       {0}, //100
       {0}, //1000
+      {0}, //10000
     };
 
     int totalZerocoins = 0 ;
-    int totalZerocoinAmount = 0;
+    double totalZerocoinAmount = 0;
     for(CMintMeta n: mintMetas){
             CAmount denomOut = 0;
             sigma::DenominationToInteger(n.denom, denomOut);
@@ -10085,12 +10092,12 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             case CAmount(COIN/10):
                 demoniationList[0][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount++;
+                totalZerocoinAmount += 0.1;
                 break;
             case CAmount(COIN):
                 demoniationList[1][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=5;
+                totalZerocoinAmount++;
                 break;
             case CAmount(10 * COIN):
                 demoniationList[2][0]++;
@@ -10100,12 +10107,17 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             case CAmount(100 * COIN):
                 demoniationList[3][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=50;
+                totalZerocoinAmount+=100;
                 break;
             case CAmount(1000 * COIN):
                 demoniationList[4][0]++;
                 totalZerocoins++;
-                totalZerocoinAmount+=100;
+                totalZerocoinAmount+=1000;
+                break;
+            case CAmount(10000 * COIN):
+                demoniationList[5][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=10000;
                 break;
             default:
                 break;
@@ -10114,22 +10126,23 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
 
     }
 
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 5; i++)
         demoniationListCopy[i][0] = demoniationList[i][0];
 
     /*                          *
      *    Get list to spend     *
      *                          */
-    CAmount toSpend[5][1] = {
+    CAmount toSpend[6][1] = {
       {0}, //0.1
       {0}, //1
       {0}, //10
       {0}, //100
       {0}, //1000
+      {0}, //10000
     };
 
-    CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN};
-    int currentDenominationIndex = 4;
+    CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
+    int currentDenominationIndex = 5;
 
     for (int i = 0; i <= totalZerocoins; i++) {
 
@@ -10186,7 +10199,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             }
             else
                 index++;
-            if(index > 4)
+            if(index > 5)
                 break;
         }
 
@@ -10211,7 +10224,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
 
         }
 
-        //limit a batch to 4 zerocoins
+        //limit a batch to 60 coins max of 90kb
         int startIndex = 0;
         int endIndex = denominationBatch.size() > 60 ? 59 : denominationBatch.size() - 1;
         for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/60) + 1); vecSplit++){
@@ -10234,6 +10247,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
                         amountGhosted += currentDenomination[x + 1];
                         amountGhosted += currentDenomination[x + 2];
                         amountGhosted += currentDenomination[x + 3];
+                        amountGhosted += currentDenomination[x + 4];
                     }
                     return "GhostModeSpendSigma(): Error: Was only able to unghost %s NIX - %s." + std::to_string(amountGhosted/COIN) + stringError;
                 }
@@ -10262,14 +10276,15 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             if(finalTotal - i < 1)
                 break;
 
-            CAmount denomTemp[8][1] = {
+            CAmount denomTemp[6][1] = {
               {0}, //0.1
               {0}, //1
               {0}, //10
               {0}, //100
               {0}, //1000
+              {0}, //10000
             };
-            for(int j = 0; j < 4; j++)
+            for(int j = 0; j < 5; j++)
                 denomTemp[j][0] = demoniationListCopy[j][0];
 
             bool success = false;
@@ -10286,14 +10301,15 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             if(finalTotal + i > totalZerocoinAmount)
                 break;
 
-            CAmount denomTemp[8][1] = {
+            CAmount denomTemp[6][1] = {
               {0}, //0.1
               {0}, //1
               {0}, //10
               {0}, //100
               {0}, //1000
+              {0}, //10000
             };
-            for(int j = 0; j < 4; j++)
+            for(int j = 0; j < 5; j++)
                 denomTemp[j][0] = demoniationListCopy[j][0];
 
             bool success = false;
