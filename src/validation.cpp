@@ -1173,6 +1173,26 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             LockPoints lp;
             double fSpendsCoinbase = false;
             CAmount nFees = 0;
+            if(tx.IsSigmaMint() && tx.IsSigmaSpend()){
+                // add output denoms
+                CAmount inVal = 0;
+                CAmount outVal = 0;
+                for(int i = 0; i < tx.vout.size(); i++){
+                    if(!tx.vout[i].scriptPubKey.IsSigmaMint())
+                        continue;
+                    outVal += tx.vout[i].nValue;
+                }
+                // add input denoms
+                for(int i = 0; i < tx.vin.size(); i++){
+                    CDataStream serializedCoinSpend((const char *)&*(tx.vin[i].scriptSig.begin() + 1),
+                                                    (const char *)&*tx.vin[i].scriptSig.end(),
+                                                    SER_NETWORK, PROTOCOL_VERSION);
+                    sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                    inVal += newSpend.getIntDenomination();
+                }
+
+                nFees = inVal - outVal;
+            }
             int64_t nSigOpsCost = GetLegacySigOpCount(tx);
             CTxMemPool::setEntries setAncestors;
             CTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(),
