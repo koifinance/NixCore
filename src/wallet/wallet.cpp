@@ -8857,6 +8857,26 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
                 nGhostFees += mintAmount * 0.0025;
 
             }
+
+            if(pblock->vtx[i]->IsSigmaSpend() && pblock->vtx[i]->IsSigmaMint()){
+                CAmount inVal = 0;
+                CAmount outVal = 0;
+                for(int k = 0; k < pblock->vtx[i]->vout.size(); k++){
+                    if(!pblock->vtx[i]->vout[k].scriptPubKey.IsSigmaMint())
+                        continue;
+                    outVal += pblock->vtx[i]->vout[k].nValue;
+                }
+                // add input denoms
+                for(int k = 0; k < pblock->vtx[i]->vin.size(); k++){
+                    CDataStream serializedCoinSpend((const char *)&*(pblock->vtx[i]->vin[k].scriptSig.begin() + 1),
+                                                    (const char *)&*pblock->vtx[i]->vin[k].scriptSig.end(),
+                                                    SER_NETWORK, PROTOCOL_VERSION);
+                    sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
+                    inVal += newSpend.getIntDenomination();
+                }
+                nGhostFees += inVal - outVal;
+
+            }
         }
     }
     if(nGhostFees > nFees){
