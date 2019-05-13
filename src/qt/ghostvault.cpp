@@ -17,6 +17,7 @@
 #include "guiutil.h"
 #include "platformstyle.h"
 #include <wallet/wallet.h>
+#include <wallet/coincontrol.h>
 #include "qt/recentrequeststablemodel.h"
 #include <ghost-address/commitmentkey.h>
 #include <qt/coincontroldialog.h>
@@ -204,6 +205,7 @@ void GhostVault::on_ghostNIXButton_clicked() {
 
     questionString.append("<hr /><span>");
     questionString.append("</span>");
+
 
     if (walletModel->getOptionsModel()->getCoinControlFeatures())
         g_coincontrol = *CoinControlDialog::coinControl();
