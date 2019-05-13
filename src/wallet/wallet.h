@@ -98,6 +98,7 @@ enum class FeeEstimateMode;
 
 typedef std::map<uint256, CWalletTx> MapWallet_t;
 
+extern CCoinControl g_coincontrol;
 
 const uint16_t PLACEHOLDER_N = 0xFFFF;
 
