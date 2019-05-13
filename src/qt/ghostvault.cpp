@@ -59,7 +59,8 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
     ui->convertNIXAmount->setValidator(new QDoubleValidator(0.1, 9999999.0, 1, this) );
     ui->labelExplanation->setTextFormat(Qt::RichText);
     ui->labelExplanation->setText(
-            tr("<b>WARNING:</b> The Ghostvault is an experimental add-on, use with caution.<br><br>These are your private coins from ghosting NIX. You can convert ghosted NIX to public coins. The longer your coins are here, the more private they become."));
+            tr("These are your private coins from ghosting NIX. You can convert ghosted NIX to public coins. The longer your coins are here, the more private they become. "
+               "(<b>TIP</b>: This page works with coin-control)"));
     ui->ghostAmount->setVisible(true);
     ui->ghostNIXButton->setVisible(true);
     ui->convertGhostButton->setVisible(true);
