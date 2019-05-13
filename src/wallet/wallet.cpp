@@ -8849,12 +8849,12 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
         for(int i = 1; i < pblock->vtx.size(); i++){
 
             //Avoid 2-way ghosting miscalculation
-            if(pblock->vtx[i]->IsZerocoinMint() && !pblock->vtx[i]->IsZerocoinSpend()){
+            if(pblock->vtx[i]->IsSigmaMint() && !pblock->vtx[i]->IsSigmaSpend()){
                 //scrape fees payouts, 0.25% or minimum of 0.01 coins
                 //whole block is zerocoin mint
                 CAmount mintAmount = 0;
                 for(int k = 0; k < pblock->vtx[i]->vout.size(); k++){
-                    if(pblock->vtx[i]->vout[k].scriptPubKey.IsZerocoinMint())
+                    if(pblock->vtx[i]->vout[k].scriptPubKey.IsSigmaMint())
                         mintAmount += pblock->vtx[i]->vout[k].nValue;
                 }
                 nGhostFees += mintAmount * 0.0025;

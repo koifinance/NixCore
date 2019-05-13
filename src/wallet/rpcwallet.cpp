@@ -6376,7 +6376,7 @@ UniValue setsigmaseed(const JSONRPCRequest& request)
 {
     CWallet *pwalletMain = GetWalletForJSONRPCRequest(request);
 
-    if(request.fHelp || request.params.empty() != 1)
+    if(request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "setsigmaseed \"seed\"\n"
             "\nSet the wallet's deterministic sigma seed to a specific value.\n" +
@@ -6389,8 +6389,8 @@ UniValue setsigmaseed(const JSONRPCRequest& request)
             "\"success\" : b,  (boolean) Whether the seed was successfully set.\n"
 
             "\nExamples\n" +
-            HelpExampleCli("setsigmaseed", "63f793e7895dd30d99187b35fbfb314a5f91af0add9e0a4e5877036d1e392dd5") +
-            HelpExampleRpc("setsigmaseed", "63f793e7895dd30d99187b35fbfb314a5f91af0add9e0a4e5877036d1e392dd5"));
+            HelpExampleCli("setsigmaseed", "6b54736b13ce6990753b7345a9b41ca2ce5c5847125b49bf3ffa15f47f5001cd") +
+            HelpExampleRpc("setsigmaseed", "6b54736b13ce6990753b7345a9b41ca2ce5c5847125b49bf3ffa15f47f5001cd"));
 
     EnsureWalletIsUnlocked(pwalletMain);
 
