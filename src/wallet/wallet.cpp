@@ -8734,6 +8734,7 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
     //Utilize gn distribuition model
+    if((chainActive.Height() + 1) >= Params().GetConsensus().nGhostnodePaymentsStartBlock)
     {
         int64_t returnFee = 0;
         bool payFees = false;
