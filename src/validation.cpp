@@ -1184,11 +1184,9 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 }
                 // add input denoms
                 for(int i = 0; i < tx.vin.size(); i++){
-                    CDataStream serializedCoinSpend((const char *)&*(tx.vin[i].scriptSig.begin() + 1),
-                                                    (const char *)&*tx.vin[i].scriptSig.end(),
-                                                    SER_NETWORK, PROTOCOL_VERSION);
-                    sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
-                    inVal += newSpend.getIntDenomination();
+                    std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                    newSpend = ParseSigmaSpend(tx.vin[i]);
+                    inVal += newSpend.first->getIntDenomination();
                 }
 
                 nFees = inVal - outVal;
@@ -2271,11 +2269,9 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                     }
                     // add input denoms
                     for(int i = 0; i < ctx->vin.size(); i++){
-                        CDataStream serializedCoinSpend((const char *)&*(ctx->vin[i].scriptSig.begin() + 1),
-                                                        (const char *)&*ctx->vin[i].scriptSig.end(),
-                                                        SER_NETWORK, PROTOCOL_VERSION);
-                        sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
-                        inVal += newSpend.getIntDenomination();
+                        std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                        newSpend = ParseSigmaSpend(ctx->vin[i]);
+                        inVal += newSpend.first->getIntDenomination();
                     }
                     CAmount neededForFee = (inVal - outVal)/0.0025;
                     mintVector.push_back(neededForFee);
@@ -2308,11 +2304,9 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                             }
                             // add input denoms
                             for(int i = 0; i < ctx->vin.size(); i++){
-                                CDataStream serializedCoinSpend((const char *)&*(ctx->vin[i].scriptSig.begin() + 1),
-                                                                (const char *)&*ctx->vin[i].scriptSig.end(),
-                                                                SER_NETWORK, PROTOCOL_VERSION);
-                                sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
-                                inVal += newSpend.getIntDenomination();
+                                std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                                newSpend = ParseSigmaSpend(ctx->vin[i]);
+                                inVal += newSpend.first->getIntDenomination();
                             }
                             CAmount neededForFee = (inVal - outVal)/0.0025;
                             mintVector.push_back(neededForFee);
@@ -2352,11 +2346,9 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                     }
                     // add input denoms
                     for(int i = 0; i < ctx->vin.size(); i++){
-                        CDataStream serializedCoinSpend((const char *)&*(ctx->vin[i].scriptSig.begin() + 1),
-                                                        (const char *)&*ctx->vin[i].scriptSig.end(),
-                                                        SER_NETWORK, PROTOCOL_VERSION);
-                        sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
-                        inVal += newSpend.getIntDenomination();
+                        std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                        newSpend = ParseSigmaSpend(ctx->vin[i]);
+                        inVal += newSpend.first->getIntDenomination();
                     }
                     CAmount neededForFee = (inVal - outVal)/0.0025;
                     mintVector.push_back(neededForFee);
@@ -2702,11 +2694,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
             // add input denoms
             for(int i = 0; i < tx.vin.size(); i++){
-                CDataStream serializedCoinSpend((const char *)&*(tx.vin[i].scriptSig.begin() + 1),
-                                                (const char *)&*tx.vin[i].scriptSig.end(),
-                                                SER_NETWORK, PROTOCOL_VERSION);
-                sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
-                inVal += newSpend.getIntDenomination();
+                std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                newSpend = ParseSigmaSpend(tx.vin[i]);
+                inVal += newSpend.first->getIntDenomination();
             }
             nFees += (inVal - outVal);
         }

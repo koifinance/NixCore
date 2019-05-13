@@ -5538,7 +5538,7 @@ UniValue ghostfeepayouttotal(const JSONRPCRequest& request)
     vector<CAmount> mintVector;
     mintVector.clear();
 
-    int totalCount = (chainActive.Height() + 1) % 720;
+    int totalCount = (chainActive.Height() + 1) % Params().GetConsensus().nGhostFeeDistributionCycle;
     //Subtract 1 from sample since we check current block fees
     mintVector.clear();
 
@@ -5552,11 +5552,31 @@ UniValue ghostfeepayouttotal(const JSONRPCRequest& request)
         if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
             for(auto ctx: block.vtx){
                 //Found ghost fee transaction
-                if(!ctx->IsZerocoinSpend() && ctx->IsZerocoinMint()){
+                bool isSpend = ctx->IsZerocoinSpend() || ctx->IsSigmaSpend();
+                bool isMint = ctx->IsZerocoinMint() || ctx->IsSigmaMint();
+
+                if(!isSpend && isMint){
                     for(auto mintTx: ctx->vout){
-                        if(mintTx.scriptPubKey.IsZerocoinMint())
+                        if(mintTx.scriptPubKey.IsZerocoinMint() || mintTx.scriptPubKey.IsSigmaMint())
                             mintVector.push_back(mintTx.nValue);
                     }
+                }
+                if(isSpend && isMint){
+                    CAmount inVal = 0;
+                    CAmount outVal = 0;
+                    for(int k = 0; k < ctx->vout.size(); k++){
+                        if(!ctx->vout[k].scriptPubKey.IsSigmaMint())
+                            continue;
+                        outVal += ctx->vout[k].nValue;
+                    }
+                    // add input denoms
+                    for(int k = 0; k < ctx->vin.size(); k++){
+                        std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                        newSpend = ParseSigmaSpend(ctx->vin[k]);
+                        inVal += newSpend.first->getIntDenomination();
+                    }
+                    CAmount neededForFee = (inVal - outVal)/0.0025;
+                    mintVector.push_back(neededForFee);
                 }
             }
         }
