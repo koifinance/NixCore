@@ -68,6 +68,7 @@ private:
 
     void minimizeFeeSection(bool fMinimize);
     void updateFeeMinimizedLabel();
+
     // Update the passed in CCoinControl with state from the GUI
     void updateCoinControlState(CCoinControl& ctrl);
 
