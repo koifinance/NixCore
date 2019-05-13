@@ -65,6 +65,8 @@ const int ZEROCOIN_CONFIRM_HEIGHT = 0;
 
 OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
 OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
+
+CCoinControl g_coincontrol;
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
  * Override with -mintxfee
@@ -9496,16 +9498,20 @@ string CWallet::MintAndStoreSigma(vector<CRecipient> vecSend,
 
         totalValue += recipient.nAmount;
     }
+
+    CCoinControl coin_control = g_coincontrol;
+
     if ((totalValue + (0.0025 * totalValue)) > GetBalance())
         return _("Insufficient funds");
 
     CReserveKey reservekey(this);
     int64_t nFeeRequired;
 
-    CCoinControl coin_control;
     if (!CreateSigmaMintTransaction(vecSend, wtxNew, reservekey, nFeeRequired, strError, coin_control)) {
         return strError;
     }
+
+    g_coincontrol.SetNull();
 
     if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired)){
         LogPrintf("MintAndStoreSigma: returning aborted..\n");

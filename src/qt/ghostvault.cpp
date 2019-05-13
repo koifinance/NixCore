@@ -205,6 +205,9 @@ void GhostVault::on_ghostNIXButton_clicked() {
     questionString.append("<hr /><span>");
     questionString.append("</span>");
 
+    if (walletModel->getOptionsModel()->getCoinControlFeatures())
+        g_coincontrol = *CoinControlDialog::coinControl();
+
     if(walletModel->getWallet()->IsLocked()){
         WalletModel::UnlockContext ctx(walletModel->requestUnlock());
         if(!ctx.isValid())
@@ -362,6 +365,9 @@ void GhostVault::on_convertGhostButton_clicked() {
 
         questionString.append("<hr /><span>");
         questionString.append("</span>");
+
+        if (walletModel->getOptionsModel()->getCoinControlFeatures())
+            g_coincontrol = *CoinControlDialog::coinControl();
 
         if(walletModel->getWallet()->IsLocked()){
             WalletModel::UnlockContext ctx(walletModel->requestUnlock());
