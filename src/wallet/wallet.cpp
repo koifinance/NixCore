@@ -10390,8 +10390,10 @@ bool CWallet::GhostModeMintSigma(string totalAmount, vector<CScript> pubCoinScri
     CWalletTx wtx;
     strError = MintAndStoreSigma(vecSend, privCoins, vDMints, wtx, false);
 
-    if (strError != "")
-        throw false;
+    if (strError != ""){
+        LogPrintf("CWallet::GhostModeMintSigma(): Error, %s", strError);
+        return false;
+    }
 
     return true;
 }
