@@ -8871,11 +8871,9 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
                 }
                 // add input denoms
                 for(int k = 0; k < pblock->vtx[i]->vin.size(); k++){
-                    CDataStream serializedCoinSpend((const char *)&*(pblock->vtx[i]->vin[k].scriptSig.begin() + 1),
-                                                    (const char *)&*pblock->vtx[i]->vin[k].scriptSig.end(),
-                                                    SER_NETWORK, PROTOCOL_VERSION);
-                    sigma::CoinSpend newSpend(SParams, serializedCoinSpend);
-                    inVal += newSpend.getIntDenomination();
+                    std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                    newSpend = ParseSigmaSpend(pblock->vtx[i]->vin[k]);
+                    inVal += newSpend.first->getIntDenomination();
                 }
                 nGhostFees += inVal - outVal;
 
