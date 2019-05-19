@@ -5601,7 +5601,7 @@ UniValue ghostfeepayouttotal(const JSONRPCRequest& request)
     }
 
 
-    entry.push_back(Pair("ghost_fee_payout", (returnFee/COIN)));
+    entry.push_back(Pair("ghost_fee_payout", ValueFromAmount(returnFee)));
     entry.push_back(Pair("total_active_nodes", (totalActiveNodes)));
 
     return entry;
