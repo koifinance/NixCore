@@ -12,10 +12,11 @@
 #include <protocol.h>
 #include <memory>
 #include <vector>
-#include <chain.h>
 
 static const uint32_t CHAIN_NO_GENESIS = 444444;
 static const uint32_t CHAIN_NO_STEALTH_SPEND = 444445; // used hardened
+
+class CBlockIndex;
 
 struct SeedSpec6 {
     uint8_t addr[16];

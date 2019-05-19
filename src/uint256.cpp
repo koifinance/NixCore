@@ -72,10 +72,35 @@ std::string base_blob<BITS>::ToString() const
     return (GetHex());
 }
 
+/* base_blob<BITS> from const char *.
+ * This is a separate function because the constructor base_blob<BITS>(const char*) can result
+ * in dangerously catching base_blob<BITS>(0).
+ */
+template <unsigned int BITS>
+base_blob<BITS> base_blob<BITS>::uintS(const char *str) const
+{
+    base_blob<BITS> rv;
+    rv.SetHex(str);
+    return rv;
+}
+/* base_blob<BITS> from std::string.
+ * This is a separate function because the constructor base_blob<BITS>(const std::string &str) can result
+ * in dangerously catching base_blob<BITS>(0) via std::string(const char*).
+ */
+template <unsigned int BITS>
+base_blob<BITS> base_blob<BITS>::uintS(const std::string& str) const
+{
+    base_blob<BITS> rv;
+    rv.SetHex(str);
+    return rv;
+}
+
 // Explicit instantiations for base_blob<160>
 template base_blob<160>::base_blob(const std::vector<unsigned char>&);
 template std::string base_blob<160>::GetHex() const;
 template std::string base_blob<160>::ToString() const;
+template base_blob<160> base_blob<160>::uintS(const char *str) const;
+template base_blob<160> base_blob<160>::uintS(const std::string& str) const;
 template void base_blob<160>::SetHex(const char*);
 template void base_blob<160>::SetHex(const std::string&);
 template base_blob<160>::base_blob(const uint8_t *p, size_t l);
@@ -84,6 +109,17 @@ template base_blob<160>::base_blob(const uint8_t *p, size_t l);
 template base_blob<256>::base_blob(const std::vector<unsigned char>&);
 template std::string base_blob<256>::GetHex() const;
 template std::string base_blob<256>::ToString() const;
+template base_blob<256> base_blob<256>::uintS(const char *str) const;
+template base_blob<256> base_blob<256>::uintS(const std::string& str) const;
 template void base_blob<256>::SetHex(const char*);
 template void base_blob<256>::SetHex(const std::string&);
 template base_blob<256>::base_blob(const uint8_t *p, size_t l);
+
+// Explicit instantiations for base_uint<512>
+template base_blob<512>::base_blob(const std::vector<unsigned char>&);
+template std::string base_blob<512>::GetHex() const;
+template std::string base_blob<512>::ToString() const;
+template base_blob<512> base_blob<512>::uintS(const char *str) const;
+template base_blob<512> base_blob<512>::uintS(const std::string& str) const;
+template void base_blob<512>::SetHex(const char*);
+template void base_blob<512>::SetHex(const std::string&);

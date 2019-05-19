@@ -120,7 +120,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 sub.idx = i; // vout index
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
-                if(tempTx->IsZerocoinMint()){
+                if(tempTx->IsZerocoinMint() || tempTx->IsSigmaMint()){
                     sub.type = TransactionRecord::Ghosted;
                 }
                 else if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
@@ -197,7 +197,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 CTxDestination address;
                 if (ExtractDestination(txout.scriptPubKey, address))
                 {
-                    if(tempTx->IsZerocoinMint()){
+                    if(tempTx->IsZerocoinMint() || tempTx->IsSigmaMint()){
                         sub.type = TransactionRecord::Ghosted;
                         sub.address = mapValue["to"];
                     }
@@ -209,7 +209,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 }
                 else
                 {
-                    if(tempTx->IsZerocoinMint()){
+                    if(tempTx->IsZerocoinMint() || tempTx->IsSigmaMint()){
                         sub.type = TransactionRecord::Ghosted;
                         sub.address = mapValue["to"];
                     }
@@ -238,7 +238,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             // Mixed debit transaction, can't break down payees
             //
 
-            if(wtx.tx->IsZerocoinSpend()){
+            if(wtx.tx->IsZerocoinSpend() || wtx.tx->IsSigmaSpend()){
 
                 CAmount nTxFee = nDebit - wtx.tx->GetValueOut();
 
@@ -369,7 +369,7 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
         }
         else if (status.depth < RecommendedNumConfirmations)
         {
-            if(wtx.tx->IsZerocoinMint())
+            if(wtx.tx->IsZerocoinMint() || wtx.tx->IsSigmaMint())
                 status.status = TransactionStatus::Ghosting;
             else
                 status.status = TransactionStatus::Confirming;

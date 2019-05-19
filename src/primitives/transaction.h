@@ -35,13 +35,6 @@ enum TransactionTypes
 
 };
 
-enum DataOutputTypes
-{
-    DO_NULL                 = 0, // reserved
-    DO_STEALTH              = 1,
-    DO_STEALTH_PREFIX       = 2,
-};
-
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
 {
@@ -384,7 +377,7 @@ public:
 
     bool IsCoinBase() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] != OP_ZEROCOINSPEND));
+        return (vin.size() == 1 && vin[0].prevout.IsNull() && (vin[0].scriptSig[0] != OP_ZEROCOINSPEND) && (vin[0].scriptSig[0] != OP_SIGMASPEND));
     }
 
     bool IsCoinStake() const
@@ -403,6 +396,21 @@ public:
         for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
             {
                 if (it -> scriptPubKey.IsZerocoinMint())
+                    return true;
+            }
+            return false;
+    }
+
+    bool IsSigmaSpend() const
+    {
+        return (vin.size() >= 1 && vin[0].prevout.hash.IsNull() && vin[0].prevout.n >= 1 && (vin[0].scriptSig[0] == OP_SIGMASPEND));
+    }
+
+    bool IsSigmaMint() const
+    {
+        for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
+            {
+                if (it -> scriptPubKey.IsSigmaMint())
                     return true;
             }
             return false;

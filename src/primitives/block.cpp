@@ -43,5 +43,6 @@ std::string CBlock::ToString() const
 
 void CBlock::ZerocoinClean() const {
     zerocoinTxInfo = NULL;
+    sigmaTxInfo = NULL;
 }
 

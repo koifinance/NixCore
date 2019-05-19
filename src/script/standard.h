@@ -88,6 +88,7 @@ enum txnouttype
     TX_TIMELOCKED_MULTISIG,
     TX_ZEROCOINMINT,
     TX_CONDITIONAL_STAKE,
+    TX_SIGMAMINT,
 };
 
 class CNoDestination {

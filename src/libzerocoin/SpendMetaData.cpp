@@ -10,7 +10,7 @@
 * @license    This project is released under the MIT license.
 **/
 
-#include "Zerocoin.h"
+#include "libzerocoin/Zerocoin.h"
 
 namespace libzerocoin {
 

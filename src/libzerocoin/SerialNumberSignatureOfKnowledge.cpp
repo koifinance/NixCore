@@ -10,8 +10,8 @@
 * @license    This project is released under the MIT license.
 **/
 
-#include "Zerocoin.h"
-#include "ParallelTasks.h"
+#include "libzerocoin/Zerocoin.h"
+#include "libzerocoin/ParallelTasks.h"
 
 namespace libzerocoin {
 

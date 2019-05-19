@@ -137,15 +137,17 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP7                   : return "OP_NOP7";
     case OP_NOP8                   : return "OP_NOP8";
     //case OP_NOP9                 : return "OP_NOP9";
-    //case OP_NOP10                : return "OP_NOP10";
+    case OP_NOP10                   : return "OP_NOP10";
 
-    case OP_KEYLOCKVERIFY          : return "OP_KEYLOCKVERIFY";
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
-
 
     // zerocoin
     case OP_ZEROCOINMINT           : return "OP_ZEROCOINMINT";
     case OP_ZEROCOINSPEND          : return "OP_ZEROCOINSPEND";
+
+    // sigma
+    case OP_SIGMAMINT              : return "OP_SIGMAMINT";
+    case OP_SIGMASPEND             : return "OP_SIGMASPEND";
 
     case OP_ISCOINSTAKE            : return "OP_ISCOINSTAKE";
 
@@ -589,4 +591,16 @@ bool CScript::IsZerocoinMint() const
 bool CScript::IsZerocoinSpend() const {
     return (this->size() > 0 &&
             (*this)[0] == OP_ZEROCOINSPEND);
+}
+
+bool CScript::IsSigmaMint() const
+{
+    // Extra-fast test for Sigma Mint CScripts:
+    return (this->size() > 0 &&
+            (*this)[0] == OP_SIGMAMINT);
+}
+
+bool CScript::IsSigmaSpend() const {
+    return (this->size() > 0 &&
+            (*this)[0] == OP_SIGMASPEND);
 }

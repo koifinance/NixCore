@@ -73,6 +73,7 @@ public:
 };
 
 class CZerocoinTxInfo;
+class CSigmaTxInfo;
 
 class CBlock : public CBlockHeader
 {
@@ -91,15 +92,20 @@ public:
     // memory only, zerocoin tx info
     mutable std::shared_ptr<CZerocoinTxInfo> zerocoinTxInfo;
 
+    // memory only, sigma tx info
+    mutable std::shared_ptr<CSigmaTxInfo> sigmaTxInfo;
+
     CBlock()
     {
         zerocoinTxInfo = NULL;
+        sigmaTxInfo = NULL;
         SetNull();
     }
 
     CBlock(const CBlockHeader &header)
     {
         zerocoinTxInfo = NULL;
+        sigmaTxInfo = NULL;
         SetNull();
         *((CBlockHeader*)this) = header;
     }

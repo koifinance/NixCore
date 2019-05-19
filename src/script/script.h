@@ -181,7 +181,6 @@ enum opcodetype
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
     OP_ISCOINSTAKE = OP_NOP9,
-    OP_KEYLOCKVERIFY = OP_NOP10,
 
     // template matching params
     OP_SMALLDATA = 0xf9,
@@ -196,6 +195,10 @@ enum opcodetype
     // zerocoin params
     OP_ZEROCOINMINT = 0xc1,
     OP_ZEROCOINSPEND = 0xc2,
+
+    // sigma params
+    OP_SIGMAMINT = 0xc3,
+    OP_SIGMASPEND = 0xc4,
 };
 
 // Maximum value that an opcode can be
@@ -696,6 +699,10 @@ public:
     //Zerocoin params
     bool IsZerocoinMint() const;
     bool IsZerocoinSpend() const;
+
+    //Sigma params
+    bool IsSigmaMint() const;
+    bool IsSigmaSpend() const;
 };
 
 struct CScriptWitness

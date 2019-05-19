@@ -42,6 +42,7 @@
 #include <ghostnode/ghostnode-sync.h>
 #include "random.h"
 #include <ghost-address/commitmentkey.h>
+#include <wallet/ghostwallet.h>
 
 #include <rpc/server.h>
 #include <pos/kernel.h>
@@ -64,6 +65,8 @@ const int ZEROCOIN_CONFIRM_HEIGHT = 0;
 
 OutputType g_address_type = OUTPUT_TYPE_DEFAULT;
 OutputType g_change_type = OUTPUT_TYPE_DEFAULT;
+
+CCoinControl g_coincontrol;
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
  * Override with -mintxfee
@@ -703,7 +706,7 @@ void CWallet::AddToSpends(const uint256& wtxid)
     auto it = mapWallet.find(wtxid);
     assert(it != mapWallet.end());
     CWalletTx& thisTx = it->second;
-    if (thisTx.IsCoinBase() || thisTx.tx->IsZerocoinSpend()) // Coinbases and zerocoin spends don't spend anything!
+    if (thisTx.IsCoinBase() || thisTx.tx->IsZerocoinSpend() || thisTx.tx->IsSigmaSpend()) // Coinbases and zerocoin spends don't spend anything!
         return;
     for (const CTxIn& txin : thisTx.tx->vin)
         AddToSpends(txin.prevout, wtxid);
@@ -1154,37 +1157,56 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
     const CTransaction& tx = *ptx;
     {
         AssertLockHeld(cs_wallet);
-
+        bool foundSigma = false;
         if (pIndex != nullptr) {
             for (const CTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
                     if (range.first->second != tx.GetHash()) {
-
-                        const CWalletTx *wtxConflicted = GetWalletTx(range.first->second); // coinstakes will only be in mapwallet
-                        if (wtxConflicted && wtxConflicted->isAbandoned() && wtxConflicted->IsCoinStake())
-                        {
-                            // Respending input from orphaned coinstake, leave abandoned
-                            LogPrintf("Reusing kernel from orphaned stake %s, new tx %s, \n    (kernel %s:%i).\n",
-                                      range.first->second.ToString(), tx.GetHash().ToString(), range.first->first.hash.ToString(), range.first->first.n);
-                        } else
-                        {
-                            LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
-                            MarkConflicted(pIndex->GetBlockHash(), range.first->second);
-                        }
-
+                        LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
+                        MarkConflicted(pIndex->GetBlockHash(), range.first->second);
                     }
                     range.first++;
                 }
             }
         }
 
+        // find all mints in this block and update
+        if(ghostWalletMain != nullptr && sigmaTracker != nullptr){
+            for(const CTxOut &txOut: tx.vout){
+                if(!txOut.scriptPubKey.IsSigmaMint())
+                    continue;
+                secp_primitives::GroupElement pubcoin = ParseSigmaMintScript(txOut.scriptPubKey);
+                uint256 hashValue = GetPubCoinValueHash(pubcoin);
+
+                if(sigmaTracker->HasPubcoinHash(hashValue)){
+                    foundSigma = true;
+                    LogPrintf("AddToWalletIfInvolvingMe(): writing sigma mint into tracker\n");
+                    CMintMeta meta = sigmaTracker->GetMetaFromPubcoin(hashValue);
+                    meta.nHeight = (pIndex == nullptr) ? INT_MAX : pIndex->nHeight;
+                    meta.txid = tx.GetHash();
+                    sigmaTracker->UpdateState(meta);
+                }
+                if(ghostWalletMain->IsInMintPool(pubcoin)){
+                    foundSigma = true;
+                    //Check if this mint is one that is in our mintpool (a potential future mint from our deterministic generation)
+                    LogPrintf("AddToWalletIfInvolvingMe(): setting sigma mint to seen\n");
+                    sigma::CoinDenomination denom = sigma::CoinDenomination::SIGMA_ERROR;
+                    CAmount nVal = txOut.nValue;
+                    sigma::IntegerToDenomination(nVal,  denom);
+                    ghostWalletMain->SetMintSeen(pubcoin, (pIndex == nullptr) ? INT_MAX : pIndex->nHeight, tx.GetHash(), denom);
+                }
+            }
+        }
+
+        bool foundZerocoin = FindUnloadedGhostTransactions(tx);
+
         bool fExisted = mapWallet.count(tx.GetHash()) != 0;
         if (fExisted && !fUpdate) return false;
 
-        bool foundZerocoin = FindUnloadedGhostTransactions(tx);
+
         TopUpUnloadedCommitments();
-        if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin)
+        if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin || foundSigma)
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
              * have appeared in a new transaction. If so, remove those keys from the keypool.
@@ -1195,6 +1217,8 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
             // loop though all outputs
             if(!foundZerocoin){
                 for (const CTxOut& txout: tx.vout) {
+                    if(txout.scriptPubKey.IsSigmaMint())
+                        continue;
                     // extract addresses and check if they match with an unused keypool key
                     std::vector<CKeyID> vAffected;
                     CAffectedKeysVisitor(*this, vAffected).Process(txout.scriptPubKey);
@@ -1332,6 +1356,30 @@ bool CWallet::AbandonTransaction(const uint256& hashTx)
                             walletdb.EraseCoinSpendSerialEntry(spendEntry);
                         }
                     }
+                }
+            }
+            else if (wtx.tx->IsSigmaSpend()) {
+                // find out coin serial number
+                for(const CTxIn &txin: wtx.tx->vin){
+                    CSigmaSpendEntry entry;
+                    Scalar serial = SigmaGetSpendSerialNumber(*wtx.tx, txin);
+                    if (!CWalletDB(*dbw).ReadSigmaSpendEntry(serial, entry)) {
+                        return false;
+                        LogPrintf("\CWallet::AbandonTransaction(): It cannot read sigma coin serial number in wallet.\n");
+                    }
+                    //reset mint
+                    uint256 hashPubcoin = GetPubCoinValueHash(entry.pubCoin);
+                    sigmaTracker->SetPubcoinNotUsed(hashPubcoin);
+                    CAmount nValue = 0;
+                    sigma::DenominationToInteger(entry.get_denomination(), nValue);
+                    NotifyZerocoinChanged(this, entry.pubCoin.GetHex(), nValue, "New", CT_UPDATED);
+
+                    if (!CWalletDB(*dbw).EraseSigmaSpendEntry(entry)) {
+                        return false;
+                        LogPrintf("\CWallet::AbandonTransaction(): It cannot delete coin serial number in wallet.\n");
+                    }
+
+                    LogPrintf("\n Abandoning sigma hash=%s \n", hashPubcoin.ToString());
                 }
             }
         }
@@ -1989,7 +2037,7 @@ void CWallet::ReacceptWalletTransactions()
 
         int nDepth = wtx.GetDepthInMainChain();
 
-        if ((!wtx.IsCoinBase() && !wtx.tx->IsZerocoinSpend()) && !wtx.IsCoinStake() && (nDepth == 0 && !wtx.isAbandoned())) {
+        if ((!wtx.IsCoinBase() && !wtx.tx->IsZerocoinSpend()) && !wtx.tx->IsSigmaSpend() && !wtx.IsCoinStake() && (nDepth == 0 && !wtx.isAbandoned())) {
             mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
         }
     }
@@ -2364,46 +2412,69 @@ CAmount CWallet::GetImmatureBalance() const
     return nTotal;
 }
 
-CAmount CWallet::GetGhostBalance() const
+CAmount CWallet::GetGhostBalance(bool isV2) const
 {
-    std::vector<COutput> vCoins;
-    ListAvailableCoinsMintCoins(vCoins);
     int nRequiredDepth = 0;
-
     CAmount nTotal = 0;
-    for(int i = 0; i < vCoins.size(); i++){
-            if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
+    if(!isV2){
+        std::vector<COutput> vCoins;
+        ListAvailableCoinsMintCoins(vCoins);
+        for(int i = 0; i < vCoins.size(); i++){
+                if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
 
-                const uint256& prevHash = vCoins[i].tx->GetHash();
-                CTransactionRef tx;
-                uint256 hashBlock;
-                bool fFound = GetTransaction(prevHash, tx, Params().GetConsensus(), hashBlock);
-                if(fFound)
-                {
-                    if(mapBlockIndex.find(hashBlock) != mapBlockIndex.end())
+                    const uint256& prevHash = vCoins[i].tx->GetHash();
+                    CTransactionRef tx;
+                    uint256 hashBlock;
+                    bool fFound = GetTransaction(prevHash, tx, Params().GetConsensus(), hashBlock);
+                    if(fFound)
                     {
-                        if(chainActive.Height() - mapBlockIndex[hashBlock]->nHeight >= nRequiredDepth)
-                            nTotal += vCoins[i].tx->tx->vout[vCoins[i].i].nValue;
+                        if(mapBlockIndex.find(hashBlock) != mapBlockIndex.end())
+                        {
+                            if(chainActive.Height() - mapBlockIndex[hashBlock]->nHeight >= nRequiredDepth)
+                                nTotal += vCoins[i].tx->tx->vout[vCoins[i].i].nValue;
 
+                        }
                     }
                 }
+        }
+    }
+    else{
+        std::list<CMintMeta> mintMetas = sigmaTracker->GetMints(true);
+        for(const CMintMeta &mintItem: mintMetas) {
+            if(!mintItem.isUsed){
+                int64_t nVal = 0;
+                sigma::DenominationToInteger(mintItem.denom, nVal);
+                nTotal += nVal;
             }
+        }
     }
     return nTotal;
 }
 
-CAmount CWallet::GetGhostBalanceUnconfirmed() const
+CAmount CWallet::GetGhostBalanceUnconfirmed(bool isV2) const
 {
-    std::vector<COutput> vCoins;
-    ListAvailableCoinsMintCoins(vCoins, false);
-
     CAmount nTotal = 0;
-    for(int i = 0; i < vCoins.size(); i++){
-            if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
-                nTotal += vCoins[i].tx->tx->vout[vCoins[i].i].nValue;
-            }
+
+    if(!isV2){
+        std::vector<COutput> vCoins;
+        ListAvailableCoinsMintCoins(vCoins, false);
+        for(int i = 0; i < vCoins.size(); i++){
+                if (vCoins[i].tx->tx->vout[vCoins[i].i].scriptPubKey.IsZerocoinMint()) {
+                    nTotal += vCoins[i].tx->tx->vout[vCoins[i].i].nValue;
+                }
+        }
     }
-    return nTotal - GetGhostBalance();
+    else{
+        std::list<CMintMeta> mintMetas = sigmaTracker->GetMints(false);
+        for(const CMintMeta &mintItem: mintMetas) {
+            if(!mintItem.isUsed){
+                int64_t nVal = 0;
+                sigma::DenominationToInteger(mintItem.denom, nVal);
+                nTotal += nVal;
+            }
+        }
+    }
+    return nTotal - GetGhostBalance(isV2);
 }
 
 CAmount CWallet::GetWatchOnlyBalance() const
@@ -5851,6 +5922,14 @@ bool CWallet::CreateZerocoinMintTransactionBatch(vector <CScript> pubCoin, vecto
                                          coinControl);
 }
 
+bool CWallet::CreateSigmaMintTransaction(vector <CRecipient> vecSend, CWalletTx &wtxNew, CReserveKey &reservekey,
+                                       int64_t &nFeeRet, std::string &strFailReason,
+                                       const CCoinControl &coinControl) {
+    int nChangePosRet = -1;
+    return CreateZerocoinMintTransaction(vecSend, wtxNew, reservekey, nFeeRet, nChangePosRet, strFailReason,
+                                         coinControl);
+}
+
 /**
  * @brief CWallet::CreateZerocoinSpendTransaction
  * @param nValue
@@ -8648,20 +8727,16 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
         if (!fTestNet) {
             DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
             DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
+            //Push dev block reward of 2% based on coinbase rewards, 1% each
+            txNew.vout.push_back(CTxOut(devAmount/2, DEV_1_SCRIPT));
+            txNew.vout.push_back(CTxOut(devAmount/2, DEV_2_SCRIPT));
         }
-        else {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("2PosyBduiL7yMfBK8DZEtCBJaQF76zgE8f"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("2WT5wFpLXoWm1H8CSgWVcq2F2LyhwKJcG1"));
-        }
-
-        //Push dev block reward of 2% based on coinbase rewards, 1% each
-        txNew.vout.push_back(CTxOut(devAmount/2, DEV_1_SCRIPT));
-        txNew.vout.push_back(CTxOut(devAmount/2, DEV_2_SCRIPT));
     }
 
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
     //Utilize gn distribuition model
+    if((chainActive.Height() + 1) >= Params().GetConsensus().nGhostnodePaymentsStartBlock)
     {
         int64_t returnFee = 0;
         bool payFees = false;
@@ -8774,15 +8849,33 @@ bool CWallet::SignBlock(CBlockTemplate *pblocktemplate, int nHeight, int64_t nSe
         for(int i = 1; i < pblock->vtx.size(); i++){
 
             //Avoid 2-way ghosting miscalculation
-            if(pblock->vtx[i]->IsZerocoinMint() && !pblock->vtx[i]->IsZerocoinSpend()){
+            if(pblock->vtx[i]->IsSigmaMint() && !pblock->vtx[i]->IsSigmaSpend()){
                 //scrape fees payouts, 0.25% or minimum of 0.01 coins
                 //whole block is zerocoin mint
                 CAmount mintAmount = 0;
                 for(int k = 0; k < pblock->vtx[i]->vout.size(); k++){
-                    if(pblock->vtx[i]->vout[k].scriptPubKey.IsZerocoinMint())
+                    if(pblock->vtx[i]->vout[k].scriptPubKey.IsSigmaMint())
                         mintAmount += pblock->vtx[i]->vout[k].nValue;
                 }
                 nGhostFees += mintAmount * 0.0025;
+
+            }
+
+            if(pblock->vtx[i]->IsSigmaSpend() && pblock->vtx[i]->IsSigmaMint()){
+                CAmount inVal = 0;
+                CAmount outVal = 0;
+                for(int k = 0; k < pblock->vtx[i]->vout.size(); k++){
+                    if(!pblock->vtx[i]->vout[k].scriptPubKey.IsSigmaMint())
+                        continue;
+                    outVal += pblock->vtx[i]->vout[k].nValue;
+                }
+                // add input denoms
+                for(int k = 0; k < pblock->vtx[i]->vin.size(); k++){
+                    std::pair<std::unique_ptr<sigma::CoinSpend>, uint32_t> newSpend;
+                    newSpend = ParseSigmaSpend(pblock->vtx[i]->vin[k]);
+                    inVal += newSpend.first->getIntDenomination();
+                }
+                nGhostFees += inVal - outVal;
 
             }
         }
@@ -9097,37 +9190,71 @@ bool CWallet::TopUpUnloadedCommitments(int kpSize)
     return true;
 }
 
-bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, int packSize){
+bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool isV2, int packSize){
 
     {
         LOCK(cs_wallet);
 
-        list <CZerocoinEntry> listUnloadedPubcoin;
-        CWalletDB walletdb(GetDBHandle());
-        walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
+        if(!isV2){
+            list <CZerocoinEntry> listUnloadedPubcoin;
+            CWalletDB walletdb(GetDBHandle());
+            walletdb.ListUnloadedPubCoin(listUnloadedPubcoin);
 
-        int keyAmount;
-        std::vector<std::vector<unsigned char>> keyList = std::vector<std::vector<unsigned char>>();
+            int keyAmount;
+            std::vector<std::vector<unsigned char>> keyList = std::vector<std::vector<unsigned char>>();
 
-        //make sure we have at least 10 key packs
-        if(listUnloadedPubcoin.size()/packSize < 10)
-            return false;
+            //make sure we have at least 10 key packs
+            if(listUnloadedPubcoin.size()/packSize < 10)
+                return false;
 
-        keyList.clear();
-        keyAmount = packSize;
-        for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
-            keyAmount--;
-            std::vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
-            keyList.push_back(commitmentKey);
-            if(keyAmount == 0){
-                CommitmentKeyPack pubCoinPack(keyList);
-                keyPackList.push_back(pubCoinPack);
-                keyList.clear();
-                keyAmount = packSize;
+            keyList.clear();
+            keyAmount = packSize;
+            for(const CZerocoinEntry &zerocoinItem: listUnloadedPubcoin) {
+                keyAmount--;
+                std::vector<unsigned char> commitmentKey = zerocoinItem.value.getvch();
+                keyList.push_back(commitmentKey);
+                if(keyAmount == 0){
+                    CommitmentKeyPack pubCoinPack(keyList);
+                    keyPackList.push_back(pubCoinPack);
+                    keyList.clear();
+                    keyAmount = packSize;
+                }
+                //aim for 10 keys
+                if(keyPackList.size() == 10)
+                    break;
             }
-            //aim for 10 keys
-            if(keyPackList.size() == 10)
-                break;
+        }
+        else{
+            sigma::Params *sParam = SParams;
+            // get latest unused mints
+            vector<sigma::PrivateCoin> privCoins;
+            int i = GetGhostWallet()->GetCount();
+            int original = packSize + i;
+            for(i = i; i < original; i++){
+                // Regenerate the mint
+                CSigmaMint dMint;
+                sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_1);
+                GetGhostWallet()->GenerateHDMint(sigma::CoinDenomination::SIGMA_0_1, coin, dMint);
+                if(!coin.getPublicCoin().validate())
+                    continue;
+                privCoins.push_back(coin);
+                GetGhostWallet()->UpdateCountLocal();
+            }
+            //reset count
+            GetGhostWallet()->SetCount(original - packSize);
+
+            std::vector< std::vector <unsigned char>> keyList = std::vector< std::vector <unsigned char>>();
+            keyList.clear();
+            for(const sigma::PrivateCoin &pCoin: privCoins) {
+                if(!pCoin.getPublicCoin().validate())
+                    continue;
+                std::vector<unsigned char> commitmentKey = pCoin.getPublicCoin().getValue().getvch();
+                keyList.push_back(commitmentKey);
+            }
+
+            CommitmentKeyPack pubCoinPack(keyList);
+
+            keyPackList.push_back(pubCoinPack);
         }
 
     }
@@ -9218,4 +9345,1075 @@ bool CWallet::DecryptPrivateZerocoinData(CZerocoinEntry &zerocoinMintSecret)
 
         return true;
     }
+}
+
+/*************************
+ *   Sigma Functions    *
+*************************/
+
+bool CWallet::GetMint(const uint256& hashSerial, CSigmaEntry& sigma)
+{
+    CMintMeta meta;
+    if(!sigmaTracker->Get(hashSerial, meta))
+        return error("%s: serialhash %s is not in tracker", __func__, hashSerial.GetHex());
+
+    CWalletDB walletdb(*dbw);
+
+     if (meta.isDeterministic) {
+        CSigmaMint dMint;
+        if (!walletdb.ReadSigmaMint(GetPubCoinValueHash(meta.pubCoinValue), dMint))
+            return error("%s: failed to read deterministic mint", __func__);
+        if (!ghostWalletMain->RegenerateMint(dMint, sigma))
+            return error("%s: failed to generate mint", __func__);
+
+         return true;
+    }
+
+    // only allow deterministic sigma mints
+    return false;
+}
+
+CAmount CWallet::SelectMintCoinsForAmount(
+        const CAmount& required,
+        const std::vector<sigma::CoinDenomination>& denominations,
+        std::vector<sigma::CoinDenomination>& coinsOut) {
+    CAmount val = required;
+    for (int i = 0; i < denominations.size(); i++)
+    {
+        CAmount denom;
+        sigma::DenominationToInteger(denominations[i], denom);
+        while (val >= denom)
+        {
+            val -= denom;
+            coinsOut.push_back(denominations[i]);
+        }
+    }
+
+    return required - val;
+}
+
+bool CWallet::CreateSigmaMints(CAmount nAmount, std::vector<sigma::PrivateCoin> &privCoins, std::string &strError){
+
+    std::vector<sigma::CoinDenomination> denominations;
+    sigma::GetAllDenoms(denominations);
+
+    CAmount smallestDenom;
+    sigma::DenominationToInteger(denominations.back(), smallestDenom);
+
+    if (nAmount % smallestDenom != 0) {
+        strError = "CreateSigmaMints(): Amount to mint is invalid.";
+        return false;
+    }
+
+    std::vector<sigma::CoinDenomination> mints;
+    if (CWallet::SelectMintCoinsForAmount(nAmount, denominations, mints) != nAmount) {
+        strError = "CreateSigmaMints(): Problem with coin selection";
+        return false;
+    }
+
+    sigma::Params *sParam = SParams;
+    std::transform(mints.begin(), mints.end(), std::back_inserter(privCoins),
+        [sParam](const sigma::CoinDenomination& denom) -> sigma::PrivateCoin {
+            return sigma::PrivateCoin(sParam, denom);
+        });
+
+    return true;
+}
+
+std::vector<CRecipient> CWallet::CreateSigmaMintRecipients(std::vector<sigma::PrivateCoin>& coins,
+                                    vector<CSigmaMint>& vDMints, std::vector<CScript> &keypack)
+{
+    std::vector<CRecipient> vecSend;
+    CSigmaMint dMint;
+    CGhostWallet *gWallet = ghostWalletMain;
+
+    if(keypack.empty()){
+        std::transform(coins.begin(), coins.end(), std::back_inserter(vecSend),
+            [&vDMints, &dMint, gWallet](sigma::PrivateCoin& coin) -> CRecipient {
+
+                // Generate and store secrets deterministically in the following function.
+                gWallet->GenerateHDMint(coin.getPublicCoin().getDenomination(), coin, dMint);
+
+                auto& pubCoin = coin.getPublicCoin();
+
+                if (!pubCoin.validate()) {
+                    throw std::runtime_error("Unable to mint a sigma coin.");
+                }
+
+                // Create script for coin
+                CScript scriptSerializedCoin;
+                // opcode is inserted as 1 byte according to file script/script.h
+                scriptSerializedCoin << OP_SIGMAMINT;
+
+                // and this one will write the size in different byte lengths depending on the length of vector. If vector size is <0.4c, which is 76, will write the size of vector in just 1 byte. In our case the size is always 34, so must write that 34 in 1 byte.
+                std::vector<unsigned char> vch = pubCoin.getValue().getvch();
+                scriptSerializedCoin.insert(scriptSerializedCoin.end(), vch.begin(), vch.end());
+
+                CAmount v;
+                sigma::DenominationToInteger(pubCoin.getDenomination(), v);
+
+                vDMints.push_back(dMint);
+
+                // Update local count (don't write back to DB until we know coin is verified)
+                gWallet->UpdateCountLocal();
+
+                return {scriptSerializedCoin, v, false};
+            }
+        );
+    }
+    else{
+        if(coins.size() > keypack.size())
+            throw std::runtime_error("Not enough commitment keys in pack");
+        int i = 0;
+        for(auto &c: coins){
+            CAmount v;
+            sigma::DenominationToInteger(c.getPublicCoin().getDenomination(), v);
+            CRecipient recp = {keypack[i], v, false};
+            vecSend.push_back(recp);
+            i++;
+        }
+    }
+
+    return vecSend;
+}
+
+string CWallet::MintAndStoreSigma(vector<CRecipient> vecSend,
+                                     vector<sigma::PrivateCoin> privCoins,
+                                     vector<CSigmaMint> vDMints,
+                                     CWalletTx &wtxNew, bool fAskFee) {
+    string strError;
+    if (IsLocked()) {
+        strError = _("Error: Wallet locked, unable to create transaction!");
+        LogPrintf("MintZerocoin() : %s", strError);
+        return strError;
+    }
+
+    int totalValue = 0;
+    for(CRecipient recipient: vecSend){
+        // Check amount
+        if (recipient.nAmount <= 0)
+            return _("Invalid amount");
+
+        totalValue += recipient.nAmount;
+    }
+
+    CCoinControl coin_control = g_coincontrol;
+
+    if ((totalValue + (0.0025 * totalValue)) > GetBalance())
+        return _("Insufficient funds");
+
+    CReserveKey reservekey(this);
+    int64_t nFeeRequired;
+
+    if (!CreateSigmaMintTransaction(vecSend, wtxNew, reservekey, nFeeRequired, strError, coin_control)) {
+        return strError;
+    }
+
+    g_coincontrol.SetNull();
+
+    if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired)){
+        LogPrintf("MintAndStoreSigma: returning aborted..\n");
+        return "ABORTED";
+    }
+
+
+    CValidationState state;
+
+    if (!CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+        return _(
+                "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    } else {
+        LogPrintf("MintAndStoreSigma::CommitTransaction() success!\n");
+    }
+
+    // Update the count in the database (no effect if no change mints)
+    ghostWalletMain->UpdateCountDB();
+
+    //update mints with full transaction hash and then database them
+    CWalletDB walletdb(*dbw);
+    for (CSigmaMint dMint : vDMints) {
+        dMint.SetTxHash(wtxNew.GetHash());
+        sigmaTracker->Add(dMint, true);
+    }
+
+    return "";
+}
+
+bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> pubCoinScripts, vector <sigma::CoinDenomination> denominationBatch,
+                                             CWalletTx &wtxNew, CReserveKey &reservekey, vector <Scalar> &coinSerialBatch,
+                                             vector <uint256> &txHashBatch, vector <GroupElement> &sSelectedValueBatch, bool &sSelectedIsUsed,
+                                             std::string &strFailReason)
+{
+    bool forceUsed = false;
+
+    std::vector <int64_t> nValueBatch;
+    for(auto den: denominationBatch){
+        int64_t nVal = 0;
+        if(!sigma::DenominationToInteger(den, nVal))
+            continue;
+        nValueBatch.push_back(nVal);
+    }
+
+    int64_t nTotalValue = 0;
+    for(auto i: nValueBatch)
+        nTotalValue += i;
+
+    if (nTotalValue <= 0) {
+        strFailReason = _("Transaction amounts must be positive");
+        return false;
+    }
+
+    wtxNew.BindWallet(this);
+
+    //Batch sigma spends
+    CMutableTransaction txNew;
+    CMutableTransaction txNewTemp;
+    txNew.vin.clear();
+    txNew.vout.clear();
+    txNewTemp.vin.clear();
+    txNewTemp.vout.clear();
+
+    CScript scriptChange;
+
+    //On empty key input, creates and send to p2sh default - UI should require toKey input
+    //For now send to personal segwit
+    if(pubCoinScripts.empty()){
+        if(toKey == ""){
+
+            CPubKey vchPubKey;
+            bool ret;
+            ret = reservekey.GetReservedKey(vchPubKey, true);
+            if (!ret)
+            {
+                strFailReason = _("Keypool ran out, please call keypoolrefill first");
+                return false;
+            }
+
+            const OutputType change_type = g_change_type;
+
+            LearnRelatedScripts(vchPubKey, change_type);
+            scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
+        }
+        else
+        {
+            scriptChange = GetScriptForDestination(DecodeDestination(toKey));
+        }
+    }
+    bool payFee = !pubCoinScripts.empty();
+    bool feePaid = false;
+    for(int i = 0; i < nValueBatch.size(); i++){
+        // skip paying 0.1 denom if this is a ckp payment
+        if(payFee && !feePaid && nValueBatch[i] == (COIN/10)){
+            feePaid = true;
+            continue;
+        }
+        if(!pubCoinScripts.empty())
+            scriptChange = pubCoinScripts[i];
+        CTxOut newTxOut(nValueBatch[i], scriptChange);
+        txNew.vout.push_back(newTxOut);
+        txNewTemp.vout.push_back(newTxOut);
+    }
+
+    //empty vins
+    vector <int> coinIdBatch;
+    vector <CSigmaEntry> coinToUseBatch;
+    CSigmaState *sigmaState = CSigmaState::GetSigmaState();
+    sigma::Params* sParams = SParams;
+
+    std::vector<std::vector<sigma::PublicCoin>> anonimity_set_batch;
+
+    uint256 blockHash;
+
+    std::vector<int> serializedId;
+    for(int i = 0; i < nValueBatch.size(); i++){
+
+        int coinId = INT_MAX;
+        int coinHeight;
+        int coinGroupID;
+
+        // Get Mint metadata objects
+        vector<CMintMeta> setMints;
+        setMints = sigmaTracker->ListMints(true, true, true);
+        if(setMints.empty()) {
+            strFailReason= _("Failed to find sigma coins in wallet.dat");
+            return false;
+        }
+
+        CSigmaEntry coinToUse;
+        std::vector<sigma::PublicCoin> anonimity_set;
+        // Cycle through metadata, looking for suitable coin
+        list<CMintMeta> listMints(setMints.begin(), setMints.end());
+        for (const CMintMeta& mint : listMints) {
+            bool coinUsed = false;
+
+            for(auto coin: coinToUseBatch)
+                if(mint.pubCoinValue == coin.value)
+                    coinUsed = true;
+
+            if (denominationBatch[i] == mint.denom && ((mint.isUsed == false && !forceUsed) || (mint.isUsed == true && forceUsed)) && !coinUsed)
+            {
+
+                if (!GetMint(mint.hashSerial, coinToUse) && !forceUsed) {
+                    strFailReason = "Failed to fetch hashSerial " + mint.hashSerial.GetHex();
+                    return false;
+                }
+
+                std::pair<int, int> coinHeightAndId = sigmaState->GetMintedCoinHeightAndId(
+                            sigma::PublicCoin(coinToUse.value, denominationBatch[i]));
+
+                coinHeight = coinHeightAndId.first;
+                coinGroupID = coinHeightAndId.second;
+
+                if (coinHeight > 0
+                        && coinGroupID < coinId // Always spend coin with smallest ID that matches.
+                        && coinHeight + (ZEROCOIN_CONFIRM_HEIGHT) <= chainActive.Height()
+                        && sigmaState->GetCoinSetForSpend(
+                            &chainActive,
+                            chainActive.Height()-(ZEROCOIN_CONFIRM_HEIGHT),
+                            denominationBatch[i],
+                            coinGroupID,
+                            blockHash,
+                            anonimity_set) > 1 )  {
+                    coinId = coinGroupID;
+                    break;
+                }
+            }
+        }
+
+        if (coinId == INT_MAX) {
+            strFailReason = _("not enough coins in accumulator");
+            return false;
+        }
+
+
+        coinToUseBatch.push_back(coinToUse);
+        txHashBatch.push_back(blockHash);
+        anonimity_set_batch.push_back(anonimity_set);
+        CTxIn newTxIn;
+        newTxIn.scriptSig = CScript();
+        newTxIn.prevout.n = coinId;
+        txNew.vin.push_back(newTxIn);
+        txNewTemp.vin.push_back(newTxIn);
+        serializedId.push_back(coinId);
+
+        LogPrintf("\n SigmaSpend(): Logging coinId=%d", coinId);
+    }
+
+    for(int i = 0; i < nValueBatch.size(); i++){
+        {
+            LOCK2(cs_main, cs_wallet);
+            {
+
+                // We use incomplete transaction hash as metadata.
+                sigma::SpendMetaData metaData(serializedId[i], txHashBatch[i], txNewTemp.GetHash());
+
+                // Construct the CoinSpend object. This acts like a signature on the
+                // transaction.
+                sigma::PrivateCoin privateCoin(sParams, denominationBatch[i]);
+
+                int txVersion = sigma::SIGMA_VERSION_1;
+
+                LogPrintf("CreateSigmaSpendTransation: tx version=%d, tx metadata hash=%s\n", txVersion, txNew.GetHash().ToString());
+
+                // 2. Get pubcoin from the private coin
+                sigma::PublicCoin pubCoinSelected(coinToUseBatch[i].value, denominationBatch[i]);
+
+                // Now make sure the coin is valid.
+                if (!pubCoinSelected.validate()) {
+                    strFailReason = _("the selected sigma mint is an invalid coin");
+                    return false;
+                }
+
+                privateCoin.setVersion(txVersion);
+                privateCoin.setPublicCoin(pubCoinSelected);
+                privateCoin.setRandomness(coinToUseBatch[i].randomness);
+                privateCoin.setSerialNumber(coinToUseBatch[i].serialNumber);
+                privateCoin.setEcdsaSeckey(coinToUseBatch[i].ecdsaSecretKey);
+
+                sigma::CoinSpend spend(sParams, privateCoin, anonimity_set_batch[i], metaData);
+                spend.setVersion(txVersion);
+
+                // This is a sanity check. The CoinSpend object should always verify,
+                // but why not check before we put it onto the wire?
+                if (!spend.Verify(anonimity_set_batch[i], metaData)) {
+                    strFailReason = _("the sigma spend coin transaction did not verify");
+                    return false;
+                }
+
+                coinSerialBatch.push_back(spend.getCoinSerialNumber());
+                // Serialize the CoinSpend object into a buffer.
+                CDataStream serializedCoinSpend(SER_NETWORK, PROTOCOL_VERSION);
+                serializedCoinSpend << spend;
+
+                CScript tmp = CScript() << OP_SIGMASPEND; //<< serializedCoinSpend.size();
+
+                tmp.insert(tmp.end(), serializedCoinSpend.begin(), serializedCoinSpend.end());
+                txNew.vin[i].scriptSig.assign(tmp.begin(), tmp.end());
+            }
+        }
+    }
+
+    // Embed the constructed transaction data in wtxNew.
+    wtxNew.SetTx(MakeTransactionRef(std::move(txNew)));
+
+    // Limit size
+    if (GetTransactionWeight(txNew) >= MAX_STANDARD_TX_WEIGHT) {
+        strFailReason = _("Transaction too large");
+        return false;
+    }
+
+    txHashBatch.clear();
+    txHashBatch.push_back(wtxNew.GetHash());
+    LogPrintf("txHash:\n%s", txHashBatch[0].ToString());
+
+
+    for(int i = 0; i < nValueBatch.size(); i++){
+        {
+            LOCK2(cs_main, cs_wallet);
+            {
+
+                std::list <CSigmaSpendEntry> listCoinSpendSerial;
+                CWalletDB(*dbw).ListSigmaSpendEntries(listCoinSpendSerial);
+                for(const CSigmaSpendEntry &item: listCoinSpendSerial) {
+                    if (!forceUsed && coinSerialBatch[i] == item.coinSerial) {
+                        // THIS SELECTED COIN HAS BEEN USED, SO UPDATE ITS STATUS
+                        strFailReason = _("Trying to spend an already spent serial #, try again.");
+                        uint256 hashSerial = GetSerialHash(coinSerialBatch[i]);
+                        if (!sigmaTracker->HasSerialHash(hashSerial)){
+                            strFailReason = "Tracker does not have serialhash " + hashSerial.GetHex();
+                            return false;
+                        }
+                        CMintMeta meta;
+                        sigmaTracker->Get(hashSerial, meta);
+                        meta.isUsed = true;
+                        sigmaTracker->UpdateState(meta);
+                        LogPrintf("CreateZerocoinSpendTransaction() -> NotifyZerocoinChanged\n");
+                        LogPrintf("pubcoin=%s, isUsed=Used\n", coinToUseBatch[i].value.GetHex());
+                        NotifyZerocoinChanged(this, coinToUseBatch[i].value.GetHex(), coinToUseBatch[i].get_denomination_value() / COIN, "Used", CT_UPDATED);
+                        strFailReason = _("the coin spend has been used");
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    for(int i = 0; i < nValueBatch.size(); i++){
+        {
+            LOCK2(cs_main, cs_wallet);
+            LogPrintf("txHash:\n%s", wtxNew.GetHash().ToString());
+            sSelectedValueBatch.push_back(coinToUseBatch[i].value);
+            sSelectedIsUsed = coinToUseBatch[i].IsUsed;
+
+            CSigmaSpendEntry entry;
+            entry.coinSerial = coinSerialBatch[i];
+            entry.hashTx = wtxNew.GetHash();
+            entry.pubCoin = coinToUseBatch[i].value;
+            entry.id = serializedId[i];
+            entry.set_denomination_value(coinToUseBatch[i].get_denomination_value());
+            LogPrintf("WriteSigmaEntry(): serialNumber=%s\n", coinSerialBatch[i].tostring());
+            if (!CWalletDB(*dbw).WriteSigmaSpendEntry(entry)) {
+                LogPrintf("WriteSigmaEntry(): cannot write coin serial number into wallet\n");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+string CWallet::SpendSigma(std::string &toKey, std::vector <CScript> pubCoinScripts, std::vector<sigma::CoinDenomination> denomination, CWalletTx &wtxNew,
+                            std::vector<Scalar> &coinSerial, std::vector<uint256> &txHash, std::vector<GroupElement> &sSelectedValue, bool &sSelectedIsUsed,
+                            bool forceUsed, bool fAskFee)
+{
+
+
+    CReserveKey reservekey(this);
+
+    if (IsLocked()) {
+        string strError = _("Error: Wallet locked, unable to create transaction!");
+        LogPrintf("SpendSigma() : %s", strError);
+        return strError;
+    }
+
+    int64_t nFeeRequired;
+    string strError;
+    int64_t nValue;
+    for(auto den: denomination){
+        if (!sigma::DenominationToInteger(den, nValue)) {
+            strError = _("Unable to convert denomination to integer.");
+            return strError;
+        }
+    }
+
+    if (!CreateSigmaSpendTransaction(toKey, pubCoinScripts, denomination, wtxNew,
+                          reservekey, coinSerial, txHash,
+                          sSelectedValue, sSelectedIsUsed, strError)){
+        LogPrintf("SpendSigma() : %s\n", strError.c_str());
+        return strError;
+    }
+
+    if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired))
+        return "ABORTED";
+
+    if (!CommitSigmaSpendTransaction(wtxNew)) {
+        LogPrintf("CommitSigmaSpendTransaction() -> FAILED!\n");
+
+        for(int i = 0; i< sSelectedValue.size(); i++){
+            //reset mint
+            uint256 hashPubcoin = GetPubCoinValueHash(sSelectedValue[i]);
+            sigmaTracker->SetPubcoinNotUsed(hashPubcoin);
+            sigma::DenominationToInteger(denomination[i], nValue);
+            NotifyZerocoinChanged(this, sSelectedValue[i].GetHex(), nValue, "New", CT_UPDATED);
+
+            CSigmaSpendEntry entry;
+            entry.coinSerial = coinSerial[i];
+            entry.hashTx = txHash[0];
+            entry.pubCoin = sSelectedValue[i];
+            if (!CWalletDB(*dbw).EraseSigmaSpendEntry(entry)) {
+                return _("Error: It cannot delete coin serial number in wallet");
+            }
+        }
+        return _(
+                "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    }
+
+    //Set spent mint as used
+    uint256 txidSpend = wtxNew.GetHash();
+
+    for(int i = 0; i< sSelectedValue.size(); i++){
+        uint256 hashPubcoin = GetPubCoinValueHash(sSelectedValue[i]);
+        sigmaTracker->SetPubcoinUsed(hashPubcoin, txidSpend);
+
+        CMintMeta metaCheck = sigmaTracker->GetMetaFromPubcoin(hashPubcoin);
+        if (!metaCheck.isUsed) {
+            strError = "Error, mint with pubcoin hash " + hashPubcoin.GetHex() + " did not get marked as used";
+            LogPrintf("SpendSigma() : %s\n", strError.c_str());
+        }
+    }
+
+    // Update the count in the database (no effect if no change mints)
+    ghostWalletMain->UpdateCountDB();
+    return "";
+}
+
+int GhostSigmaDenom(CAmount amount){
+    switch(amount){
+    case CAmount(0.1 * COIN):
+        return 0;
+    case CAmount(1 * COIN):
+        return 1;
+    case CAmount(10 * COIN):
+        return 2;
+    case CAmount(100 * COIN):
+        return 3;
+    case CAmount(1000 * COIN):
+        return 4;
+    case CAmount(10000 * COIN):
+        return 5;
+    default:
+        return -1;
+        break;
+    }
+}
+
+bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[5][1]){
+
+    CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
+    int currentDenominationIndex = 4;
+
+    for (int i = 0; i < totalZerocoins; i++) {
+
+        //exact match
+        if (amount == currentDenomination[currentDenominationIndex]) {
+            //check if we have this denomination
+            if(demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0] > 0){
+                demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0]--;
+                amount = 0;
+            }
+            i = totalZerocoins;
+            break;
+        }
+
+        else if(amount > currentDenomination[currentDenominationIndex]){
+            if(demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0] > 0){
+                demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0]--;
+                amount -= currentDenomination[currentDenominationIndex];
+            }
+            else{
+                i--;
+                currentDenominationIndex--;
+            }
+
+        }
+        //less than
+        else{
+            i--;
+            currentDenominationIndex--;
+        }
+
+        if(currentDenominationIndex < 0)
+            i = totalZerocoins;
+
+    }
+
+    if(amount  == 0)
+        return true;
+
+    return false;
+}
+
+bool CWallet::CreateSigmaSpendModel(string &stringError, vector <string> denomAmountBatch, string toAddr, vector <CScript> pubCoinScripts) {
+
+    vector <sigma::CoinDenomination> denominationBatch;
+    vector <int64_t> nAmountBatch;
+
+    //Batch zerocoin spends
+    for(auto denomAmount: denomAmountBatch){
+        // Amount
+        sigma::CoinDenomination denomination;
+        int64_t nAmount = 0;
+        if (denomAmount == "10000000") {
+            denomination = sigma::CoinDenomination::SIGMA_0_1;
+            nAmount = 0.1 * COIN;
+        } else if (denomAmount == "100000000") {
+            denomination = sigma::CoinDenomination::SIGMA_1;
+            nAmount = 1 * COIN;
+        } else if (denomAmount == "1000000000") {
+            denomination = sigma::CoinDenomination::SIGMA_10;
+            nAmount = (10 * COIN);
+        } else if (denomAmount == "10000000000") {
+            denomination = sigma::CoinDenomination::SIGMA_100;
+            nAmount = (100 * COIN);
+        } else if (denomAmount == "100000000000") {
+            denomination = sigma::CoinDenomination::SIGMA_1000;
+            nAmount = (1000 * COIN);
+        } else if (denomAmount == "1000000000000") {
+            denomination = sigma::CoinDenomination::SIGMA_10000;
+            nAmount = (10000 * COIN);
+        } else {
+            return false;
+        }
+
+        denominationBatch.push_back(denomination);
+        nAmountBatch.push_back(nAmount);
+    }
+
+    // Wallet comments
+    CWalletTx wtx;
+    vector <Scalar> coinSerialBatch;
+    vector <uint256> txHashBatch;
+    vector <GroupElement> sSelectedValueBatch;
+    bool sSelectedIsUsed;
+
+    string toKey = "";
+    if(toAddr != "")
+        toKey = toAddr;
+
+    stringError = SpendSigma(toKey, pubCoinScripts, denominationBatch, wtx,
+                             coinSerialBatch, txHashBatch, sSelectedValueBatch, sSelectedIsUsed);
+
+    if (stringError != ""){
+        LogPrintf("\nCreateSigmaSpendModel(): %s", stringError);
+        return false;
+    }
+
+    return true;
+}
+
+std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vector<CScript> pubCoinScripts){
+
+    //Autobackup wallet into ghostbackups
+    string backupDir = GetDataDir().string() + "/ghostbackups/wallet-" + std::to_string(GetTime()) + ".dat";
+    fs::create_directories(fs::path(GetDataDir().string() + "/ghostbackups/"));
+    //only maintain max of 20 backups
+    std::string path = GetDataDir().string() + "/ghostbackups/";
+    int m = 0;
+    int t = 0;
+    for (auto & p : fs::directory_iterator(path)){
+        if(m > 17){
+            t++;
+        }
+        m++;
+    }
+    for (auto & p : fs::directory_iterator(path)){
+        if(t > 1){
+            fs::remove(p.path());
+            t--;
+        }
+        else
+            break;
+    }
+
+    if(!this->GetDBHandle().Backup(backupDir))
+        return "GhostModeSpendSigma(): Error: Cannot create wallet backup.";
+
+    /*                          *
+     *     Convert amount       *
+     *                          */
+    string stringError;
+    CAmount amount = 0;
+    if (!ParseFixedPoint(totalAmount, 8, &amount))
+        return "GhostModeSpendTrigger(): Error: Invalid amount.";
+    if (!MoneyRange(amount))
+        return "GhostModeSpendTrigger(): Error: Amount out of range.";
+
+    bool payCKPFee = !pubCoinScripts.empty();
+    amount = amount;
+
+    // add 0.1 static fee
+    if(payCKPFee)
+        amount += (COIN/10);
+
+    CAmount finalTotal = amount;
+
+    /*                          *
+     *  Find all denominations  *
+     *                          */
+    std::list<CMintMeta> mintMetas = sigmaTracker->GetMints(true);
+    CAmount demoniationList[6][1] = {
+      {0}, //0.1
+      {0}, //1
+      {0}, //10
+      {0}, //100
+      {0}, //1000
+      {0}, //10000
+    };
+
+    CAmount demoniationListCopy[6][1] = {
+      {0}, //0.1
+      {0}, //1
+      {0}, //100
+      {0}, //100
+      {0}, //1000
+      {0}, //10000
+    };
+
+    int totalZerocoins = 0 ;
+    CAmount totalZerocoinAmount = 0;
+    for(CMintMeta n: mintMetas){
+            CAmount denomOut = 0;
+            sigma::DenominationToInteger(n.denom, denomOut);
+            switch(denomOut){
+            case CAmount(COIN/10):
+                demoniationList[0][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount += 0.1 * COIN;
+                break;
+            case CAmount(COIN):
+                demoniationList[1][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount += COIN;
+                break;
+            case CAmount(10 * COIN):
+                demoniationList[2][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=10 * COIN;
+                break;
+            case CAmount(100 * COIN):
+                demoniationList[3][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=100 * COIN;
+                break;
+            case CAmount(1000 * COIN):
+                demoniationList[4][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=1000 * COIN;
+                break;
+            case CAmount(10000 * COIN):
+                demoniationList[5][0]++;
+                totalZerocoins++;
+                totalZerocoinAmount+=10000 * COIN;
+                break;
+            default:
+                break;
+            }
+
+
+    }
+
+    for(int i = 0; i < 5; i++)
+        demoniationListCopy[i][0] = demoniationList[i][0];
+
+    /*                          *
+     *    Get list to spend     *
+     *                          */
+    CAmount toSpend[6][1] = {
+      {0}, //0.1
+      {0}, //1
+      {0}, //10
+      {0}, //100
+      {0}, //1000
+      {0}, //10000
+    };
+
+    CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
+    int currentDenominationIndex = 5;
+
+    for (int i = 0; i <= totalZerocoins; i++) {
+
+        //exact match
+        if (amount == currentDenomination[currentDenominationIndex]) {
+            //check if we have this denomination
+            if(demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0] > 0){
+                toSpend[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0]++;
+                demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0]--;
+                amount = 0;
+                i = totalZerocoins;
+                break;
+            }
+            else{
+                i--;
+                currentDenominationIndex--;
+            }
+        }
+
+        else if(amount > currentDenomination[currentDenominationIndex]){
+            if(demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0] > 0){
+                toSpend[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0]++;
+                demoniationList[GhostSigmaDenom(currentDenomination[currentDenominationIndex])][0]--;
+                amount -= currentDenomination[currentDenominationIndex];
+            }
+            else{
+                i--;
+                currentDenominationIndex--;
+            }
+
+        }
+        //less than
+        else{
+            i--;
+            currentDenominationIndex--;
+        }
+
+        if(currentDenominationIndex < 0)
+            i = totalZerocoins;
+
+    }
+
+    /*                          *
+     *         Spend all        *
+     *                          */
+    if(amount == 0){
+        int index = 0;
+        vector <std::string> denominationBatch;
+        denominationBatch.clear();
+        while(1){
+            if(toSpend[index][0] > 0){
+                denominationBatch.push_back(std::to_string(currentDenomination[index]));
+                toSpend[index][0]--;
+            }
+            else
+                index++;
+            if(index > 5)
+                break;
+        }
+
+        if (this->IsLocked())
+            return "GhostModeSpendSigma(): Error: The wallet needs to be unlocked.";
+
+        //check if minting these spends
+        if(!pubCoinScripts.empty()){
+            //Not enough payout scripts
+            if(pubCoinScripts.size() < denominationBatch.size())
+                return "GhostModeSpendSigma(): Error: Not enough mint payout scripts "
+                        + std::to_string(pubCoinScripts.size()) + " < " + std::to_string(denominationBatch.size());
+            for(int ps = 0; ps < pubCoinScripts.size(); ps++){
+                CSigmaState *sState = CSigmaState::GetSigmaState();
+                // Check for conflicts with in-memory transactions
+                GroupElement ge = ParseSigmaMintScript(pubCoinScripts[ps]);
+                sigma::PublicCoin pubCoin(ge, sigma::CoinDenomination::SIGMA_0_1);
+                if (!sState->CanAddMintToMempool(pubCoin)) {
+                    return "GhostModeSpendSigma(): Error: key has already been used!";
+                }
+            }
+
+        }
+
+        //limit a batch to 60 coins max of 90kb
+        int startIndex = 0;
+        int endIndex = denominationBatch.size() > 60 ? 59 : denominationBatch.size() - 1;
+        for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/60) + 1); vecSplit++){
+            vector <std::string> denominationBatchSub;
+            vector <CScript> pubCoinScriptsSub;
+            for(int vecSub = startIndex; vecSub <= endIndex; vecSub++){
+                denominationBatchSub.push_back(denominationBatch[vecSub]);
+                if(!pubCoinScripts.empty())
+                    pubCoinScriptsSub.push_back(pubCoinScripts[vecSub]);
+            }
+
+            if(denominationBatchSub.size() < 1)
+                continue;
+
+            if(!CreateSigmaSpendModel(stringError, denominationBatchSub, toKey, pubCoinScriptsSub)){
+                if(vecSplit > 0){
+                    CAmount amountGhosted = 0;
+                    for (int x = 0; x < vecSplit; x++){
+                        amountGhosted += currentDenomination[x];
+                        amountGhosted += currentDenomination[x + 1];
+                        amountGhosted += currentDenomination[x + 2];
+                        amountGhosted += currentDenomination[x + 3];
+                        amountGhosted += currentDenomination[x + 4];
+                    }
+                    return "GhostModeSpendSigma(): Error: Was only able to unghost %s NIX - %s." + std::to_string(amountGhosted/COIN) + stringError;
+                }
+                else
+                    return "GhostModeSpendSigma(): Error: Failed to unghost ghosted NIX - " +  stringError;
+            }
+
+            startIndex = endIndex + 1;
+            endIndex = endIndex + 60;
+
+            if (endIndex > denominationBatch.size() - 1)
+                endIndex = denominationBatch.size() - 1;
+        }
+
+        return "Sucessfully sent " + totalAmount + " ghosted NIX";
+    }
+    else {
+
+        //Check all possible combos
+
+        CAmount actualMin = -1;
+        CAmount actualMax = -1;
+
+        for(CAmount i = 0.1 * COIN; i < totalZerocoinAmount; i+= 0.1 * COIN){
+
+            if(finalTotal - i < (0.1 * COIN))
+                break;
+
+            CAmount denomTemp[6][1] = {
+              {0}, //0.1
+              {0}, //1
+              {0}, //10
+              {0}, //100
+              {0}, //1000
+              {0}, //10000
+            };
+            for(int j = 0; j < 5; j++)
+                denomTemp[j][0] = demoniationListCopy[j][0];
+
+            bool success = false;
+            success =  ClosestSigmaDenoms(finalTotal - i, totalZerocoins, denomTemp);
+
+            if(success){
+                actualMin = finalTotal - i;
+                break;
+            }
+        }
+
+        for(CAmount i = 0.1 * COIN; i < totalZerocoinAmount; i+= 0.1 * COIN){
+
+            if(finalTotal + i > totalZerocoinAmount)
+                break;
+
+            CAmount denomTemp[6][1] = {
+              {0}, //0.1
+              {0}, //1
+              {0}, //10
+              {0}, //100
+              {0}, //1000
+              {0}, //10000
+            };
+            for(int j = 0; j < 5; j++)
+                denomTemp[j][0] = demoniationListCopy[j][0];
+
+            bool success = false;
+            success =  ClosestSigmaDenoms(finalTotal + i, totalZerocoins, denomTemp);
+
+            if(success){
+                actualMax = finalTotal + i;
+                break;
+            }
+        }
+
+        std::string returnStr = "Closest amount you can send: " + std::to_string((double)actualMin/COIN) + ", " + std::to_string((double)actualMax/COIN);
+
+        if(payCKPFee)
+            returnStr += ". CKP payment requires a 0.1 denomination as a fee.";
+
+        return returnStr;
+
+    }
+    return "error";
+}
+
+bool CWallet::GhostModeMintSigma(string totalAmount, vector<CScript> pubCoinScripts){
+
+    if (this->IsLocked())
+        return error("%s: Error: The wallet needs to be unlocked.", __func__);
+
+    //Autobackup wallet into ghostbackups
+    string backupDir = GetDataDir().string() + "/ghostbackups/wallet-" + std::to_string(GetTime()) + ".dat";
+    fs::create_directories(fs::path(GetDataDir().string() + "/ghostbackups/"));
+
+    //only maintain max of 20 backups
+    std::string path = GetDataDir().string() + "/ghostbackups/";
+    int m = 0;
+    int t = 0;
+    for (auto & p : fs::directory_iterator(path)){
+        if(m > 17){
+            t++;
+        }
+        m++;
+    }
+    for (auto & p : fs::directory_iterator(path)){
+        if(t > 1){
+            fs::remove(p.path());
+            t--;
+        }
+        else
+            break;
+    }
+
+    if(!this->GetDBHandle().Backup(backupDir))
+        return error("%s: Error: Cannot create wallet backup.", __func__);
+
+
+    std::vector<sigma::PrivateCoin> privCoins;
+    privCoins.clear();
+    std::string strError;
+
+    CAmount amount = 0;
+    if (!ParseFixedPoint(totalAmount, 8, &amount))
+        return error("%s: Error: Invalid amount.", __func__);
+    if (!MoneyRange(amount))
+        return error("%s: Error: Amount out of range.", __func__);
+
+    if(!CreateSigmaMints(amount, privCoins, strError))
+        return false;
+
+    vector<CSigmaMint> vDMints;
+    auto vecSend = CreateSigmaMintRecipients(privCoins, vDMints, pubCoinScripts);
+
+    CWalletTx wtx;
+    strError = MintAndStoreSigma(vecSend, privCoins, vDMints, wtx, false);
+
+    if (strError != ""){
+        LogPrintf("CWallet::GhostModeMintSigma(): Error, %s", strError);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool CWallet::CommitSigmaSpendTransaction(CWalletTx& wtxNew) {
+    // commit
+    CValidationState valState;
+    CReserveKey reservekey(this);
+    try {
+        if(!CommitTransaction(wtxNew, reservekey, g_connman.get(), valState))
+            LogPrintf("\n Error! CommitSigmaTransaction()::CommitTransaction: %s", valState.GetRejectReason());
+    } catch (...) {
+        auto error = _(
+            "Error: The transaction was rejected! This might happen if some of "
+            "the coins in your wallet were already spent, such as if you used "
+            "a copy of wallet.dat and coins were spent in the copy but not "
+            "marked as spent here."
+        );
+
+        std::throw_with_nested(std::runtime_error(error));
+    }
+
+    return true;
 }

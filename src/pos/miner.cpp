@@ -204,7 +204,7 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
         };
 
         //test pos on regtest
-        if(Params().NetworkIDString() != CBaseChainParams::REGTEST){
+        if(Params().NetworkIDString() != CBaseChainParams::REGTEST && Params().NetworkIDString() != CBaseChainParams::TESTNET){
             if (g_connman->vNodes.empty() || IsInitialBlockDownload())
             {
                 fIsStaking = false;
@@ -292,6 +292,13 @@ void ThreadStakeMiner(size_t nThreadID, std::vector<CWalletRef> &vpwallets, size
             if (pwallet->IsCrypted() && !pwallet->fUnlockForStakingOnly)
             {
                 pwallet->nIsStaking = CWallet::NOT_STAKING_NOT_UNLOCKED_FOR_STAKING_ONLY;
+                nWaitFor = std::min(nWaitFor, (size_t)30000);
+                continue;
+            }
+            // makesure wallets do not stake if they are unencrypted
+            if (!pwallet->IsCrypted())
+            {
+                pwallet->nIsStaking = CWallet::NOT_STAKING_DISABLED;
                 nWaitFor = std::min(nWaitFor, (size_t)30000);
                 continue;
             }

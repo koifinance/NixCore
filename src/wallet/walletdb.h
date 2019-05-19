@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 #include <util.h>
+#include <GroupElement.h>
+
 /**
  * Overview of wallet database classes:
  *
@@ -48,6 +50,9 @@ class uint256;
 class CZerocoinEntry;
 class CZerocoinSpendEntry;
 class CGovernanceEntry;
+class CSigmaMint;
+class CSigmaEntry;
+class CSigmaSpendEntry;
 
 /** Error statuses for the wallet database */
 enum DBErrors
@@ -393,6 +398,40 @@ public:
     bool EraseGovernanceEntry(const CGovernanceEntry& vote);
     void ListGovernanceEntries(std::list<CGovernanceEntry>& votes);
 
+    // Ghost wallet
+    bool WriteCurrentSeedHash(const uint256& hashSeed);
+    bool ReadCurrentSeedHash(uint256& hashSeed);
+    bool WriteSigmaSeed(const uint256& hashSeed, const vector<unsigned char>& seed);
+    bool ReadSigmaSeed(const uint256& hashSeed, vector<unsigned char>& seed);
+
+    bool WriteSigmaCount(const uint32_t& nCount);
+    bool ReadSigmaCount(uint32_t& nCount);
+    std::map<uint256, std::vector<pair<uint256, uint32_t> > > MapMintPool();
+    bool WriteMintPoolPair(const uint256& hashMasterSeed, const uint256& hashPubcoin, const uint32_t& nCount);
+
+    // sigma hd mints
+    bool UnarchiveSigmaMint(const uint256& hashPubcoin, CSigmaMint& dMint);
+    bool UnarchiveSigmaEntry(const uint256& hashPubcoin, CSigmaEntry& dMint);
+    bool WriteSigmaMint(const CSigmaMint& dMint);
+    std::list<CSigmaMint> ListSigmaMints();
+    bool ReadSigmaMint(const uint256& hashPubcoin, CSigmaMint& dMint);
+
+    // sigma mint entries
+    bool WriteSigmaEntry(const CSigmaEntry& sigma);
+    bool EraseSigmaEntry(const CSigmaEntry& sigma);
+    bool ReadSigmaEntry(const secp_primitives::GroupElement& value, CSigmaEntry& sigma);
+    void ListSigmaEntries(std::list<CSigmaEntry> & listSigmaEntries);
+
+    // Sigma spend entries
+    bool WriteSigmaSpendEntry(const CSigmaSpendEntry &sigma);
+    bool ReadSigmaSpendEntry(const secp_primitives::Scalar& serial, CSigmaSpendEntry& sigma);
+    bool EraseSigmaSpendEntry(const CSigmaSpendEntry &sigma);
+    void ListSigmaSpendEntries(std::list <CSigmaSpendEntry> &listCoinSpendSerial);
+
+    //Unfilled precomputed sigma coins
+    bool WriteUnloadedSigmaEntry(const CSigmaEntry& sigma);
+    bool EraseUnloadedSigmaEntry(const CSigmaEntry& sigma);
+    void ListUnloadedSigmaEntries(std::list<CSigmaEntry>& listUnloadedSigmaEntries);
 
 private:
     CDB batch;

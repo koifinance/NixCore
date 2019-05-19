@@ -110,12 +110,11 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
 
     for (const CTxIn& txin : tx.vin)
     {
-        //TODO: possible increase of zerocoin spend script size for scaling(reduce proof size and increase limit)
-        if (txin.scriptSig.IsZerocoinSpend() && txin.scriptSig.size() > MAX_STANDARD_TX_WEIGHT) {
+        if ((txin.scriptSig.IsZerocoinSpend() || txin.scriptSig.IsSigmaSpend()) && txin.scriptSig.size() > MAX_STANDARD_TX_WEIGHT) {
             reason = "scriptsig-size";
             return false;
         }
-        if (txin.scriptSig.IsZerocoinSpend())
+        if (txin.scriptSig.IsZerocoinSpend() || txin.scriptSig.IsSigmaSpend())
             continue;
         // Biggest 'standard' txin is a 15-of-15 P2SH multisig with compressed
         // keys (remember the 520 byte limit on redeemScript size). That works
@@ -180,7 +179,7 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
  */
 bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
 {
-    if (tx.IsCoinBase() || tx.IsZerocoinSpend())
+    if (tx.IsCoinBase() || tx.IsZerocoinSpend() || tx.IsSigmaSpend())
         return true; // Coinbases don't use vin normally
 
     for (unsigned int i = 0; i < tx.vin.size(); i++)
@@ -221,7 +220,7 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
 
 bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
 {
-    if (tx.IsCoinBase() || tx.IsZerocoinSpend())
+    if (tx.IsCoinBase() || tx.IsZerocoinSpend() || tx.IsSigmaSpend())
         return true; // Coinbases are skipped
 
     for (unsigned int i = 0; i < tx.vin.size(); i++)

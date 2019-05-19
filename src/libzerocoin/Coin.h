@@ -14,8 +14,8 @@
 #define COIN_H_
 #include <secp256k1.h>
 #include <secp256k1_recovery.h>
-#include "bignum.h"
-#include "Params.h"
+#include "libzerocoin/bignum.h"
+#include "libzerocoin/Params.h"
 
 using namespace std;
 
@@ -182,11 +182,11 @@ public:
      **/
     void mintCoinFast(const CoinDenomination denomination);
 
-    PublicCoin publicCoin;
     uint160 pubHash;
 
 private:
     const Params* params;
+    PublicCoin publicCoin;
     Bignum randomness;
     Bignum serialNumber;
     unsigned int version = 0;
