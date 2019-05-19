@@ -676,7 +676,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                               bool bypass_limits, const CAmount& nAbsurdFee, std::vector<COutPoint>& coins_to_uncache)
 {
     const CTransaction& tx = *ptx;
-    LogPrintf("AcceptToMemoryPoolWorker(), tx.IsPrivateSpend()=%s \n", tx.IsZerocoinSpend() || tx.IsSigmaSpend());
+    LogPrintf("AcceptToMemoryPoolWorker(), tx.IsZerocoinSpend()=%s, nodes=%d \n", tx.IsZerocoinSpend() || tx.IsSigmaSpend(), g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL));
     const uint256 hash = tx.GetHash();
     AssertLockHeld(cs_main);
     LOCK(pool.cs); // mempool "read lock" (held through GetMainSignals().TransactionAddedToMempool())
@@ -696,8 +696,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         return state.DoS(100, false, REJECT_INVALID, "coinstake");
 
     // ignore zerocoin transactions if flag is set
-    if((tx.IsZerocoinMint() || tx.IsZerocoinSpend()) && fDisableZerocoinTransactions)
-        return state.DoS(100, false, REJECT_INVALID, "not accepting zerocoin transactions");
+    if(fDisableZerocoinTransactions && (tx.IsZerocoinMint() || tx.IsZerocoinSpend()) && (g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) > 0))
+        return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin transactions");
 
     // Reject transactions with witness before segregated witness activates (override with -prematurewitness)
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
@@ -1563,6 +1563,10 @@ int GetNumBlocksOfPeers()
 
 bool IsInitialBlockDownload()
 {
+    if (GetNumPeers() < 1
+        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
+        return true;
+
     // Once this function has returned false, it must remain false.
     static std::atomic<bool> latchToFalse{false};
     // Optimization: pre-test latch before taking the lock.
@@ -1570,10 +1574,6 @@ bool IsInitialBlockDownload()
         return false;
 
     LOCK(cs_main);
-
-    if (GetNumPeers() < 1
-        || chainActive.Tip()->nHeight < GetNumBlocksOfPeers())
-        return true;
 
     if (latchToFalse.load(std::memory_order_relaxed))
         return false;
@@ -2441,7 +2441,7 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
             }
 
             //development fee per block * cycles missed
-            BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
+            for(const CTxOut &output: txCoinstake->vout) {
                 if (output.scriptPubKey == DEV_SCRIPT && output.nValue == (fullDevFee * Params().GetConsensus().nNewDevelopmentPayoutCycle)) {
                     found_dev = true;
                 }
@@ -2475,7 +2475,7 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
         }
 
         //2% development fee total
-        BOOST_FOREACH(const CTxOut &output, txCoinstake->vout) {
+        for(const CTxOut &output: txCoinstake->vout) {
             //1% for first address
             if (output.scriptPubKey == DEV_1_SCRIPT && output.nValue == devFee) {
                 found_dev_1 = true;
@@ -4220,10 +4220,6 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
     }
 
-    // Check transactions
-    if (nHeight == INT_MAX)
-        nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
-
     if (block.zerocoinTxInfo == NULL)
         block.zerocoinTxInfo = std::make_shared<CZerocoinTxInfo>();
 
@@ -4232,7 +4228,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
 
     //Ignore checks on startup sync
     if(IsInitialBlockDownload())
-        nHeight == INT_MAX;
+        nHeight = INT_MAX;
+    else if (nHeight == INT_MAX)
+        nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
+
     // Check transactions
     for (const auto& tx : block.vtx){
         if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo.get(), block.sigmaTxInfo.get())){

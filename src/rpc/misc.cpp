@@ -1298,14 +1298,22 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
     }
 
     CAmount totalWeight = 0;
+    int k = 0;
     for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
         std::string address;
         if (!getAddressFromIndex(it->first.type, it->first.hashBytes, address)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
         }
 
+        k++;
         // check for coinstake
         if(it->first.txindex != 0) continue;
+
+        // check for staking bypass
+        if(it->first.type == ADDR_INDT_WITNESS_KEY_HASH){
+            if(k == 1)
+                continue;
+        }
 
         totalWeight += it->second;
     }

@@ -364,8 +364,8 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
 
-    if((tx.IsZerocoinSpend() || tx.IsZerocoinMint()) && (nHeight < (INT_MAX - 1)) && nHeight > Params().GetConsensus().nZerocoinDisableBlock)
-        return state.DoS(5, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
+    if(((nHeight < INT_MAX) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock)) && (tx.IsZerocoinSpend() || tx.IsZerocoinMint()))
+        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
 
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
@@ -434,7 +434,7 @@ bool ConnectBlockGhost(CValidationState &state, const CChainParams &chainparams,
             int denomination = mint.first;
             CBigNum oldAccValue = ZCParams->accumulatorParams.accumulatorBase;
             int mintId = zerocoinState.AddMint(pindexNew, denomination, mint.second, oldAccValue);
-            LogPrintf("ConnectTipZC: mint added denomination=%d, id=%d\n", denomination, mintId);
+            //LogPrintf("ConnectTipZC: mint added denomination=%d, id=%d\n", denomination, mintId);
             pair<int,int> denomAndId = make_pair(denomination, mintId);
 
             pindexNew->mintedPubCoins[denomAndId].push_back(mint.second);

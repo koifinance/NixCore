@@ -6009,7 +6009,7 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         ExtractDestination(addrScript, dest);
 
         std::string strAddress = EncodeDestination(dest);
-        std::string strMessage = vote_id;
+        std::string strMessage = vote_id + "_" + decision;
 
         if (!IsValidDestination(dest)) {
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
