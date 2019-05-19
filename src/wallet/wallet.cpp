@@ -10045,7 +10045,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
     }
 
     if(!this->GetDBHandle().Backup(backupDir))
-        return "GhostModeSpendTrigger(): Error: Cannot create wallet backup.";
+        return "GhostModeSpendSigma(): Error: Cannot create wallet backup.";
 
     /*                          *
      *     Convert amount       *
@@ -10301,7 +10301,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             }
         }
 
-        for(int i = 1; i < totalZerocoinAmount; i++){
+        for(CAmount i = 0.1 * COIN; i < totalZerocoinAmount; i+= 0.1 * COIN){
 
             if(finalTotal + i > totalZerocoinAmount)
                 break;
@@ -10326,7 +10326,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
             }
         }
 
-        std::string returnStr = "Closest amount you can send: " + std::to_string(actualMin) + ", " + std::to_string(actualMax);
+        std::string returnStr = "Closest amount you can send: " + std::to_string((double)actualMin/COIN) + ", " + std::to_string((double)actualMax/COIN);
 
         if(payCKPFee)
             returnStr += ". CKP payment requires a 0.1 denomination as a fee.";
