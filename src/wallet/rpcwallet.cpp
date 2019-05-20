@@ -6426,11 +6426,16 @@ UniValue listsigmaentries(const JSONRPCRequest& request)
     CWalletDB db(pwalletMain->GetDBHandle());
     std::list<CSigmaMint> listMintsDB = db.ListSigmaMints();
 
+    bool onlyUnspent = true;
+    if(request.params.size() > 0)
+        onlyUnspent = request.params[1].getBool();
 
     UniValue final(UniValue::VARR);
 
     for(auto& mint: listMintsDB){
         UniValue ret(UniValue::VOBJ);
+        if(onlyUnspent && mint.IsUsed())
+            continue;
         ret.push_back(Pair("isUsed",  mint.IsUsed()));
         ret.push_back(Pair("denom",  mint.GetDenominationValue()));
         ret.push_back(Pair("height",  mint.GetHeight()));
