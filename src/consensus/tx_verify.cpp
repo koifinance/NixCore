@@ -205,7 +205,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, uint256 h
     else
     {
         for (const auto& txin : tx.vin)
-            if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend() && !txin.scriptSig.IsSigmaSpend())
+            if (txin.prevout.IsNull() && !txin.scriptSig.IsZerocoinSpend())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
         if (!tx.IsCoinStake() && (!CheckZerocoinTransaction(tx, state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo) ||
                 !CheckSigmaTransaction(tx, state,  hashTx, isVerifyDB, nHeight, isCheckWallet, sigmaTxInfo)))

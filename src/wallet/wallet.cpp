@@ -1070,7 +1070,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose)
     }
 
     //// debug print
-   // LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+    // LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
     // Write to disk
     if (fInsertedNew || fUpdated)
@@ -1172,7 +1172,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         }
 
         // find all mints in this block and update
-        if(ghostWalletMain != nullptr && sigmaTracker != nullptr){
+        if(ghostWalletMain != nullptr && sigmaTracker != nullptr && tx.IsSigmaMint()){
             for(const CTxOut &txOut: tx.vout){
                 if(!txOut.scriptPubKey.IsSigmaMint())
                     continue;
@@ -9919,7 +9919,7 @@ int GhostSigmaDenom(CAmount amount){
 bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[5][1]){
 
     CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
-    int currentDenominationIndex = 4;
+    int currentDenominationIndex = 5;
 
     for (int i = 0; i < totalZerocoins; i++) {
 
