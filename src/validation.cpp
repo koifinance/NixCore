@@ -696,8 +696,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         return state.DoS(100, false, REJECT_INVALID, "coinstake");
 
     // ignore zerocoin transactions if flag is set
-    //if(tx.IsZerocoinMint())
-        //return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
+    if(tx.IsZerocoinMint())
+        return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
 
     // Reject transactions with witness before segregated witness activates (override with -prematurewitness)
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
