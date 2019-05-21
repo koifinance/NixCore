@@ -89,6 +89,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
 
     if(forceSpendLink){
         //check if pubcoin is real
+        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
         const CBigNum& bnPubcoin = newSpend.getPubcoinValue();
         if ((!isVerifyDB) && !zerocoinState.HasCoin(bnPubcoin))
             return state.DoS(100,
@@ -369,7 +370,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     // if nHeight is INT_MAX and we are not on init blockchain sync, this is a mempool tx
     bool isInitSync = IsInitialBlockDownload();
 
-    bool forceSpendLink = nHeight >= Params().GetConsensus().nSigmaStartBlock && !isInitSync;
+    bool forceSpendLink = nHeight >= Params().GetConsensus().nSigmaStartBlock && nHeight < INT_MAX;
     // Once sigma is enabled, allow v2 spends to exit zerocoin accumulator
 
     if((nHeight < INT_MAX || !isInitSync) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && tx.IsZerocoinMint())

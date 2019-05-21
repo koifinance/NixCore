@@ -22,9 +22,8 @@ namespace libzerocoin {
 * @param C1: serialCommitmentToCoinValue
 * @return PubcoinSignature object containing C1 randomness and pubcoin value
 */
-CoinSpendReveal::CoinSpendReveal(const Params* params, const CBigNum& pbValue, const Commitment& C1)
+CoinSpendReveal::CoinSpendReveal(const CBigNum& pbValue, const Commitment& C1)
 {
-    zc_params = params;
     version = CURRENT_VERSION;
     pubCoinValue = pbValue;
     pubCoinRandomness = C1.getRandomness();
@@ -37,7 +36,7 @@ CoinSpendReveal::CoinSpendReveal(const Params* params, const CBigNum& pbValue, c
 * @param C1 - This C1 value must be the same value as the serialCommitmentToCoinValue in the coinspend object
 * @return true if bnPubcoin matches the value that was committed to in C1
 */
-bool CoinSpendReveal::Verify(const CBigNum& C1) const
+bool CoinSpendReveal::Verify(const CBigNum& C1, const Params *zc_params) const
 {
     // Check that given member vars are as expected
     if (version == 0 || pubCoinRandomness <= CBigNum(0) || pubCoinRandomness >= zc_params->serialNumberSoKCommitmentGroup.groupOrder) {
@@ -123,8 +122,8 @@ CoinSpend::CoinSpend(const Params* p, const PrivateCoin& coin,
     secp256k1_ecdsa_sign(ctx, &sig, metahash.begin(), coin.getEcdsaSeckey(), NULL, NULL);
     secp256k1_ecdsa_signature_serialize_compact(ctx, &this->ecdsaSignature[0], &sig);
 
-    if (version == ZEROCOIN_VERSION_REDEEM) {
-        pubcoin_reveal = CoinSpendReveal(params, coin.getPublicCoin().getValue(), fullCommitmentToCoinUnderSerialParams);
+    if (coin.getVersion() == ZEROCOIN_VERSION_REDEEM) {
+        pubcoin_reveal = CoinSpendReveal(coin.getPublicCoin().getValue(), fullCommitmentToCoinUnderSerialParams);
     }
 
 }
@@ -185,7 +184,7 @@ bool CoinSpend::Verify(const Accumulator& a, const SpendMetaData &m) const {
         }
 
         if(version == ZEROCOIN_VERSION_REDEEM){
-            if (!pubcoin_reveal.Verify(serialCommitmentToCoinValue)) {
+            if (!pubcoin_reveal.Verify(serialCommitmentToCoinValue, params)) {
                 return false;
             }
         }
