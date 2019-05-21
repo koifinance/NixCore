@@ -6249,55 +6249,10 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
             LearnRelatedScripts(vchPubKey, change_type);
             scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
         }
-        else if (IsGhostAddress(toKey))
-        {
-            CGhostAddress sxAddr;
-            if (sxAddr.SetEncoded(toKey))
-            {
-                ec_secret ephem_secret;
-                ec_secret secretShared;
-                ec_point pkSendTo;
-                ec_point ephem_pubkey;
-
-
-                if (GenerateRandomSecret(ephem_secret) != 0)
-                {
-                    LogPrintf("GenerateRandomSecret failed.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
-                {
-                    LogPrintf("Could not generate receiving public key.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                CPubKey cpkTo(pkSendTo);
-                if (!cpkTo.IsValid())
-                {
-                    LogPrintf("Invalid public key generated.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                CKeyID ckidTo = cpkTo.GetID();
-
-                CBitcoinAddress addrTo(ckidTo);
-
-                if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
-                {
-                    LogPrintf("Could not generate ephem public key.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                ghostKey = CScript() << OP_RETURN << ephem_pubkey;
-
-                scriptChange = GetScriptForDestination(addrTo.Get());
-            }
-        }
         //If not, send to normal address
         else
         {
-            scriptChange = GetScriptForDestination(CBitcoinAddress(toKey).Get());
+            scriptChange = GetScriptForDestination(DecodeDestination(toKey));
         }
     }
     for(int i = 0; i < nValueBatch.size(); i++){
@@ -6429,7 +6384,7 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
                 // transaction.
                 libzerocoin::PrivateCoin privateCoin(zcParams, denominationBatch[i]);
 
-                int txVersion = 1;
+                int txVersion = ZEROCOIN_VERSION_REDEEM;
 
                 LogPrintf("CreateZerocoinSpendTransation: tx version=%d, tx metadata hash=%s\n", txVersion, txNewTemp.GetHash().ToString());
 
@@ -9916,7 +9871,7 @@ int GhostSigmaDenom(CAmount amount){
     }
 }
 
-bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[5][1]){
+bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[6][1]){
 
     CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
     int currentDenominationIndex = 5;

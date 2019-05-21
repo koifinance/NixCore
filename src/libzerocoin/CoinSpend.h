@@ -25,6 +25,37 @@
 
 namespace libzerocoin {
 
+
+class CoinSpendReveal{
+private:
+    uint8_t version;
+    const Params* zc_params;
+    CBigNum pubCoinValue;
+    CBigNum pubCoinRandomness;
+
+public:
+    static const uint8_t CURRENT_VERSION = 1;
+
+    CoinSpendReveal()
+    {
+        version = 0;
+        pubCoinValue = CBigNum(0);
+        pubCoinRandomness = CBigNum(0);
+    }
+
+    CoinSpendReveal(const Params* params, const CBigNum& pbValue, const Commitment& C1);
+    bool Verify(const CBigNum& C2) const;
+    CBigNum GetPubcoinValue() const { return pubCoinValue; }
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(version);
+        READWRITE(pubCoinValue);
+        READWRITE(pubCoinRandomness);
+    }
+};
 /** The complete proof needed to spend a zerocoin.
  * Composes together a proof that a coin is accumulated
  * and that it has a given serial number.
@@ -107,6 +138,8 @@ public:
 		return accumulatorBlockHash;
 	}
 
+    CBigNum getPubcoinValue() const;
+
 	bool HasValidSerial() const;
 	bool Verify(const Accumulator& a, const SpendMetaData &metaData) const;
 
@@ -124,6 +157,8 @@ public:
         READWRITE(ecdsaPubkey);
         READWRITE(ecdsaSignature);
         READWRITE(accumulatorBlockHash);
+        if(version == ZEROCOIN_VERSION_REDEEM)
+            READWRITE(pubcoin_reveal);
 	}
 
 private:
@@ -142,6 +177,9 @@ private:
 	SerialNumberSignatureOfKnowledge serialNumberSoK;
 	CommitmentProofOfKnowledge commitmentPoK;
 	uint256 accumulatorBlockHash;
+
+    // version 2 spends need to expose the pubcoin of the original mint
+    CoinSpendReveal pubcoin_reveal;
 };
 
 } /* namespace libzerocoin */
