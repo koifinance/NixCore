@@ -7472,10 +7472,10 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
                         amountGhosted += currentDenomination[x + 2];
                         amountGhosted += currentDenomination[x + 3];
                     }
-                    return "GhostModeSpendTrigger(): Error: Was only able to unghost %s NIX - %s." + std::to_string(amountGhosted) + stringError;
+                    return "GhostModeSpendTrigger(): Error: Was only able to unghost certain amount of NIX. " + std::to_string(amountGhosted) + stringError;
                 }
                 else
-                    return "GhostModeSpendTrigger(): Error: Failed to unghost ghosted NIX - %s." +  stringError;
+                    return "GhostModeSpendTrigger(): Error: Failed to unghost ghosted NIX. " +  stringError;
             }
 
             startIndex = endIndex + 1;

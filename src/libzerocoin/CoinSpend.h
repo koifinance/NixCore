@@ -29,12 +29,11 @@ namespace libzerocoin {
 class CoinSpendReveal{
 private:
     uint8_t version;
-    const Params* zc_params;
     CBigNum pubCoinValue;
     CBigNum pubCoinRandomness;
 
 public:
-    static const uint8_t CURRENT_VERSION = 1;
+    static const uint8_t CURRENT_VERSION = 2;
 
     CoinSpendReveal()
     {
@@ -43,8 +42,8 @@ public:
         pubCoinRandomness = CBigNum(0);
     }
 
-    CoinSpendReveal(const Params* params, const CBigNum& pbValue, const Commitment& C1);
-    bool Verify(const CBigNum& C2) const;
+    CoinSpendReveal(const CBigNum& pbValue, const Commitment& C1);
+    bool Verify(const CBigNum& C2, const Params *zc_params) const;
     CBigNum GetPubcoinValue() const { return pubCoinValue; }
 
     ADD_SERIALIZE_METHODS;

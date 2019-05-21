@@ -676,7 +676,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                               bool bypass_limits, const CAmount& nAbsurdFee, std::vector<COutPoint>& coins_to_uncache)
 {
     const CTransaction& tx = *ptx;
-    LogPrintf("AcceptToMemoryPoolWorker(), tx.IsZerocoinSpend()=%s, nodes=%d \n", tx.IsZerocoinSpend() || tx.IsSigmaSpend(), g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL));
+    LogPrintf("AcceptToMemoryPoolWorker(), tx.isPrivateSpend()=%s, nodes=%d \n", tx.IsZerocoinSpend() || tx.IsSigmaSpend(), g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL));
     const uint256 hash = tx.GetHash();
     AssertLockHeld(cs_main);
     LOCK(pool.cs); // mempool "read lock" (held through GetMainSignals().TransactionAddedToMempool())
@@ -696,8 +696,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         return state.DoS(100, false, REJECT_INVALID, "coinstake");
 
     // ignore zerocoin transactions if flag is set
-    if(tx.IsZerocoinMint())
-        return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
+    //if(tx.IsZerocoinMint())
+        //return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
 
     // Reject transactions with witness before segregated witness activates (override with -prematurewitness)
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
