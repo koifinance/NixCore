@@ -37,6 +37,8 @@
 // Allocate version control for future upgrades
 #define ZEROCOIN_VERSION_1               1
 
+#define ZEROCOIN_VERSION_REDEEM          2
+
 // Activate multithreaded mode for proof verification
 #define ZEROCOIN_THREADING 1
 
