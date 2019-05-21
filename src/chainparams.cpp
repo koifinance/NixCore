@@ -471,8 +471,8 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 220;
-        consensus.nGhostnodeInitialize = 600;
+        consensus.nGhostnodePaymentsStartBlock = 9999;
+        consensus.nGhostnodeInitialize = 9999;
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
@@ -489,15 +489,15 @@ public:
         strGhostnodePaymentsPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
 
         consensus.nCoinMaturityReductionHeight = 1;
-        consensus.nStartGhostFeeDistribution = 1;
-        consensus.nGhostFeeDistributionCycle = 200;
+        consensus.nStartGhostFeeDistribution = 9999;
+        consensus.nGhostFeeDistributionCycle = 9999;
 
         consensus.nStartWitnessLposContracts = 1;
-        consensus.nNewDevelopmentPayoutCycleStartHeight = 241;
-        consensus.nNewDevelopmentPayoutCycle = 20;
+        consensus.nNewDevelopmentPayoutCycleStartHeight = 9999;
+        consensus.nNewDevelopmentPayoutCycle = 9999;
 
         consensus.nZerocoinDisableBlock = 230;
-        consensus.nSigmaStartBlock = 225;
+        consensus.nSigmaStartBlock = 235;
 
 
         // The best chain should have at least this much work.

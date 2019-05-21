@@ -23,6 +23,13 @@ Commitment::Commitment::Commitment(const IntegerGroupParams* p,
 	                         params->h.pow_mod(this->randomness, params->modulus), params->modulus));
 }
 
+Commitment::Commitment::Commitment(const IntegerGroupParams* p,
+                                   const Bignum& value, const Bignum& p_randomness): params(p), contents(value) {
+    this->randomness = p_randomness;
+    this->commitmentValue = (params->g.pow_mod(this->contents, params->modulus).mul_mod(
+                             params->h.pow_mod(this->randomness, params->modulus), params->modulus));
+}
+
 const Bignum& Commitment::getCommitmentValue() const {
 	return this->commitmentValue;
 }
