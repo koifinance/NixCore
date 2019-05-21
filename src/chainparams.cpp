@@ -358,7 +358,7 @@ public:
         consensus.nNewDevelopmentPayoutCycle = 999999999;
 
 
-        consensus.nZerocoinDisableBlock = 1;
+        consensus.nZerocoinDisableBlock = 6190;
         consensus.nSigmaStartBlock = 100;
 
 
