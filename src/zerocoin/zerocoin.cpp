@@ -374,10 +374,10 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     // Once sigma is enabled, allow v2 spends to exit zerocoin accumulator
 
     if((nHeight < INT_MAX || !isInitSync) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && tx.IsZerocoinMint())
-        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
+        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin mint transactions are disabled"));
 
     if((nHeight < INT_MAX) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && (nHeight < Params().GetConsensus().nSigmaStartBlock) && (tx.IsZerocoinSpend()))
-        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
+        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin spend transactions are disabled"));
 
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
