@@ -37,6 +37,8 @@ public:
 	 * @param value the value to commit to
 	 */
 	Commitment(const IntegerGroupParams* p, const Bignum& value);
+    Commitment(const IntegerGroupParams* p, const Bignum& value, const Bignum& p_randomness);
+
 	const Bignum& getCommitmentValue() const;
 	const Bignum& getRandomness() const;
 	const Bignum& getContents() const;
