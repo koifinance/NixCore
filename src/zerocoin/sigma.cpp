@@ -151,10 +151,6 @@ bool CheckSigmaSpendTransaction(
         }
         txHashForMetadata = txTemp.GetHash();
 
-        LogPrintf("CheckSigmaSpendTransaction: tx version=%d, tx metadata hash=%s, serial=%s\n",
-                spend->getVersion(), txHashForMetadata.ToString(),
-                spend->getCoinSerialNumber().tostring());
-
         CSigmaState::CoinGroupInfo coinGroup;
         if (!sigmaState.GetCoinGroupInfo(targetDenominations[vinIndex], pubcoinId, coinGroup))
             return state.DoS(100, false, NO_MINT_ZEROCOIN,

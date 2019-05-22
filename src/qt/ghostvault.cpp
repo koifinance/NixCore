@@ -132,6 +132,19 @@ void GhostVault::setWalletModel(WalletModel *walletmodel) {
 }
 
 void GhostVault::on_ghostNIXButton_clicked() { 
+
+    {
+        LOCK(cs_main);
+        if(chainActive.Height() < Params().GetConsensus().nSigmaStartBlock){
+            std::string errorMessage = "Cannot ghost sigma coins until block " + std::to_string(Params().GetConsensus().nSigmaStartBlock) + "!";
+            QMessageBox::critical(this, tr("Error"),
+                                  tr(errorMessage.c_str()),
+                                  QMessageBox::Ok, QMessageBox::Ok);
+            return;
+        }
+
+    }
+
     QString amount = ui->ghostAmount->text();
     QString address = ui->ghostTo->text();
     std::string denomAmount = amount.toStdString();
@@ -288,6 +301,18 @@ void GhostVault::on_ghostNIXButton_clicked() {
 }
 
 void GhostVault::on_convertGhostButton_clicked() {
+
+    {
+        LOCK(cs_main);
+        if(chainActive.Height() < Params().GetConsensus().nSigmaStartBlock){
+            std::string errorMessage = "Cannot unghost sigma coins until block " + std::to_string(Params().GetConsensus().nSigmaStartBlock) + "!";
+            QMessageBox::critical(this, tr("Error"),
+                                  tr(errorMessage.c_str()),
+                                  QMessageBox::Ok, QMessageBox::Ok);
+            return;
+        }
+
+    }
 
     QString amount = ui->convertNIXAmount->text();
     QString address = ui->convertGhostToThirdPartyAddress->text();
