@@ -194,7 +194,7 @@ public:
         consensus.nGhostFeeDistributionCycle = 720;
 
         consensus.nZerocoinDisableBlock = 205200;
-        consensus.nSigmaStartBlock = 229200;
+        consensus.nSigmaStartBlock = 230000;
 
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
@@ -284,16 +284,17 @@ public:
                 { 169900, uint256S("0x6f8b5e85dbb221143f21ddeb4ac59627def0a5eb889cc9b6809ab739e1f56769")},
                 { 199296, uint256S("0x7b874564add8e2008e18dfa4435b2924806b0458123e333c3c11b70ca2540ef1")},
                 { 208017, uint256S("0xc1f8a8f9eff6a22caa167fbe5043dca2516b176ecbf138b38f5c580b5f4e0590")},
+                { 221486, uint256S("0x70f0e5f5d2eb2a7037fb141a9cf156af2d8aede242c4e5e0d50e3f747f0f3044")},
             }
         };
 
 
         chainTxData = ChainTxData{
                 //block 169900 (0x6f8b5e85dbb221143f21ddeb4ac59627def0a5eb889cc9b6809ab739e1f56769)
-            1556750928, // * UNIX timestamp of last known number of transactions
-            242851,  // * total number of transactions between genesis and that timestamp
+            1558484496, // * UNIX timestamp of last known number of transactions
+            257729,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
-            0.009110085587140025  // * estimated number of transactions per second after that timestamp
+            0.009077638434012535  // * estimated number of transactions per second after that timestamp
         };
     }
 };

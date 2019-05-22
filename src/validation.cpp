@@ -2236,6 +2236,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
     CAmount totalGhosted = 0;
     vector<CAmount> mintVector;
     mintVector.clear();
+    LOCK(cs_main);
     if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
         //Time to payout all ghostnodes and check
         //LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n",
@@ -2259,7 +2260,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                     }
                 }
                 //ckp tx requires 0.1 fee, but calculate the fee on a dynamic basis
-                if(isSpend && isMint){
+                if(ctx->IsSigmaSpend() && isMint){
                     CAmount inVal = 0;
                     CAmount outVal = 0;
                     for(int i = 0; i < ctx->vout.size(); i++){
@@ -2294,7 +2295,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                             }
                         }
                         //ckp tx requires 0.1 fee, but calculate the fee on a dynamic basis
-                        if(isSpend && isMint){
+                        if(ctx->IsSigmaSpend() && isMint){
                             CAmount inVal = 0;
                             CAmount outVal = 0;
                             for(int i = 0; i < ctx->vout.size(); i++){
@@ -2336,7 +2337,7 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
                     }
                 }
                 //ckp tx requires 0.1 fee, but calculate the fee on a dynamic basis
-                if(isSpend && isMint){
+                if(ctx->IsSigmaSpend() && isMint){
                     CAmount inVal = 0;
                     CAmount outVal = 0;
                     for(int i = 0; i < ctx->vout.size(); i++){
