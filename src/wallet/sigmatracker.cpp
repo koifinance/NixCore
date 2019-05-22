@@ -252,6 +252,20 @@ bool CSigmaTracker::UpdateState(const CMintMeta& meta)
                 return error("%s: failed to unarchive deterministic mint from database", __func__);
         }
 
+        // on a reindex, if local wallet already has height logged, dont relog it with init height param
+        if(dMint.GetHeight() != INT_MAX && meta.nHeight == INT_MAX){
+            dMint.SetId(meta.nId);
+            dMint.SetUsed(meta.isUsed);
+            dMint.SetDenomination(meta.denom);
+
+            if (!walletdb.WriteSigmaMint(dMint))
+                return error("%s: failed to update deterministic mint when writing to db", __func__);
+
+            mapSerialHashes[meta.hashSerial] = meta;
+
+            return true;
+        }
+
         dMint.SetHeight(meta.nHeight);
         dMint.SetId(meta.nId);
         dMint.SetUsed(meta.isUsed);

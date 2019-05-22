@@ -48,15 +48,15 @@ OffChainGovernance::OffChainGovernance(const PlatformStyle *platformStyle, QWidg
     //contextMenu->addAction(voteForAction);
     //contextMenu->addAction(voteAgainstAction);
 
-    timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(updateProposalList()));
-    timer->start(1000);
+    //timer = new QTimer(this);
+    //connect(timer, SIGNAL(timeout()), this, SLOT(updateProposalList()));
+    //timer->start(1000);
     // context menu signals
     connect(ui->tableWidgetProposals, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
 
     fFilterUpdated = false;
     nTimeFilterUpdated = GetTime();
-    updateProposalList();
+    //updateProposalList();
 }
 
 OffChainGovernance::~OffChainGovernance()
@@ -87,8 +87,6 @@ void OffChainGovernance::updateProposalList()
 
     static int64_t nTimeListUpdated = GetTime();
 
-    // to prevent high cpu usage update only once in MASTERNODELIST_UPDATE_SECONDS seconds
-    // or MASTERNODELIST_FILTER_COOLDOWN_SECONDS seconds after filter was last changed
     int64_t nSecondsToWait = fFilterUpdated
                             ? nTimeFilterUpdated - GetTime() + FILTER_COOLDOWN_SECONDS
                             : nTimeListUpdated - GetTime() + UPDATE_SECONDS;

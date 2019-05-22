@@ -1205,7 +1205,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         if (fExisted && !fUpdate) return false;
 
 
-        TopUpUnloadedCommitments();
+        //TopUpUnloadedCommitments();
         if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin || foundSigma)
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
@@ -9556,14 +9556,17 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
     }
     bool payFee = !pubCoinScripts.empty();
     bool feePaid = false;
+    int p = 0;
     for(int i = 0; i < nValueBatch.size(); i++){
         // skip paying 0.1 denom if this is a ckp payment
         if(payFee && !feePaid && nValueBatch[i] == (COIN/10)){
             feePaid = true;
             continue;
         }
-        if(!pubCoinScripts.empty())
-            scriptChange = pubCoinScripts[i];
+        if(!pubCoinScripts.empty()){
+            scriptChange = pubCoinScripts[p];
+            p++;
+        }
         CTxOut newTxOut(nValueBatch[i], scriptChange);
         txNew.vout.push_back(newTxOut);
         txNewTemp.vout.push_back(newTxOut);
@@ -9650,8 +9653,6 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
         txNew.vin.push_back(newTxIn);
         txNewTemp.vin.push_back(newTxIn);
         serializedId.push_back(coinId);
-
-        LogPrintf("\n SigmaSpend(): Logging coinId=%d", coinId);
     }
 
     for(int i = 0; i < nValueBatch.size(); i++){
