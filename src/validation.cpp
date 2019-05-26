@@ -676,13 +676,17 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                               bool bypass_limits, const CAmount& nAbsurdFee, std::vector<COutPoint>& coins_to_uncache)
 {
     const CTransaction& tx = *ptx;
-    LogPrintf("AcceptToMemoryPoolWorker(), tx.isPrivateSpend()=%s, nodes=%d \n", tx.IsZerocoinSpend() || tx.IsSigmaSpend(), g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL));
+    LogPrintf("AcceptToMemoryPoolWorker(), tx.isPrivateSpend()=%s\n", tx.IsZerocoinSpend() || tx.IsSigmaSpend());
     const uint256 hash = tx.GetHash();
     AssertLockHeld(cs_main);
     LOCK(pool.cs); // mempool "read lock" (held through GetMainSignals().TransactionAddedToMempool())
     if (pfMissingInputs) {
         *pfMissingInputs = false;
     }
+
+    // ignore zerocoin mint transactions
+    if(tx.IsZerocoinMint())
+        return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
 
     if (!CheckTransaction(tx, state, hash, false))
         return false; // state filled in by CheckTransaction
@@ -694,10 +698,6 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     // Coinstake is only valid in a block, not as a loose transaction
     if (tx.IsCoinStake())
         return state.DoS(100, false, REJECT_INVALID, "coinstake");
-
-    // ignore zerocoin transactions if flag is set
-    if(tx.IsZerocoinMint())
-        return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
 
     // Reject transactions with witness before segregated witness activates (override with -prematurewitness)
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
@@ -2236,7 +2236,6 @@ bool GetGhostnodeFeePayment(int64_t &returnFee, bool &payFees, const CBlock &pBl
     CAmount totalGhosted = 0;
     vector<CAmount> mintVector;
     mintVector.clear();
-    LOCK(cs_main);
     if(chainActive.Height() + 1 >= Params().GetConsensus().nStartGhostFeeDistribution){
         //Time to payout all ghostnodes and check
         //LogPrintf("\nGetGhostnodeFeePayment(): height=%d, modulo=%d\n",
@@ -4227,12 +4226,6 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     if (block.sigmaTxInfo == NULL)
         block.sigmaTxInfo = std::make_shared<CSigmaTxInfo>();
 
-    //Ignore checks on startup sync
-    if(IsInitialBlockDownload())
-        nHeight = INT_MAX;
-    else if (nHeight == INT_MAX)
-        nHeight = ZerocoinGetNHeight(block.GetBlockHeader());
-
     // Check transactions
     for (const auto& tx : block.vtx){
         if (!CheckTransaction(*tx, state, tx->GetHash(), isVerifyDB, true, nHeight, false, block.zerocoinTxInfo.get(), block.sigmaTxInfo.get())){
@@ -4738,7 +4731,7 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
         {
             pindex->nFlags |= BLOCK_FAILED_DUPLICATE_STAKE;
             setDirtyBlockIndex.insert(pindex);
-            LogPrint(BCLog::POS, "%s Marking duplicate stake: %s.\n", __func__, pindex->GetBlockHash().ToString());
+            LogPrintf("%s: Marking duplicate stake: %s.\n", __func__, pindex->GetBlockHash().ToString());
 
             IncomingBlockChecked(*pblock, state);
         }

@@ -47,20 +47,6 @@ bool CSigmaTracker::Archive(CMintMeta& meta)
     if (HasSerialHash(meta.hashSerial))
         mapSerialHashes.at(meta.hashSerial).isArchived = true;
 
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
-    CSigmaEntry sigma;
-    // if (walletdb.ReadZerocoinEntry(meta.pubCoinValue, zerocoin)) {
-    //     if (!CWalletDB(strWalletFile).ArchiveMintOrphan(zerocoin))
-    //         return error("%s: failed to archive zerocoinmint", __func__);
-    // } else {
-    //     //failed to read mint from DB, try reading deterministic
-    //     CSigmaMint dMint;
-    //     if (!walletdb.ReadHDMint(hashPubcoin, dMint))
-    //         return error("%s: could not find pubcoinhash %s in db", __func__, hashPubcoin.GetHex());
-    //     if (!walletdb.ArchiveDeterministicOrphan(dMint))
-    //         return error("%s: failed to archive deterministic ophaned mint", __func__);
-    // }
-
     LogPrintf("%s: archived pubcoinhash %s\n", __func__, hashPubcoin.GetHex());
     return true;
 }
@@ -250,20 +236,6 @@ bool CSigmaTracker::UpdateState(const CMintMeta& meta)
             // Unarchive this mint since it is being requested and updated
             if (!walletdb.UnarchiveSigmaMint(hashPubcoin, dMint))
                 return error("%s: failed to unarchive deterministic mint from database", __func__);
-        }
-
-        // on a reindex, if local wallet already has height logged, dont relog it with init height param
-        if(dMint.GetHeight() != INT_MAX && meta.nHeight == INT_MAX){
-            dMint.SetId(meta.nId);
-            dMint.SetUsed(meta.isUsed);
-            dMint.SetDenomination(meta.denom);
-
-            if (!walletdb.WriteSigmaMint(dMint))
-                return error("%s: failed to update deterministic mint when writing to db", __func__);
-
-            mapSerialHashes[meta.hashSerial] = meta;
-
-            return true;
         }
 
         dMint.SetHeight(meta.nHeight);
