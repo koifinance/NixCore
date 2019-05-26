@@ -1382,6 +1382,20 @@ bool CWallet::AbandonTransaction(const uint256& hashTx)
                     LogPrintf("\n Abandoning sigma hash=%s \n", hashPubcoin.ToString());
                 }
             }
+            else if(wtx.tx->IsSigmaMint()){
+                for(const CTxOut &txout: wtx.tx->vout){
+                    if(!txout.scriptPubKey.IsSigmaMint())
+                        continue;
+                    GroupElement mintScript = ParseSigmaMintScript(txout.scriptPubKey);
+                    uint256 pubHash = GetPubCoinValueHash(mintScript);
+
+                    CMintMeta meta = sigmaTracker->GetMetaFromPubcoin(pubHash);
+                    // set to used and discard
+                    meta.isUsed = true;
+                    sigmaTracker->UpdateState(meta);
+                    LogPrintf("\n Abandoning sigma mint hash=%s \n", wtx.GetHash().ToString());
+                }
+            }
         }
     }
 

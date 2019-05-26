@@ -370,7 +370,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     // if nHeight is INT_MAX and we are not on init blockchain sync, this is a mempool tx
     bool isInitSync = IsInitialBlockDownload();
 
-    bool forceSpendLink = nHeight >= Params().GetConsensus().nSigmaStartBlock && nHeight < INT_MAX;
+    bool forceSpendLink = nHeight >= Params().GetConsensus().nSigmaStartBlock;
     // Once sigma is enabled, allow v2 spends to exit zerocoin accumulator
 
     if((nHeight < INT_MAX || !isInitSync) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && tx.IsZerocoinMint())

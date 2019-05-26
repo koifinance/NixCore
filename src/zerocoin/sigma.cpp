@@ -303,25 +303,27 @@ bool CheckSigmaTransaction(
         CSigmaTxInfo *sigmaTxInfo)
 {
 
-    bool sigmaIsEnabled = false;;
+    bool sigmaIsEnabled = false;
 
-    {
-        LOCK(cs_main);
-        if(nHeight == INT_MAX)
-            sigmaIsEnabled = (chainActive.Height() >= Params().GetConsensus().nSigmaStartBlock);
-        else
-            sigmaIsEnabled = nHeight >= Params().GetConsensus().nSigmaStartBlock;
-    }
+    if(nHeight == INT_MAX)
+        sigmaIsEnabled = IsSigmaAllowed();
+    else
+        sigmaIsEnabled = IsSigmaAllowed(nHeight);
 
-    // Check Mint Sigma Transaction
-    if (sigmaIsEnabled) {
-        for (const CTxOut &txout : tx.vout) {
-            if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsSigmaMint()) {
-                if (!CheckSigmaMintTransaction(txout, state, hashTx, sigmaTxInfo))
-                    return false;
-            }
+
+    if(tx.IsSigmaMint() || tx.IsSigmaSpend())
+        if(!sigmaIsEnabled)
+            return state.DoS(100, false,
+                             REJECT_MALFORMED,
+                             "CheckSigmaTransaction: premature sigma transaction");
+
+    for (const CTxOut &txout : tx.vout) {
+        if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsSigmaMint()) {
+            if (!CheckSigmaMintTransaction(txout, state, hashTx, sigmaTxInfo))
+                return false;
         }
     }
+
 
     // Check Spend Sigma Transaction
     if(tx.IsSigmaSpend()) {
