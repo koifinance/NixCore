@@ -87,7 +87,7 @@
          <item>
           <widget class="QLabel" name="label_count">
            <property name="text">
-            <string>Proposal Count:</string>
+            <string>Proposal Count (Requires Manual Refresh):</string>
            </property>
           </widget>
          </item>
