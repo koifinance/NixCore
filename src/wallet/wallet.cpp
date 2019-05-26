@@ -1070,7 +1070,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose)
     }
 
     //// debug print
-   // LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+    // LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
     // Write to disk
     if (fInsertedNew || fUpdated)
@@ -1172,7 +1172,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         }
 
         // find all mints in this block and update
-        if(ghostWalletMain != nullptr && sigmaTracker != nullptr){
+        if(ghostWalletMain != nullptr && sigmaTracker != nullptr && tx.IsSigmaMint()){
             for(const CTxOut &txOut: tx.vout){
                 if(!txOut.scriptPubKey.IsSigmaMint())
                     continue;
@@ -1205,7 +1205,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         if (fExisted && !fUpdate) return false;
 
 
-        TopUpUnloadedCommitments();
+        //TopUpUnloadedCommitments();
         if (fExisted || IsMine(tx) || IsFromMe(tx) || foundZerocoin || foundSigma)
         {
             /* Check if any keys in the wallet keypool that were supposed to be unused
@@ -1380,6 +1380,20 @@ bool CWallet::AbandonTransaction(const uint256& hashTx)
                     }
 
                     LogPrintf("\n Abandoning sigma hash=%s \n", hashPubcoin.ToString());
+                }
+            }
+            else if(wtx.tx->IsSigmaMint()){
+                for(const CTxOut &txout: wtx.tx->vout){
+                    if(!txout.scriptPubKey.IsSigmaMint())
+                        continue;
+                    GroupElement mintScript = ParseSigmaMintScript(txout.scriptPubKey);
+                    uint256 pubHash = GetPubCoinValueHash(mintScript);
+
+                    CMintMeta meta = sigmaTracker->GetMetaFromPubcoin(pubHash);
+                    // set to used and discard
+                    meta.isUsed = true;
+                    sigmaTracker->UpdateState(meta);
+                    LogPrintf("\n Abandoning sigma mint hash=%s \n", wtx.GetHash().ToString());
                 }
             }
         }
@@ -6249,55 +6263,10 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
             LearnRelatedScripts(vchPubKey, change_type);
             scriptChange = GetScriptForDestination(GetDestinationForKey(vchPubKey, change_type));
         }
-        else if (IsGhostAddress(toKey))
-        {
-            CGhostAddress sxAddr;
-            if (sxAddr.SetEncoded(toKey))
-            {
-                ec_secret ephem_secret;
-                ec_secret secretShared;
-                ec_point pkSendTo;
-                ec_point ephem_pubkey;
-
-
-                if (GenerateRandomSecret(ephem_secret) != 0)
-                {
-                    LogPrintf("GenerateRandomSecret failed.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                if (StealthSecret(ephem_secret, sxAddr.scan_pubkey, sxAddr.spend_pubkey, secretShared, pkSendTo) != 0)
-                {
-                    LogPrintf("Could not generate receiving public key.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                CPubKey cpkTo(pkSendTo);
-                if (!cpkTo.IsValid())
-                {
-                    LogPrintf("Invalid public key generated.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                CKeyID ckidTo = cpkTo.GetID();
-
-                CBitcoinAddress addrTo(ckidTo);
-
-                if (SecretToPublicKey(ephem_secret, ephem_pubkey) != 0)
-                {
-                    LogPrintf("Could not generate ephem public key.\n");
-                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-                };
-
-                ghostKey = CScript() << OP_RETURN << ephem_pubkey;
-
-                scriptChange = GetScriptForDestination(addrTo.Get());
-            }
-        }
         //If not, send to normal address
         else
         {
-            scriptChange = GetScriptForDestination(CBitcoinAddress(toKey).Get());
+            scriptChange = GetScriptForDestination(DecodeDestination(toKey));
         }
     }
     for(int i = 0; i < nValueBatch.size(); i++){
@@ -6429,7 +6398,7 @@ bool CWallet::CreateZerocoinSpendTransactionBatch(std::string &toKey, vector <CS
                 // transaction.
                 libzerocoin::PrivateCoin privateCoin(zcParams, denominationBatch[i]);
 
-                int txVersion = 1;
+                int txVersion = ZEROCOIN_VERSION_REDEEM;
 
                 LogPrintf("CreateZerocoinSpendTransation: tx version=%d, tx metadata hash=%s\n", txVersion, txNewTemp.GetHash().ToString());
 
@@ -7517,10 +7486,10 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
                         amountGhosted += currentDenomination[x + 2];
                         amountGhosted += currentDenomination[x + 3];
                     }
-                    return "GhostModeSpendTrigger(): Error: Was only able to unghost %s NIX - %s." + std::to_string(amountGhosted) + stringError;
+                    return "GhostModeSpendTrigger(): Error: Was only able to unghost certain amount of NIX. " + std::to_string(amountGhosted) + stringError;
                 }
                 else
-                    return "GhostModeSpendTrigger(): Error: Failed to unghost ghosted NIX - %s." +  stringError;
+                    return "GhostModeSpendTrigger(): Error: Failed to unghost ghosted NIX. " +  stringError;
             }
 
             startIndex = endIndex + 1;
@@ -9601,14 +9570,17 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
     }
     bool payFee = !pubCoinScripts.empty();
     bool feePaid = false;
+    int p = 0;
     for(int i = 0; i < nValueBatch.size(); i++){
         // skip paying 0.1 denom if this is a ckp payment
         if(payFee && !feePaid && nValueBatch[i] == (COIN/10)){
             feePaid = true;
             continue;
         }
-        if(!pubCoinScripts.empty())
-            scriptChange = pubCoinScripts[i];
+        if(!pubCoinScripts.empty()){
+            scriptChange = pubCoinScripts[p];
+            p++;
+        }
         CTxOut newTxOut(nValueBatch[i], scriptChange);
         txNew.vout.push_back(newTxOut);
         txNewTemp.vout.push_back(newTxOut);
@@ -9695,8 +9667,6 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
         txNew.vin.push_back(newTxIn);
         txNewTemp.vin.push_back(newTxIn);
         serializedId.push_back(coinId);
-
-        LogPrintf("\n SigmaSpend(): Logging coinId=%d", coinId);
     }
 
     for(int i = 0; i < nValueBatch.size(); i++){
@@ -9916,10 +9886,10 @@ int GhostSigmaDenom(CAmount amount){
     }
 }
 
-bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[5][1]){
+bool ClosestSigmaDenoms(CAmount amount, int totalZerocoins, CAmount demoniationList[6][1]){
 
     CAmount currentDenomination[] = {COIN/10, 1 * COIN, 10 * COIN, 100 * COIN, 1000 * COIN, 10000 * COIN};
-    int currentDenominationIndex = 4;
+    int currentDenominationIndex = 5;
 
     for (int i = 0; i < totalZerocoins; i++) {
 

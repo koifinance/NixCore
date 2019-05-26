@@ -170,7 +170,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1530415442; // November 15th, 2017.
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000663f55ad7d95a622d");
+        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000001d880fecdd5e0a8081");
 
         // By default assume that the signatures in ancestors of this block are valid.
         //consensus.defaultAssumeValid = uint256S("0xe734db844dfe5a7a06ec42a71c0540f723033830be91bb59524b6e9acbd3345b"); //506067
@@ -194,7 +194,7 @@ public:
         consensus.nGhostFeeDistributionCycle = 720;
 
         consensus.nZerocoinDisableBlock = 205200;
-        consensus.nSigmaStartBlock = 220200;
+        consensus.nSigmaStartBlock = 232000;
 
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
@@ -284,16 +284,17 @@ public:
                 { 169900, uint256S("0x6f8b5e85dbb221143f21ddeb4ac59627def0a5eb889cc9b6809ab739e1f56769")},
                 { 199296, uint256S("0x7b874564add8e2008e18dfa4435b2924806b0458123e333c3c11b70ca2540ef1")},
                 { 208017, uint256S("0xc1f8a8f9eff6a22caa167fbe5043dca2516b176ecbf138b38f5c580b5f4e0590")},
+                { 224285, uint256S("0xd82ac4f8293c821e9b2bb507897b5cb6f5908e043dbb6233401c7b2057cf6d92")},
             }
         };
 
 
         chainTxData = ChainTxData{
                 //block 169900 (0x6f8b5e85dbb221143f21ddeb4ac59627def0a5eb889cc9b6809ab739e1f56769)
-            1556750928, // * UNIX timestamp of last known number of transactions
-            242851,  // * total number of transactions between genesis and that timestamp
+            1558843136, // * UNIX timestamp of last known number of transactions
+            260657,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
-            0.009110085587140025  // * estimated number of transactions per second after that timestamp
+            0.009066374711696379  // * estimated number of transactions per second after that timestamp
         };
     }
 };
@@ -358,7 +359,7 @@ public:
         consensus.nNewDevelopmentPayoutCycle = 999999999;
 
 
-        consensus.nZerocoinDisableBlock = 1;
+        consensus.nZerocoinDisableBlock = 6190;
         consensus.nSigmaStartBlock = 100;
 
 
@@ -471,8 +472,8 @@ public:
 
 
         // ghostnode params
-        consensus.nGhostnodePaymentsStartBlock = 220;
-        consensus.nGhostnodeInitialize = 600;
+        consensus.nGhostnodePaymentsStartBlock = 9999;
+        consensus.nGhostnodeInitialize = 9999;
 
         // POS params
         consensus.nPosTimeActivation = 9999999999; //always active
@@ -489,15 +490,15 @@ public:
         strGhostnodePaymentsPubKey = "04549ac134f694c0243f503e8c8a9a986f5de6610049c40b07816809b0d1d06a21b07be27b9bb555931773f62ba6cf35a25fd52f694d4e1106ccd237a7bb899fdd";
 
         consensus.nCoinMaturityReductionHeight = 1;
-        consensus.nStartGhostFeeDistribution = 1;
-        consensus.nGhostFeeDistributionCycle = 200;
+        consensus.nStartGhostFeeDistribution = 9999;
+        consensus.nGhostFeeDistributionCycle = 9999;
 
         consensus.nStartWitnessLposContracts = 1;
-        consensus.nNewDevelopmentPayoutCycleStartHeight = 241;
-        consensus.nNewDevelopmentPayoutCycle = 20;
+        consensus.nNewDevelopmentPayoutCycleStartHeight = 9999;
+        consensus.nNewDevelopmentPayoutCycle = 9999;
 
         consensus.nZerocoinDisableBlock = 230;
-        consensus.nSigmaStartBlock = 225;
+        consensus.nSigmaStartBlock = 235;
 
 
         // The best chain should have at least this much work.

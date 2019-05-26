@@ -4211,8 +4211,15 @@ UniValue unghostamount(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() == 0 || request.params.size() > 2)
         throw runtime_error("unghostamount <amount>(whole numbers only) <addresstosend>(either address or commitment key pack)\n" + HelpRequiringPassphrase(pwalletMain));
 
-    if(fDisableZerocoinTransactions)
-        throw JSONRPCError(RPC_WALLET_ERROR, "ghosted tranasactions are not currently being accepted");
+    int nHeight = 0;
+    {
+        LOCK(cs_main);
+        nHeight = chainActive.Height();
+
+    }
+
+    if(nHeight < Params().GetConsensus().nSigmaStartBlock)
+        throw JSONRPCError(RPC_WALLET_ERROR, "zerocoin ghosted tranasactions are not currently being accepted");
 
     int64_t nAmount = request.params[0].get_int64();
 
@@ -4223,13 +4230,8 @@ UniValue unghostamount(const JSONRPCRequest& request)
     if (request.params.size() > 1){
         // Address
         toKey = request.params[1].get_str();
-        CommitmentKeyPack keypack(toKey);
         dest = DecodeDestination(toKey);
-        if(keypack.IsValidPack()){
-            keyList = keypack.GetPubCoinPackScript();
-            toKey = "";
-        }
-        else if(!IsValidDestination(dest))
+         if(!IsValidDestination(dest))
             throw JSONRPCError(RPC_WALLET_ERROR, "invalid key");
     }
 
@@ -6426,14 +6428,20 @@ UniValue listsigmaentries(const JSONRPCRequest& request)
     CWalletDB db(pwalletMain->GetDBHandle());
     std::list<CSigmaMint> listMintsDB = db.ListSigmaMints();
 
+    bool onlyUnspent = true;
+    if(request.params.size() > 0)
+        onlyUnspent = request.params[1].getBool();
 
     UniValue final(UniValue::VARR);
 
     for(auto& mint: listMintsDB){
         UniValue ret(UniValue::VOBJ);
+        if(onlyUnspent && mint.IsUsed())
+            continue;
         ret.push_back(Pair("isUsed",  mint.IsUsed()));
         ret.push_back(Pair("denom",  mint.GetDenominationValue()));
         ret.push_back(Pair("height",  mint.GetHeight()));
+        ret.push_back(Pair("txid",  mint.GetTxHash().GetHex()));
         final.push_back(ret);
     }
     final.pushKV("final_size", std::to_string(listMintsDB.size()));

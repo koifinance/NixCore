@@ -48,10 +48,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
                                 bool isVerifyDB,
                                 int nHeight,
                                 bool isCheckWallet,
-                                CZerocoinTxInfo *zerocoinTxInfo, int indexOfSpend) {
-
-    // Check for inputs only, everything else was checked before
-    //LogPrintf("CheckSpendZerocoinTransaction denomination=%d nHeight=%d\n", targetDenomination, nHeight);
+                                CZerocoinTxInfo *zerocoinTxInfo, int indexOfSpend, bool forceSpendLink) {
 
     const CTxIn &txin = tx.vin[indexOfSpend];
 
@@ -59,7 +56,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
         return state.DoS(100,
                          false,
                          NSEQUENCE_INCORRECT,
-                         "CTransaction::CheckTransaction() : Error: zerocoin spend txin not a zerocoin spend script");
+                         "CheckSpendZerocoinTransaction() : Error: zerocoin spend txin not a zerocoin spend script");
 
     uint32_t pubcoinId = txin.nSequence;
     if (pubcoinId < 1 || pubcoinId >= INT_MAX) {
@@ -67,14 +64,14 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
         return state.DoS(100,
                          false,
                          NSEQUENCE_INCORRECT,
-                         "CTransaction::CheckTransaction() : Error: zerocoin spend nSequence is incorrect");
+                         "CheckSpendZerocoinTransaction() : Error: zerocoin spend nSequence is incorrect");
     }
 
     if (txin.scriptSig.size() < 4)
         return state.DoS(100,
                          false,
                          REJECT_MALFORMED,
-                         "CheckSpendZerocoinTransaction: invalid spend transaction");
+                         "CheckSpendZerocoinTransaction(): invalid spend transaction");
 
     // Deserialize the CoinSpend intro a fresh object
     CDataStream serializedCoinSpend((const char *)&*(txin.scriptSig.begin() + 4),
@@ -83,18 +80,25 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
     libzerocoin::CoinSpend newSpend(ZCParams, serializedCoinSpend);
 
     int spendVersion = newSpend.getVersion();
-    if (spendVersion != ZEROCOIN_VERSION_1) {
+    if (spendVersion < ZEROCOIN_VERSION_1 || (forceSpendLink && spendVersion != ZEROCOIN_VERSION_REDEEM)) {
         return state.DoS(100,
                          false,
                          NSEQUENCE_INCORRECT,
-                         "CTransaction::CheckTransaction() : Error: incorrect spend transaction verion");
+                         "CTransaction::CheckTransaction() : Error: incorrect spend transaction version");
     }
 
+    if(forceSpendLink){
+        //check if pubcoin is real
+        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
+        const CBigNum& bnPubcoin = newSpend.getPubcoinValue();
+        if ((!isVerifyDB) && !zerocoinState.HasCoin(bnPubcoin))
+            return state.DoS(100,
+                             false,
+                             REJECT_MALFORMED,
+                             "CheckSpendZerocoinTransaction(): pubcoinhash is not found in the blockchain");
+    }
 
-
-
-    spendVersion = ZEROCOIN_VERSION_1;
-    newSpend.setVersion(ZEROCOIN_VERSION_1);
+    newSpend.setVersion(spendVersion);
 
 
 
@@ -363,9 +367,17 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                               bool isCheckWallet,
                               CZerocoinTxInfo *zerocoinTxInfo)
 {
+    // if nHeight is INT_MAX and we are not on init blockchain sync, this is a mempool tx
+    bool isInitSync = IsInitialBlockDownload();
 
-    if(((nHeight < INT_MAX) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock)) && (tx.IsZerocoinSpend() || tx.IsZerocoinMint()))
-        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin transactions are disabled"));
+    bool forceSpendLink = nHeight >= Params().GetConsensus().nSigmaStartBlock;
+    // Once sigma is enabled, allow v2 spends to exit zerocoin accumulator
+
+    if((nHeight < INT_MAX || !isInitSync) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && tx.IsZerocoinMint())
+        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin mint transactions are disabled"));
+
+    if((nHeight < INT_MAX) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && (nHeight < Params().GetConsensus().nSigmaStartBlock) && (tx.IsZerocoinSpend()))
+        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin spend transactions are disabled"));
 
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
@@ -391,7 +403,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
                 case libzerocoin::ZQ_FIVE_HUNDRED*COIN:
                 case libzerocoin::ZQ_ONE_THOUSAND*COIN:
                 case libzerocoin::ZQ_FIVE_THOUSAND*COIN:
-                    if(!CheckSpendZerocoinTransaction(tx, (libzerocoin::CoinDenomination)(txout.nValue / COIN), state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo, i))
+                    if(!CheckSpendZerocoinTransaction(tx, (libzerocoin::CoinDenomination)(txout.nValue / COIN), state, hashTx, isVerifyDB, nHeight, isCheckWallet, zerocoinTxInfo, i, forceSpendLink))
                             return false;
                     break;
                 default:

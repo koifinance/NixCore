@@ -47,20 +47,6 @@ bool CSigmaTracker::Archive(CMintMeta& meta)
     if (HasSerialHash(meta.hashSerial))
         mapSerialHashes.at(meta.hashSerial).isArchived = true;
 
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
-    CSigmaEntry sigma;
-    // if (walletdb.ReadZerocoinEntry(meta.pubCoinValue, zerocoin)) {
-    //     if (!CWalletDB(strWalletFile).ArchiveMintOrphan(zerocoin))
-    //         return error("%s: failed to archive zerocoinmint", __func__);
-    // } else {
-    //     //failed to read mint from DB, try reading deterministic
-    //     CSigmaMint dMint;
-    //     if (!walletdb.ReadHDMint(hashPubcoin, dMint))
-    //         return error("%s: could not find pubcoinhash %s in db", __func__, hashPubcoin.GetHex());
-    //     if (!walletdb.ArchiveDeterministicOrphan(dMint))
-    //         return error("%s: failed to archive deterministic ophaned mint", __func__);
-    // }
-
     LogPrintf("%s: archived pubcoinhash %s\n", __func__, hashPubcoin.GetHex());
     return true;
 }
