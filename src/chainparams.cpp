@@ -194,7 +194,7 @@ public:
         consensus.nGhostFeeDistributionCycle = 720;
 
         consensus.nZerocoinDisableBlock = 205200;
-        consensus.nSigmaStartBlock = 230000;
+        consensus.nSigmaStartBlock = 232000;
 
 
         nMaxTipAge = 30 * 60 * 60; // ~720 blocks behind
