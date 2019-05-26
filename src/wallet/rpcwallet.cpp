@@ -4218,7 +4218,7 @@ UniValue unghostamount(const JSONRPCRequest& request)
 
     }
 
-    if(nHeight > Params().GetConsensus().nZerocoinDisableBlock && nHeight < Params().GetConsensus().nSigmaStartBlock)
+    if(nHeight < Params().GetConsensus().nSigmaStartBlock)
         throw JSONRPCError(RPC_WALLET_ERROR, "zerocoin ghosted tranasactions are not currently being accepted");
 
     int64_t nAmount = request.params[0].get_int64();
@@ -6441,6 +6441,7 @@ UniValue listsigmaentries(const JSONRPCRequest& request)
         ret.push_back(Pair("isUsed",  mint.IsUsed()));
         ret.push_back(Pair("denom",  mint.GetDenominationValue()));
         ret.push_back(Pair("height",  mint.GetHeight()));
+        ret.push_back(Pair("txid",  mint.GetTxHash().GetHex()));
         final.push_back(ret);
     }
     final.pushKV("final_size", std::to_string(listMintsDB.size()));
