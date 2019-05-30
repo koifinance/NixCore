@@ -1308,6 +1308,7 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
         k++;
         // check for coinstake
         if(it->first.txindex != 0) continue;
+        LogPrintf("\n 1 Address amount = %llf \n", it->second);
 
         // check for staking bypass
         if(it->first.type == ADDR_INDT_WITNESS_KEY_HASH){
@@ -1316,6 +1317,19 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
         }
 
         totalWeight += it->second;
+    }
+    if(totalWeight < 0){
+        totalWeight = 0;
+        for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
+            std::string address;
+            if (!getAddressFromIndex(it->first.type, it->first.hashBytes, address)) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+            }
+                // check for coinstake
+            if(it->first.txindex != 0) continue;
+            LogPrintf("\n 2 Address amount = %llf \n", it->second);
+            totalWeight += it->second;
+        }
     }
 
     result.pushKV("address_weight", ValueFromAmount(totalWeight));
