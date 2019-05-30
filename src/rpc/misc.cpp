@@ -1308,7 +1308,6 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
         k++;
         // check for coinstake
         if(it->first.txindex != 0) continue;
-        LogPrintf("\n 1 Address amount = %llf \n", it->second);
 
         // check for staking bypass
         if(it->first.type == ADDR_INDT_WITNESS_KEY_HASH){
@@ -1327,7 +1326,6 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
             }
                 // check for coinstake
             if(it->first.txindex != 0) continue;
-            LogPrintf("\n 2 Address amount = %llf \n", it->second);
             totalWeight += it->second;
         }
     }
