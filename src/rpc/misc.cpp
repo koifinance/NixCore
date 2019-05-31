@@ -1338,6 +1338,93 @@ UniValue getaddressvoteweight(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue getproposaltimeframeinfo(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1 || !request.params[0].isObject())
+        throw runtime_error(
+                "getproposaltimeframeinfo\n"
+                        "\nReturns total weight a proposal in a given timeframe can possibly have.\n"
+                        "\nArguments:\n"
+                        "{\n"
+                        "  \"start\" (number) The start time of the vote weight period\n"
+                        "  \"end\" (number) The end time of the vote weight period\n"
+                        "}\n"
+                        "\nResult:\n"
+                        "[\n"
+                        "  {\n"
+                        "    \"total_possible_votes\"  (number) The total possible weight of the timeframe\n"
+                        "  }\n"
+                        "]\n"
+                        "\nExamples:\n"
+                + HelpExampleCli("getproposaltimeframeinfo", "'{\"start\": 1559229685, \"end\": 1569229685}'")
+        );
+
+    // using chainactive
+    LOCK(cs_main);
+
+    UniValue result(UniValue::VOBJ);
+    UniValue startValue = find_value(request.params[0].get_obj(), "start");
+    UniValue endValue = find_value(request.params[0].get_obj(), "end");
+
+    int start = 0;
+    int end = 0;
+
+    if (startValue.isNum() && endValue.isNum()) {
+        start = startValue.get_int();
+        end = endValue.get_int();
+        if (end < start) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "End value is expected to be greater than start");
+        }
+    }
+
+    int start_block = -1;
+    int end_block = -1;
+    CBlockIndex *activeTip = chainActive.Tip();
+    CBlockIndex *lastBlock = activeTip->pprev;
+
+    // find start and end blocks
+    while(lastBlock){
+        // match end block
+        if(activeTip->GetBlockTime() >= end && lastBlock->GetBlockTime() < end && end_block == -1)
+            end_block = activeTip->nHeight;
+        else if(activeTip->GetBlockTime() >= end && lastBlock->GetBlockTime() <= end && end_block == -1)
+            end_block = lastBlock->nHeight;
+
+        // match start block
+        if(activeTip->GetBlockTime() >= start && lastBlock->GetBlockTime() < start && start_block == -1)
+            start_block = activeTip->nHeight;
+        if(activeTip->GetBlockTime() >= start && lastBlock->GetBlockTime() <= start && start_block == -1)
+            start_block = lastBlock->nHeight;
+
+        activeTip = lastBlock;
+        lastBlock = lastBlock->pprev;
+
+        if(start_block != -1 && end_block != -1)
+            break;
+    }
+
+    if(end_block == -1)
+        end_block = chainActive.Height();
+
+    start = start_block;
+    end = end_block;
+
+    CAmount totalWeight = 0;
+    for(int i = start; i <= end; i++){
+        CBlockIndex *pindex = chainActive[i];
+        totalWeight += GetGhostnodePayment(i, 0);
+        totalWeight += Params().GetProofOfStakeReward(pindex, 0);
+    }
+
+    result.pushKV("total_possible_votes", ValueFromAmount(totalWeight));
+    result.pushKV("block_start", (start));
+    result.pushKV("block_end", (end));
+
+
+
+    return result;
+}
+
 UniValue getspentinfo(const JSONRPCRequest& request)
 {
 
@@ -1405,6 +1492,8 @@ static const CRPCCommand commands[] =
   { "addressindex",       "getaddressbalance",      &getaddressbalance,      {"addresses"} },
 
   { "NIX Governance",     "getaddressvoteweight",   &getaddressvoteweight,   {"address", "start_time", "end_time"} },
+  { "NIX Governance",     "getproposaltimeframeinfo",   &getproposaltimeframeinfo,   {"start_time", "end_time"} },
+
 
     /* Not shown in help */
     { "hidden",             "setmocktime",            &setmocktime,            {"timestamp"}},
