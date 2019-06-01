@@ -186,6 +186,7 @@ void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHe
 }
 
 int CGhostnodePayments::GetMinGhostnodePaymentsProto() {
+    LOCK(cs_main);
     if(chainActive.Height() > Params().GetConsensus().nStartGhostFeeDistribution)
         return MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2;
 
