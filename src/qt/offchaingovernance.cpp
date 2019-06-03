@@ -92,7 +92,6 @@ void OffChainGovernance::updateProposalList()
                             : nTimeListUpdated - GetTime() + UPDATE_SECONDS;
 
     if(fFilterUpdated) ui->countLabel->setText(QString::fromStdString(strprintf("Please wait... %d", nSecondsToWait)));
-    if(nSecondsToWait > 0) return;
 
     nTimeListUpdated = GetTime();
     fFilterUpdated = false;
@@ -426,7 +425,6 @@ void OffChainGovernance::on_voteAgainstButton_clicked()
 void OffChainGovernance::on_refreshListButton_clicked()
 {
     // display results
-    last_refresh_time = 0;
     g_governance.SendRequests(RequestTypes::GET_PROPOSALS);
     while(!g_governance.isReady()){}
     updateProposalList();
