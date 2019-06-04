@@ -186,13 +186,7 @@ void CGhostnodePayments::FillBlockPayee(CMutableTransaction &txNew, int nBlockHe
 }
 
 int CGhostnodePayments::GetMinGhostnodePaymentsProto() {
-    LOCK(cs_main);
-    if(chainActive.Height() > Params().GetConsensus().nStartGhostFeeDistribution)
-        return MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2;
-
-    return sporkManager.IsSporkActive(SPORK_10_GHOSTNODE_PAY_UPDATED_NODES)
-           ? MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2
-           : MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_1;
+    return MIN_GHOSTNODE_PAYMENT_PROTO_VERSION_2;
 }
 
 void CGhostnodePayments::ProcessMessage(CNode *pfrom, std::string &strCommand, CDataStream &vRecv) {
