@@ -4722,6 +4722,7 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
         if (!ret) {
             //Processing blocks out of order can lead to zerocoin faults
             if (nHeight > chainActive.Height() + 1) {
+                LogPrintf("\nProcessNewBlock(): Out of order processed!");
                 return true;
             }
 

@@ -524,7 +524,7 @@ UniValue ghostnodelist(const JSONRPCRequest &req) {
         }
     } else {
         std::vector <CGhostnode> vGhostnodes = mnodeman.GetFullGhostnodeVector();
-        BOOST_FOREACH(CGhostnode & mn, vGhostnodes)
+        for(CGhostnode & mn: vGhostnodes)
         {
             std::string strOutpoint = mn.vin.prevout.ToStringShort();
             if (strMode == "activeseconds") {

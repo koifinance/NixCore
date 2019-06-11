@@ -4919,6 +4919,35 @@ UniValue getstakinginfo(const JSONRPCRequest &request)
 
     obj.pushKV("expectedtime", nExpectedTime);
 
+    LOCK(cs_main);
+
+    CAmount totalSupply = 0;
+    int amountofOuts = 0;
+
+    // manually verify all output amounts
+    for(auto it = 0; it < chainActive.Height(); it++){
+        CBlock block;
+        CBlockIndex *pindex = chainActive[it];
+        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            for(auto ctx: block.vtx){
+                for(int ss = 0; ss < ctx->vout.size(); ss++){
+                    if(ctx->vout[ss].scriptPubKey.IsZerocoinMint())
+                        continue;
+                    COutPoint out(ctx->GetHash(), ss);
+                    if(pcoinsTip->HaveCoin(out)){
+                        amountofOuts++;
+                        totalSupply += ctx->vout[ss].nValue;
+                    }
+                }
+            }
+        }
+        else
+            return "ReadBlockFromDisk failed!";
+    }
+
+    obj.pushKV("totalpublicsupply", ValueFromAmount(totalSupply));
+    obj.pushKV("outputs", amountofOuts);
+
     return obj;
 }
 
@@ -5698,6 +5727,87 @@ UniValue ghostprivacysets(const JSONRPCRequest& request)
     entry.push_back(Pair("5000", (mintVector[7])));
     entry.push_back(Pair("total", total));
 
+
+    return entry;
+}
+
+
+UniValue ghostprivacysetsv2(const JSONRPCRequest& request)
+{
+
+    if (request.fHelp || request.params.size() > 0)
+        throw runtime_error(
+                "ghostprivacysetsv2\n"
+                        "\Get the total ghosted denomination amounts in the network.\n");
+
+    if(IsInitialBlockDownload())
+        return "Wait until node is fully synced.";
+
+    UniValue entry(UniValue::VOBJ);
+
+    int mintVector[6] = {0,0,0,0,0,0};
+
+    //Ghostprotocol active since 53k
+    int startHeight = Params().GetConsensus().nSigmaStartBlock;
+    //Grab fee from other blocks
+    for(auto it = startHeight; it < chainActive.Height() + 1; it++){
+        CBlock block;
+        CBlockIndex *pindex = chainActive[it];
+        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            for(auto ctx: block.vtx){
+                //Found ghost fee transaction
+                if(ctx->IsSigmaMint()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.scriptPubKey.IsSigmaMint()){
+                            if(mintTx.nValue == 10 * CENT)
+                                mintVector[0]++;
+                            else if(mintTx.nValue == 1 * COIN)
+                                mintVector[1]++;
+                            else if(mintTx.nValue == 10 * COIN)
+                                mintVector[2]++;
+                            else if(mintTx.nValue == 100 * COIN)
+                                mintVector[3]++;
+                            else if(mintTx.nValue == 1000 * COIN)
+                                mintVector[4]++;
+                            else if(mintTx.nValue == 10000 * COIN)
+                                mintVector[5]++;
+                        }
+                    }
+                }
+
+                //Found ghost fee transaction
+                if(ctx->IsSigmaSpend()){
+                    for(auto mintTx: ctx->vout){
+                        if(mintTx.nValue == 10 * CENT)
+                            mintVector[0]--;
+                        else if(mintTx.nValue == 1 * COIN)
+                            mintVector[1]--;
+                        else if(mintTx.nValue == 10 * COIN)
+                            mintVector[2]--;
+                        else if(mintTx.nValue == 100 * COIN)
+                            mintVector[3]--;
+                        else if(mintTx.nValue == 1000 * COIN)
+                            mintVector[4]--;
+                        else if(mintTx.nValue == 10000 * COIN)
+                            mintVector[5]--;
+                    }
+                }
+            }
+        }
+        else
+            return "ReadBlockFromDisk failed!";
+    }
+
+    CAmount total = ((double)mintVector[0] * 0.1) + (mintVector[1]) + (mintVector[2] * 10) +
+            (mintVector[3] * 100) + (mintVector[4] * 1000) + (mintVector[5] * 10000);
+
+    entry.push_back(Pair("0.1", (mintVector[0])));
+    entry.push_back(Pair("1", (mintVector[1])));
+    entry.push_back(Pair("10", (mintVector[2])));
+    entry.push_back(Pair("100", (mintVector[3])));
+    entry.push_back(Pair("1000", (mintVector[4])));
+    entry.push_back(Pair("10000", (mintVector[5])));
+    entry.push_back(Pair("total", total));
 
     return entry;
 }
@@ -6559,6 +6669,7 @@ static const CRPCCommand commands[] =
     { "NIX Privacy",        "getsigmaseed",             &getsigmaseed,             {} },
     { "NIX Privacy",        "setsigmaseed",             &setsigmaseed,             {"seed"} },
     { "NIX Privacy",        "listsigmaentries",         &listsigmaentries,         {"all"} },
+    { "NIX Privacy",        "ghostprivacysetsv2",       &ghostprivacysetsv2,       {""} },
     //NIX TOR routing functions
     { "NIX Privacy",        "enabletor",                &enableTor,                {"set"} },
     { "NIX Privacy",        "torstatus",                &torStatus,                {} },
@@ -6567,7 +6678,6 @@ static const CRPCCommand commands[] =
     { "NIX Governance",     "postoffchainproposals",    &postoffchainproposals,    {"vote_id", "decision"} },
     { "NIX Governance",     "getvoteweight",            &getvoteweight,            {"start_time", "end_time"} },
     { "NIX Governance",     "erasegoventries",          &erasegoventries,          {""} },
-
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)

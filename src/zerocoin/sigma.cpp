@@ -211,7 +211,7 @@ bool CheckSigmaSpendTransaction(
             }
         }
         else {
-            LogPrintf("CheckSigmaSpendTransaction: verification failed at block %d\n", nHeight);
+            LogPrintf("CheckSigmaSpendTransaction: verification failed at block=%d, denomID=%d, pubcoinID=%d\n", nHeight, spend->getDenomination(), pubcoinId);
             return false;
         }
     }
@@ -425,7 +425,7 @@ bool ConnectBlockSigma(
     if (pblock && pblock->sigmaTxInfo) {
         
         if (!fJustCheck)
-            pindexNew->spentSerials.clear();
+            pindexNew->spentSerialsV2.clear();
         
         for(auto& serial: pblock->sigmaTxInfo->spentSerials) {
             if (!CheckSigmaSpendSerial(state, pblock->sigmaTxInfo.get(), serial.first,

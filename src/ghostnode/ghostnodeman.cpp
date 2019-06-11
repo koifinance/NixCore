@@ -808,7 +808,7 @@ void CGhostnodeMan::ProcessGhostnodeConnections()
     g_connman->ForEachNode([](CNode* pnode){
         if(!(darkSendPool.pSubmittedToGhostnode != NULL && pnode->addr == darkSendPool.pSubmittedToGhostnode->addr))
             if(pnode->fGhostnode) {
-                // //LogPrint("Closing Ghostnode connection: peer=%d, addr=%s\n", pnode->GetId(), pnode->addr.ToString());
+                LogPrintf("Closing Ghostnode connection: peer=%d, addr=%s\n", pnode->GetId(), pnode->addr.ToString());
                 pnode->fDisconnect = true;
             }
     });

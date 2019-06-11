@@ -215,6 +215,7 @@ protected:
     mutable size_t cachedCoinsUsage;
 
 public:
+
     CCoinsViewCache(CCoinsView *baseIn);
 
     mutable std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
