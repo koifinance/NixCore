@@ -379,6 +379,9 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     if((nHeight < INT_MAX) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && (nHeight < Params().GetConsensus().nSigmaStartBlock) && (tx.IsZerocoinSpend()))
         return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin spend transactions are disabled"));
 
+    if(!isInitSync && nHeight < INT_MAX && nHeight > 242330 && tx.IsZerocoinSpend())
+        return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin spend transactions are disabled"));
+
     // Check Mint Zerocoin Transaction
     BOOST_FOREACH(const CTxOut &txout, tx.vout) {
         if (!txout.scriptPubKey.empty() && txout.scriptPubKey.IsZerocoinMint()) {

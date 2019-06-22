@@ -685,7 +685,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     }
 
     // ignore zerocoin mint transactions
-    if(tx.IsZerocoinMint())
+    if(tx.IsZerocoinMint() || tx.IsZerocoinSpend())
         return state.DoS(5, false, REJECT_INVALID, "not accepting zerocoin mints");
 
     if (!CheckTransaction(tx, state, hash, false))

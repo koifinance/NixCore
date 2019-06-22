@@ -287,16 +287,17 @@ public:
                 { 224285, uint256S("0xd82ac4f8293c821e9b2bb507897b5cb6f5908e043dbb6233401c7b2057cf6d92")},
                 { 230020, uint256S("0x1ec28a1f6d91aff087b7bc33d0f25d7abd7733e307d5fa56c92490c4bf6a3535")},
                 { 241413, uint256S("0x7e6a4dcd210fb2203f7b3ddd583363030ecf3a6c55bb065a55b40d8e54b76dd2")},
+                { 242323, uint256S("0x2f87e2205b37482755629e12feb3e7ba8e7ac8980e2aeb18ec1fa60431c0ef26")},
             }
         };
 
 
         chainTxData = ChainTxData{
                 //block 169900 (0x6f8b5e85dbb221143f21ddeb4ac59627def0a5eb889cc9b6809ab739e1f56769)
-            1561049824, // * UNIX timestamp of last known number of transactions
-            278880,  // * total number of transactions between genesis and that timestamp
+            1561167712, // * UNIX timestamp of last known number of transactions
+            279857,  // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
-            0.009008853891965533  // * estimated number of transactions per second after that timestamp
+            0.009006019942901212  // * estimated number of transactions per second after that timestamp
         };
     }
 };
