@@ -4819,7 +4819,7 @@ UniValue getstakinginfo(const JSONRPCRequest &request)
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
         return NullUniValue;
 
-    if (request.fHelp || request.params.size() != 0)
+    if (request.fHelp || request.params.size() > 1)
         throw std::runtime_error(
             "getstakinginfo\n"
             "Returns an object containing staking-related information."
@@ -4921,32 +4921,34 @@ UniValue getstakinginfo(const JSONRPCRequest &request)
 
     LOCK(cs_main);
 
-    CAmount totalSupply = 0;
-    int amountofOuts = 0;
+    if(request.params.size() == 1){
+        CAmount totalSupply = 0;
+        int amountofOuts = 0;
 
-    // manually verify all output amounts
-    for(auto it = 0; it < chainActive.Height(); it++){
-        CBlock block;
-        CBlockIndex *pindex = chainActive[it];
-        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
-            for(auto ctx: block.vtx){
-                for(int ss = 0; ss < ctx->vout.size(); ss++){
-                    if(ctx->vout[ss].scriptPubKey.IsZerocoinMint())
-                        continue;
-                    COutPoint out(ctx->GetHash(), ss);
-                    if(pcoinsTip->HaveCoin(out)){
-                        amountofOuts++;
-                        totalSupply += ctx->vout[ss].nValue;
+        // manually verify all output amounts
+        for(auto it = 0; it < chainActive.Height(); it++){
+            CBlock block;
+            CBlockIndex *pindex = chainActive[it];
+            if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+                for(auto ctx: block.vtx){
+                    for(int ss = 0; ss < ctx->vout.size(); ss++){
+                        if(ctx->vout[ss].scriptPubKey.IsZerocoinMint())
+                            continue;
+                        COutPoint out(ctx->GetHash(), ss);
+                        if(pcoinsTip->HaveCoin(out)){
+                            amountofOuts++;
+                            totalSupply += ctx->vout[ss].nValue;
+                        }
                     }
                 }
             }
+            else
+                return "ReadBlockFromDisk failed!";
         }
-        else
-            return "ReadBlockFromDisk failed!";
-    }
 
-    obj.pushKV("totalpublicsupply", ValueFromAmount(totalSupply));
-    obj.pushKV("outputs", amountofOuts);
+        obj.pushKV("totalpublicsupply", ValueFromAmount(totalSupply));
+        obj.pushKV("outputs", amountofOuts);
+    }
 
     return obj;
 }
