@@ -6085,13 +6085,20 @@ UniValue postoffchainproposals(const JSONRPCRequest& request)
         }
     }
 
-    // Cycle through all transactions and log all addresses
+
+    // timeframe we should check for transactions
+    // anything not within the limit is assumed to be a weight of 0
+    // use 46 days (30 days prior for eligibility + 15 days for voting + 1 cushion)
+    const int64_t vote_timeframe = 46 * 60 * 60 * 24;
+    const std::time_t current_time = std::time(0);
+
     std::vector<CScript> votingAddresses;
     votingAddresses.clear();
+    // Cycle through all transactions and log all addresses
     for (auto& mapping: pwallet->mapWallet){
         CWalletTx wtx = mapping.second;
 
-        if(!wtx.IsCoinStake())
+        if(!wtx.IsCoinStake() || wtx.GetTxTime() < (current_time - vote_timeframe))
             continue;
 
 
