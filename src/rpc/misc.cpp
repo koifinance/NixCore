@@ -1413,7 +1413,17 @@ UniValue getproposaltimeframeinfo(const JSONRPCRequest& request)
     for(int i = start; i <= end; i++){
         CBlockIndex *pindex = chainActive[i];
         totalWeight += GetGhostnodePayment(i, 0);
-        totalWeight += Params().GetProofOfStakeReward(pindex, 0);
+
+        CBlock block;
+        if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            // Add weight only if its being staked through p2wkh
+            if(block.vtx[0]->vout[0].scriptPubKey.IsPayToWitnessKeyHash()){
+                totalWeight += Params().GetProofOfStakeReward(pindex, 0);
+            }
+        }
+        else
+            return "ReadBlockFromDisk failed!";
+
     }
 
     result.pushKV("total_possible_votes", ValueFromAmount(totalWeight));
