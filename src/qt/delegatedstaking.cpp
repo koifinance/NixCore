@@ -69,6 +69,7 @@ DelegatedStaking::DelegatedStaking(const PlatformStyle *platformStyle, QWidget *
     ui->feePercent->setEnabled(false);
     ui->rewardTo->setEnabled(false);
     ui->enableFeePayout->setVisible(true);
+    ui->ownerAddress->setEnabled(false);
 
     ui->activeContractsView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->activeContractsView->setAlternatingRowColors(true);
@@ -85,6 +86,9 @@ DelegatedStaking::DelegatedStaking(const PlatformStyle *platformStyle, QWidget *
     connect(ui->sendButton, SIGNAL(triggered()), this, SLOT(on_sendButton_clicked()));
 
     connect(ui->enableFeePayout, SIGNAL(stateChanged(int)), this, SLOT(enableFeePayoutCheckBoxChecked(int)));
+
+    connect(ui->enableOwnerAddress, SIGNAL(stateChanged(int)), this, SLOT(enableOwnerAddressCheckBoxChecked(int)));
+
 
     connect(cancelContractAction, SIGNAL(triggered()), this, SLOT(cancelContract()));
 
@@ -116,6 +120,17 @@ void DelegatedStaking::enableFeePayoutCheckBoxChecked(int state){
         ui->rewardTo->clear();
         ui->feePercent->setEnabled(false);
         ui->rewardTo->setEnabled(false);
+    }
+}
+
+void DelegatedStaking::enableOwnerAddressCheckBoxChecked(int state){
+    if (state == Qt::Checked)
+    {
+        ui->ownerAddress->clear();
+        ui->ownerAddress->setEnabled(true);
+    }else{
+        ui->ownerAddress->clear();
+        ui->ownerAddress->setEnabled(false);
     }
 }
 
@@ -294,13 +309,15 @@ void DelegatedStaking::on_sendButton_clicked()
         walletModel->getWallet()->TopUpKeyPool();
     }
 
+    bool enableOwnerAddress = (ui->enableOwnerAddress->checkState() == Qt::Checked);
+
     // Generate a new key that is added to wallet
     CPubKey newKey;
-    if (!walletModel->getWallet()->GetKeyFromPool(newKey)) {
+    if (!enableOwnerAddress && !walletModel->getWallet()->GetKeyFromPool(newKey)) {
         return;
     }
 
-    CScript  delegateScript = GetScriptForDestination(DecodeDestination(ui->delegateTo->text().toStdString()));
+    CScript delegateScript = GetScriptForDestination(DecodeDestination(ui->delegateTo->text().toStdString()));
 
     if(delegateScript.IsPayToPublicKeyHash()){
         Q_EMIT message(tr("Lease Coins"), tr("Lease to address is not valid"), CClientUIInterface::MSG_ERROR);
@@ -318,12 +335,33 @@ void DelegatedStaking::on_sendButton_clicked()
         return;
     }
 
-    walletModel->getWallet()->LearnRelatedScripts(newKey, outType);
-    CTxDestination dest = GetDestinationForKey(newKey, outType);
+    CScript scriptPubKeyKernel;
 
-    walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
+    if(!enableOwnerAddress){
+        walletModel->getWallet()->LearnRelatedScripts(newKey, outType);
+        CTxDestination dest = GetDestinationForKey(newKey, outType);
 
-    CScript scriptPubKeyKernel = GetScriptForDestination(dest);
+        walletModel->getWallet()->SetAddressBook(dest, ui->contractLabel->text().toStdString(), "receive");
+        scriptPubKeyKernel = GetScriptForDestination(dest);
+    } else if(IsValidDestination(DecodeDestination(ui->ownerAddress->text().toStdString()))) {
+        scriptPubKeyKernel = GetScriptForDestination(DecodeDestination(ui->ownerAddress->text().toStdString()));
+
+        if(scriptPubKeyKernel.IsPayToScriptHash() && outType == OUTPUT_TYPE_BECH32){
+            Q_EMIT message(tr("Lease Coins"), tr("Owner address needs to be P2SH (N Address)"), CClientUIInterface::MSG_ERROR);
+            return;
+        }
+        else if(scriptPubKeyKernel.IsPayToWitnessKeyHash() && outType == OUTPUT_TYPE_BECH32){
+            Q_EMIT message(tr("Lease Coins"), tr("Owner address needs to be P2WKH (nix Address)"), CClientUIInterface::MSG_ERROR);
+            return;
+        } else if(!scriptPubKeyKernel.IsPayToWitnessKeyHash() && !scriptPubKeyKernel.IsPayToScriptHash()){
+            Q_EMIT message(tr("Lease Coins"), tr("Owner address is not valid format"), CClientUIInterface::MSG_ERROR);
+            return;
+        }
+    } else {
+        Q_EMIT message(tr("Lease Coins"), tr("Owner address is not valid"), CClientUIInterface::MSG_ERROR);
+        return;
+    }
+
 
     //set up contract
     CScript script = CScript() << OP_ISCOINSTAKE << OP_IF;

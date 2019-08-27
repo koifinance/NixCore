@@ -119,3 +119,4 @@ tor/src
 tor/changes
 tor/contrib/dist
 tor/src/rust/protover/tests
+secp256k1

@@ -72,6 +72,8 @@ private Q_SLOTS:
     void on_sendButton_clicked();
     /** Fee Payout checked */
     void enableFeePayoutCheckBoxChecked(int);
+    /** Owner Address checked */
+    void enableOwnerAddressCheckBoxChecked(int);
 
     void cancelContract();
 
