@@ -1417,8 +1417,12 @@ UniValue getproposaltimeframeinfo(const JSONRPCRequest& request)
         CBlock block;
         if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
             // Add weight only if its being staked through p2wkh
-            if(block.vtx[0]->vout[0].scriptPubKey.IsPayToWitnessKeyHash()){
-                totalWeight += Params().GetProofOfStakeReward(pindex, 0);
+            CTxDestination stakeAddr;
+            ExtractDestination(block.vtx[0]->vout[0].scriptPubKey, stakeAddr);
+            CTxDestination devAddr = DecodeDestination("nix1qr7y5gtwrpuadsluk7v2wdn9pwx3s4asf25hcq2");
+            if(block.vtx[0]->vout[0].scriptPubKey.IsPayToWitnessKeyHash() || block.vtx[0]->vout[0].scriptPubKey.IsPayToWitnessKeyHash_CS()){
+                if(GetScriptForDestination(stakeAddr) != GetScriptForDestination(devAddr))
+                    totalWeight += Params().GetProofOfStakeReward(pindex, 0);
             }
         }
         else
