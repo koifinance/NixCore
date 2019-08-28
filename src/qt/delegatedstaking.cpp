@@ -350,7 +350,7 @@ void DelegatedStaking::on_sendButton_clicked()
             Q_EMIT message(tr("Lease Coins"), tr("Owner address needs to be P2SH (N Address)"), CClientUIInterface::MSG_ERROR);
             return;
         }
-        else if(scriptPubKeyKernel.IsPayToWitnessKeyHash() && outType == OUTPUT_TYPE_BECH32){
+        else if(scriptPubKeyKernel.IsPayToWitnessKeyHash() && outType == OUTPUT_TYPE_P2SH_SEGWIT){
             Q_EMIT message(tr("Lease Coins"), tr("Owner address needs to be P2WKH (nix Address)"), CClientUIInterface::MSG_ERROR);
             return;
         } else if(!scriptPubKeyKernel.IsPayToWitnessKeyHash() && !scriptPubKeyKernel.IsPayToScriptHash()){
