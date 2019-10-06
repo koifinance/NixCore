@@ -7463,10 +7463,10 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
 
         }
 
-        //limit a batch to 4 zerocoins
+        //limit a batch to 3 zerocoins
         int startIndex = 0;
-        int endIndex = denominationBatch.size() > 4 ? 3 : denominationBatch.size() - 1;
-        for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/4) + 1); vecSplit++){
+        int endIndex = denominationBatch.size() > 3 ? 2 : denominationBatch.size() - 1;
+        for(int vecSplit = 0; vecSplit < ((denominationBatch.size()/3) + 1); vecSplit++){
             vector <std::string> denominationBatchSub;
             vector <CScript> pubCoinScriptsSub;
             for(int vecSub = startIndex; vecSub <= endIndex; vecSub++){
@@ -7485,7 +7485,6 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
                         amountGhosted += currentDenomination[x];
                         amountGhosted += currentDenomination[x + 1];
                         amountGhosted += currentDenomination[x + 2];
-                        amountGhosted += currentDenomination[x + 3];
                     }
                     return "GhostModeSpendTrigger(): Error: Was only able to unghost certain amount of NIX. " + std::to_string(amountGhosted) + stringError;
                 }
@@ -7494,7 +7493,7 @@ std::string CWallet::GhostModeSpendTrigger(string totalAmount, string toKey, vec
             }
 
             startIndex = endIndex + 1;
-            endIndex = endIndex + 4;
+            endIndex = endIndex + 3;
 
             if (endIndex > denominationBatch.size() - 1)
                 endIndex = denominationBatch.size() - 1;

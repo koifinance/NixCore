@@ -6319,6 +6319,7 @@ UniValue getpubcoinpackv2(const JSONRPCRequest& request) {
         CSigmaMint dMint;
         sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_1);
         pwalletMain->GetGhostWallet()->GenerateHDMint(sigma::CoinDenomination::SIGMA_0_1, coin, dMint);
+        LogPrintf("is in our wallet? %d %s", pwalletMain->GetGhostWallet()->IsInMintPool(dMint.GetPubcoinValue()), dMint.GetPubcoinValue().GetHex());
         if(!coin.getPublicCoin().validate())
             continue;
         LogPrintf("getpubcoinpackv2(): sigma mint index=%d\n", i);
