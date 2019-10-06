@@ -132,6 +132,8 @@ public:
     // Return height of mint transaction and id of minted coin
     int GetMintedCoinHeightAndId(const CBigNum &pubCoin, int denomination, int &id);
 
+    bool GetMintedCoinDenom(const CBigNum &pubCoin, int &denomination);
+
     // Reset to initial values
     void Reset();
 

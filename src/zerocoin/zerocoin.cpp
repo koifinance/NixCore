@@ -89,13 +89,30 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
 
     if(forceSpendLink){
         //check if pubcoin is real
-        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
         const CBigNum& bnPubcoin = newSpend.getPubcoinValue();
         if ((!isVerifyDB) && !zerocoinState.HasCoin(bnPubcoin))
             return state.DoS(100,
                              false,
                              REJECT_MALFORMED,
-                             "CheckSpendZerocoinTransaction(): pubcoinhash is not found in the blockchain");
+                             "CheckSpendZerocoinTransaction(): Pubcoinhash is not found in the blockchain");
+
+        int linkDenom = 0;
+        if(!zerocoinState.GetMintedCoinDenom(bnPubcoin, linkDenom)){
+            return state.DoS(100,
+                             false,
+                             REJECT_MALFORMED,
+                             "CheckSpendZerocoinTransaction(): Could not find pubcoin denom");
+        }
+
+        if(linkDenom != newSpend.getDenomination()){
+            LogPrintf("CheckSpendZerocoinTransaction(): Spending %d, Actual %d \n", newSpend.getDenomination(), linkDenom);
+            return state.DoS(100,
+                             false,
+                             REJECT_MALFORMED,
+                             "CheckSpendZerocoinTransaction(): Spending wrong denom!");
+        }
+
+        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
     }
 
     newSpend.setVersion(spendVersion);
@@ -379,7 +396,7 @@ bool CheckZerocoinTransaction(const CTransaction &tx,
     if((nHeight < INT_MAX) && (nHeight > Params().GetConsensus().nZerocoinDisableBlock) && (nHeight < Params().GetConsensus().nSigmaStartBlock) && (tx.IsZerocoinSpend()))
         return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin spend transactions are disabled"));
 
-    if(!isInitSync && nHeight < INT_MAX && nHeight > 242330 && tx.IsZerocoinSpend())
+    if(!isInitSync && nHeight < INT_MAX && nHeight > 242330 && nHeight < 325000 && tx.IsZerocoinSpend())
         return state.DoS(50, error("CheckZerocoinTransaction(): Zerocoin spend transactions are disabled"));
 
     // Check Mint Zerocoin Transaction
@@ -768,6 +785,20 @@ int CZerocoinState::GetMintedCoinHeightAndId(const CBigNum &pubCoin, int denomin
     }
     else
         return -1;
+}
+
+bool CZerocoinState::GetMintedCoinDenom(const CBigNum &pubCoin, int &denomination) {
+    auto coins = mintedPubCoins.equal_range(pubCoin);
+
+    auto coinIt = find_if(coins.first, coins.second,
+                          [=](const decltype(mintedPubCoins)::value_type &v) { return true; });
+
+    if (coinIt != mintedPubCoins.end()) {
+        denomination = coinIt->second.denomination;
+        return true
+    }
+    else
+        return false;
 }
 
 bool CZerocoinState::GetWitnessForAllSpends(std::vector<CBigNum> &accValues, std::vector<uint256> &accBlockHashes) {
