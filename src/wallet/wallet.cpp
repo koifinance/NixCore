@@ -9207,6 +9207,9 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
                 if(!coin.getPublicCoin().validate())
                     continue;
 
+                //archive mint as watch only
+                dMint.EnableWatchOnly();
+                sigmaTracker->Add(dMint);
                 privCoins.push_back(coin);
                 GetGhostWallet()->UpdateCountLocal();
             }

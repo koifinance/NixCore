@@ -46,6 +46,7 @@ struct CMintMeta
     bool isArchived;
     bool isDeterministic;
     bool isSeedCorrect;
+    bool watchOnly;
 };
 
 uint256 GetSerialHash(const Scalar& bnSerial);

@@ -795,7 +795,7 @@ bool CZerocoinState::GetMintedCoinDenom(const CBigNum &pubCoin, int &denominatio
 
     if (coinIt != mintedPubCoins.end()) {
         denomination = coinIt->second.denomination;
-        return true
+        return true;
     }
     else
         return false;

@@ -154,6 +154,8 @@ std::list<CMintMeta> CSigmaTracker::GetMints(bool fConfirmedOnly, bool fInactive
         CMintMeta mint = it.second;
         if ((mint.isArchived || mint.isUsed) && fInactive)
             continue;
+        if(mint.watchOnly)
+            continue;
         bool fConfirmed = ((mint.nHeight != INT_MAX) && (mint.nHeight <= chainActive.Height()));
         if (fConfirmedOnly && !fConfirmed)
             continue;
@@ -282,9 +284,12 @@ void CSigmaTracker::Add(const CSigmaMint& dMint, bool isNew, bool isArchived, CG
     meta.isSeedCorrect = ghostWallet->CheckSeed(dMint);
     if (!isGhostWalletInitialized)
         delete ghostWallet;
+    if(dMint.IsWatchOnly()){
+        meta.watchOnly = true;
+    }
     mapSerialHashes[meta.hashSerial] = meta;
 
-    if (isNew)
+    if (isNew || dMint.IsWatchOnly())
         CWalletDB(pwalletMain->GetDBHandle()).WriteSigmaMint(dMint);
 }
 
