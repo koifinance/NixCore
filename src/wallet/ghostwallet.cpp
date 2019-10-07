@@ -146,7 +146,6 @@ bool CGhostWallet::LoadMintPoolFromDB()
          uint256 hashSeed =  it->first;
          for (auto& pair : mapMintPool[hashSeed]){
              mintPool.Add(pair);
-             LogPrintf("adding mintpool %d seed: %s \n", pair.first.ToString(), hashSeed.ToString());
          }
     }
 
