@@ -6322,9 +6322,6 @@ UniValue getpubcoinpackv2(const JSONRPCRequest& request) {
         if(!coin.getPublicCoin().validate())
             continue;
 
-        //archive mint as watch only
-        dMint.EnableWatchOnly();
-        pwalletMain->sigmaTracker->Add(dMint);
         privCoins.push_back(coin);
         pwalletMain->GetGhostWallet()->UpdateCountLocal();
     }

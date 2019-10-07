@@ -20,7 +20,6 @@ private:
     int nId;
     int64_t denom;
     bool isUsed;
-    bool watchOnly;
 
 public:
     CSigmaMint();
@@ -42,7 +41,6 @@ public:
     GroupElement GetPubcoinValue() const { return pubCoinValue; }
     uint256 GetPubCoinHash() const { return GetPubCoinValueHash(pubCoinValue); }
     uint256 GetTxHash() const { return txid; }
-    bool IsWatchOnly() const {return watchOnly;}
     bool IsUsed() const { return isUsed; }
     void SetDenomination(const sigma::CoinDenomination value) {
         int64_t denom;
@@ -56,7 +54,6 @@ public:
     void SetTxHash(const uint256& txid) { this->txid = txid; }
     void SetUsed(const bool isUsed) { this->isUsed = isUsed; }
     void SetPubcoinValue(const GroupElement pubCoinValue) { this->pubCoinValue = pubCoinValue; }
-    void EnableWatchOnly() { this->watchOnly = true; }
     std::string ToString() const;
 
     ADD_SERIALIZE_METHODS;
@@ -73,9 +70,6 @@ public:
         READWRITE(nId);
         READWRITE(denom);
         READWRITE(isUsed);
-        if(watchOnly){
-            READWRITE(watchOnly);
-        }
     };
 };
 

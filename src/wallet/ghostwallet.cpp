@@ -25,6 +25,7 @@ CGhostWallet::CGhostWallet(CWallet *pwalletMain)
         seedMaster.SetNull();
         nCountLastUsed = 0;
         this->mintPool = CMintPool();
+        this->LoadMintPoolFromDB();
         return;
     }
 
@@ -138,9 +139,16 @@ bool CGhostWallet::LoadMintPoolFromDB()
 {
     map<uint256, vector<pair<uint256, uint32_t> > > mapMintPool = CWalletDB(pwalletMain->GetDBHandle()).MapMintPool();
 
-    uint256 hashSeed = Hash(seedMaster.begin(), seedMaster.end());
-    for (auto& pair : mapMintPool[hashSeed])
-        mintPool.Add(pair);
+     map<uint256, vector<pair<uint256, uint32_t>>>::iterator it;
+
+    for (it = mapMintPool.begin(); it != mapMintPool.end(); it++)
+    {
+         uint256 hashSeed =  it->first;
+         for (auto& pair : mapMintPool[hashSeed]){
+             mintPool.Add(pair);
+             LogPrintf("adding mintpool %d seed: %s \n", pair.first.ToString(), hashSeed.ToString());
+         }
+    }
 
     return true;
 }
@@ -272,21 +280,38 @@ bool CGhostWallet::SetMintSeen(const GroupElement& bnValue, const int& nHeight, 
         return error("%s: value not in pool", __func__);
     pair<uint256, uint32_t> pMint = mintPool.Get(bnValue);
 
+    CWalletDB walletdb(pwalletMain->GetDBHandle());
+    CSigmaMint dMint;
+
     // Regenerate the mint
     uint512 seedZerocoin = GetSigmaSeed(pMint.second);
     GroupElement bnValueGen;
     sigma::PrivateCoin coin(SParams, denom, false);
     SeedToSigma(seedZerocoin, bnValueGen, coin);
-    CWalletDB walletdb(pwalletMain->GetDBHandle());
+
+    // we are checking for ckp payments
+    CSigmaMint dMint_;
+    if(seedMaster.IsNull()){
+        if(walletdb.ReadSigmaMint(pMint.first, dMint_)){
+            bnValueGen = dMint_.GetPubcoinValue();
+            dMint = dMint_;
+        } else {
+            return error("%s: dMint not in pool", __func__);
+        }
+    }
 
     //Sanity check
     if (bnValueGen != bnValue)
         return error("%s: generated pubcoin and expected value do not match!", __func__);
 
     // Create mint object and database it
+    uint256 hashSerial;
     uint256 hashSeed = Hash(seedMaster.begin(), seedMaster.end());
-    uint256 hashSerial = GetSerialHash(coin.getSerialNumber());
-    CSigmaMint dMint(pMint.second, hashSeed, hashSerial, bnValue);
+    if(!seedMaster.IsNull()){
+        hashSerial = GetSerialHash(coin.getSerialNumber());
+        dMint = CSigmaMint(pMint.second, hashSeed, hashSerial, bnValue);
+    }
+
     dMint.SetDenomination(denom);
     dMint.SetHeight(nHeight);
 
@@ -294,7 +319,7 @@ bool CGhostWallet::SetMintSeen(const GroupElement& bnValue, const int& nHeight, 
     int nHeightTx;
     uint256 txidSpend;
     CTransactionRef txSpend;
-    if (IsSerialInBlockchain(hashSerial, nHeightTx, txidSpend, txSpend)) {
+    if (!seedMaster.IsNull() && IsSerialInBlockchain(hashSerial, nHeightTx, txidSpend, txSpend)) {
         //Find transaction details and make a wallettx and add to wallet
         dMint.SetUsed(true);
         CWalletTx wtx(pwalletMain, txSpend);

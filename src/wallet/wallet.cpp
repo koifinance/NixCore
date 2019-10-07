@@ -1187,8 +1187,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                     meta.nHeight = (pIndex == nullptr) ? INT_MAX : pIndex->nHeight;
                     meta.txid = tx.GetHash();
                     sigmaTracker->UpdateState(meta);
-                }
-                if(ghostWalletMain->IsInMintPool(pubcoin)){
+                } else if(ghostWalletMain->IsInMintPool(pubcoin)){
                     foundSigma = true;
                     //Check if this mint is one that is in our mintpool (a potential future mint from our deterministic generation)
                     LogPrintf("AddToWalletIfInvolvingMe(): setting sigma mint to seen\n");
@@ -9207,9 +9206,6 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
                 if(!coin.getPublicCoin().validate())
                     continue;
 
-                //archive mint as watch only
-                dMint.EnableWatchOnly();
-                sigmaTracker->Add(dMint);
                 privCoins.push_back(coin);
                 GetGhostWallet()->UpdateCountLocal();
             }

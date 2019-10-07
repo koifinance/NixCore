@@ -30,7 +30,6 @@ void CSigmaMint::SetNull()
     nId = 0;
     denom = 0;
     isUsed = false;
-    watchOnly = false;
 }
 
 std::string CSigmaMint::ToString() const

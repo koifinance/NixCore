@@ -60,6 +60,7 @@ class CGhostWallet
 {
 private:
     uint256 seedMaster;
+    std::map<uint32_t, uint256> sigmaHash;
     uint32_t nCountLastUsed;
     CMintPool mintPool;
     CWallet *pwalletMain;
