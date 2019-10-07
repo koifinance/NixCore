@@ -1172,14 +1172,12 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
         }
 
         // find all mints in this block and update
-        LogPrintf("AddToWalletIfInvolvingMe(): presigma check %d %d %d\n", ghostWalletMain != nullptr, sigmaTracker != nullptr, tx.IsSigmaMint());
         if(ghostWalletMain != nullptr && sigmaTracker != nullptr && tx.IsSigmaMint()){
             for(const CTxOut &txOut: tx.vout){
                 if(!txOut.scriptPubKey.IsSigmaMint())
                     continue;
                 secp_primitives::GroupElement pubcoin = ParseSigmaMintScript(txOut.scriptPubKey);
                 uint256 hashValue = GetPubCoinValueHash(pubcoin);
-                LogPrintf("checking pubcoin %s \n", hashValue.ToString());
                 if(sigmaTracker->HasPubcoinHash(hashValue)){
                     foundSigma = true;
                     LogPrintf("AddToWalletIfInvolvingMe(): writing sigma mint into tracker\n");

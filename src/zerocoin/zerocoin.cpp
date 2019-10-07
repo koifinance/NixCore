@@ -89,6 +89,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
 
     if(forceSpendLink){
         //check if pubcoin is real
+        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
         const CBigNum& bnPubcoin = newSpend.getPubcoinValue();
         if ((!isVerifyDB) && !zerocoinState.HasCoin(bnPubcoin))
             return state.DoS(100,
@@ -98,6 +99,7 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
 
         int linkDenom = 0;
         if(!zerocoinState.GetMintedCoinDenom(bnPubcoin, linkDenom)){
+            LogPrintf("CheckSpendZerocoinTransaction(): Could not find pubcoin denom");
             return state.DoS(100,
                              false,
                              REJECT_MALFORMED,
@@ -112,7 +114,6 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
                              "CheckSpendZerocoinTransaction(): Spending wrong denom!");
         }
 
-        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
     }
 
     newSpend.setVersion(spendVersion);
