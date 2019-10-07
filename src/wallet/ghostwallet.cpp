@@ -292,7 +292,8 @@ bool CGhostWallet::SetMintSeen(const GroupElement& bnValue, const int& nHeight, 
     // we are checking for ckp payments
     CSigmaMint dMint_;
     if(seedMaster.IsNull()){
-        if(walletdb.ReadSigmaMint(pMint.first, dMint_)){
+        uint256 hashPubCoin = pMint.first;
+        if(walletdb.ReadSigmaMint(hashPubCoin, dMint_)){
             bnValueGen = dMint_.GetPubcoinValue();
             dMint = dMint_;
         } else {

@@ -6322,6 +6322,8 @@ UniValue getpubcoinpackv2(const JSONRPCRequest& request) {
         if(!coin.getPublicCoin().validate())
             continue;
 
+        //write mint to DB, will get scanned if ckp pay is made
+        CWalletDB(pwalletMain->GetDBHandle()).WriteSigmaMint(dMint);
         privCoins.push_back(coin);
         pwalletMain->GetGhostWallet()->UpdateCountLocal();
     }

@@ -1178,8 +1178,8 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                 if(!txOut.scriptPubKey.IsSigmaMint())
                     continue;
                 secp_primitives::GroupElement pubcoin = ParseSigmaMintScript(txOut.scriptPubKey);
-                LogPrintf("checking pubcoin %s \n", pubcoin.GetHex());
                 uint256 hashValue = GetPubCoinValueHash(pubcoin);
+                LogPrintf("checking pubcoin %s \n", hashValue.ToString());
                 if(sigmaTracker->HasPubcoinHash(hashValue)){
                     foundSigma = true;
                     LogPrintf("AddToWalletIfInvolvingMe(): writing sigma mint into tracker\n");
@@ -1187,7 +1187,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                     meta.nHeight = (pIndex == nullptr) ? INT_MAX : pIndex->nHeight;
                     meta.txid = tx.GetHash();
                     sigmaTracker->UpdateState(meta);
-                } else if(ghostWalletMain->IsInMintPool(pubcoin)){
+                } else if(ghostWalletMain->LoadMintPoolFromDB() && ghostWalletMain->IsInMintPool(pubcoin)){
                     foundSigma = true;
                     //Check if this mint is one that is in our mintpool (a potential future mint from our deterministic generation)
                     LogPrintf("AddToWalletIfInvolvingMe(): setting sigma mint to seen\n");
@@ -9206,6 +9206,8 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
                 if(!coin.getPublicCoin().validate())
                     continue;
 
+                //write mint to DB, will get scanned if ckp pay is made
+                CWalletDB(this->GetDBHandle()).WriteSigmaMint(dMint);
                 privCoins.push_back(coin);
                 GetGhostWallet()->UpdateCountLocal();
             }
