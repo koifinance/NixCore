@@ -69,10 +69,10 @@ GhostVault::GhostVault(const PlatformStyle *platformStyle, Mode mode, QWidget *p
 
     int unit = BitcoinUnits::BTC;
     CAmount balance = vpwallets.front()->GetGhostBalance(true);
-    ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+    ui->total->setText(tr("Ghosted: ") + (BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways)));
 
     CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
-    ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
+    ui->unconfirmed_label->setText(tr("Unconfirmed: ") + (BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways)));
 
     // Build context menu
     contextMenu = new QMenu(this);
@@ -254,10 +254,10 @@ void GhostVault::on_ghostNIXButton_clicked() {
 
             int unit = walletModel->getOptionsModel()->getDisplayUnit();
             CAmount balance = vpwallets.front()->GetGhostBalance(true);
-            ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+            ui->total->setText(tr("Ghosted: ") + (BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways)));
 
             CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
-            ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
+            ui->unconfirmed_label->setText(tr("Unconfirmed: ") + (BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways)));
 
 
             ui->convertNIXAmount->clear();
@@ -289,10 +289,10 @@ void GhostVault::on_ghostNIXButton_clicked() {
 
             int unit = walletModel->getOptionsModel()->getDisplayUnit();
             CAmount balance = vpwallets.front()->GetGhostBalance(true);
-            ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+            ui->total->setText(tr("Ghosted: ") + (BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways)));
 
             CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
-            ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
+            ui->unconfirmed_label->setText(tr("Unconfirmed: ") + (BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways)));
 
             ui->convertNIXAmount->clear();
             ui->ghostAmount->clear();
@@ -445,10 +445,10 @@ void GhostVault::on_convertGhostButton_clicked() {
 
             int unit = walletModel->getOptionsModel()->getDisplayUnit();
             CAmount balance = vpwallets.front()->GetGhostBalance(true);
-            ui->total->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
+            ui->total->setText(tr("Ghosted: ") + (BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways)));
 
             CAmount unconfirmedBalance = vpwallets.front()->GetGhostBalanceUnconfirmed(true);
-            ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
+            ui->unconfirmed_label->setText(tr("Unconfirmed: ") + (BitcoinUnits::formatWithUnit(unit, unconfirmedBalance, false, BitcoinUnits::separatorAlways)));
         }
 
         ui->convertGhostToThirdPartyAddress->clear();
@@ -512,8 +512,8 @@ void GhostVault::selectNewAddress(const QModelIndex &parent, int begin, int /*en
 
 void GhostVault::setVaultBalance(CAmount confirmed, CAmount unconfirmed){
     int unit = walletModel->getOptionsModel()->getDisplayUnit();
-    ui->total->setText(BitcoinUnits::formatWithUnit(unit, confirmed, false, BitcoinUnits::separatorAlways) + tr(" Ghosted NIX"));
-    ui->unconfirmed_label->setText(BitcoinUnits::formatWithUnit(unit, unconfirmed, false, BitcoinUnits::separatorAlways) + tr(" Unconfirmed NIX"));
+    ui->total->setText(tr("Ghosted: ") + (BitcoinUnits::formatWithUnit(unit, confirmed, false, BitcoinUnits::separatorAlways)));
+    ui->unconfirmed_label->setText(tr("Unconfirmed: ") + (BitcoinUnits::formatWithUnit(unit, unconfirmed, false, BitcoinUnits::separatorAlways)));
 }
 
 void GhostVault::setKeyList(){
