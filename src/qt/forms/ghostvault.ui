@@ -52,7 +52,7 @@
           </font>
          </property>
          <property name="text">
-          <string>Ghost Vault Balance: </string>
+          <string>Ghost Vault Balance</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
