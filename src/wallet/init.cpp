@@ -62,6 +62,7 @@ std::string GetWalletHelpString(bool showDebug)
 
     strUsage += HelpMessageGroup(_("Wallet ghosting options:"));
     strUsage += HelpMessageOpt("-autoghost", _("Auto ghost your coins by individual UTXO's on a random time basis from 1 minute to 10 minutes each  (default: false)"));
+    strUsage += HelpMessageOpt("-autoghostblacklist=<n>", _("Addresses to blacklist and avoid spending with the autoghost process  (default: none)"));
 
     if (showDebug)
     {

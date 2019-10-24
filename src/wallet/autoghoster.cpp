@@ -98,6 +98,21 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
         return;
     };
 
+    std::vector<std::string> blacklistAddr;
+    blacklistAddr.clear();
+    std::string blacklistAddresses = gArgs.GetArg("-autoghostblacklist", "");
+
+    char sep = ',';
+    std::string::size_type b = 0;
+    while ((b = blacklistAddresses.find_first_not_of(sep, b)) != std::string::npos) {
+        auto e = blacklistAddresses.find_first_of(sep, b);
+        blacklistAddr.push_back(blacklistAddresses.substr(b, e-b));
+        b = e;
+    }
+
+    for(auto addr: blacklistAddr)
+        LogPrintf("\n%s", addr);
+
     while (!fStopGhostProc)
     {
         if (fReindex || fImporting)
@@ -151,7 +166,7 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
             std::random_shuffle(vecOutputs.begin(), vecOutputs.end());
             for (const COutput& out : vecOutputs) {
                 COutPoint selectedInput(out.tx->tx->GetHash(), out.i);
-                LogPrintf("Checking GhostModeMintSigma amount %llf minAmount %llf.\n", out.tx->tx->vout[out.i].nValue, minGhostAmount);
+                // check if we have enought to maintain the min amount
                 if(out.tx->tx->vout[out.i].nValue < minGhostAmount)
                     continue;
 
@@ -162,6 +177,19 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
                         isLocked = true;
                         break;
                     }
+                }
+
+                CTxDestination address;
+                const CScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+                if(ExtractDestination(scriptPubKey, address)){
+                    for(const std::string addr: blacklistAddr){
+                        CTxDestination blacklistDest = DecodeDestination(addr);
+                        if(blacklistDest == address){
+                            isLocked = true;
+                        }
+                    }
+                } else {
+                    continue;
                 }
 
                 if(!isLocked){
