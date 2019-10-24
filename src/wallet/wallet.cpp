@@ -43,6 +43,7 @@
 #include "random.h"
 #include <ghost-address/commitmentkey.h>
 #include <wallet/ghostwallet.h>
+#include <wallet/autoghoster.h>
 
 #include <rpc/server.h>
 #include <pos/kernel.h>
@@ -498,6 +499,7 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
             if (CCryptoKeyStore::Unlock(_vMasterKey)){
                 if(this->fUnlockForStakingOnly)
                     WakeThreadStakeMiner(this);
+                WakeThreadAutoGhoster(this);
                 return true;
             }
         }
@@ -1245,6 +1247,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
                     LogPrintf("ERROR: %s - Orphaning stake, AbandonTransaction failed for %s\n", __func__, hashTx.ToString());
 
                 WakeThreadStakeMiner(this);
+                WakeThreadAutoGhoster(this);
                 return true;
             }
 
@@ -1256,6 +1259,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
 
             bool rv = AddToWallet(wtx, false);
             WakeThreadStakeMiner(this); // wallet balance may have changed
+            WakeThreadAutoGhoster(this);
 
             return rv;
         }

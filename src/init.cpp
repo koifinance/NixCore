@@ -48,6 +48,7 @@
 #include <wallet/init.h>
 #endif
 #include <pos/miner.h>
+#include <wallet/autoghoster.h>
 #include <warnings.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -332,6 +333,9 @@ void Shutdown()
 #ifdef ENABLE_WALLET
     if(!fGhostNode){
         ShutdownThreadStakeMiner();
+    }
+    if(gArgs.GetBoolArg("-autoghost", false)){
+        ShutdownThreadAutoGhoster();
     }
     FlushWallets();
 #endif
@@ -2062,6 +2066,26 @@ bool AppInitMain()
                 t->thread = std::thread(&TraceThread<std::function<void()> >, t->sName.c_str(), std::function<void()>(std::bind(&ThreadStakeMiner, i, vpwallets, nStart, nEnd)));
             };
         }
+        #endif
+    }
+
+    // ********************************************************* Step 11f: start auto ghosting
+    if(gArgs.GetBoolArg("-autoghost", false)){
+        #ifdef ENABLE_WALLET
+        size_t nWallets = vpwallets.size();
+        assert(nWallets > 0);
+        size_t nThreads = 1;
+        size_t nPerThread = nWallets / nThreads;
+        for (size_t i = 0; i < nThreads; ++i)
+        {
+            size_t nStart = nPerThread * i;
+            size_t nEnd = (i == nThreads-1) ? nWallets : nPerThread * (i+1);
+            AutoGhosterThread *t = new AutoGhosterThread();
+            vAutoGhosterThreads.push_back(t);
+            vpwallets[i]->nAutoGhosterThread = i;
+            t->sName = strprintf("autoghoster%d", i);
+            t->thread = std::thread(&TraceThread<std::function<void()> >, t->sName.c_str(), std::function<void()>(std::bind(&ThreadAutoGhoster, i, vpwallets, nStart, nEnd)));
+        };
         #endif
     }
 

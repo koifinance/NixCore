@@ -1701,6 +1701,8 @@ public:
     int64_t nReserveBalance = 0;
     size_t nStakeThread = 9999999; // unset
 
+    size_t nAutoGhosterThread = 9999999; // unset
+
     mutable int deepestTxnDepth = 0; // for stake mining
 
     mutable int m_greatest_txn_depth = 0; // depth of most deep txn
@@ -1719,6 +1721,15 @@ public:
         NOT_STAKING_NOT_UNLOCKED_FOR_STAKING_ONLY = -6,
     } nIsStaking = NOT_STAKING;
 
+
+    enum eAutoGhostingState {
+        NOT_GHOSTING = 0,
+        IS_GHOSTING = 1,
+        NOT_GHOSTING_LOCKED = -1,
+        NOT_GHOSTING_DISABLED = -2,
+    } nIsAutoGhosting = NOT_GHOSTING;
+
+    bool fAutoGhostingEnabled;
 
     // Staking Settings
     bool fStakingEnabled;

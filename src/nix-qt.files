@@ -1812,6 +1812,8 @@ validationinterface.h
 version.h
 versionbits.cpp
 versionbits.h
+wallet/autoghoster.cpp
+wallet/autoghoster.h
 wallet/ghostwallet.cpp
 wallet/ghostwallet.h
 wallet/sigmamint.cpp

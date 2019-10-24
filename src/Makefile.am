@@ -226,6 +226,7 @@ NIX_CORE_H = \
   validation.h \
   validationinterface.h \
   versionbits.h \
+  wallet/autoghoster.h \
   wallet/coincontrol.h \
   wallet/crypter.h \
   wallet/db.h \
@@ -331,6 +332,7 @@ libnix_wallet_a_SOURCES = \
   ghostnode/instantx.cpp \
   ghost-address/commitmentkey.cpp \
   pos/miner.cpp \
+  wallet/autoghoster.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
   wallet/feebumper.cpp \
