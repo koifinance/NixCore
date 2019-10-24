@@ -124,7 +124,7 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
         };
 
         std::unique_ptr<CBlockTemplate> pblocktemplate;
-
+        bool isWalletLocked = false;
         for (size_t i = nStart; i < nEnd; ++i)
         {
             auto pwallet = vpwallets[i];
@@ -134,6 +134,7 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
                 pwallet->nIsAutoGhosting = CWallet::NOT_GHOSTING_LOCKED;
                 LogPrintf("%s: wallet locked, check again in 10 seconds\n", __func__);
                 condWaitFor(nThreadID, 10000);
+                isWalletLocked = true;
                 continue;
             }
 
@@ -181,12 +182,14 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
             }
         };
 
-        // set sleep timer in ms
-        nGhostSleep = (60 + GetRandInt(300));
-        // set last ghosted to now
-        nTimeLastGhosted = GetTime();
-        LogPrintf("ThreadAutoGhoster sleeping for %llf.\n", nGhostSleep);
-        // sleep for timer length
-        condWaitFor(nThreadID, nGhostSleep * 1000);
+        if(!isWalletLocked){
+            // set sleep timer in ms
+            nGhostSleep = (60 + GetRandInt(300));
+            // set last ghosted to now
+            nTimeLastGhosted = GetTime();
+            LogPrintf("ThreadAutoGhoster sleeping for %llf.\n", nGhostSleep);
+            // sleep for timer length
+            condWaitFor(nThreadID, nGhostSleep * 1000);
+        }
     };
 }
