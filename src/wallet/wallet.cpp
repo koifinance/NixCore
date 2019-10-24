@@ -10312,7 +10312,7 @@ std::string CWallet::GhostModeSpendSigma(string totalAmount, string toKey, vecto
 }
 
 bool CWallet::GhostModeMintSigma(string totalAmount, vector<CScript> pubCoinScripts){
-
+    LogPrintf("GhostModeMintSigma(): amount %s \n", totalAmount);
     if (this->IsLocked())
         return error("%s: Error: The wallet needs to be unlocked.", __func__);
 
@@ -10348,13 +10348,19 @@ bool CWallet::GhostModeMintSigma(string totalAmount, vector<CScript> pubCoinScri
     std::string strError;
 
     CAmount amount = 0;
-    if (!ParseFixedPoint(totalAmount, 8, &amount))
-        return error("%s: Error: Invalid amount.", __func__);
-    if (!MoneyRange(amount))
-        return error("%s: Error: Amount out of range.", __func__);
-
-    if(!CreateSigmaMints(amount, privCoins, strError))
+    if (!ParseFixedPoint(totalAmount, 8, &amount)){
+        LogPrintf("%s: Error: Invalid amount.", __func__);
         return false;
+    }
+    if (!MoneyRange(amount)){
+        LogPrintf("%s: Error: Amount out of range.", __func__);
+        return false;
+    }
+
+    if(!CreateSigmaMints(amount, privCoins, strError)){
+        LogPrintf("%s: Error: CreateSigmaMints %s .\n", __func__, strError);
+        return false;
+    }
 
     vector<CSigmaMint> vDMints;
     auto vecSend = CreateSigmaMintRecipients(privCoins, vDMints, pubCoinScripts);

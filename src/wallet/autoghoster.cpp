@@ -38,7 +38,7 @@ void AutoGhosterThread::condWaitFor(int ms)
 
 std::atomic<bool> fStopGhostProc(false);
 
-int64_t nGhostSleep = (60 + GetRandInt(300));
+int64_t nGhostSleep = 1;
 std::atomic<int64_t> nTimeLastGhosted(GetTime());
 
 
@@ -66,8 +66,6 @@ void WakeThreadAutoGhoster(CWallet *pwallet)
 {
     // Call when chain is synced, wallet unlocked or balance changed
     LogPrintf("WakeThreadStakeMiner thread %d\n", pwallet->nAutoGhosterThread);
-    nTimeLastGhosted = GetTime();
-    nGhostSleep = (60 + GetRandInt(300));
     if (pwallet->nAutoGhosterThread >= vAutoGhosterThreads.size())
         return;
     AutoGhosterThread *t = vAutoGhosterThreads[pwallet->nAutoGhosterThread];
@@ -105,14 +103,14 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
         if (fReindex || fImporting)
         {
             LogPrintf("%s: Block import/reindex.\n", __func__);
-            condWaitFor(nThreadID, 10000);
+            condWaitFor(nThreadID, 15000);
             continue;
         };
 
         if (g_connman->vNodes.empty() || IsInitialBlockDownload())
         {
             LogPrintf("%s: IsInitialBlockDownload\n", __func__);
-            condWaitFor(nThreadID, 10000);
+            condWaitFor(nThreadID, 15000);
             continue;
         }
 
@@ -143,7 +141,8 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
             std::vector<COutPoint> vLockedOutpts;
             LOCK2(cs_main, pwallet->cs_wallet);
             //minimum amount we can ghost (0.1 denom * 0.25% fee)
-            CAmount minGhostAmount = (0.1 * COIN * 0.0025);
+            CAmount minGhostAmount = (0.1 * COIN);
+            minGhostAmount += (minGhostAmount * 0.0025);
             pwallet->AvailableCoins(vecOutputs);
             pwallet->ListLockedCoins(vLockedOutpts);
             pwallet->nIsAutoGhosting = CWallet::NOT_GHOSTING;
@@ -151,7 +150,7 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
             std::random_shuffle(vecOutputs.begin(), vecOutputs.end());
             for (const COutput& out : vecOutputs) {
                 COutPoint selectedInput(out.tx->tx->GetHash(), out.i);
-
+                LogPrintf("Checking GhostModeMintSigma amount %llf minAmount %llf.\n", out.tx->tx->vout[out.i].nValue, minGhostAmount);
                 if(out.tx->tx->vout[out.i].nValue < minGhostAmount)
                     continue;
 
@@ -168,11 +167,12 @@ void ThreadAutoGhoster(size_t nThreadID, std::vector<CWalletRef> &vpwallets, siz
                     pwallet->nIsAutoGhosting = CWallet::IS_GHOSTING;
                     g_coincontrol.SetNull();
                     g_coincontrol.Select(selectedInput);
-                    double decAmount = (out.tx->tx->vout[out.i].nValue/COIN) * 0.9975;
+                    double decAmount = (double(out.tx->tx->vout[out.i].nValue)/COIN) * 0.9975;
+                    decAmount = (double)((int)(decAmount*10))/10;
                     std::ostringstream strs;
                     strs << decAmount;
                     std::string decString = strs.str();
-                    LogPrintf("Starting GhostModeMintSigma for %s.\n", decString);
+                    LogPrintf("Starting GhostModeMintSigma for %llf %s.\n", decAmount, decString);
                     // if it does not work, try again
                     if(pwallet->GhostModeMintSigma(decString))
                         break;
