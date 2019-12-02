@@ -89,7 +89,6 @@ bool CheckSpendZerocoinTransaction(const CTransaction &tx,
 
     if(forceSpendLink){
         //check if pubcoin is real
-        LogPrintf("CheckSpendZerocoinTransaction(): Forcing spend link. \n");
         const CBigNum& bnPubcoin = newSpend.getPubcoinValue();
         if ((!isVerifyDB) && !zerocoinState.HasCoin(bnPubcoin))
             return state.DoS(100,
