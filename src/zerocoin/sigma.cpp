@@ -133,11 +133,11 @@ bool CheckSigmaSpendTransaction(
                 "CheckSigmaSpendTransaction: invalid spend transaction");
         }
 
-        if (spend->getVersion() != sigma::SIGMA_VERSION_1) {
+        if (spend->getVersion() != sigma::SIGMA_VERSION_1 && spend->getVersion() != sigma::SIGMA_VERSION_2) {
             return state.DoS(100,
                              false,
                              NSEQUENCE_INCORRECT,
-                             "CTransaction::CheckTransaction() : Error: incorrect spend transaction verion");
+                             "CTransaction::CheckTransaction() : Error: incorrect spend transaction version");
         }
 
         uint256 txHashForMetadata;
@@ -186,7 +186,19 @@ bool CheckSigmaSpendTransaction(
             index = index->pprev;
         }
 
-        passVerify = spend->Verify(anonymity_set, newMetaData);
+        bool fPadding = spend->getVersion() >= sigma::SIGMA_VERSION_2;
+        LogPrintf("fPadding %d", fPadding);
+        // require version 2 right away on full sync
+        if (!isVerifyDB) {
+            bool isSync = IsInitialBlockDownload();
+            if(!isSync){
+                if(!fPadding){
+                    return state.DoS(1, error("Incorrect sigma spend transaction version"));
+                }
+            }
+        }
+
+        passVerify = spend->Verify(anonymity_set, newMetaData, fPadding);
         if (passVerify) {
             Scalar serial = spend->getCoinSerialNumber();
             // do not check for duplicates in case we've seen exact copy of this tx in this block before

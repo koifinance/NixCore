@@ -212,6 +212,10 @@ Scalar& Scalar::mod_p() {
     return *this;
 }
 
+bool Scalar::isZero() const {
+    return secp256k1_scalar_is_zero(reinterpret_cast<const secp256k1_scalar *>(value_));
+}
+
 Scalar& Scalar::memberFromSeed(unsigned char* seed){
     // buffer -> object
     deserialize(seed);

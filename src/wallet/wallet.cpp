@@ -9203,7 +9203,7 @@ bool CWallet::GetKeyPackList(std::vector <CommitmentKeyPack> &keyPackList, bool 
             for(i = i; i < original; i++){
                 // Regenerate the mint
                 CSigmaMint dMint;
-                sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_1);
+                sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_2);
                 GetGhostWallet()->GenerateHDMint(sigma::CoinDenomination::SIGMA_0_1, coin, dMint);
                 if(!coin.getPublicCoin().validate())
                     continue;
@@ -9685,7 +9685,7 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
                 // transaction.
                 sigma::PrivateCoin privateCoin(sParams, denominationBatch[i]);
 
-                int txVersion = sigma::SIGMA_VERSION_1;
+                int txVersion = sigma::SIGMA_VERSION_2;
 
                 LogPrintf("CreateSigmaSpendTransation: tx version=%d, tx metadata hash=%s\n", txVersion, txNew.GetHash().ToString());
 
@@ -9704,12 +9704,12 @@ bool CWallet::CreateSigmaSpendTransaction(std::string &toKey, vector <CScript> p
                 privateCoin.setSerialNumber(coinToUseBatch[i].serialNumber);
                 privateCoin.setEcdsaSeckey(coinToUseBatch[i].ecdsaSecretKey);
 
-                sigma::CoinSpend spend(sParams, privateCoin, anonimity_set_batch[i], metaData);
+                sigma::CoinSpend spend(sParams, privateCoin, anonimity_set_batch[i], metaData, true);
                 spend.setVersion(txVersion);
 
                 // This is a sanity check. The CoinSpend object should always verify,
                 // but why not check before we put it onto the wire?
-                if (!spend.Verify(anonimity_set_batch[i], metaData)) {
+                if (!spend.Verify(anonimity_set_batch[i], metaData, true)) {
                     strFailReason = _("the sigma spend coin transaction did not verify");
                     return false;
                 }

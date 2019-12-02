@@ -69,6 +69,8 @@ public:
 
     bool isMember() const;
 
+    bool isZero() const;
+
     // Returns the secp object inside it.
     const void * get_value() const;
 

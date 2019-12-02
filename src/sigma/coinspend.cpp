@@ -7,7 +7,8 @@ CoinSpend::CoinSpend(
     const Params* p,
     const PrivateCoin& coin,
     const std::vector<PublicCoin>& anonymity_set,
-    const SpendMetaData& m)
+    const SpendMetaData& m,
+    bool fPadding)
     :
     params(p),
     denomination(coin.getPublicCoin().getDenomination()),
@@ -44,7 +45,7 @@ CoinSpend::CoinSpend(
     if(!indexFound)
         throw ZerocoinException("No such coin in this anonymity set");
 
-    sigmaProver.proof(C_, coinIndex, coin.getRandomness(), sigmaProof);
+    sigmaProver.proof(C_, coinIndex, coin.getRandomness(), fPadding, sigmaProof);
 
     updateMetaData(coin, m);
 }
@@ -97,7 +98,8 @@ uint256 CoinSpend::signatureHash(const SpendMetaData& m) const {
 
 bool CoinSpend::Verify(
         const std::vector<PublicCoin>& anonymity_set,
-        const SpendMetaData& m) const {
+        const SpendMetaData& m,
+        bool fPadding) const {
     SigmaPlusVerifier<Scalar, GroupElement> sigmaVerifier(params->get_g(), params->get_h(), params->get_n(), params->get_m());
     //compute inverse of g^s
     GroupElement gs = (params->get_g() * coinSerialNumber).inverse();
@@ -137,7 +139,7 @@ bool CoinSpend::Verify(
     }
 
     // Now verify the sigma proof itself.
-    return sigmaVerifier.verify(C_, sigmaProof);
+    return sigmaVerifier.verify(C_, sigmaProof, fPadding);
 }
 
 const Scalar& CoinSpend::getCoinSerialNumber() {
@@ -155,7 +157,7 @@ int64_t CoinSpend::getIntDenomination() const {
 }
 
 bool CoinSpend::HasValidSerial() const {
-    return coinSerialNumber.isMember();
+    return coinSerialNumber.isMember() && !coinSerialNumber.isZero();
 }
 
 } //namespace sigma

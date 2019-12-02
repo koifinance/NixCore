@@ -6317,7 +6317,7 @@ UniValue getpubcoinpackv2(const JSONRPCRequest& request) {
     for(i = i; i < original; i++){
         // Regenerate the mint
         CSigmaMint dMint;
-        sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_1);
+        sigma::PrivateCoin coin(sParam, sigma::CoinDenomination::SIGMA_0_1, sigma::SIGMA_VERSION_2);
         pwalletMain->GetGhostWallet()->GenerateHDMint(sigma::CoinDenomination::SIGMA_0_1, coin, dMint);
         if(!coin.getPublicCoin().validate())
             continue;

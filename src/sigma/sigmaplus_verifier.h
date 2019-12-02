@@ -5,6 +5,7 @@
 #include <sigma/sigmaplus_proof.h>
 #include <sigma/sigma_primitives.h>
 #include <secp256k1/include/MultiExponent.h>
+#include <util.h>
 
 namespace sigma {
 template<class Exponent, class GroupElement>
@@ -16,7 +17,8 @@ public:
                       int n, int m_);
 
     bool verify(const std::vector<GroupElement>& commits,
-                const SigmaPlusProof<Exponent, GroupElement>& proof) const;
+                const SigmaPlusProof<Exponent, GroupElement>& proof,
+                bool fPadding) const;
 
 private:
     GroupElement g_;

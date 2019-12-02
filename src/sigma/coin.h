@@ -23,7 +23,7 @@ enum class CoinDenomination : std::uint8_t {
 };
 
 static const int SIGMA_VERSION_1 = 1;
-
+static const int SIGMA_VERSION_2 = 2;
 
 // for LogPrintf.
 std::ostream& operator<<(std::ostream& stream, CoinDenomination denomination);
