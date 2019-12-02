@@ -37,10 +37,13 @@ void SigmaPlusProver<Exponent, GroupElement>::proof(
     for (int k = 0; k < m_; ++k) {
         Pk[k].randomize();
     }
+
     R1ProofGenerator<secp_primitives::Scalar, secp_primitives::GroupElement> r1prover(g_, h_, sigma, rB, n_, m_);
     proof_out.B_ = r1prover.get_B();
     std::vector<Exponent> a;
-    r1prover.proof(a, proof_out.r1Proof_, true /*Skip generation of final response*/);
+    r1prover.proof(a, proof_out.r1Proof_);
+
+    Exponent x = r1prover.x_;
 
     // Compute coefficients of Polynomials P_I(x), for all I from [0..N].
     std::size_t N = setSize;
@@ -124,15 +127,6 @@ void SigmaPlusProver<Exponent, GroupElement>::proof(
         Gk.emplace_back(c_k);
     }
     proof_out.Gk_ = Gk;
-
-    // Compute value of challenge X, then continue R1 proof and sigma final response proof.
-    std::vector<GroupElement> group_elements = {
-        proof_out.r1Proof_.A_, proof_out.B_, proof_out.r1Proof_.C_, proof_out.r1Proof_.D_};
-
-    group_elements.insert(group_elements.end(), Gk.begin(), Gk.end());
-    Exponent x;
-    SigmaPrimitives<Exponent, GroupElement>::generate_challenge(group_elements, x);
-    r1prover.generate_final_response(a, x, proof_out.r1Proof_);
 
     //computing z
     Exponent z;

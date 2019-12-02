@@ -187,7 +187,6 @@ bool CheckSigmaSpendTransaction(
         }
 
         bool fPadding = spend->getVersion() >= sigma::SIGMA_VERSION_2;
-        LogPrintf("fPadding %d", fPadding);
         // require version 2 right away on full sync
         if (!isVerifyDB) {
             bool isSync = IsInitialBlockDownload();
