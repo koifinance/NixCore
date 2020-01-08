@@ -1416,6 +1416,7 @@ UniValue getproposaltimeframeinfo(const JSONRPCRequest& request)
 
         CBlock block;
         if (ReadBlockFromDisk(block, pindex, Params().GetConsensus())){
+            totalWeightAll += Params().GetProofOfStakeReward(pindex, 0);
             // Add weight only if its being staked through p2wkh
             CTxDestination stakeAddr;
             ExtractDestination(block.vtx[0]->vout[0].scriptPubKey, stakeAddr);
