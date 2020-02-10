@@ -82,6 +82,7 @@ public:
     bool IsExpired() { return GetTime() - sigTime > GHOSTNODE_NEW_START_REQUIRED_SECONDS; }
 
     bool Sign(CKey& keyGhostnode, CPubKey& pubKeyGhostnode);
+    bool Sign(CKey& keyGhostnode, CPubKey& pubKeyGhostnode, int64_t time);
     bool CheckSignature(CPubKey& pubKeyGhostnode, int &nDos);
     bool SimpleCheck(int& nDos);
     bool CheckAndUpdate(CGhostnode* pmn, bool fFromNewBroadcast, int& nDos);
@@ -368,6 +369,7 @@ public:
     /// Create Ghostnode broadcast, needs to be relayed manually after that
     static bool Create(CTxIn vin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyGhostnodeNew, CPubKey pubKeyGhostnodeNew, std::string &strErrorRet, CGhostnodeBroadcast &mnbRet);
     static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CGhostnodeBroadcast &mnbRet, bool fOffline = false);
+    static bool Create(std::string strService, std::string strKeyGhostnode, CTxIn txin, std::string pubKeyOwner, std::string &strErrorRet, CGhostnodeBroadcast &mnbRet, std::vector<unsigned char> vchSig, int64_t sigTime);
 
     bool SimpleCheck(int& nDos);
     bool Update(CGhostnode* pmn, int& nDos);

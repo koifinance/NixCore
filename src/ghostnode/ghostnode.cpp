@@ -404,15 +404,11 @@ void CGhostnode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanB
     LOCK(cs_mapGhostnodeBlocks);
 
     for (int i = 0; BlockReading && BlockReading->nHeight > nBlockLastPaid && i < nMaxBlocksToScanBack; i++) {
-//        //LogPrint("mnpayments.mapGhostnodeBlocks.count(BlockReading->nHeight)=%s\n", mnpayments.mapGhostnodeBlocks.count(BlockReading->nHeight));
-//        //LogPrint("mnpayments.mapGhostnodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2)=%s\n", mnpayments.mapGhostnodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2));
         if (mnpayments.mapGhostnodeBlocks.count(BlockReading->nHeight) &&
             mnpayments.mapGhostnodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2)) {
-            // //LogPrint("i=%s, BlockReading->nHeight=%s\n", i, BlockReading->nHeight);
             CBlock block;
             if (!ReadBlockFromDisk(block, BlockReading, Params().GetConsensus())) // shouldn't really happen
             {
-                //LogPrint("ReadBlockFromDisk failed\n");
                 continue;
             }
 
@@ -422,7 +418,6 @@ void CGhostnode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanB
             if (mnpayee == txout.scriptPubKey && nGhostnodePayment == txout.nValue) {
                 nBlockLastPaid = BlockReading->nHeight;
                 nTimeLastPaid = BlockReading->nTime;
-                //LogPrint("ghostnode", "CGhostnode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
                 return;
             }
         }
@@ -486,6 +481,85 @@ bool CGhostnodeBroadcast::Create(std::string strService, std::string strKeyGhost
     }
 
     return Create(txin, addr, keyCollateralAddressNew, pubKeyCollateralAddressNew, keyGhostnodeNew, pubKeyGhostnodeNew, strErrorRet, mnbRet);
+}
+
+bool CGhostnodeBroadcast::Create(std::string strService, std::string strKeyGhostnode, CTxIn txin, std::string pubKeyOwner, std::string &strErrorRet, CGhostnodeBroadcast &mnbRet, std::vector<unsigned char> vchSig, int64_t sigTime) {
+    CPubKey pubKeyGhostnodeNew;
+    CKey keyGhostnodeNew;
+    //need correct blocks to send ping
+    if (!ghostnodeSync.IsBlockchainSynced()) {
+        strErrorRet = "Sync in progress. Must wait until sync is complete to start Ghostnode";
+        return false;
+    }
+
+    if (!darkSendSigner.GetKeysFromSecret(strKeyGhostnode, keyGhostnodeNew, pubKeyGhostnodeNew)) {
+        strErrorRet = strprintf("Invalid ghostnode key %s", strKeyGhostnode);
+        return false;
+    }
+
+    CService addr;
+    int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
+    if (!Lookup(strService.c_str(), addr, mainnetDefaultPort, false)) {
+        strErrorRet = strprintf("CGhostnodeBroadcast Create(): Invalid ghostnode broadcast: '%s'", strService);
+        return false;
+    }
+
+    if (Params().NetworkIDString() == CBaseChainParams::MAIN) {
+        if (addr.GetPort() != mainnetDefaultPort) {
+            strErrorRet = strprintf("Invalid port %u for ghostnode %s, only %d is supported on mainnet.", addr.GetPort(), strService, mainnetDefaultPort);
+            return false;
+        }
+    } else if (addr.GetPort() == mainnetDefaultPort) {
+        strErrorRet = strprintf("Invalid port %u for ghostnode %s, %d is the only supported on mainnet.", addr.GetPort(), strService, mainnetDefaultPort);
+        return false;
+    }
+
+    CGhostnodePing mnp(txin);
+    if (!mnp.Sign(keyGhostnodeNew, pubKeyGhostnodeNew, sigTime)) {
+        strErrorRet = strprintf("Failed to sign ping, ghostnode=%s", txin.prevout.ToStringShort());
+        mnbRet = CGhostnodeBroadcast();
+        return false;
+    }
+
+    std::string hex = pubKeyOwner;
+    std::stringstream convertStream;
+    vector<unsigned char> uncompressedKey;
+    int offset = 0, i = 0;
+    while (offset < hex.length())
+    {
+        unsigned int buffer;
+
+        convertStream << std::hex << hex.substr(offset, 2);
+        convertStream >> std::hex >> buffer;
+
+        uncompressedKey.push_back(static_cast<unsigned char>(buffer));
+
+        offset += 2;
+        i++;
+
+        // empty the stringstream
+        convertStream.str(std::string());
+        convertStream.clear();
+    }
+
+    CPubKey pubKeyHashOwner = CPubKey(uncompressedKey);
+
+    mnbRet = CGhostnodeBroadcast(addr, txin, pubKeyHashOwner, pubKeyGhostnodeNew, PROTOCOL_VERSION);
+    mnbRet.sigTime = sigTime;
+
+    if(!vchSig.empty()){
+        mnbRet.vchSig = vchSig;
+    }
+
+    if (!mnbRet.IsValidNetAddr()) {
+        strErrorRet = strprintf("Invalid IP address, ghostnode=%s", txin.prevout.ToStringShort());
+        mnbRet = CGhostnodeBroadcast();
+        return false;
+    }
+
+    mnbRet.lastPing = mnp;
+
+    return true;
 }
 
 bool CGhostnodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyGhostnodeNew, CPubKey pubKeyGhostnodeNew, std::string &strErrorRet, CGhostnodeBroadcast &mnbRet) {
@@ -751,10 +825,10 @@ bool CGhostnodeBroadcast::CheckSignature(int &nDos) {
                  pubKeyCollateralAddress.GetID().ToString() + pubKeyGhostnode.GetID().ToString() +
                  boost::lexical_cast<std::string>(nProtocolVersion);
 
-    //LogPrint("ghostnode", "CGhostnodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", strMessage, CBitcoinAddress(pubKeyCollateralAddress.GetID()).ToString(), EncodeBase64(&vchSig[0], vchSig.size()));
+    //LogPrintf("CGhostnodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", strMessage, CBitcoinAddress(pubKeyCollateralAddress.GetID()).ToString(), EncodeBase64(&vchSig[0], vchSig.size()));
 
     if (!darkSendSigner.VerifyMessage(pubKeyCollateralAddress, vchSig, strMessage, strError)) {
-        //LogPrint("CGhostnodeBroadcast::CheckSignature -- Got bad Ghostnode announce signature, error: %s\n", strError);
+        //LogPrintf("CGhostnodeBroadcast::CheckSignature -- Got bad Ghostnode announce signature, error: %s\n", strError);
         nDos = 100;
         return false;
     }
@@ -783,6 +857,26 @@ bool CGhostnodePing::Sign(CKey &keyGhostnode, CPubKey &pubKeyGhostnode) {
     std::string strGhostNodeSignMessage;
 
     sigTime = GetAdjustedTime();
+    std::string strMessage = vin.ToString() + blockHash.ToString() + boost::lexical_cast<std::string>(sigTime);
+
+    if (!darkSendSigner.SignMessage(strMessage, vchSig, keyGhostnode)) {
+        //LogPrint("CGhostnodePing::Sign -- SignMessage() failed\n");
+        return false;
+    }
+
+    if (!darkSendSigner.VerifyMessage(pubKeyGhostnode, vchSig, strMessage, strError)) {
+        //LogPrint("CGhostnodePing::Sign -- VerifyMessage() failed, error: %s\n", strError);
+        return false;
+    }
+
+    return true;
+}
+
+bool CGhostnodePing::Sign(CKey &keyGhostnode, CPubKey &pubKeyGhostnode, int64_t time) {
+    std::string strError;
+    std::string strGhostNodeSignMessage;
+
+    sigTime = time;
     std::string strMessage = vin.ToString() + blockHash.ToString() + boost::lexical_cast<std::string>(sigTime);
 
     if (!darkSendSigner.SignMessage(strMessage, vchSig, keyGhostnode)) {

@@ -1546,14 +1546,14 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
     {
         LOCK(cs);
         nDos = 0;
-        //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+        //LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
 
         uint256 hash = mnb.GetHash();
         if (mapSeenGhostnodeBroadcast.count(hash) && !mnb.fRecovery) { //seen
-            //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen\n", mnb.vin.prevout.ToStringShort());
+           // LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen\n", mnb.vin.prevout.ToStringShort());
             // less then 2 pings left before this MN goes into non-recoverable state, bump sync timeout
             if (GetTime() - mapSeenGhostnodeBroadcast[hash].first > GHOSTNODE_NEW_START_REQUIRED_SECONDS - GHOSTNODE_MIN_MNP_SECONDS * 2) {
-                //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen update\n", mnb.vin.prevout.ToStringShort());
+                //LogPrintf( "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s seen update\n", mnb.vin.prevout.ToStringShort());
                 mapSeenGhostnodeBroadcast[hash].first = GetTime();
                 ghostnodeSync.AddedGhostnodeList();
             }
@@ -1582,10 +1582,10 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
         }
         mapSeenGhostnodeBroadcast.insert(std::make_pair(hash, std::make_pair(GetTime(), mnb)));
 
-        //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s new\n", mnb.vin.prevout.ToStringShort());
+       // LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- ghostnode=%s new\n", mnb.vin.prevout.ToStringShort());
 
         if (!mnb.SimpleCheck(nDos)) {
-            //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- SimpleCheck() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+            //LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- SimpleCheck() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
             return false;
         }
 
@@ -1594,7 +1594,7 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
         if (pmn) {
             CGhostnodeBroadcast mnbOld = mapSeenGhostnodeBroadcast[CGhostnodeBroadcast(*pmn).GetHash()].second;
             if (!mnb.Update(pmn, nDos)) {
-                //LogPrint("ghostnode", "CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Update() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
+                //LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Update() failed, ghostnode=%s\n", mnb.vin.prevout.ToStringShort());
                 return false;
             }
             if (hash != mnbOld.GetHash()) {
@@ -1623,7 +1623,7 @@ bool CGhostnodeMan::CheckMnbAndUpdateGhostnodeList(CNode* pfrom, CGhostnodeBroad
         }
         mnb.RelayGhostNode();
     } else {
-        //LogPrint("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Rejected Ghostnode entry: %s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
+        //LogPrintf("CGhostnodeMan::CheckMnbAndUpdateGhostnodeList -- Rejected Ghostnode entry: %s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
         return false;
     }
 

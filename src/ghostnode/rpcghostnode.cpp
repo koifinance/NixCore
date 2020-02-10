@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <univalue.h>
 #include <boost/foreach.hpp>
+#include <boost/lexical_cast.hpp>
 
 //void EnsureWalletIsUnlocked();
 
@@ -626,7 +627,7 @@ UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
         strCommand = params[0].get_str();
 
     if (fHelp ||
-        (strCommand != "create-alias" && strCommand != "create-all" && strCommand != "decode" && strCommand != "relay"))
+        (strCommand != "create-alias" && strCommand != "create-all" && strCommand != "decode" && strCommand != "relay" && strCommand != "get-message" && strCommand != "relay-data"))
         throw std::runtime_error(
                 "ghostnodebroadcast \"command\"...\n"
                         "Set of commands to create and relay ghostnode broadcast messages\n"
@@ -797,6 +798,93 @@ UniValue ghostnodebroadcast(const JSONRPCRequest &req) {
                 nSuccessful, nFailed, nSuccessful + nFailed)));
 
         return returnObj;
+    }
+
+    if(strCommand  == "get-message"){
+        if (params.size() != 6)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'ghostnodebroadcast get-message "
+                                                      "\"ip\" \"ghostnodekey\" \"owneraddress\""
+                                                      "\"txid\" \"txindex\"'");
+
+        std::string ip = params[1].get_str();
+        std::string gnKey = params[2].get_str();
+        std::string pubKey = params[3].get_str();
+        std::string tx_hash_str = params[4].get_str();
+        std::string tx_index_str = params[5].get_str();
+
+        UniValue returnObj(UniValue::VOBJ);
+        CTransactionRef tx;
+        uint256 hash_block;
+        uint256 tx_hash = uint256S(tx_hash_str);
+        uint32_t tx_index = static_cast<uint32_t>(std::stoul(tx_index_str));
+        if (!GetTransaction(tx_hash, tx, Params().GetConsensus(), hash_block, true)) {
+            throw JSONRPCError(RPC_TRANSACTION_ERROR, "Issue fetching ghostnode utxo");
+        }
+        COutPoint tx_out = COutPoint(tx_hash, tx_index);
+        CTxIn tx_in = CTxIn(tx_out);
+        CGhostnodeBroadcast mnb;
+        std::string strError;
+        std::vector<unsigned char> vchSig;
+
+        bool fResult = CGhostnodeBroadcast::Create(ip, gnKey, tx_in, pubKey, strError, mnb, vchSig, GetAdjustedTime());
+
+        if(fResult == false){
+            returnObj.push_back(Pair("message", ""));
+            returnObj.push_back(Pair("time", ""));
+            return returnObj;
+        }
+
+        std::string strMessage = mnb.addr.ToString() + boost::lexical_cast<std::string>(mnb.sigTime) +
+                     mnb.pubKeyCollateralAddress.GetID().ToString() + mnb.pubKeyGhostnode.GetID().ToString() +
+                     boost::lexical_cast<std::string>(mnb.nProtocolVersion);
+
+        returnObj.push_back(Pair("message", strMessage));
+        returnObj.push_back(Pair("time", mnb.sigTime));
+
+        return returnObj;
+    }
+
+    if(strCommand  == "relay-data"){
+        if (params.size() != 8)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'ghostnodebroadcast relay-data "
+                                                      "\"ip\" \"ghostnodekey\" \"owneraddress\""
+                                                      "\"txid\" \"txindex\" \"signature\" \"signaturetime\"'");
+
+        std::string ip = params[1].get_str();
+        std::string gnKey = params[2].get_str();
+        std::string pubKey = params[3].get_str();
+        std::string tx_hash_str = params[4].get_str();
+        std::string tx_index_str = params[5].get_str();
+        std::string signature = params[6].get_str();
+        std::string sigTime = params[7].get_str();
+
+        UniValue returnObj(UniValue::VOBJ);
+        CTransactionRef tx;
+        uint256 hash_block;
+        uint256 tx_hash = uint256S(tx_hash_str);
+        uint32_t tx_index = static_cast<uint32_t>(std::stoul(tx_index_str));
+        if (!GetTransaction(tx_hash, tx, Params().GetConsensus(), hash_block, true)) {
+            throw JSONRPCError(RPC_TRANSACTION_ERROR, "Issue fetching ghostnode utxo");
+        }
+        COutPoint tx_out = COutPoint(tx_hash, tx_index);
+        CTxIn tx_in = CTxIn(tx_out);
+        CGhostnodeBroadcast mnb;
+        std::string strError;
+
+        const char* sigArray = signature.c_str();
+        std::vector<unsigned char> vchSig = DecodeBase64(sigArray);
+
+        bool fResult = CGhostnodeBroadcast::Create(ip, gnKey, tx_in, pubKey, strError, mnb, vchSig, boost::lexical_cast<int64_t>(sigTime));
+
+        if (fResult) {
+            mnodeman.UpdateGhostnodeList(mnb);
+            mnb.RelayGhostNode();
+        }
+
+        returnObj.push_back(Pair("result", fResult));
+
+        return returnObj;
+
     }
 
     if (strCommand == "relay") {
