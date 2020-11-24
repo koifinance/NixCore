@@ -4204,10 +4204,14 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-missing", false, "first tx is not coinbase");
 
         // 2nd txn may never be coinstake, remaining txns must not be coinbase/stake
-        for (size_t i = 1; i < block.vtx.size(); i++)
+        for (size_t i = 1; i < block.vtx.size(); i++){
             if ((i > 1 && block.vtx[i]->IsCoinBase()) || block.vtx[i]->IsCoinStake())
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
 
+            if (nHeight > 592100 && (block.vtx[i]->IsCoinBase() || block.vtx[i]->IsCoinStake()))
+                return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
+        }
+        
         if (!CheckBlockSignature(block))
             return state.DoS(100, false, REJECT_INVALID, "bad-block-signature", false, "bad block signature");
     }
