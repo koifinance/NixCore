@@ -19,32 +19,6 @@ else
 LIBUNIVALUE = $(UNIVALUE_LIBS)
 endif
 
-TOR_LIBS = tor/src/or/libtor.a \
-	tor/src/common/libor.a \
-	tor/src/common/libor-ctime.a \
-	tor/src/common/libor-crypto.a \
-	tor/src/common/libor-event.a \
-	tor/src/trunnel/libor-trunnel.a \
-	tor/src/common/libcurve25519_donna.a \
-	tor/src/ext/ed25519/donna/libed25519_donna.a \
-	tor/src/ext/ed25519/ref10/libed25519_ref10.a \
-	tor/src/ext/keccak-tiny/libkeccak-tiny.a
-
-tor.timestamp: $(wildcard tor/src/or/*.c) $(wildcard tor/src/or/*.h) \
-		$(wildcard tor/src/common/*.c) $(wildcard tor/src/common/*.h) \
-		$(wildcard tor/src/trunnel/*.c) $(wildcard tor/src/trunnel/*.h) \
-		$(wildcard tor/src/ext/*.c) $(wildcard tor/src/ext/*.h)
-	@rm -f tor.timestamp.tmp
-	@touch tor.timestamp.tmp
-	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C tor
-	@mv -f tor.timestamp.tmp tor.timestamp
-
-$(TOR_LIBS): tor.timestamp
-	@if test -f $@; then :; else \
-		rm -f tor.timestamp; \
-		$(MAKE) $(AM_MAKEFLAGS) tor.timestamp; \
-	fi
-
 
 NIX_INCLUDES=-I$(builddir) $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
@@ -575,7 +549,7 @@ nixd_LDADD = \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
 
-nixd_LDADD += $(TOR_LIBS) $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) -lz
+nixd_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) -lz
 
 # nix-cli binary #
 nix_cli_SOURCES = nix-cli.cpp
