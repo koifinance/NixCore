@@ -4208,7 +4208,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             if ((i > 1 && block.vtx[i]->IsCoinBase()) || block.vtx[i]->IsCoinStake())
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
 
-            if (nHeight > 592190 && (block.vtx[i]->IsCoinBase() || block.vtx[i]->IsCoinStake()))
+            if (nHeight > 592100 && (block.vtx[i]->IsCoinBase() || block.vtx[i]->IsCoinStake()))
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
         }
         
