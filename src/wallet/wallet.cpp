@@ -8673,81 +8673,11 @@ bool CWallet::CreateCoinStake(unsigned int nBits, int64_t nTime, int nBlockHeigh
 
     CAmount devAmount = DEVELOPMENT_REWARD_POST_POS * GetBlockSubsidy(chainActive.Height(), Params().GetConsensus());
     // new payout cycle set to daily
-    if((chainActive.Height() + 1) >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight){
-
-        if(((chainActive.Height() + 1) % Params().GetConsensus().nNewDevelopmentPayoutCycle) == 0){
-
-            CScript DEV_SCRIPT;
-
-            bool fTestNet = (Params().NetworkIDString() == CBaseChainParams::TESTNET);
-
-            if (!fTestNet) {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("nix1qr7y5gtwrpuadsluk7v2wdn9pwx3s4asf25hcq2"));
-            }
-            else {
-                DEV_SCRIPT = GetScriptForDestination(DecodeDestination("nix1qr7y5gtwrpuadsluk7v2wdn9pwx3s4asf25hcq2"));
-            }
-
-            txNew.vout.push_back(CTxOut(devAmount * Params().GetConsensus().nNewDevelopmentPayoutCycle, DEV_SCRIPT));
-        }
-    }else{
-        // Place dev fund output
-        CScript DEV_1_SCRIPT;
-        CScript DEV_2_SCRIPT;
-        if (!fTestNet) {
-            DEV_1_SCRIPT = GetScriptForDestination(DecodeDestination("NVbGEghDbxPUe97oY8N5RvagQ61cHQiouW"));
-            DEV_2_SCRIPT = GetScriptForDestination(DecodeDestination("NWF7QNfT1b8a9dSQmVTT6hcwzwEVYVmDsG"));
-            //Push dev block reward of 2% based on coinbase rewards, 1% each
-            txNew.vout.push_back(CTxOut(devAmount/2, DEV_1_SCRIPT));
-            txNew.vout.push_back(CTxOut(devAmount/2, DEV_2_SCRIPT));
-        }
+    if(((chainActive.Height() + 1) % Params().GetConsensus().nNewDevelopmentPayoutCycle) == 0){
+        CScript DEV_SCRIPT = GetScriptForDestination(DecodeDestination("nix1qr7y5gtwrpuadsluk7v2wdn9pwx3s4asf25hcq2"));
+        txNew.vout.push_back(CTxOut(devAmount * Params().GetConsensus().nNewDevelopmentPayoutCycle, DEV_SCRIPT));
     }
-
-    CBlock *pblock = &pblocktemplate->block; // pointer for convenience
-
-    //Utilize gn distribuition model
-    if((chainActive.Height() + 1) >= Params().GetConsensus().nGhostnodePaymentsStartBlock)
-    {
-        int64_t returnFee = 0;
-        bool payFees = false;
-        //Check for ghost fee distribution
-        CBlock block;
-        block.SetNull();
-        if(!GetGhostnodeFeePayment(returnFee, payFees, block))
-            return error("%s: GetGhostnodeFeePayment failed.", __func__);
-
-        //Pay node winner block reward
-        CAmount ghostnodePayment = GetGhostnodePayment(chainActive.Height() + 1, 0);
-        FillBlockPayments(txNew, chainActive.Height() + 1, ghostnodePayment, pblock->txoutGhostnode, pblock->voutSuperblock);
-
-        //add current block fee since we skip it in GetGhostnodeFeePayment()
-        returnFee += nGhostFees;
-
-        //pay or dont pay the fees to all nodes
-        if(payFees && returnFee != 0){
-            vector<CGhostnode> ghostnodeVector = mnodeman.GetFullGhostnodeVector();
-
-            int totalActiveNodes = 0;
-            int startBlock = (chainActive.Height() + 1) - (Params().GetConsensus().nGhostFeeDistributionCycle - 1);
-            int64_t ensureNodeActiveBefore = chainActive[startBlock]->GetBlockTime();
-
-            for(auto node: ghostnodeVector){
-
-                if(node.IsEnabled() && (node.sigTime <= ensureNodeActiveBefore))
-                    totalActiveNodes++;
-            }
-
-            CAmount feePayout = returnFee/totalActiveNodes;
-
-            for(auto node: ghostnodeVector){
-                if(node.IsEnabled() && (node.sigTime <= ensureNodeActiveBefore)){
-                    CScript mnpayee;
-                    mnpayee = GetScriptForDestination(node.pubKeyCollateralAddress.GetID());
-                    txNew.vout.push_back(CTxOut(feePayout,mnpayee));
-                }
-            }
-        }
-    }
+    
 
     //insert witness tx
     std::vector<unsigned char> ret(32, 0x00);
