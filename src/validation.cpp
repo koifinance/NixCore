@@ -482,7 +482,7 @@ bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp, bool 
 
     CBlockIndex* tip = chainActive.Tip();
     assert(tip != nullptr);
-    
+
     CBlockIndex index;
     index.pprev = tip;
     // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
@@ -2427,6 +2427,10 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
 
     // Add Ghostnode reward to theoretical payout
     nCalculatedStakeReward = ((nHeight >= Params().GetConsensus().nGhostnodePaymentsStartBlock) ? GHOSTNODE_REWARD_POST_POS : 0) * GetBlockSubsidy(nHeight, Params().GetConsensus());
+
+    if(nHeight >= 655000){
+      nCalculatedStakeReward = 0;
+    }
     // new payout cycle set to daily
     if(nHeight >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight){
 
@@ -2501,6 +2505,9 @@ bool CheckRequiredInputAmounts(const CBlock &block, int nHeight, CValidationStat
 
     bool found_gn = true;
 
+    if(nHeight >= 655000){
+      return true;
+    }
     //check that ghostnode reward at least the blockreward, accounts for ghostprotocol fees
     //enforce proper ghostnode list payout
     if(ghostnodeSync.IsSynced() && (nHeight >= Params().GetConsensus().nNewDevelopmentPayoutCycleStartHeight)){
@@ -2884,9 +2891,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
         //Payout fees for ghostnode fee cycle
         else{
-            //Causing issues, revert to later update
-            //if(!CheckGhostProtocolFeePayouts(block, returnFee))
-                //return state.DoS(100, error("CheckGhostProtocolFeePayouts() : block does not payout correct ghostnode fees"), REJECT_INVALID, "bad-cs-amount");
 
             blockReward = blockReward + returnFee;
         }
@@ -4211,7 +4215,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             if (nHeight > 592100 && (block.vtx[i]->IsCoinBase() || block.vtx[i]->IsCoinStake()))
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase or coinstake");
         }
-        
+
         if (!CheckBlockSignature(block))
             return state.DoS(100, false, REJECT_INVALID, "bad-block-signature", false, "bad block signature");
     }
