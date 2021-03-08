@@ -414,10 +414,10 @@
               <item>
                <widget class="QPushButton" name="sendButton">
                 <property name="toolTip">
-                 <string>Convert Ghosted NIX</string>
+                 <string>Create a new LPoS Contract</string>
                 </property>
                 <property name="text">
-                 <string>&amp;Send NIX</string>
+                 <string>&amp;Create Contract</string>
                 </property>
                 <property name="autoDefault">
                  <bool>false</bool>
